@@ -1,4 +1,4 @@
-﻿namespace WMS.UnitTests;
+namespace WMS.UnitTests;
 
 public class UnitTest1
 {
