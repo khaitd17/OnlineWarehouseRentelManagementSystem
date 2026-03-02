@@ -1,247 +1,354 @@
-# 🏗 ONLINE WAREHOUSE RENTAL MANAGEMENT SYSTEM (WMS)
+🏗 ONLINE WAREHOUSE RENTAL MANAGEMENT SYSTEM (WMS)
 
 Fullstack system for managing warehouse rental operations.
 
----
+🛠 TECH STACK
+🖥 Backend
 
-# 🛠 TECH STACK
+ASP.NET Core Web API
 
-## 🖥 Backend
-- ASP.NET Core Web API
-- Clean Architecture
-- Entity Framework Core
-- SQL Server
-- JWT Authentication
+Clean Architecture
 
-## 🌐 Frontend
-- React
-- React Router DOM
-- Axios
+CQRS Pattern
 
----
+MediatR
 
-# 📁 PROJECT STRUCTURE
+Entity Framework Core (Code First)
 
-```
-warehouse-management-system/
-│
-├── backend/
-│   ├── WMS.Domain
-│   ├── WMS.Application
-│   ├── WMS.Infrastructure
-│   ├── WMS.API
-│   ├── tests
-│   └── WMS.sln
-│
-└── frontend/
-    ├── public
-    └── src
-```
+SQL Server
 
----
+JWT Authentication
 
-# 🧱 BACKEND ARCHITECTURE (CLEAN ARCHITECTURE)
+FluentValidation
 
-## 🟢 WMS.Domain
-- Entities
-- Enums
-- Interfaces
+🌐 Frontend
 
-## 🟢 WMS.Application
-- Business logic
-- DTOs
-- Service interfaces
+React
 
-## 🟢 WMS.Infrastructure
-- Database (EF Core)
-- Repository implementations
-- Persistence configuration
+React Router DOM
 
-## 🟢 WMS.API
-- Controllers
-- Middleware
-- JWT Authentication
-- Swagger configuration
+Axios
 
----
+🧱 BACKEND ARCHITECTURE
 
-# 🌐 FRONTEND STRUCTURE
+(Clean Architecture + CQRS + MediatR)
 
-```
-src/
-│
-├── components/
-├── pages/
-├── services/
-├── routes/
-├── layouts/
-└── App.js
-```
+The backend is built using Clean Architecture combined with CQRS (Command Query Responsibility Segregation) and MediatR.
 
----
+The system is divided into 4 main layers:
 
-# 🚀 HOW TO RUN BACKEND
+backend/
+├── WMS.Domain
+├── WMS.Application
+├── WMS.Infrastructure
+└── WMS.API
+🟢 1️⃣ WMS.Domain (Core Layer)
 
-## 1️⃣ Go to API project
-```bash
+Contains the core business model:
+
+Entities (Warehouse, User, Contract, etc.)
+
+Enums
+
+Repository Interfaces
+
+Core domain rules
+
+⚠ This layer does NOT depend on any other layer.
+
+Example structure:
+
+WMS.Domain/
+├── Entities/
+│     ├── Warehouse.cs
+│     └── User.cs
+├── Enums/
+└── Interfaces/
+      ├── IWarehouseRepository.cs
+      └── IUserRepository.cs
+🟢 2️⃣ WMS.Application (Business Logic + CQRS Layer)
+
+This layer contains all business logic and follows the CQRS pattern.
+
+It includes:
+
+Commands (write operations)
+
+Queries (read operations)
+
+Handlers (business logic execution)
+
+Validators (input validation)
+
+DTOs
+
+📌 Feature-Based Structure
+
+Each feature is organized separately:
+
+WMS.Application/
+└── Features/
+     └── Warehouses/
+          ├── Create/
+          │     ├── CreateWarehouseCommand.cs
+          │     ├── CreateWarehouseHandler.cs
+          │     └── CreateWarehouseValidator.cs
+          ├── Update/
+          ├── Delete/
+          └── GetById/
+📌 CQRS Concept
+
+Command → Changes data (Create, Update, Delete)
+
+Query → Retrieves data (Get, Search)
+
+Each Command/Query has its own Handler
+
+No large traditional service classes
+
+Example:
+
+CreateWarehouseCommand → CreateWarehouseHandler
+GetWarehouseByIdQuery → GetWarehouseByIdHandler
+
+Each Handler acts as a small, focused service.
+
+🟢 3️⃣ WMS.Infrastructure (Persistence Layer)
+
+Responsible for data access and external services.
+
+Contains:
+
+EF Core DbContext
+
+Repository implementations
+
+Entity configurations
+
+Migrations
+
+JWT implementation
+
+Example:
+
+WMS.Infrastructure/
+├── Persistence/
+│     └── ApplicationDbContext.cs
+├── Repositories/
+│     └── WarehouseRepository.cs
+└── Migrations/
+
+Implements interfaces defined in the Domain layer.
+
+🟢 4️⃣ WMS.API (Presentation Layer)
+
+Responsible for handling HTTP requests.
+
+Contains:
+
+Controllers
+
+Middleware
+
+Swagger configuration
+
+JWT Authentication setup
+
+Controller responsibilities:
+
+Receive request
+
+Send Command/Query via MediatR
+
+Return standardized response
+
+Example:
+
+await _mediator.Send(new CreateWarehouseCommand(...));
+
+Controllers do NOT contain business logic.
+
+🔄 REQUEST FLOW (CQRS FLOW)
+Frontend
+   ↓
+Controller
+   ↓
+MediatR
+   ↓
+Command / Query
+   ↓
+Handler
+   ↓
+Repository
+   ↓
+Database
+📁 FRONTEND STRUCTURE
+frontend/
+└── src/
+     ├── components/
+     ├── pages/
+     ├── services/
+     ├── routes/
+     ├── layouts/
+     └── App.js
+Folder Responsibilities
+
+components → Reusable UI components
+
+pages → Page-level components
+
+services → API calls (Axios)
+
+routes → Routing configuration
+
+layouts → Shared layouts (Navbar, Sidebar)
+
+🔐 AUTHENTICATION
+
+JWT-based authentication
+
+Token stored in localStorage
+
+Role-based authorization
+
+Protected routes enabled
+
+🗄 DATABASE (CODE FIRST)
+Create Migration
+dotnet ef migrations add MigrationName --project ../WMS.Infrastructure --startup-project .
+Update Database
+dotnet ef database update --project ../WMS.Infrastructure --startup-project .
+🚀 HOW TO RUN BACKEND
+1️⃣ Go to API project
 cd backend/WMS.API
-```
-
-## 2️⃣ Restore packages
-```bash
+2️⃣ Restore packages
 dotnet restore
-```
-
-## 3️⃣ Run API
-```bash
+3️⃣ Run API
 dotnet run
-```
 
 Swagger will be available at:
 
-```
 https://localhost:xxxx/swagger
-```
-
----
-
-# 🗄 DATABASE (CODE FIRST)
-
-## 🟢 Create Migration
-```bash
-dotnet ef migrations add MigrationName --project ../WMS.Infrastructure --startup-project .
-```
-
-## 🟢 Update Database
-```bash
-dotnet ef database update --project ../WMS.Infrastructure --startup-project .
-```
-
----
-
-# 🌐 HOW TO RUN FRONTEND
-
-## 1️⃣ Go to frontend
-```bash
+🌐 HOW TO RUN FRONTEND
+1️⃣ Go to frontend
 cd frontend
-```
-
-## 2️⃣ Install dependencies
-```bash
+2️⃣ Install dependencies
 npm install
-```
-
-## 3️⃣ Start React app
-```bash
+3️⃣ Start React app
 npm start
-```
+🔍 VALIDATION STRATEGY
 
----
+Validation is implemented in 3 layers:
 
-# 🔐 AUTHENTICATION
+1️⃣ Input Validation
 
-- JWT-based authentication
-- Token stored in localStorage
-- Protected routes enabled
-- Role-based authorization supported
+Implemented in Application layer
 
----
+Using FluentValidation
 
-# 📦 API RESPONSE FORMAT
+2️⃣ Business Rule Validation
 
-All APIs should return:
+Implemented in Handler or Domain
 
-```json
+Example: Email uniqueness, business constraints
+
+3️⃣ Database Constraints
+
+Unique index
+
+Foreign key constraints
+
+Configured in Infrastructure layer
+
+📦 STANDARD API RESPONSE FORMAT
+
+All APIs return:
+
 {
   "success": true,
   "message": "Request successful",
   "data": {}
 }
-```
+🌳 GIT WORKFLOW (TEAM DEVELOPMENT)
+❌ Do NOT push directly to main
+✅ Standard workflow
 
----
+1️⃣ Create new branch from main
 
-# 🌳 GIT WORKFLOW (QUY TRÌNH LÀM VIỆC NHÓM)
-
-## 🔴 KHÔNG được push trực tiếp vào nhánh `main`
-
----
-
-## 🟢 Quy trình làm việc chuẩn
-
-1. Tạo branch mới từ `main`
-
-```
 git checkout main
 git pull origin main
-git checkout -b ten-branch-cua-ban
-```
+git checkout -b your-branch-name
 
-2. Code và commit theo chức năng
+2️⃣ Commit your changes
 
-```
 git add .
-git commit -m "Mô tả chức năng"
-```
+git commit -m "Feature description"
 
-3. Push lên GitHub
+3️⃣ Push to GitHub
 
-```
-git push origin ten-branch-cua-ban
-```
+git push origin your-branch-name
 
-4. Tạo Pull Request
+4️⃣ Create Pull Request
 
-5. Thành viên khác review
+5️⃣ Code review
 
-6. Sau khi review xong mới được merge vào `main`
+6️⃣ Merge after approval
 
----
+🧑‍💻 DEVELOPMENT CONVENTIONS
+Backend Naming Convention
 
+Classes → PascalCase
 
-# 🧑‍💻 DEVELOPMENT CONVENTIONS
+Methods → PascalCase
 
-## 🟢 Backend Naming Convention
+Variables → camelCase
 
-- Classes → PascalCase  
-- Methods → PascalCase  
-- Variables → camelCase  
-- DTOs → Tên + Dto  
-- Interfaces → I + Tên  
+DTOs → Name + Dto
 
-Ví dụ:
-```
-IUserService
+Interfaces → I + Name
+
+Example:
+
+IUserRepository
 CreateContractDto
-WarehouseService
-```
+WarehouseEntity
+Frontend Naming Convention
 
----
+Components → PascalCase
 
-## 🟢 Frontend Naming Convention
+Variables → camelCase
 
-- Components → PascalCase  
-- Variables → camelCase  
-- Functions → camelCase  
-- Folder names → lowercase  
+Functions → camelCase
 
-Ví dụ:
-```
+Folder names → lowercase
+
+Example:
+
 LoginPage.jsx
 warehouseService.js
 authContext.js
-```
+🎯 WHY CQRS?
 
----
+CQRS is used because:
 
-# 👥 TEAM STRUCTURE
+Clear separation between read and write operations
 
-- Main branch: `main`
-- Each member works on their own branch
-- Merge via Pull Request only
+Better scalability
 
----
+Cleaner business logic organization
 
-# 📄 LICENSE
+Easier maintenance for larger teams
+
+Suitable for enterprise-style architecture
+
+👥 TEAM STRUCTURE
+
+Main branch: main
+
+Each member works on their own branch
+
+Merge via Pull Request only
+
+📄 LICENSE
 
 Student Project – For academic use only.
