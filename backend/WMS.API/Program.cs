@@ -10,52 +10,60 @@ using WMS.Infrastructure.Repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =========================
-// Add Services
-// =========================
+// ==========================================
+// 1. Add Services to the container
+// ==========================================
 
 // Add Controllers
 builder.Services.AddControllers();
 
-// Swagger
+// Swashbuckle/Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// DbContext
+// Database Context (SQL Server)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// MediatR
+// MediatR Registration
 builder.Services.AddMediatR(cfg =>
 {
-    cfg.RegisterServicesFromAssembly(typeof(CreateWarehouseHandler).Assembly);
+    cfg.RegisterServicesFromAssemblies(typeof(CreateWarehouseHandler).Assembly);
 });
 
-// Dependency Injection
+// Dependency Injection (Repositories)
 builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
 
 // JWT Authentication
-// builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//     .AddJwtBearer(options =>
-//     {
-//         options.TokenValidationParameters = new TokenValidationParameters
-//         {
-//             ValidateIssuer = false,
-//             ValidateAudience = false,
-//             ValidateLifetime = true,
-//             ValidateIssuerSigningKey = true,
-//             IssuerSigningKey = new SymmetricSecurityKey(
-//                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-//         };
-//     });
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = false, 
+        ValidateAudience = false,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "A_VERY_SECRET_DEVELOPMENT_KEY_THAT_IS_LONG_ENOUGH"))
+    };
+});
 
-// builder.Services.AddAuthorization();
+builder.Services.AddAuthorization();
+
+// ==========================================
+// 2. Build the Application
+// ==========================================
 
 var app = builder.Build();
 
-// =========================
-// Middleware
-// =========================
+// ==========================================
+// 3. Configure the HTTP request pipeline
+// ==========================================
 
 if (app.Environment.IsDevelopment())
 {
@@ -65,6 +73,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Middleware order is important
 app.UseAuthentication();
 app.UseAuthorization();
 
