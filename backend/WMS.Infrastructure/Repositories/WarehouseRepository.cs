@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
@@ -13,9 +14,36 @@ public class WarehouseRepository : IWarehouseRepository
         _context = context;
     }
 
+    public async Task<Warehouse?> GetByIdAsync(int id)
+    {
+        return await _context.Warehouses.FindAsync(id);
+    }
+
+    public async Task<IEnumerable<Warehouse>> GetAllAsync()
+    {
+        return await _context.Warehouses.ToListAsync();
+    }
+
     public async Task AddAsync(Warehouse warehouse)
     {
         await _context.Warehouses.AddAsync(warehouse);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task UpdateAsync(Warehouse warehouse)
+    {
+        _context.Warehouses.Update(warehouse);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<bool> DeleteAsync(int id)
+    {
+        var warehouse = await _context.Warehouses.FindAsync(id);
+        if (warehouse == null)
+            return false;
+
+        _context.Warehouses.Remove(warehouse);
+        await _context.SaveChangesAsync();
+        return true;
     }
 }

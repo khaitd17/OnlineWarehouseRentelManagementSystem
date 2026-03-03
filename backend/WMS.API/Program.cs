@@ -78,6 +78,19 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Redirect root to Swagger UI
+app.MapGet("/", () => Results.Redirect("/swagger"))
+    .ExcludeFromDescription();
+
+// Health check endpoint
+app.MapGet("/health", () => Results.Ok(new 
+{ 
+    Status = "Healthy", 
+    Service = "WMS API", 
+    Timestamp = DateTime.UtcNow,
+    Version = "1.0.0"
+})).ExcludeFromDescription();
+
 app.MapControllers();
 
 app.Run();
