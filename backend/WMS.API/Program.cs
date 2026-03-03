@@ -33,6 +33,7 @@ builder.Services.AddMediatR(cfg =>
 
 // Dependency Injection (Repositories)
 builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+builder.Services.AddScoped<IRentalRequestRepository, RentalRequestRepository>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
