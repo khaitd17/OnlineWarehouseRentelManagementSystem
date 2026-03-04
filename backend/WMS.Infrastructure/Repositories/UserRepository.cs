@@ -33,15 +33,16 @@ public class UserRepository : IUserRepository
 
     public async System.Threading.Tasks.Task<int> CreateAsync(CreateUserDto dto, CancellationToken ct = default)
     {
-        int roleId = dto.RoleId;
-
-        if (roleId == 0)
+        string roleName = string.IsNullOrWhiteSpace(dto.RoleName) ? "RENTER" : dto.RoleName.ToUpper();
+        
+        var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == roleName, ct);
+        if (role == null)
         {
-            var renterRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == "Renter", ct);
-            if (renterRole == null)
-                throw new InvalidOperationException("Role 'Renter' không tồn tại trong hệ thống.");
-            roleId = renterRole.RoleId;
+            // Fallback to "RENTER" if provided role is not found, or throw exception.
+            throw new InvalidOperationException($"Role '{roleName}' không tồn tại trong hệ thống.");
         }
+        
+        int roleId = role.RoleId;
 
         var user = new User
         {

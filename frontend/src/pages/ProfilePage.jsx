@@ -38,11 +38,34 @@ const ProfilePage = () => {
     setFormData({ ...formData, [name]: value });
   };
 
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        setLoading(true);
+        const { avatarUrl } = await userService.uploadAvatar(file);
+        setFormData({ ...formData, avatarUrl });
+        alert("Tải ảnh thành công. Hãy nhấn Lưu thay đổi để hoàn tất.");
+      } catch (err) {
+        alert("Lỗi khi tải ảnh. Vui lòng thử lại.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
       await userService.updateProfile(formData);
+      
+      // Update local storage user object
+      const storedUser = JSON.parse(localStorage.getItem('user')) || {};
+      storedUser.avatarUrl = formData.avatarUrl;
+      localStorage.setItem('user', JSON.stringify(storedUser));
+      window.dispatchEvent(new Event('authChange'));
+
       alert("Cập nhật thông tin thành công!");
       setIsEditing(false);
       fetchProfile();
@@ -71,11 +94,14 @@ const ProfilePage = () => {
             <input name="phone" value={formData.phone} onChange={handleInputChange} style={{ padding: "0.8rem", borderRadius: "8px", border: "1px solid #e2e8f0" }} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            <label style={{ fontWeight: 600 }}>Ảnh đại diện (URL)</label>
-            <input name="avatarUrl" value={formData.avatarUrl} onChange={handleInputChange} style={{ padding: "0.8rem", borderRadius: "8px", border: "1px solid #e2e8f0" }} />
+            <label style={{ fontWeight: 600 }}>Ảnh đại diện</label>
+            {formData.avatarUrl && (
+              <img src={formData.avatarUrl} alt="Preview" style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", marginBottom: "0.5rem" }} />
+            )}
+            <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ padding: "0.8rem", borderRadius: "8px", border: "1px solid #e2e8f0" }} />
           </div>
           <div style={{ display: "flex", gap: "1rem" }}>
-            <button type="submit" style={{ backgroundColor: "#0095c7", color: "#fff", padding: "0.8rem 1.5rem", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: 600 }}>Lưu thay đổi</button>
+            <button type="submit" disabled={loading} style={{ backgroundColor: "#0095c7", color: "#fff", padding: "0.8rem 1.5rem", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: 600 }}>Lưu thay đổi</button>
             <button type="button" onClick={() => setIsEditing(false)} style={{ backgroundColor: "#e2e8f0", color: "#475569", padding: "0.8rem 1.5rem", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: 600 }}>Hủy</button>
           </div>
         </form>

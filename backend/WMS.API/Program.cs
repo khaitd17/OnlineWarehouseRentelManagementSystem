@@ -98,6 +98,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
+// Cho phép public access file tĩnh (cho hình ảnh, avatar)
+app.UseStaticFiles();
+
 // Middleware order is important
 app.UseAuthentication();
 app.UseAuthorization();

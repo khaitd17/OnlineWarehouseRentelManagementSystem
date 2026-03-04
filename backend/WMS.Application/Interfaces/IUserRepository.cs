@@ -39,5 +39,5 @@ public record CreateUserDto(
     string Email,
     string PasswordHash,
     string? Phone,
-    int RoleId
+    string RoleName
 );

@@ -8,7 +8,8 @@ const AuthPage = () => {
     fullName: '',
     email: '',
     password: '',
-    phone: ''
+    phone: '',
+    roleName: 'RENTER'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,13 +29,16 @@ const AuthPage = () => {
       if (isLogin) {
         await authService.login(formData.email, formData.password);
         alert('Đăng nhập thành công!');
+        // dispatch custom event to update MainLayout
+        window.dispatchEvent(new Event('authChange'));
         navigate('/dashboard');
       } else {
         await authService.register({
           fullName: formData.fullName,
           email: formData.email,
           password: formData.password,
-          phone: formData.phone
+          phone: formData.phone,
+          roleName: formData.roleName
         });
         alert('Đăng ký thành công! Vui lòng đăng nhập.');
         setIsLogin(true);
@@ -142,6 +146,13 @@ const AuthPage = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Số điện thoại</label>
                   <input name="phone" type="text" placeholder="Nhập số điện thoại" required value={formData.phone} onChange={handleInputChange} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Vai trò</label>
+                  <select name="roleName" value={formData.roleName} onChange={handleInputChange} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0', backgroundColor: '#fff' }}>
+                    <option value="RENTER">Khách thuê</option>
+                    <option value="OWNER">Chủ kho</option>
+                  </select>
                 </div>
               </>
             )}
