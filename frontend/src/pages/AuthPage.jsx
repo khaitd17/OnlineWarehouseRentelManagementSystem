@@ -1,7 +1,50 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import authService from '../services/authService';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    password: '',
+    phone: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      if (isLogin) {
+        await authService.login(formData.email, formData.password);
+        alert('Đăng nhập thành công!');
+        navigate('/dashboard');
+      } else {
+        await authService.register({
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone
+        });
+        alert('Đăng ký thành công! Vui lòng đăng nhập.');
+        setIsLogin(true);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
@@ -48,7 +91,6 @@ const AuthPage = () => {
               </div>
             </div>
           </div>
-          {/* Decorative shapes */}
           <div style={{ position: 'absolute', bottom: '-40px', right: '-40px', width: '200px', height: '200px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)' }}></div>
           <div style={{ position: 'absolute', top: '-60px', left: '-60px', width: '250px', height: '250px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)' }}></div>
         </div>
@@ -57,7 +99,7 @@ const AuthPage = () => {
         <div style={{ padding: '4rem 3.5rem' }}>
           <div style={{ display: 'flex', gap: '2rem', marginBottom: '2.5rem' }}>
             <button 
-              onClick={() => setIsLogin(true)}
+              onClick={() => { setIsLogin(true); setError(''); }}
               style={{ 
                 fontSize: '1.2rem', 
                 fontWeight: 700, 
@@ -72,7 +114,7 @@ const AuthPage = () => {
               Đăng nhập
             </button>
             <button 
-              onClick={() => setIsLogin(false)}
+              onClick={() => { setIsLogin(false); setError(''); }}
               style={{ 
                 fontSize: '1.2rem', 
                 fontWeight: 700, 
@@ -88,31 +130,29 @@ const AuthPage = () => {
             </button>
           </div>
 
-          <form style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+          {error && <div style={{ color: '#ef4444', backgroundColor: '#fef2f2', padding: '1rem', borderRadius: '10px', marginBottom: '1.5rem', fontSize: '0.9rem', fontWeight: 500, border: '1px solid #fee2e2' }}>{error}</div>}
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
             {!isLogin && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Họ và tên</label>
-                <input type="text" placeholder="Nhập họ và tên" style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
-              </div>
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Họ và tên</label>
+                  <input name="fullName" type="text" placeholder="Nhập họ và tên" required value={formData.fullName} onChange={handleInputChange} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Số điện thoại</label>
+                  <input name="phone" type="text" placeholder="Nhập số điện thoại" required value={formData.phone} onChange={handleInputChange} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
+                </div>
+              </>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Email</label>
-              <input type="email" placeholder="example@email.com" style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
+              <input name="email" type="email" placeholder="example@email.com" required value={formData.email} onChange={handleInputChange} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Mật khẩu</label>
-              <input type="password" placeholder="••••••••" style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
+              <input name="password" type="password" placeholder="••••••••" required value={formData.password} onChange={handleInputChange} style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
             </div>
-            {!isLogin && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Bạn là ai?</label>
-                <select style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                  <option>Khách thuê kho</option>
-                  <option>Chủ sở hữu kho</option>
-                  <option>Người môi giới</option>
-                </select>
-              </div>
-            )}
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
               <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -121,53 +161,29 @@ const AuthPage = () => {
               {isLogin && <a href="#" style={{ fontSize: '0.85rem', color: '#0095c7', textDecoration: 'none', fontWeight: 600 }}>Quên mật khẩu?</a>}
             </div>
 
-            <button type="button" style={{ 
-              backgroundColor: '#0095c7', 
+            <button type="submit" disabled={loading} style={{ 
+              backgroundColor: loading ? '#94a3b8' : '#0095c7', 
               color: '#fff', 
               padding: '1.2rem', 
               borderRadius: '12px', 
               fontWeight: 700, 
               fontSize: '1.1rem', 
               border: 'none', 
-              cursor: 'pointer',
+              cursor: loading ? 'not-allowed' : 'pointer',
               marginTop: '1.5rem',
               boxShadow: '0 10px 20px rgba(0,149,199,0.2)'
             }}>
-              {isLogin ? 'Đăng nhập ngay' : 'Tạo tài khoản'}
+              {loading ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập ngay' : 'Tạo tài khoản')}
             </button>
           </form>
 
           <div style={{ marginTop: '2rem', textAlign: 'center' }}>
             <p style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1.5rem' }}>Hoặc đăng nhập bằng</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: '0.8rem', 
-                backgroundColor: '#fff', 
-                border: '1px solid #e2e8f0', 
-                padding: '0.8rem', 
-                borderRadius: '10px',
-                cursor: 'pointer',
-                fontWeight: 600
-              }}>
+              <button style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', padding: '0.8rem', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}>
                 <img src="https://www.svgrepo.com/show/475656/google_color.svg" width="20" alt="Google" /> Google
               </button>
-              <button style={{ 
-                flex: 1, 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: '0.8rem', 
-                backgroundColor: '#fff', 
-                border: '1px solid #e2e8f0', 
-                padding: '0.8rem', 
-                borderRadius: '10px',
-                cursor: 'pointer',
-                fontWeight: 600
-              }}>
+              <button style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem', backgroundColor: '#fff', border: '1px solid #e2e8f0', padding: '0.8rem', borderRadius: '10px', cursor: 'pointer', fontWeight: 600 }}>
                 <img src="https://www.svgrepo.com/show/475647/facebook_color.svg" width="20" alt="Facebook" /> Facebook
               </button>
             </div>

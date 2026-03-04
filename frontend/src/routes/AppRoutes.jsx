@@ -2,11 +2,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import HomePage from "../pages/HomePage";
 import SearchResultsPage from "../pages/SearchResultsPage";
-import WarehouseDetailsPage from "../pages/WarehouseDetailsPage";
+import WarehouseDetailsPage from "../pages/WarehouseDetailsPage"
 import AuthPage from "../pages/AuthPage";
 import PostWarehousePage from "../pages/PostWarehousePage";
 import AboutUsPage from "../pages/AboutUsPage";
 import Dashboard from "../pages/Dashboard";
+import ProfilePage from "../pages/ProfilePage";
 import ProtectedRoute from "./ProtectedRoute";
 
 function AppRoutes() {
@@ -23,6 +24,7 @@ function AppRoutes() {
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/post-warehouse" element={<PostWarehousePage />} />
           </Route>
         </Route>

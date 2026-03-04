@@ -1,6 +1,6 @@
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence;
+using WMS.Infrastructure.Persistence.ScaffoldModels;
 
 namespace WMS.Infrastructure.Repositories;
 
@@ -13,9 +13,17 @@ public class WarehouseRepository : IWarehouseRepository
         _context = context;
     }
 
-    public async Task AddAsync(Warehouse warehouse)
+    public async System.Threading.Tasks.Task AddAsync(WMS.Domain.Entities.Warehouse warehouse)
     {
-        await _context.Warehouses.AddAsync(warehouse);
+        // Simple mapping for demonstration, you might need fuller mapping
+        var model = new WMS.Infrastructure.Persistence.ScaffoldModels.Warehouse
+        {
+            Name = warehouse.Name,
+            Description = warehouse.Description,
+            Address = warehouse.Address
+            // ...
+        };
+        await _context.Warehouses.AddAsync(model);
         await _context.SaveChangesAsync();
     }
 }
