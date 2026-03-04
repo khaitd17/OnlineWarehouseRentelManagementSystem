@@ -43,6 +43,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<User> Users { get; set; }
 
+    public virtual DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+
     public virtual DbSet<VActiveWarehouse> VActiveWarehouses { get; set; }
 
     public virtual DbSet<VContractPayment> VContractPayments { get; set; }
@@ -874,6 +876,33 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Warehouse).WithMany(p => p.WarehouseMedia)
                 .HasForeignKey(d => d.WarehouseId)
                 .HasConstraintName("FK_warehouse_media_warehouse");
+        });
+
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.HasKey(e => e.TokenId).HasName("PK__password_reset_tokens");
+
+            entity.ToTable("password_reset_tokens");
+
+            entity.HasIndex(e => e.Token, "idx_prt_token").IsUnique();
+            entity.HasIndex(e => e.UserId, "idx_prt_user_id");
+
+            entity.Property(e => e.TokenId).HasColumnName("token_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Token)
+                .HasMaxLength(256)
+                .HasColumnName("token");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.IsUsed)
+                .HasDefaultValue(false)
+                .HasColumnName("is_used");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("created_at");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey(d => d.UserId)
+                .HasConstraintName("FK_password_reset_tokens_user");
         });
 
         OnModelCreatingPartial(modelBuilder);

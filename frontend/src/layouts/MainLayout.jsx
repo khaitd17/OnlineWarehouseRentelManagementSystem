@@ -27,19 +27,45 @@ const MainLayout = () => {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link to="/post-warehouse" style={{ 
-            backgroundColor: '#0095c7', 
-            color: '#fff', 
-            padding: '0.6rem 1.2rem', 
-            borderRadius: '8px', 
-            textDecoration: 'none', 
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            transition: 'all 0.2s ease'
-          }}>
-            Đăng tin cho thuê
-          </Link>
-          <Link to="/auth" style={{ textDecoration: 'none', color: '#0095c7', fontWeight: 600, fontSize: '0.9rem' }}>Đăng nhập</Link>
+          {localStorage.getItem('token') ? (
+            <>
+              <Link to="/dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem' }}>Dashboard</Link>
+              <Link to="/profile" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem' }}>Profile</Link>
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('user');
+                  window.location.href = '/';
+                }}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: '#ef4444', 
+                  fontWeight: 600, 
+                  fontSize: '0.9rem', 
+                  cursor: 'pointer' 
+                }}
+              >
+                Đăng xuất
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/post-warehouse" style={{ 
+                backgroundColor: '#0095c7', 
+                color: '#fff', 
+                padding: '0.6rem 1.2rem', 
+                borderRadius: '8px', 
+                textDecoration: 'none', 
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                transition: 'all 0.2s ease'
+              }}>
+                Đăng tin cho thuê
+              </Link>
+              <Link to="/auth" style={{ textDecoration: 'none', color: '#0095c7', fontWeight: 600, fontSize: '0.9rem' }}>Đăng nhập</Link>
+            </>
+          )}
         </div>
       </nav>
 
