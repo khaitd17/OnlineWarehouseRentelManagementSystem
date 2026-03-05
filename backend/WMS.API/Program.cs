@@ -30,10 +30,12 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// MediatR Registration - scan tất cả handlers trong Application assembly
+// MediatR Registration - scan tất cả handlers trong Application và Infrastructure assembly
 builder.Services.AddMediatR(cfg =>
 {
-    cfg.RegisterServicesFromAssemblies(typeof(RegisterCommand).Assembly);
+    cfg.RegisterServicesFromAssemblies(
+        typeof(RegisterCommand).Assembly,
+        typeof(WMS.Infrastructure.Handlers.Admin.GetAccountsHandler).Assembly);
 });
 
 // ---- Dependency Injection ----
