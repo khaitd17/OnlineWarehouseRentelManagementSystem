@@ -43,8 +43,18 @@ namespace WMS.Domain.Entities
                 Status = UserStatus.Active;
                 CreatedAt = DateTime.UtcNow;
             }
+        public User(int roleId, string fullName, string email, string passwordHash,string phone)
+        {
+            RoleId = roleId;
+            FullName = fullName;
+            Email = email;
+            PasswordHash = passwordHash;
+            Status = UserStatus.Active;
+            CreatedAt = DateTime.UtcNow;
+            Phone = phone;
+        }
 
-            public void Suspend()
+        public void Suspend()
             {
                 if (Status == UserStatus.Deleted)
                     throw new InvalidOperationException("Deleted user cannot be suspended.");

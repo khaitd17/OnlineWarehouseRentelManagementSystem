@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence.ScaffoldModels;
@@ -25,5 +26,13 @@ public class WarehouseRepository : IWarehouseRepository
         };
         await _context.Warehouses.AddAsync(model);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<int?> FindWarehouseOwnerById(int id, CancellationToken tk)
+    {
+        return await _context.Warehouses
+            .Where(x => x.WarehouseId == id)
+            .Select(x => (int?)x.OwnerId)
+            .FirstOrDefaultAsync(tk);
     }
 }
