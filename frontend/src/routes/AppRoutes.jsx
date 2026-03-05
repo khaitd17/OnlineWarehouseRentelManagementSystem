@@ -8,6 +8,7 @@ import PostWarehousePage from "../pages/PostWarehousePage";
 import AboutUsPage from "../pages/AboutUsPage";
 import Dashboard from "../pages/Dashboard";
 import ProfilePage from "../pages/ProfilePage";
+import CreateStaff from "../pages/CreateStaff";
 import ProtectedRoute from "./ProtectedRoute";
 
 function AppRoutes() {
@@ -26,6 +27,7 @@ function AppRoutes() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/post-warehouse" element={<PostWarehousePage />} />
+            <Route path="/create-staff" element={<CreateStaff />} />
           </Route>
         </Route>
 

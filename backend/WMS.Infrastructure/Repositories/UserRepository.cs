@@ -156,4 +156,13 @@ public class UserRepository : IUserRepository
         u.Role.RoleName,
         u.CreatedAt
     );
+
+    public async Task<int?> IsExistEmail(string email, CancellationToken ct = default)
+    {
+        return await _db.Users
+            .Where(x => x.Email == email)
+            .Select(x => (int?)x.UserId)
+            .FirstOrDefaultAsync(ct);
+    }
+
 }

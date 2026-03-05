@@ -18,7 +18,7 @@ public class Warehouse
     public int OwnerId { get; private set; }
     public DateTime CreatedAt { get; private set; }
 
-    private Warehouse() { } // EF Core
+    public Warehouse() { } // EF Core
 
     public Warehouse(
         string name,
