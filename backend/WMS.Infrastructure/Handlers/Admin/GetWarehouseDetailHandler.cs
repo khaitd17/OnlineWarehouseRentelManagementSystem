@@ -21,7 +21,6 @@ public class GetWarehouseDetailHandler : IRequestHandler<GetWarehouseDetailQuery
             .Include(w => w.Owner)
             .Include(w => w.ApprovedByNavigation)
             .Include(w => w.WarehouseMedia)
-            .Include(w => w.WarehouseDocuments).ThenInclude(d => d.VerifiedByNavigation)
             .Include(w => w.Ratings)
             .FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseId, cancellationToken);
 
@@ -39,14 +38,26 @@ public class GetWarehouseDetailHandler : IRequestHandler<GetWarehouseDetailQuery
             .Select(m => new WarehouseMediaDto(m.MediaId, m.MediaUrl, m.MediaType, m.DisplayOrder, m.IsPrimary))
             .ToList();
 
-        var documents = warehouse.WarehouseDocuments
-            .OrderByDescending(d => d.CreatedAt)
-            .Select(d => new WarehouseDocumentDto(
+        // Try to load documents if the table exists
+        var documents = new List<WarehouseDocumentDto>();
+        try
+        {
+            var docs = await _db.WarehouseDocuments
+                .Include(d => d.VerifiedByNavigation)
+                .Where(d => d.WarehouseId == warehouse.WarehouseId)
+                .OrderByDescending(d => d.CreatedAt)
+                .ToListAsync(cancellationToken);
+
+            documents = docs.Select(d => new WarehouseDocumentDto(
                 d.DocumentId, d.DocumentType, d.DocumentUrl, d.DocumentNumber,
                 d.IssuedDate, d.ExpiryDate, d.Status,
                 d.VerifiedByNavigation?.FullName, d.VerifiedAt,
-                d.RejectionReason, d.CreatedAt))
-            .ToList();
+                d.RejectionReason, d.CreatedAt)).ToList();
+        }
+        catch
+        {
+            // Table may not exist yet — skip documents
+        }
 
         var visibleRatings = warehouse.Ratings.Where(r => r.IsHidden != true).ToList();
         var ratingSummary = new RatingSummaryDto(
