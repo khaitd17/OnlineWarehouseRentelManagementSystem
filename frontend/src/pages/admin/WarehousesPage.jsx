@@ -97,6 +97,9 @@ export default function WarehousesPage() {
         {row.status === "HIDDEN" && (
           <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={() => setListingConfirm({ open: true, warehouse: row, action: "SHOW", loading: false })}>Hiện</button>
         )}
+        {row.status !== "DELETED" && (
+          <button className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => setListingConfirm({ open: true, warehouse: row, action: "DELETE", loading: false })}>Xóa</button>
+        )}
       </div>
     )},
   ];
@@ -105,6 +108,7 @@ export default function WarehousesPage() {
     { key: "status", label: "Trạng thái", options: [
       { value: "PENDING", label: "Chờ duyệt" }, { value: "APPROVED", label: "Đã duyệt" },
       { value: "REJECTED", label: "Từ chối" }, { value: "HIDDEN", label: "Đã ẩn" },
+      { value: "DELETED", label: "Đã xóa" },
     ]},
   ];
 
@@ -155,9 +159,9 @@ export default function WarehousesPage() {
 
       {/* Listing Confirm */}
       <ConfirmDialog isOpen={listingConfirm.open} onClose={() => setListingConfirm(defaultListingConfirm)} onConfirm={handleListingConfirm}
-        title={listingConfirm.action === "HIDE" ? "Ẩn kho" : "Hiện kho"}
-        message={listingConfirm.action === "HIDE" ? `Bạn có chắc muốn ẩn kho "${listingConfirm.warehouse?.name}"?` : `Bạn có chắc muốn hiện kho "${listingConfirm.warehouse?.name}"?`}
-        confirmText={listingConfirm.action === "HIDE" ? "Ẩn kho" : "Hiện kho"} confirmClass={listingConfirm.action === "HIDE" ? "admin-btn-warning" : "admin-btn-primary"}
+        title={listingConfirm.action === "DELETE" ? "Xóa kho" : (listingConfirm.action === "HIDE" ? "Ẩn kho" : "Hiện kho")}
+        message={listingConfirm.action === "DELETE" ? `Bạn có chắc muốn xóa kho "${listingConfirm.warehouse?.name}"? Hành động này không thể hoàn tác.` : (listingConfirm.action === "HIDE" ? `Bạn có chắc muốn ẩn kho "${listingConfirm.warehouse?.name}"?` : `Bạn có chắc muốn hiện kho "${listingConfirm.warehouse?.name}"?`)}
+        confirmText={listingConfirm.action === "DELETE" ? "Xóa kho" : (listingConfirm.action === "HIDE" ? "Ẩn kho" : "Hiện kho")} confirmClass={listingConfirm.action === "DELETE" ? "admin-btn-danger" : (listingConfirm.action === "HIDE" ? "admin-btn-warning" : "admin-btn-primary")}
         loading={listingConfirm.loading}
       />
     </div>

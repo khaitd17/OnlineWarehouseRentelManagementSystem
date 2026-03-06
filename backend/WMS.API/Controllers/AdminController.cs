@@ -116,7 +116,7 @@ public class AdminController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Quản lý hiển thị kho (ẩn/hiện)</summary>
+    /// <summary>Quản lý hiển thị kho (ẩn/hiện/xóa)</summary>
     [HttpPut("warehouses/{id}/listing")]
     public async Task<IActionResult> ManageListing(int id, [FromBody] ManageListingRequest request)
     {
@@ -124,7 +124,7 @@ public class AdminController : ControllerBase
         {
             return BadRequest(ApiResponse<bool>.ErrorResponse(
                 "Dữ liệu không hợp lệ.",
-                new List<string> { "Hành động (Action) là bắt buộc. Chấp nhận: SHOW, HIDE." }));
+                new List<string> { "Hành động (Action) là bắt buộc. Chấp nhận: SHOW, HIDE, DELETE." }));
         }
 
         var result = await _mediator.Send(new ManageListingCommand(id, request.Action));

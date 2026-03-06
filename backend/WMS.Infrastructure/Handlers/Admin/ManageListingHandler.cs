@@ -17,13 +17,13 @@ public class ManageListingHandler : IRequestHandler<ManageListingCommand, ApiRes
 
     public async Task<ApiResponse<bool>> Handle(ManageListingCommand request, CancellationToken cancellationToken)
     {
-        var validActions = new[] { "SHOW", "HIDE" };
+        var validActions = new[] { "SHOW", "HIDE", "DELETE" };
         var action = request.Action?.ToUpper();
         if (string.IsNullOrWhiteSpace(action) || !validActions.Contains(action))
         {
             return ApiResponse<bool>.ErrorResponse(
                 "Hành động không hợp lệ.",
-                new List<string> { "Hành động phải là SHOW hoặc HIDE." });
+                new List<string> { "Hành động phải là SHOW, HIDE hoặc DELETE." });
         }
 
         var warehouse = await _db.Warehouses.FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseId, cancellationToken);
@@ -38,17 +38,23 @@ public class ManageListingHandler : IRequestHandler<ManageListingCommand, ApiRes
                 return ApiResponse<bool>.ErrorResponse("Chỉ có thể hiển thị kho đang bị ẩn.");
             warehouse.Status = "APPROVED";
         }
-        else
+        else if (action == "HIDE")
         {
             if (warehouse.Status != "APPROVED")
                 return ApiResponse<bool>.ErrorResponse("Chỉ có thể ẩn kho đang hiển thị (APPROVED).");
             warehouse.Status = "HIDDEN";
         }
+        else // DELETE
+        {
+            if (warehouse.Status == "DELETED")
+                return ApiResponse<bool>.ErrorResponse("Kho này đã bị xóa trước đó.");
+            warehouse.Status = "DELETED";
+        }
 
         warehouse.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
-        var actionText = action == "SHOW" ? "hiển thị" : "ẩn";
+        var actionText = action == "SHOW" ? "hiển thị" : (action == "HIDE" ? "ẩn" : "xóa");
         return ApiResponse<bool>.SuccessResponse(true, $"Kho đã được {actionText} thành công.");
     }
 }

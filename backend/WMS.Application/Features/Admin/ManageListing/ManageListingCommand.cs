@@ -5,5 +5,5 @@ namespace WMS.Application.Features.Admin.ManageListing;
 
 public record ManageListingCommand(
     int WarehouseId,
-    string Action // SHOW or HIDE
+    string Action // SHOW, HIDE, or DELETE
 ) : IRequest<ApiResponse<bool>>;
