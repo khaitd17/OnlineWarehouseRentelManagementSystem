@@ -30,6 +30,7 @@ const MainLayout = () => {
           {localStorage.getItem('token') ? (
             <>
               <Link to="/dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem' }}>Dashboard</Link>
+              <Link to="/list-staff" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem' }}>Quản lý nhân viên</Link>
               <Link to="/profile" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem' }}>Profile</Link>
               <button 
                 onClick={() => {
