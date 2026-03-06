@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence;
+using WMS.Infrastructure.Persistence.ScaffoldModels;
 
 namespace WMS.Infrastructure.Repositories;
 
@@ -14,36 +14,25 @@ public class WarehouseRepository : IWarehouseRepository
         _context = context;
     }
 
-    public async Task<Warehouse?> GetByIdAsync(int id)
+    public async System.Threading.Tasks.Task AddAsync(WMS.Domain.Entities.Warehouse warehouse)
     {
-        return await _context.Warehouses.FindAsync(id);
-    }
-
-    public async Task<IEnumerable<Warehouse>> GetAllAsync()
-    {
-        return await _context.Warehouses.ToListAsync();
-    }
-
-    public async Task AddAsync(Warehouse warehouse)
-    {
-        await _context.Warehouses.AddAsync(warehouse);
+        // Simple mapping for demonstration, you might need fuller mapping
+        var model = new WMS.Infrastructure.Persistence.ScaffoldModels.Warehouse
+        {
+            Name = warehouse.Name,
+            Description = warehouse.Description,
+            Address = warehouse.Address
+            // ...
+        };
+        await _context.Warehouses.AddAsync(model);
         await _context.SaveChangesAsync();
     }
 
-    public async Task UpdateAsync(Warehouse warehouse)
+    public async Task<int?> FindWarehouseOwnerById(int id, CancellationToken tk)
     {
-        _context.Warehouses.Update(warehouse);
-        await _context.SaveChangesAsync();
-    }
-
-    public async Task<bool> DeleteAsync(int id)
-    {
-        var warehouse = await _context.Warehouses.FindAsync(id);
-        if (warehouse == null)
-            return false;
-
-        _context.Warehouses.Remove(warehouse);
-        await _context.SaveChangesAsync();
-        return true;
+        return await _context.Warehouses
+            .Where(x => x.WarehouseId == id)
+            .Select(x => (int?)x.OwnerId)
+            .FirstOrDefaultAsync(tk);
     }
 }
