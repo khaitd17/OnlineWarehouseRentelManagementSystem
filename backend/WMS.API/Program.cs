@@ -55,6 +55,7 @@ builder.Services.AddScoped<IStaffAssigmentRepository, StaffAssigmentRepository>(
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>

@@ -9,6 +9,7 @@ import AboutUsPage from "../pages/AboutUsPage";
 import Dashboard from "../pages/Dashboard";
 import ProfilePage from "../pages/ProfilePage";
 import CreateStaff from "../pages/CreateStaff";
+import ListStaff from "../pages/ListStaff";
 import ProtectedRoute from "./ProtectedRoute";
 
 function AppRoutes() {
@@ -28,6 +29,7 @@ function AppRoutes() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/post-warehouse" element={<PostWarehousePage />} />
             <Route path="/create-staff" element={<CreateStaff />} />
+            <Route path="/list-staff" element={<ListStaff />} />
           </Route>
         </Route>
 

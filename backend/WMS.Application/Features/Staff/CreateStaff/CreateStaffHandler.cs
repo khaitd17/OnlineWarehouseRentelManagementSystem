@@ -18,6 +18,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
         private readonly IWarehouseRepository _warehouseRepository;
         private readonly IUserRepository _userRepository;
         private readonly IStaffAssigmentRepository _staffAssigmentRepository;
+        private readonly IPasswordGenerator _passwordGenerator;
         //private readonly IDateTimeProvider _dateTime;
 
         public CreateStaffHandler(
@@ -25,7 +26,8 @@ namespace WMS.Application.Features.Staff.CreateStaff
             IEmailService emailService,
             IWarehouseRepository warehouseRepository,
             IUserRepository userRepository,
-            IStaffAssigmentRepository staffAssigmentRepository
+            IStaffAssigmentRepository staffAssigmentRepository,
+            IPasswordGenerator passwordGenerator
 
             )
         {
@@ -34,6 +36,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
             _warehouseRepository = warehouseRepository;
             _userRepository = userRepository;
             _staffAssigmentRepository = staffAssigmentRepository;
+            _passwordGenerator = passwordGenerator;
         }
 
         public async Task<int> Handle(
@@ -63,7 +66,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
             if (existingUserId == null)
             {
                 // Email doesn't exist - create new user
-                var rawPassword = "Aaaaaaa1";
+                var rawPassword = _passwordGenerator.Generate();
                 var passwordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
 
                 var dto = new CreateUserDto(
