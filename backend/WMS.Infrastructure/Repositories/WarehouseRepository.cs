@@ -1,6 +1,9 @@
-using WMS.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence.ScaffoldModels;
+
+using DomainWarehouse = WMS.Domain.Entities.Warehouse;
+using DbWarehouse = WMS.Infrastructure.Persistence.ScaffoldModels.Warehouse;
 
 namespace WMS.Infrastructure.Repositories;
 
@@ -13,17 +16,37 @@ public class WarehouseRepository : IWarehouseRepository
         _context = context;
     }
 
-    public async System.Threading.Tasks.Task AddAsync(WMS.Domain.Entities.Warehouse warehouse)
+    public async Task<int> CreateAsync(DomainWarehouse warehouse, CancellationToken cancellationToken)
     {
-        // Simple mapping for demonstration, you might need fuller mapping
-        var model = new WMS.Infrastructure.Persistence.ScaffoldModels.Warehouse
+        var entity = new DbWarehouse
         {
+            OwnerId = warehouse.OwnerId,
             Name = warehouse.Name,
+            Address = warehouse.Address,
+            Lat = warehouse.Lat,
+            Lng = warehouse.Lng,
             Description = warehouse.Description,
-            Address = warehouse.Address
-            // ...
+            TotalArea = warehouse.TotalArea,
+            AvailableArea = warehouse.AvailableArea,
+            OperatingHours = warehouse.OperatingHours,
+            Status = warehouse.Status,
+            CreatedAt = warehouse.CreatedAt
         };
-        await _context.Warehouses.AddAsync(model);
-        await _context.SaveChangesAsync();
+
+        _context.Warehouses.Add(entity);
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return entity.WarehouseId;
+    }
+
+    public async Task<int?> FindWarehouseOwnerById(
+        int warehouseId,
+        CancellationToken cancellationToken)
+    {
+        return await _context.Warehouses
+            .Where(w => w.WarehouseId == warehouseId)
+            .Select(w => (int?)w.OwnerId)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 }

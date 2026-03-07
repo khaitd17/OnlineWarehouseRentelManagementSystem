@@ -8,31 +8,33 @@ namespace WMS.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class WarehousesController : ControllerBase
+[Authorize]
+public class WarehouseController : ControllerBase
 {
     private readonly IMediator _mediator;
 
-    public WarehousesController(IMediator mediator)
+    public WarehouseController(IMediator mediator)
     {
         _mediator = mediator;
     }
 
-    [HttpPost]
-    //[Authorize(Roles = "OWNER")]
-    public async Task<IActionResult> Create(CreateWarehouseCommand command)
+    [HttpPost("create")]
+    public async Task<IActionResult> Create([FromBody] CreateWarehouseCommand command)
     {
-        // var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
 
-        // if (userIdClaim == null)
-        //     return Unauthorized();
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
 
-        // var ownerId = int.Parse(userIdClaim);
+        command.OwnerId = int.Parse(userId);
 
-        // var finalCommand = command with { OwnerId = ownerId };
+        var id = await _mediator.Send(command);
 
-        // var result = await _mediator.Send(finalCommand);
-
-        var result = await _mediator.Send(command);
-        return Ok(new { WarehouseId = result });
+        return Ok(new
+        {
+            message = "Warehouse created successfully",
+            warehouseId = id
+        });
     }
 }
