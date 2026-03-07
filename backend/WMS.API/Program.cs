@@ -1,8 +1,10 @@
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using WMS.Application.Behaviors;
 using WMS.Application.Features.Auth.Register;
 using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
@@ -17,7 +19,11 @@ var builder = WebApplication.CreateBuilder(args);
 // ==========================================
 
 // Add Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 // Swashbuckle/Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -34,16 +40,22 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddMediatR(cfg =>
 {
     cfg.RegisterServicesFromAssemblies(typeof(RegisterCommand).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
+
+// FluentValidation Registration
+builder.Services.AddValidatorsFromAssemblyContaining(typeof(RegisterCommand));
 
 // ---- Dependency Injection ----
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+builder.Services.AddScoped<IStaffAssigmentRepository, StaffAssigmentRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -63,20 +75,18 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "A_VERY_SECRET_DEVELOPMENT_KEY_THAT_IS_LONG_ENOUGH"))
     };
 });
-
-builder.Services.AddAuthorization();
-
-// CORS - cho phép frontend React (localhost:3000) gọi API
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins("http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
+    options.AddPolicy("AllowFrontend",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
 });
+builder.Services.AddAuthorization();
+
 
 // ==========================================
 // 2. Build the Application
@@ -97,6 +107,9 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
+
+// Cho phép public access file tĩnh (cho hình ảnh, avatar)
+app.UseStaticFiles();
 
 // Middleware order is important
 app.UseAuthentication();

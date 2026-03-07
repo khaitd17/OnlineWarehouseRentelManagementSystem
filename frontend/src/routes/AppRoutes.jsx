@@ -8,6 +8,8 @@ import PostWarehousePage from "../pages/PostWarehousePage";
 import AboutUsPage from "../pages/AboutUsPage";
 import Dashboard from "../pages/Dashboard";
 import ProfilePage from "../pages/ProfilePage";
+import CreateStaff from "../pages/CreateStaff";
+import ListStaff from "../pages/ListStaff";
 import ProtectedRoute from "./ProtectedRoute";
 import CreateWarehouse from "../pages/CreateWarehouse";
 

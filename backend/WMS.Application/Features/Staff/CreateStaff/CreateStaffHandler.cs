@@ -1,8 +1,13 @@
-﻿using System;
+﻿using MediatR;
+using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WMS.Application.Interfaces;
+using WMS.Domain.Entities;
+using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Staff.CreateStaff
 {
@@ -17,7 +22,6 @@ namespace WMS.Application.Features.Staff.CreateStaff
         //private readonly IDateTimeProvider _dateTime;
 
         public CreateStaffHandler(
-
             IEmailService emailService,
             IWarehouseRepository warehouseRepository,
             IUserRepository userRepository,
@@ -26,7 +30,6 @@ namespace WMS.Application.Features.Staff.CreateStaff
 
             )
         {
-
             _emailService = emailService;
             _warehouseRepository = warehouseRepository;
             _userRepository = userRepository;

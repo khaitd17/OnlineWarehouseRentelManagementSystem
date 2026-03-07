@@ -49,4 +49,12 @@ public class WarehouseRepository : IWarehouseRepository
             .Select(w => (int?)w.OwnerId)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<int?> FindWarehouseOwnerById(int id, CancellationToken tk)
+    {
+        return await _context.Warehouses
+            .Where(x => x.WarehouseId == id)
+            .Select(x => (int?)x.OwnerId)
+            .FirstOrDefaultAsync(tk);
+    }
 }
