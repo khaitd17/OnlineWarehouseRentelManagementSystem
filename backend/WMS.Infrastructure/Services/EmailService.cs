@@ -14,6 +14,33 @@ public class EmailService : IEmailService
         _config = config;
     }
 
+    public async Task SendInfo(string email, string toName,string subject ,string htmlContent)
+    {
+        //var smtpHost = _config["Smtp:Host"] ?? "smtp.gmail.com";
+        //var smtpPort = int.TryParse(_config["Smtp:Port"], out int p) ? p : 587;
+        //var smtpUser = _config["Smtp:Username"] ?? throw new InvalidOperationException("Smtp:Username chưa được cấu hình.");
+        //var smtpPass = _config["Smtp:Password"] ?? throw new InvalidOperationException("Smtp:Password chưa được cấu hình.");
+        //var fromName = _config["Smtp:FromName"] ?? "OWRMS Support";
+
+        //var client = new SmtpClient(smtpHost, smtpPort)
+        //{
+        //    Credentials = new NetworkCredential(smtpUser, smtpPass),
+        //    EnableSsl = true
+        //};
+
+        //var message = new MailMessage
+        //{
+        //    From = new MailAddress(smtpUser, fromName),
+        //    Subject = subject,
+        //    Body = htmlContent,
+        //    IsBodyHtml = true
+        //};
+
+        //message.To.Add(new MailAddress(email, toName));
+
+        //await client.SendMailAsync(message);
+    }
+
     public async Task SendPasswordResetEmailAsync(string toEmail, string toName, string resetToken, string resetLink)
     {
         var smtpHost = _config["Smtp:Host"] ?? "smtp.gmail.com";
