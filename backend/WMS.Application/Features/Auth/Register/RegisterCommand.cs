@@ -6,5 +6,6 @@ public record RegisterCommand(
     string FullName,
     string Email,
     string Password,
-    string? Phone
+    string? Phone,
+    string RoleName
 ) : IRequest<int>;
