@@ -1,6 +1,6 @@
-namespace WMS.Domain.Entities;
+namespace WMS.Application.Features.Warehouses.GetWarehouseDetail;
 
-public class Warehouse
+public class WarehouseDetailDto
 {
     public int WarehouseId { get; set; }
 
@@ -22,7 +22,7 @@ public class Warehouse
 
     public string? OperatingHours { get; set; }
 
-    public string Status { get; set; } = "PENDING";
+    public string? Status { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? CreatedAt { get; set; }
 }

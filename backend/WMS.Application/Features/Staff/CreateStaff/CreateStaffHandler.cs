@@ -11,7 +11,7 @@ using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Staff.CreateStaff
 {
-    public class CreateStaffHandler : IRequestHandler<CreateStaffCommand,int>
+    public class CreateStaffHandler : IRequestHandler<CreateStaffCommand, int>
     {
         //private readonly IPasswordHasher _passwordHasher;
         private readonly IEmailService _emailService;
@@ -22,7 +22,6 @@ namespace WMS.Application.Features.Staff.CreateStaff
         //private readonly IDateTimeProvider _dateTime;
 
         public CreateStaffHandler(
-            
             IEmailService emailService,
             IWarehouseRepository warehouseRepository,
             IUserRepository userRepository,
@@ -31,7 +30,6 @@ namespace WMS.Application.Features.Staff.CreateStaff
 
             )
         {
-            
             _emailService = emailService;
             _warehouseRepository = warehouseRepository;
             _userRepository = userRepository;
@@ -69,13 +67,21 @@ namespace WMS.Application.Features.Staff.CreateStaff
                 var rawPassword = _passwordGenerator.Generate();
                 var passwordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
 
+                // var dto = new CreateUserDto(
+                //     FullName: request.FullName,
+                //     Email: request.Email,
+                //     PasswordHash: passwordHash,
+                //     Phone: request.Phone,
+                //     RoleId: 2  // Staff role
+                // );
+
                 var dto = new CreateUserDto(
-                    FullName: request.FullName,
-                    Email: request.Email,
-                    PasswordHash: passwordHash,
-                    Phone: request.Phone,
-                    RoleId: 2  // Staff role
-                );
+    FullName: request.FullName,
+    Email: request.Email,
+    PasswordHash: passwordHash,
+    Phone: request.Phone,
+    RoleName: "Staff"
+);
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);
 
