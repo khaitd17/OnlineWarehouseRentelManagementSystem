@@ -28,6 +28,28 @@ public class WarehouseRepository : IWarehouseRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task<WMS.Domain.Entities.Warehouse?> GetByIdAsync(int id)
+    {
+        var scaffoldWarehouse = await _context.Warehouses
+            .FirstOrDefaultAsync(w => w.WarehouseId == id);
+        
+        if (scaffoldWarehouse == null)
+            return null;
+
+        return new WMS.Domain.Entities.Warehouse(
+            name: scaffoldWarehouse.Name,
+            description: scaffoldWarehouse.Description ?? string.Empty,
+            address: scaffoldWarehouse.Address,
+            city: "N/A", // TODO: Add to database schema
+            province: "N/A", // TODO: Add to database schema
+            area: scaffoldWarehouse.TotalArea,
+            pricePerMonth: 0, // TODO: Add to database schema
+            warehouseType: "General", // TODO: Add to database schema
+            capacity: 0, // TODO: Add to database schema
+            ownerId: scaffoldWarehouse.OwnerId
+        );
+    }
+
     public async Task<int?> FindWarehouseOwnerById(int id, CancellationToken tk)
     {
         return await _context.Warehouses

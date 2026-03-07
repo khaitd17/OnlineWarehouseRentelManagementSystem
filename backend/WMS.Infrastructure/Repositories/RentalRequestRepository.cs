@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence;
+using WMS.Infrastructure.Persistence.ScaffoldModels;
+using ScaffoldRentalRequest = WMS.Infrastructure.Persistence.ScaffoldModels.RentalRequest;
+using DomainRentalRequest = WMS.Domain.Entities.RentalRequest;
+using Task = System.Threading.Tasks.Task;
 
 namespace WMS.Infrastructure.Repositories;
 
@@ -14,68 +17,123 @@ public class RentalRequestRepository : IRentalRequestRepository
         _context = context;
     }
 
-    public async Task<RentalRequest?> GetByIdAsync(int id)
+    private DomainRentalRequest? MapToDomain(ScaffoldRentalRequest? scaffold)
     {
-        return await _context.RentalRequests
-            .Include(r => r.Warehouse)
-            .FirstOrDefaultAsync(r => r.Id == id);
+        if (scaffold == null) return null;
+        
+        // Use reflection to create domain entity with private constructor
+        var domainEntity = (DomainRentalRequest)System.Runtime.Serialization.FormatterServices
+            .GetUninitializedObject(typeof(DomainRentalRequest));
+        
+        var idProp = typeof(DomainRentalRequest).GetProperty("Id");
+        var renterIdProp = typeof(DomainRentalRequest).GetProperty("RenterId");
+        var warehouseIdProp = typeof(DomainRentalRequest).GetProperty("WarehouseId");
+        var requestedAreaProp = typeof(DomainRentalRequest).GetProperty("RequestedArea");
+        var durationMonthsProp = typeof(DomainRentalRequest).GetProperty("DurationMonths");
+        var statusProp = typeof(DomainRentalRequest).GetProperty("Status");
+        var notesProp = typeof(DomainRentalRequest).GetProperty("Notes");
+        var createdAtProp = typeof(DomainRentalRequest).GetProperty("CreatedAt");
+        var reviewedByProp = typeof(DomainRentalRequest).GetProperty("ReviewedBy");
+        var rejectionReasonProp = typeof(DomainRentalRequest).GetProperty("RejectionReason");
+        
+        idProp?.SetValue(domainEntity, scaffold.RequestId);
+        renterIdProp?.SetValue(domainEntity, scaffold.RenterId);
+        warehouseIdProp?.SetValue(domainEntity, scaffold.WarehouseId);
+        requestedAreaProp?.SetValue(domainEntity, scaffold.RequestedArea);
+        durationMonthsProp?.SetValue(domainEntity, scaffold.DurationMonths);
+        statusProp?.SetValue(domainEntity, scaffold.Status ?? "PENDING");
+        notesProp?.SetValue(domainEntity, scaffold.Notes);
+        createdAtProp?.SetValue(domainEntity, scaffold.CreatedAt ?? DateTime.UtcNow);
+        reviewedByProp?.SetValue(domainEntity, scaffold.ReviewedBy);
+        rejectionReasonProp?.SetValue(domainEntity, scaffold.RejectionReason);
+        
+        return domainEntity;
     }
 
-    public async Task<IEnumerable<RentalRequest>> GetAllAsync()
+    public async Task<DomainRentalRequest?> GetByIdAsync(int id)
     {
-        return await _context.RentalRequests
-            .Include(r => r.Warehouse)
+        var scaffold = await _context.RentalRequests
+            .FirstOrDefaultAsync(r => r.RequestId == id);
+        return MapToDomain(scaffold);
+    }
+
+    public async Task<IEnumerable<DomainRentalRequest>> GetAllAsync()
+    {
+        var scaffolds = await _context.RentalRequests
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
+        return scaffolds.Select(s => MapToDomain(s)!).Where(d => d != null);
     }
 
-    public async Task<IEnumerable<RentalRequest>> GetByRenterIdAsync(int renterId)
+    public async Task<IEnumerable<DomainRentalRequest>> GetByRenterIdAsync(int renterId)
     {
-        return await _context.RentalRequests
-            .Include(r => r.Warehouse)
+        var scaffolds = await _context.RentalRequests
             .Where(r => r.RenterId == renterId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
+        return scaffolds.Select(s => MapToDomain(s)!).Where(d => d != null);
     }
 
-    public async Task<IEnumerable<RentalRequest>> GetByWarehouseIdAsync(int warehouseId)
+    public async Task<IEnumerable<DomainRentalRequest>> GetByWarehouseIdAsync(int warehouseId)
     {
-        return await _context.RentalRequests
-            .Include(r => r.Warehouse)
+        var scaffolds = await _context.RentalRequests
             .Where(r => r.WarehouseId == warehouseId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
+        return scaffolds.Select(s => MapToDomain(s)!).Where(d => d != null);
     }
 
-    public async Task<IEnumerable<RentalRequest>> GetByStatusAsync(string status)
+    public async Task<IEnumerable<DomainRentalRequest>> GetByStatusAsync(string status)
     {
-        return await _context.RentalRequests
-            .Include(r => r.Warehouse)
+        var scaffolds = await _context.RentalRequests
             .Where(r => r.Status == status)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
+        return scaffolds.Select(s => MapToDomain(s)!).Where(d => d != null);
     }
 
-    public async Task<int> AddAsync(RentalRequest rentalRequest)
+    public async Task<int> AddAsync(DomainRentalRequest rentalRequest)
     {
-        _context.RentalRequests.Add(rentalRequest);
+        var scaffold = new ScaffoldRentalRequest
+        {
+            RenterId = rentalRequest.RenterId,
+            WarehouseId = rentalRequest.WarehouseId,
+            RequestedArea = rentalRequest.RequestedArea,
+            DurationMonths = rentalRequest.DurationMonths,
+            Status = rentalRequest.Status,
+            Notes = rentalRequest.Notes,
+            CreatedAt = rentalRequest.CreatedAt,
+            UpdatedAt = DateTime.UtcNow
+        };
+        
+        _context.RentalRequests.Add(scaffold);
         await _context.SaveChangesAsync();
-        return rentalRequest.Id;
+        return scaffold.RequestId;
     }
 
-    public async Task UpdateAsync(RentalRequest rentalRequest)
+    public async Task UpdateAsync(DomainRentalRequest rentalRequest)
     {
-        _context.RentalRequests.Update(rentalRequest);
-        await _context.SaveChangesAsync();
+        var scaffold = await _context.RentalRequests.FindAsync(rentalRequest.Id);
+        if (scaffold != null)
+        {
+            scaffold.Status = rentalRequest.Status;
+            scaffold.Notes = rentalRequest.Notes;
+            scaffold.ReviewedBy = rentalRequest.ReviewedBy;
+            scaffold.RejectionReason = rentalRequest.RejectionReason;
+            scaffold.ReviewedAt = rentalRequest.ApprovedAt ?? rentalRequest.RejectedAt;
+            scaffold.UpdatedAt = DateTime.UtcNow;
+            
+            await _context.SaveChangesAsync();
+        }
     }
 
     public async Task<bool> DeleteAsync(int id)
     {
-        var rentalRequest = await _context.RentalRequests.FindAsync(id);
-        if (rentalRequest == null)
+        var scaffold = await _context.RentalRequests.FindAsync(id);
+        if (scaffold == null)
             return false;
 
-        _context.RentalRequests.Remove(rentalRequest);
+        _context.RentalRequests.Remove(scaffold);
         await _context.SaveChangesAsync();
         return true;
     }
