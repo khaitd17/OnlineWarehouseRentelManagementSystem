@@ -12,6 +12,7 @@ import CreateStaff from "../pages/CreateStaff";
 import ListStaff from "../pages/ListStaff";
 import ProtectedRoute from "./ProtectedRoute";
 import CreateWarehouse from "../pages/CreateWarehouse";
+import WarehouseDetail from "../pages/WarehouseDetail";
 
 function AppRoutes() {
   return (
@@ -30,6 +31,7 @@ function AppRoutes() {
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/post-warehouse" element={<PostWarehousePage />} />
             <Route path="/create-warehouse" element={<CreateWarehouse />} />
+            <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
             <Route path="/create-staff" element={<CreateStaff />} />
             <Route path="/list-staff" element={<ListStaff />} />
           </Route>

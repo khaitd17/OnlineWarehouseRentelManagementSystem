@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using WMS.Application.Features.Warehouses.CreateWarehouse;
+using WMS.Application.Features.Warehouses.GetWarehouseDetail;
 
 namespace WMS.API.Controllers;
 
@@ -37,4 +38,18 @@ public class WarehouseController : ControllerBase
             warehouseId = id
         });
     }
+
+    [HttpGet("{id}")]
+public async Task<IActionResult> GetDetail(int id)
+{
+    var result = await _mediator.Send(new GetWarehouseDetailQuery
+    {
+        WarehouseId = id
+    });
+
+    if (result == null)
+        return NotFound();
+
+    return Ok(result);
+}
 }

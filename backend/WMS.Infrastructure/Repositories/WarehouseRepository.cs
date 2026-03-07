@@ -50,11 +50,30 @@ public class WarehouseRepository : IWarehouseRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<int?> FindWarehouseOwnerById(int id, CancellationToken tk)
+    public async Task<DomainWarehouse?> GetByIdAsync(
+        int warehouseId,
+        CancellationToken cancellationToken)
     {
-        return await _context.Warehouses
-            .Where(x => x.WarehouseId == id)
-            .Select(x => (int?)x.OwnerId)
-            .FirstOrDefaultAsync(tk);
+        var entity = await _context.Warehouses
+            .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId, cancellationToken);
+
+        if (entity == null)
+            return null;
+
+        return new DomainWarehouse
+        {
+            WarehouseId = entity.WarehouseId,
+            OwnerId = entity.OwnerId,
+            Name = entity.Name,
+            Address = entity.Address,
+            Lat = entity.Lat,
+            Lng = entity.Lng,
+            Description = entity.Description,
+            TotalArea = entity.TotalArea,
+            AvailableArea = entity.AvailableArea,
+            OperatingHours = entity.OperatingHours,
+            Status = entity.Status ?? "UNKNOWN",
+            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
+        };
     }
 }

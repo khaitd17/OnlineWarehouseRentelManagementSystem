@@ -11,6 +11,15 @@ function Dashboard() {
       <Link to="/create-staff">
         <button>Tạo Nhân Viên</button>
       </Link>
+<br></br>
+            <Link to="/warehouse-new/6">
+        <button>Xem thử Warehouse ID = 6</button>
+   
+      </Link>
+   <br></br>
+                  <Link to="/warehouse-new/7">
+        <button>Xem thử Warehouse ID = 7</button>
+      </Link>
     </div>
   );
 }
