@@ -57,13 +57,23 @@ const MainLayout = () => {
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {isAuthenticated ? (
             <>
-              <Link to="/dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>Dashboard</Link>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', position: 'relative' }}>
-                <Link to="/profile" title="Trang cá nhân">
+              {((user?.role || user?.roleName || '').toUpperCase() === 'OWNER') && (
+                <Link to="/dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>Dashboard</Link>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Link to="/profile" title="Trang cá nhân" style={{ display: 'flex', alignItems: 'center' }}>
                   <img 
-                    src={user?.avatarUrl || "https://www.svgrepo.com/show/5125/avatar.svg"} 
+                    src={user?.avatarUrl || user?.AvatarUrl || "https://www.svgrepo.com/show/5125/avatar.svg"} 
                     alt="Profile" 
-                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #e2e8f0', cursor: 'pointer' }} 
+                    style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '50%', 
+                      objectFit: 'cover', 
+                      border: '2px solid #e2e8f0', 
+                      cursor: 'pointer',
+                      backgroundColor: '#f1f5f9'
+                    }} 
                   />
                 </Link>
                 <button 
@@ -74,8 +84,7 @@ const MainLayout = () => {
                     color: '#ef4444', 
                     fontWeight: 600, 
                     fontSize: '0.9rem', 
-                    cursor: 'pointer',
-                    marginLeft: '0.5rem'
+                    cursor: 'pointer'
                   }}
                 >
                   Đăng xuất

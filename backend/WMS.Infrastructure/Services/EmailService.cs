@@ -14,69 +14,64 @@ public class EmailService : IEmailService
         _config = config;
     }
 
-    public async Task SendInfo(string email, string toName,string subject ,string htmlContent)
+    public async Task SendInfo(string email, string toName, string subject, string htmlContent)
     {
-        //var smtpHost = _config["Smtp:Host"] ?? "smtp.gmail.com";
-        //var smtpPort = int.TryParse(_config["Smtp:Port"], out int p) ? p : 587;
-        //var smtpUser = _config["Smtp:Username"] ?? throw new InvalidOperationException("Smtp:Username chưa được cấu hình.");
-        //var smtpPass = _config["Smtp:Password"] ?? throw new InvalidOperationException("Smtp:Password chưa được cấu hình.");
-        //var fromName = _config["Smtp:FromName"] ?? "OWRMS Support";
+        var smtpHost = _config["Smtp:Host"] ?? "smtp.mailtrap.io";
+        var smtpPort = int.TryParse(_config["Smtp:Port"], out int p) ? p : 587;
+        var smtpUser = _config["Smtp:Username"] ?? throw new InvalidOperationException("Smtp:Username chưa được cấu hình.");
+        var smtpPass = _config["Smtp:Password"] ?? throw new InvalidOperationException("Smtp:Password chưa được cấu hình.");
+        var fromName = _config["Smtp:FromName"] ?? "Hệ thống OWRMS";
 
-        //var client = new SmtpClient(smtpHost, smtpPort)
-        //{
-        //    Credentials = new NetworkCredential(smtpUser, smtpPass),
-        //    EnableSsl = true
-        //};
+        using var client = new SmtpClient(smtpHost, smtpPort)
+        {
+            Credentials = new NetworkCredential(smtpUser, smtpPass),
+            EnableSsl = true
+        };
 
-        //var message = new MailMessage
-        //{
-        //    From = new MailAddress(smtpUser, fromName),
-        //    Subject = subject,
-        //    Body = htmlContent,
-        //    IsBodyHtml = true
-        //};
+        using var message = new MailMessage
+        {
+            From = new MailAddress(smtpUser, fromName),
+            Subject = subject,
+            Body = htmlContent,
+            IsBodyHtml = true
+        };
 
-        //message.To.Add(new MailAddress(email, toName));
+        message.To.Add(new MailAddress(email, toName));
 
-        //await client.SendMailAsync(message);
+        await client.SendMailAsync(message);
     }
 
     public async Task SendPasswordResetEmailAsync(string toEmail, string toName, string resetToken, string resetLink)
     {
-        var smtpHost = _config["Smtp:Host"] ?? "smtp.gmail.com";
+        var smtpHost = _config["Smtp:Host"] ?? "smtp.mailtrap.io";
         var smtpPort = int.TryParse(_config["Smtp:Port"], out int p) ? p : 587;
         var smtpUser = _config["Smtp:Username"] ?? throw new InvalidOperationException("Smtp:Username chưa được cấu hình.");
         var smtpPass = _config["Smtp:Password"] ?? throw new InvalidOperationException("Smtp:Password chưa được cấu hình.");
-        var fromName = _config["Smtp:FromName"] ?? "OWRMS Support";
+        var fromName = _config["Smtp:FromName"] ?? "Hệ thống OWRMS";
 
-        var client = new SmtpClient(smtpHost, smtpPort)
+        using var client = new SmtpClient(smtpHost, smtpPort)
         {
             Credentials = new NetworkCredential(smtpUser, smtpPass),
             EnableSsl = true
         };
 
         var body = $@"
-<html>
-<body style='font-family: Arial, sans-serif; background:#f4f4f4; padding:20px;'>
-  <div style='max-width:600px; margin:auto; background:white; border-radius:8px; padding:30px;'>
-    <h2 style='color:#2c3e50;'>Đặt lại mật khẩu</h2>
-    <p>Xin chào <strong>{toName}</strong>,</p>
-    <p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.</p>
-    <p>Nhấn vào nút bên dưới để đặt lại mật khẩu. Link có hiệu lực trong <strong>1 giờ</strong>.</p>
-    <div style='text-align:center; margin:30px 0;'>
-      <a href='{resetLink}'
-         style='background:#3498db; color:white; padding:12px 24px; text-decoration:none; border-radius:5px; font-size:16px;'>
-        Đặt lại mật khẩu
-      </a>
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; border-top: 4px solid #0095c7;'>
+    <div style='text-align: center; margin-bottom: 24px;'>
+        <h2 style='color: #0f172a; margin-bottom: 8px;'>Yêu cầu đặt lại mật khẩu</h2>
+        <p style='color: #64748b; font-size: 14px;'>Xin chào {toName}, chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản OWRMS của bạn.</p>
     </div>
-    <p style='color:#7f8c8d; font-size:13px;'>
-      Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.
-    </p>
-    <hr style='border:none; border-top:1px solid #eee; margin:20px 0;'/>
-    <p style='color:#7f8c8d; font-size:12px;'>© 2025 Online Warehouse Rental Management System</p>
-  </div>
-</body>
-</html>";
+    
+    <div style='background-color: #f8fafc; padding: 24px; border-radius: 8px; text-align: center; margin-bottom: 24px;'>
+        <p style='margin-bottom: 20px; color: #334155;'>Vui lòng nhấn vào nút bên dưới để tiến hành đặt lại mật khẩu của bạn. Liên kết này sẽ hết hạn sau 1 giờ.</p>
+        <a href='{resetLink}' style='display: inline-block; padding: 12px 32px; background-color: #0095c7; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;'>Đặt lại mật khẩu</a>
+    </div>
+
+    <div style='font-size: 12px; color: #94a3b8; line-height: 1.6;'>
+        <p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này hoặc liên kết với chúng tôi nếu bạn lo ngại về bảo mật.</p>
+        <p style='margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 16px;'>© 2024 Online Warehouse Rental Management System (OWRMS)</p>
+    </div>
+</div>";
 
         var message = new MailMessage
         {

@@ -32,8 +32,8 @@ namespace WMS.Application.Features.Staff.ListStaff
         public int AssignmentId { get; set; }
         public int StaffId { get; set; }
         public int WarehouseId { get; set; }
-        public string FullName { get; set; }
-        public string Email { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
         public string? Phone { get; set; }
         public string? Status { get; set; }
         public DateOnly? AssignedAt { get; set; }

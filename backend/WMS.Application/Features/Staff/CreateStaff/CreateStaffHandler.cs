@@ -74,7 +74,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
                     Email: request.Email,
                     PasswordHash: passwordHash,
                     Phone: request.Phone,
-                    RoleId: 2  // Staff role
+                    RoleName: "STAFF"  // Staff role
                 );
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);

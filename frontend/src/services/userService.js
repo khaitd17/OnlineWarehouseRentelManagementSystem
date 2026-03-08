@@ -21,6 +21,11 @@ const userService = {
     });
     return response.data;
   },
+
+  changePassword: async (passwordData) => {
+    const response = await axiosClient.put("/users/me/password", passwordData);
+    return response.data;
+  },
 };
 
 export default userService;

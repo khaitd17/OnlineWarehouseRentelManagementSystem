@@ -31,7 +31,14 @@ const AuthPage = () => {
         await authService.login(formData.email, formData.password);
         alert('Đăng nhập thành công!');
         window.dispatchEvent(new Event('authChange'));
-        navigate('/dashboard');
+        
+        const user = authService.getCurrentUser();
+        const role = (user?.role || user?.roleName || '').toUpperCase();
+        if (role === 'OWNER') {
+          navigate('/dashboard');
+        } else {
+          navigate('/');
+        }
       } else {
         await authService.register({
           fullName: formData.fullName,
@@ -40,8 +47,19 @@ const AuthPage = () => {
           phone: formData.phone,
           roleName: formData.roleName
         });
-        alert('Đăng ký thành công! Vui lòng đăng nhập.');
-        setIsLogin(true);
+        
+        // Auto login after registration
+        await authService.login(formData.email, formData.password);
+        alert('Đăng ký và Đăng nhập thành công!');
+        window.dispatchEvent(new Event('authChange'));
+        
+        const user = authService.getCurrentUser();
+        const role = (user?.role || user?.roleName || '').toUpperCase();
+        if (role === 'OWNER') {
+          navigate('/dashboard');
+        } else {
+          navigate('/');
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
@@ -49,26 +67,6 @@ const AuthPage = () => {
       setLoading(false);
     }
   };
-
-  const InputWrapper = ({ icon, children }) => (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      border: '1px solid #d1d5db',
-      borderRadius: '8px',
-      padding: '0 12px',
-      backgroundColor: '#fff',
-      transition: 'border-color 0.2s',
-      height: '48px'
-    }}>
-      <div style={{ color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {icon}
-      </div>
-      <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center' }}>
-        {children}
-      </div>
-    </div>
-  );
 
   return (
     <div style={{ 
@@ -151,7 +149,7 @@ const AuthPage = () => {
           )}
 
           <InputWrapper icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>}>
-            <input name="email" type="email" placeholder="SĐT chính hoặc email" required value={formData.email} onChange={handleInputChange} style={{ border: 'none', outline: 'none', width: '100%', padding: '0 12px', fontSize: '1rem', color: '#111827' }} />
+            <input name="email" type="text" placeholder="Số điện thoại hoặc email" required value={formData.email} onChange={handleInputChange} style={{ border: 'none', outline: 'none', width: '100%', padding: '0 12px', fontSize: '1rem', color: '#111827' }} />
           </InputWrapper>
 
           <InputWrapper icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>}>
@@ -187,7 +185,7 @@ const AuthPage = () => {
               <input type="checkbox" style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#0095c7' }} />
               Nhớ tài khoản
             </label>
-            <a href="#" style={{ color: '#0095c7', textDecoration: 'none', fontSize: '0.875rem' }}>Quên mật khẩu?</a>
+            <Link to="/forgot-password" style={{ color: '#0095c7', textDecoration: 'none', fontSize: '0.875rem' }}>Quên mật khẩu?</Link>
           </div>
         )}
 
@@ -257,5 +255,24 @@ const AuthPage = () => {
   );
 };
 
-export default AuthPage;
+const InputWrapper = ({ icon, children }) => (
+  <div style={{
+    display: 'flex',
+    alignItems: 'center',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    padding: '0 12px',
+    backgroundColor: '#fff',
+    transition: 'border-color 0.2s',
+    height: '48px'
+  }}>
+    <div style={{ color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {icon}
+    </div>
+    <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center' }}>
+      {children}
+    </div>
+  </div>
+);
 
+export default AuthPage;
