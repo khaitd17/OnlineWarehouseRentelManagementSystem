@@ -93,7 +93,30 @@ public class UsersController : ControllerBase
         
         return Ok(new { avatarUrl });
     }
+    /// <summary>Đổi mật khẩu của người dùng hiện tại</summary>
+    [HttpPut("me/password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req)
+    {
+        int userId = GetCurrentUserId();
+        try
+        {
+            if (req.NewPassword != req.ConfirmPassword)
+                return BadRequest(new { message = "Mật khẩu xác nhận không khớp." });
+
+            await _mediator.Send(new WMS.Application.Features.Users.ChangePassword.ChangePasswordCommand(userId, req.CurrentPassword, req.NewPassword));
+            return Ok(new { message = "Đổi mật khẩu thành công." });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 }
 
 // ---- Request DTO ----
 public record UpdateProfileRequest(string FullName, string? Phone, string? AvatarUrl);
+public record ChangePasswordRequest(string CurrentPassword, string NewPassword, string ConfirmPassword);

@@ -23,6 +23,14 @@ public class UserRepository : IUserRepository
         return user == null ? null : MapToRecord(user);
     }
 
+    public async System.Threading.Tasks.Task<UserRecord?> GetByEmailOrPhoneAsync(string identifier, CancellationToken ct = default)
+    {
+        var user = await _db.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Email == identifier || u.Phone == identifier, ct);
+        return user == null ? null : MapToRecord(user);
+    }
+
     public async System.Threading.Tasks.Task<UserRecord?> GetByIdAsync(int userId, CancellationToken ct = default)
     {
         var user = await _db.Users
