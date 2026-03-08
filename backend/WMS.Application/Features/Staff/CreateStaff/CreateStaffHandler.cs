@@ -74,7 +74,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
                     Email: request.Email,
                     PasswordHash: passwordHash,
                     Phone: request.Phone,
-                    RoleId: 2  // Staff role
+                    RoleId: 4  
                 );
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);
@@ -97,7 +97,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
             var assignment = new StaffAssignment(
                 staffId: staffUserId,
                 warehouseId: request.WarehouseId,
-                status: "Active",
+                status: "ACTIVE",
                 assignedAt: request.StartDate != null
                     ? request.StartDate.Value.ToDateTime(TimeOnly.MinValue)
                     : DateTime.Now,

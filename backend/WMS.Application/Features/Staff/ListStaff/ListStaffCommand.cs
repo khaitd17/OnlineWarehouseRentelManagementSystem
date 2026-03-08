@@ -8,13 +8,15 @@ namespace WMS.Application.Features.Staff.ListStaff
         public int OwnerId { get; set; }
         public int PageNumber { get; set; }
         public int PageSize { get; set; }
+        public string? SearchKeyword { get; set; }
 
-        public ListStaffCommand(int? warehouseId, int ownerId, int pageNumber = 1, int pageSize = 10)
+        public ListStaffCommand(int? warehouseId, int ownerId, int pageNumber = 1, int pageSize = 10, string? searchKeyword = null)
         {
             WarehouseId = warehouseId;
             OwnerId = ownerId;
             PageNumber = pageNumber > 0 ? pageNumber : 1;
             PageSize = pageSize > 0 ? pageSize : 10;
+            SearchKeyword = searchKeyword;
         }
     }
 
@@ -35,7 +37,7 @@ namespace WMS.Application.Features.Staff.ListStaff
         public string FullName { get; set; }
         public string Email { get; set; }
         public string? Phone { get; set; }
-        public string? Status { get; set; }
+        public string Status { get; set; }
         public DateOnly? AssignedAt { get; set; }
         public DateOnly? EndDate { get; set; }
         public string? Notes { get; set; }
