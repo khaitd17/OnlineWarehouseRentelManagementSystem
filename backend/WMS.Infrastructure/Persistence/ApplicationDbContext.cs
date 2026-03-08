@@ -16,10 +16,6 @@ public class ApplicationDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<Warehouse>(entity =>
-        {
-            entity.Property(x => x.PricePerMonth)
-                  .HasPrecision(18, 2);
-        });
+        // Entity configurations can be added here if needed
     }
 }

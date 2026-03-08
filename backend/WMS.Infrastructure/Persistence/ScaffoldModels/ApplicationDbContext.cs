@@ -31,6 +31,8 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Rating> Ratings { get; set; }
 
+    public virtual DbSet<RentalRequest> RentalRequests { get; set; }
+
     public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<StaffAssignment> StaffAssignments { get; set; }
@@ -176,6 +178,11 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.RenterId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_contracts_renter");
+
+            entity.HasOne(d => d.Request).WithMany(p => p.Contracts)
+                .HasForeignKey(d => d.RequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_contracts_request");
 
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Contracts)
                 .HasForeignKey(d => d.WarehouseId)
@@ -389,6 +396,56 @@ public partial class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Ratings)
                 .HasForeignKey(d => d.WarehouseId)
                 .HasConstraintName("FK_ratings_warehouse");
+        });
+
+        modelBuilder.Entity<RentalRequest>(entity =>
+        {
+            entity.HasKey(e => e.RequestId).HasName("PK__rental_r__18D3B90F92B6C93A");
+
+            entity.ToTable("rental_requests", tb => tb.HasTrigger("TR_rental_requests_updated_at"));
+
+            entity.HasIndex(e => e.CreatedAt, "idx_rental_requests_created_at");
+
+            entity.HasIndex(e => e.RenterId, "idx_rental_requests_renter");
+
+            entity.HasIndex(e => e.Status, "idx_rental_requests_status");
+
+            entity.HasIndex(e => e.WarehouseId, "idx_rental_requests_warehouse");
+
+            entity.Property(e => e.RequestId).HasColumnName("request_id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("created_at");
+            entity.Property(e => e.DurationMonths).HasColumnName("duration_months");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+            entity.Property(e => e.RenterId).HasColumnName("renter_id");
+            entity.Property(e => e.RequestedArea).HasColumnName("requested_area");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.StartDate).HasColumnName("start_date");
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("PENDING")
+                .HasColumnName("status");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("(getdate())")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.ContractImageUrl).HasMaxLength(500).HasColumnName("contract_image_url");
+
+            entity.HasOne(d => d.Renter).WithMany(p => p.RentalRequestRenters)
+                .HasForeignKey(d => d.RenterId)
+                .HasConstraintName("FK_rental_requests_renter");
+
+            entity.HasOne(d => d.ReviewedByNavigation).WithMany(p => p.RentalRequestReviewedByNavigations)
+                .HasForeignKey(d => d.ReviewedBy)
+                .HasConstraintName("FK_rental_requests_reviewer");
+
+            entity.HasOne(d => d.Warehouse).WithMany(p => p.RentalRequests)
+                .HasForeignKey(d => d.WarehouseId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_rental_requests_warehouse");
         });
 
         modelBuilder.Entity<Role>(entity =>

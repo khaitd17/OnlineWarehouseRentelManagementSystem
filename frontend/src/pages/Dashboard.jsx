@@ -27,6 +27,16 @@ function Dashboard() {
             <Link to="/my-warehouses">
         <button>Danh sách kho của tôi</button>
       </Link>
+
+      <br /><br />
+      <h3>Quản lý thuê kho</h3>
+      <Link to="/my-rental-requests">
+        <button>Yêu cầu thuê của tôi</button>
+      </Link>
+      <br />
+      <Link to="/pending-rental-requests">
+        <button>Yêu cầu chờ duyệt (Chủ kho)</button>
+      </Link>
     </div>
 
     

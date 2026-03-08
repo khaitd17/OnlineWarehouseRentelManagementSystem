@@ -41,6 +41,8 @@ public partial class Contract
 
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
 
+    public virtual RentalRequest Request { get; set; } = null!;
+
     public virtual User Renter { get; set; } = null!;
 
     public virtual Warehouse Warehouse { get; set; } = null!;

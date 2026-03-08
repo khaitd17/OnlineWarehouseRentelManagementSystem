@@ -15,6 +15,9 @@ import CreateWarehouse from "../pages/CreateWarehouse";
 import WarehouseDetail from "../pages/WarehouseDetail";
 import OwnerWarehouseList from "../pages/OwnerWarehouseList";
 import EditWarehouse from "../pages/EditWarehouse";
+import MyRentalRequests from "../pages/MyRentalRequests";
+import PendingRentalRequests from "../pages/PendingRentalRequests";
+import RentalRequestDetail from "../pages/RentalRequestDetail";
 
 function AppRoutes() {
   return (
@@ -38,6 +41,9 @@ function AppRoutes() {
             <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
             <Route path="/create-staff" element={<CreateStaff />} />
             <Route path="/list-staff" element={<ListStaff />} />
+            <Route path="/my-rental-requests" element={<MyRentalRequests />} />
+            <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
+            <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
           </Route>
         </Route>
 

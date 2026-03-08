@@ -51,6 +51,8 @@ public partial class Warehouse
 
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
 
+    public virtual ICollection<RentalRequest> RentalRequests { get; set; } = new List<RentalRequest>();
+
     public virtual ICollection<StaffAssignment> StaffAssignments { get; set; } = new List<StaffAssignment>();
 
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
