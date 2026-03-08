@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using WMS.Application.Features.Warehouses.CreateWarehouse;
+using WMS.Application.Features.Warehouses.GetOwnerWarehouses;
 using WMS.Application.Features.Warehouses.GetWarehouseDetail;
+using WMS.Application.Features.Warehouses.UpdateWarehouse;
 
 namespace WMS.API.Controllers;
 
@@ -40,16 +42,37 @@ public class WarehouseController : ControllerBase
     }
 
     [HttpGet("{id}")]
-public async Task<IActionResult> GetDetail(int id)
-{
-    var result = await _mediator.Send(new GetWarehouseDetailQuery
+    public async Task<IActionResult> GetDetail(int id)
     {
-        WarehouseId = id
-    });
+        var result = await _mediator.Send(new GetWarehouseDetailQuery
+        {
+            WarehouseId = id
+        });
 
-    if (result == null)
-        return NotFound();
+        if (result == null)
+            return NotFound();
 
-    return Ok(result);
-}
+        return Ok(result);
+    }
+
+    [HttpGet("owner/{ownerId}")]
+    public async Task<IActionResult> GetOwnerWarehouses(int ownerId)
+    {
+        var result = await _mediator.Send(
+            new GetOwnerWarehousesQuery(ownerId)
+        );
+
+        return Ok(result);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateWarehouse(int id, UpdateWarehouseCommand command)
+    {
+        if (id != command.WarehouseId)
+            return BadRequest();
+
+        await _mediator.Send(command);
+
+        return Ok();
+    }
 }
