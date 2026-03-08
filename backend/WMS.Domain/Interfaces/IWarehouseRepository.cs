@@ -9,4 +9,6 @@ public interface IWarehouseRepository
     Task<int?> FindWarehouseOwnerById(int warehouseId, CancellationToken cancellationToken);
 
     Task<Warehouse?> GetByIdAsync(int warehouseId, CancellationToken cancellationToken);
+    Task<List<Warehouse>> GetByOwnerIdAsync(int ownerId, CancellationToken cancellationToken);
+    Task UpdateAsync(Warehouse warehouse, CancellationToken cancellationToken);
 }

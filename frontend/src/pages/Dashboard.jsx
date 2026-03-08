@@ -20,7 +20,16 @@ function Dashboard() {
                   <Link to="/warehouse-new/7">
         <button>Xem thử Warehouse ID = 7</button>
       </Link>
+
+   <br></br>
+
+
+            <Link to="/my-warehouses">
+        <button>Danh sách kho của tôi</button>
+      </Link>
     </div>
+
+    
   );
 }
 

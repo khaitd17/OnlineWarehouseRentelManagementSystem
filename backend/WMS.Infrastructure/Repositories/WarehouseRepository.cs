@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence.ScaffoldModels;
+using System.Threading.Tasks;
 
 using DomainWarehouse = WMS.Domain.Entities.Warehouse;
 using DbWarehouse = WMS.Infrastructure.Persistence.ScaffoldModels.Warehouse;
@@ -76,4 +77,49 @@ public class WarehouseRepository : IWarehouseRepository
             CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
         };
     }
+
+    public async Task<List<DomainWarehouse>> GetByOwnerIdAsync(
+    int ownerId,
+    CancellationToken cancellationToken)
+    {
+        var warehouses = await _context.Warehouses
+            .Where(w => w.OwnerId == ownerId)
+            .ToListAsync(cancellationToken);
+
+        return warehouses.Select(entity => new DomainWarehouse
+        {
+            WarehouseId = entity.WarehouseId,
+            OwnerId = entity.OwnerId,
+            Name = entity.Name,
+            Address = entity.Address,
+            Lat = entity.Lat,
+            Lng = entity.Lng,
+            Description = entity.Description,
+            TotalArea = entity.TotalArea,
+            AvailableArea = entity.AvailableArea,
+            OperatingHours = entity.OperatingHours,
+            Status = entity.Status ?? "UNKNOWN",
+            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
+        }).ToList();
+    }
+    public async System.Threading.Tasks.Task UpdateAsync(
+        DomainWarehouse warehouse,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _context.Warehouses
+            .FirstOrDefaultAsync(w => w.WarehouseId == warehouse.WarehouseId, cancellationToken)
+            ?? throw new KeyNotFoundException("Warehouse not found");
+
+        entity.Name = warehouse.Name;
+        entity.Address = warehouse.Address;
+        entity.Lat = warehouse.Lat;
+        entity.Lng = warehouse.Lng;
+        entity.Description = warehouse.Description;
+        entity.OperatingHours = warehouse.OperatingHours;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+
 }
