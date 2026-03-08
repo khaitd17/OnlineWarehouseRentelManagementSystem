@@ -2,15 +2,21 @@ using MediatR;
 
 namespace WMS.Application.Features.Warehouses.CreateWarehouse;
 
-public record CreateWarehouseCommand(
-    string Name,
-    string Description,
-    string Address,
-    string City,
-    string Province,
-    double Area,
-    decimal PricePerMonth,
-    string WarehouseType,
-    int Capacity,
-    int OwnerId
-) : IRequest<int>;
+public class CreateWarehouseCommand : IRequest<int>
+{
+    public int OwnerId { get; set; }
+
+    public string Name { get; set; } = null!;
+
+    public string Address { get; set; } = null!;
+
+    public double? Lat { get; set; }
+
+    public double? Lng { get; set; }
+
+    public string? Description { get; set; }
+
+    public double TotalArea { get; set; }
+
+    public string? OperatingHours { get; set; }
+}

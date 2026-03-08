@@ -56,6 +56,7 @@ builder.Services.AddScoped<IRentalRequestRepository, RentalRequestRepository>();
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -107,6 +108,9 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
+
+// Cho phép public access file tĩnh (cho hình ảnh, avatar)
+app.UseStaticFiles();
 
 // Middleware order is important
 app.UseAuthentication();

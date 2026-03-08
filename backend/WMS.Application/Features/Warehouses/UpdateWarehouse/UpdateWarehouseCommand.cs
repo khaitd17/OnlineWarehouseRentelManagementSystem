@@ -1,6 +1,8 @@
-namespace WMS.Domain.Entities;
+using MediatR;
 
-public class Warehouse
+namespace WMS.Application.Features.Warehouses.UpdateWarehouse;
+
+public class UpdateWarehouseCommand : IRequest
 {
     public int WarehouseId { get; set; }
 
@@ -16,13 +18,5 @@ public class Warehouse
 
     public string? Description { get; set; }
 
-    public double TotalArea { get; set; }
-
-    public double AvailableArea { get; set; }
-
     public string? OperatingHours { get; set; }
-
-    public string Status { get; set; } = "PENDING";
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

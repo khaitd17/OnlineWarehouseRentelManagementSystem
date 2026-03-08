@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence.ScaffoldModels;
+using System.Threading.Tasks;
+
+using DomainWarehouse = WMS.Domain.Entities.Warehouse;
+using DbWarehouse = WMS.Infrastructure.Persistence.ScaffoldModels.Warehouse;
 
 namespace WMS.Infrastructure.Repositories;
 
@@ -14,47 +17,109 @@ public class WarehouseRepository : IWarehouseRepository
         _context = context;
     }
 
-    public async System.Threading.Tasks.Task AddAsync(WMS.Domain.Entities.Warehouse warehouse)
+    public async Task<int> CreateAsync(DomainWarehouse warehouse, CancellationToken cancellationToken)
     {
-        // Simple mapping for demonstration, you might need fuller mapping
-        var model = new WMS.Infrastructure.Persistence.ScaffoldModels.Warehouse
+        var entity = new DbWarehouse
         {
+            OwnerId = warehouse.OwnerId,
             Name = warehouse.Name,
+            Address = warehouse.Address,
+            Lat = warehouse.Lat,
+            Lng = warehouse.Lng,
             Description = warehouse.Description,
-            Address = warehouse.Address
-            // ...
+            TotalArea = warehouse.TotalArea,
+            AvailableArea = warehouse.AvailableArea,
+            OperatingHours = warehouse.OperatingHours,
+            Status = warehouse.Status,
+            CreatedAt = warehouse.CreatedAt
         };
-        await _context.Warehouses.AddAsync(model);
-        await _context.SaveChangesAsync();
+
+        _context.Warehouses.Add(entity);
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return entity.WarehouseId;
     }
 
-    public async Task<WMS.Domain.Entities.Warehouse?> GetByIdAsync(int id)
-    {
-        var scaffoldWarehouse = await _context.Warehouses
-            .FirstOrDefaultAsync(w => w.WarehouseId == id);
-        
-        if (scaffoldWarehouse == null)
-            return null;
-
-        return new WMS.Domain.Entities.Warehouse(
-            name: scaffoldWarehouse.Name,
-            description: scaffoldWarehouse.Description ?? string.Empty,
-            address: scaffoldWarehouse.Address,
-            city: "N/A", // TODO: Add to database schema
-            province: "N/A", // TODO: Add to database schema
-            area: scaffoldWarehouse.TotalArea,
-            pricePerMonth: 0, // TODO: Add to database schema
-            warehouseType: "General", // TODO: Add to database schema
-            capacity: 0, // TODO: Add to database schema
-            ownerId: scaffoldWarehouse.OwnerId
-        );
-    }
-
-    public async Task<int?> FindWarehouseOwnerById(int id, CancellationToken tk)
+    public async Task<int?> FindWarehouseOwnerById(
+        int warehouseId,
+        CancellationToken cancellationToken)
     {
         return await _context.Warehouses
-            .Where(x => x.WarehouseId == id)
-            .Select(x => (int?)x.OwnerId)
-            .FirstOrDefaultAsync(tk);
+            .Where(w => w.WarehouseId == warehouseId)
+            .Select(w => (int?)w.OwnerId)
+            .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<DomainWarehouse?> GetByIdAsync(
+        int warehouseId,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _context.Warehouses
+            .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId, cancellationToken);
+
+        if (entity == null)
+            return null;
+
+        return new DomainWarehouse
+        {
+            WarehouseId = entity.WarehouseId,
+            OwnerId = entity.OwnerId,
+            Name = entity.Name,
+            Address = entity.Address,
+            Lat = entity.Lat,
+            Lng = entity.Lng,
+            Description = entity.Description,
+            TotalArea = entity.TotalArea,
+            AvailableArea = entity.AvailableArea,
+            OperatingHours = entity.OperatingHours,
+            Status = entity.Status ?? "UNKNOWN",
+            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
+        };
+    }
+
+    public async Task<List<DomainWarehouse>> GetByOwnerIdAsync(
+    int ownerId,
+    CancellationToken cancellationToken)
+    {
+        var warehouses = await _context.Warehouses
+            .Where(w => w.OwnerId == ownerId)
+            .ToListAsync(cancellationToken);
+
+        return warehouses.Select(entity => new DomainWarehouse
+        {
+            WarehouseId = entity.WarehouseId,
+            OwnerId = entity.OwnerId,
+            Name = entity.Name,
+            Address = entity.Address,
+            Lat = entity.Lat,
+            Lng = entity.Lng,
+            Description = entity.Description,
+            TotalArea = entity.TotalArea,
+            AvailableArea = entity.AvailableArea,
+            OperatingHours = entity.OperatingHours,
+            Status = entity.Status ?? "UNKNOWN",
+            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
+        }).ToList();
+    }
+    public async System.Threading.Tasks.Task UpdateAsync(
+        DomainWarehouse warehouse,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _context.Warehouses
+            .FirstOrDefaultAsync(w => w.WarehouseId == warehouse.WarehouseId, cancellationToken)
+            ?? throw new KeyNotFoundException("Warehouse not found");
+
+        entity.Name = warehouse.Name;
+        entity.Address = warehouse.Address;
+        entity.Lat = warehouse.Lat;
+        entity.Lng = warehouse.Lng;
+        entity.Description = warehouse.Description;
+        entity.OperatingHours = warehouse.OperatingHours;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+
 }

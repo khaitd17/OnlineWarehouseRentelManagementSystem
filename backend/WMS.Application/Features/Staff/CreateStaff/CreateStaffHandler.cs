@@ -11,29 +11,30 @@ using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Staff.CreateStaff
 {
-    public class CreateStaffHandler : IRequestHandler<CreateStaffCommand,int>
+    public class CreateStaffHandler : IRequestHandler<CreateStaffCommand, int>
     {
         //private readonly IPasswordHasher _passwordHasher;
         private readonly IEmailService _emailService;
         private readonly IWarehouseRepository _warehouseRepository;
         private readonly IUserRepository _userRepository;
         private readonly IStaffAssigmentRepository _staffAssigmentRepository;
+        private readonly IPasswordGenerator _passwordGenerator;
         //private readonly IDateTimeProvider _dateTime;
 
         public CreateStaffHandler(
-            
             IEmailService emailService,
             IWarehouseRepository warehouseRepository,
             IUserRepository userRepository,
-            IStaffAssigmentRepository staffAssigmentRepository
+            IStaffAssigmentRepository staffAssigmentRepository,
+            IPasswordGenerator passwordGenerator
 
             )
         {
-            
             _emailService = emailService;
             _warehouseRepository = warehouseRepository;
             _userRepository = userRepository;
             _staffAssigmentRepository = staffAssigmentRepository;
+            _passwordGenerator = passwordGenerator;
         }
 
         public async Task<int> Handle(
@@ -63,16 +64,24 @@ namespace WMS.Application.Features.Staff.CreateStaff
             if (existingUserId == null)
             {
                 // Email doesn't exist - create new user
-                var rawPassword = "Aaaaaaa1";
+                var rawPassword = _passwordGenerator.Generate();
                 var passwordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
 
+                // var dto = new CreateUserDto(
+                //     FullName: request.FullName,
+                //     Email: request.Email,
+                //     PasswordHash: passwordHash,
+                //     Phone: request.Phone,
+                //     RoleId: 2  // Staff role
+                // );
+
                 var dto = new CreateUserDto(
-                    FullName: request.FullName,
-                    Email: request.Email,
-                    PasswordHash: passwordHash,
-                    Phone: request.Phone,
-                    RoleId: 2  // Staff role
-                );
+    FullName: request.FullName,
+    Email: request.Email,
+    PasswordHash: passwordHash,
+    Phone: request.Phone,
+    RoleName: "Staff"
+);
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);
 
