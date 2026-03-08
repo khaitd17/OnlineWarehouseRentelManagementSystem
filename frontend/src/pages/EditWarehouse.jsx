@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { createWarehouse } from "../services/warehouseService";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import api from "../api/api";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 
 const ChonViTri = ({ setLatLng }) => {
@@ -13,8 +14,9 @@ const ChonViTri = ({ setLatLng }) => {
   return null;
 };
 
-const CreateWarehousePage = () => {
+const EditWarehouse = () => {
 
+  const { id } = useParams();
   const user = JSON.parse(localStorage.getItem("user"));
 
   const [formData, setFormData] = useState({
@@ -22,11 +24,38 @@ const CreateWarehousePage = () => {
     address: "",
     lat: "",
     lng: "",
-    totalArea: "",
     openTime: "",
     closeTime: "",
     description: ""
   });
+
+  const loadWarehouse = async () => {
+
+    const res = await api.get(`/Warehouse/${id}`);
+
+    let openTime = "";
+    let closeTime = "";
+
+    if (res.data.operatingHours) {
+      const parts = res.data.operatingHours.split(" - ");
+      openTime = parts[0] || "";
+      closeTime = parts[1] || "";
+    }
+
+    setFormData({
+      name: res.data.name,
+      address: res.data.address,
+      lat: res.data.lat || "",
+      lng: res.data.lng || "",
+      openTime,
+      closeTime,
+      description: res.data.description || ""
+    });
+  };
+
+  useEffect(() => {
+    loadWarehouse();
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -44,41 +73,34 @@ const CreateWarehousePage = () => {
   };
 
   const handleSubmit = async (e) => {
+
     e.preventDefault();
 
-    try {
+    const payload = {
+      warehouseId: parseInt(id),
+      ownerId: user.userId,
+      name: formData.name,
+      address: formData.address,
+      lat: formData.lat ? parseFloat(formData.lat) : null,
+      lng: formData.lng ? parseFloat(formData.lng) : null,
+      description: formData.description,
+      operatingHours: `${formData.openTime} - ${formData.closeTime}`
+    };
 
-      const payload = {
-        ownerId: user.userId,
-        name: formData.name,
-        address: formData.address,
-        lat: formData.lat ? parseFloat(formData.lat) : null,
-        lng: formData.lng ? parseFloat(formData.lng) : null,
-        description: formData.description,
-        totalArea: parseFloat(formData.totalArea),
-        operatingHours: `${formData.openTime} - ${formData.closeTime}`
-      };
+    await api.put(`/Warehouse/${id}`, payload);
 
-      const result = await createWarehouse(payload);
-
-      alert("Tạo kho thành công! ID: " + result);
-
-    } catch (error) {
-      console.error(error);
-      alert("Có lỗi khi tạo kho");
-    }
+    alert("Cập nhật kho thành công");
   };
 
   return (
     <div style={{ maxWidth: "900px", margin: "3rem auto", padding: "0 2rem" }}>
 
-      {/* Tiêu đề */}
       <div style={{ textAlign: "center", marginBottom: "3rem" }}>
         <h1 style={{ fontSize: "2.2rem", fontWeight: 800, color: "#0f172a" }}>
-          Tạo kho mới
+          Cập nhật kho
         </h1>
         <p style={{ color: "#64748b" }}>
-          Thêm thông tin kho để bắt đầu cho thuê
+          Chỉnh sửa thông tin kho của bạn
         </p>
       </div>
 
@@ -96,36 +118,35 @@ const CreateWarehousePage = () => {
         }}
       >
 
-        {/* Tên kho */}
         <div style={groupStyle}>
           <label style={labelStyle}>Tên kho</label>
           <input
             name="name"
-            placeholder="Nhập tên kho"
+            value={formData.name}
             onChange={handleChange}
-            required
             style={inputStyle}
           />
         </div>
 
-        {/* Địa chỉ */}
         <div style={groupStyle}>
           <label style={labelStyle}>Địa chỉ</label>
           <input
             name="address"
-            placeholder="Nhập địa chỉ kho"
+            value={formData.address}
             onChange={handleChange}
-            required
             style={inputStyle}
           />
         </div>
 
-        {/* Chọn vị trí trên bản đồ */}
+        {/* MAP CHỌN VỊ TRÍ */}
         <div style={groupStyle}>
-          <label style={labelStyle}>Chọn vị trí trên bản đồ (tùy chọn)</label>
+          <label style={labelStyle}>Chọn vị trí trên bản đồ</label>
 
           <MapContainer
-            center={[10.762622, 106.660172]}
+            center={[
+              formData.lat || 10.762622,
+              formData.lng || 106.660172
+            ]}
             zoom={13}
             style={{
               height: "300px",
@@ -133,6 +154,7 @@ const CreateWarehousePage = () => {
               marginTop: "0.5rem"
             }}
           >
+
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
@@ -142,10 +164,11 @@ const CreateWarehousePage = () => {
             {formData.lat && (
               <Marker position={[formData.lat, formData.lng]} />
             )}
+
           </MapContainer>
         </div>
 
-        {/* Latitude + Longitude */}
+        {/* LAT LNG */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
 
           <div style={groupStyle}>
@@ -153,7 +176,6 @@ const CreateWarehousePage = () => {
             <input
               name="lat"
               value={formData.lat}
-              placeholder="Nhập latitude"
               onChange={handleChange}
               style={inputStyle}
             />
@@ -164,7 +186,6 @@ const CreateWarehousePage = () => {
             <input
               name="lng"
               value={formData.lng}
-              placeholder="Nhập longitude"
               onChange={handleChange}
               style={inputStyle}
             />
@@ -172,19 +193,7 @@ const CreateWarehousePage = () => {
 
         </div>
 
-        {/* Diện tích */}
-        <div style={groupStyle}>
-          <label style={labelStyle}>Tổng diện tích (m²)</label>
-          <input
-            name="totalArea"
-            placeholder="Nhập tổng diện tích"
-            onChange={handleChange}
-            required
-            style={inputStyle}
-          />
-        </div>
-
-        {/* Giờ hoạt động */}
+        {/* GIỜ HOẠT ĐỘNG */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
 
           <div style={groupStyle}>
@@ -192,8 +201,8 @@ const CreateWarehousePage = () => {
             <input
               type="time"
               name="openTime"
+              value={formData.openTime}
               onChange={handleChange}
-              required
               style={inputStyle}
             />
           </div>
@@ -203,30 +212,25 @@ const CreateWarehousePage = () => {
             <input
               type="time"
               name="closeTime"
+              value={formData.closeTime}
               onChange={handleChange}
-              required
               style={inputStyle}
             />
           </div>
 
         </div>
 
-        {/* Mô tả */}
         <div style={groupStyle}>
           <label style={labelStyle}>Mô tả</label>
           <textarea
             name="description"
-            rows="4"
-            placeholder="Mô tả thêm về kho"
+            value={formData.description}
             onChange={handleChange}
-            style={{
-              ...inputStyle,
-              resize: "vertical"
-            }}
+            rows="4"
+            style={{ ...inputStyle, resize: "vertical" }}
           />
         </div>
 
-        {/* Nút tạo kho */}
         <button
           type="submit"
           style={{
@@ -241,7 +245,7 @@ const CreateWarehousePage = () => {
             fontSize: "1rem"
           }}
         >
-          Tạo kho
+          Cập nhật kho
         </button>
 
       </form>
@@ -268,4 +272,4 @@ const inputStyle = {
   border: "1px solid #e2e8f0"
 };
 
-export default CreateWarehousePage;
+export default EditWarehouse;
