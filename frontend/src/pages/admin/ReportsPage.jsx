@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Users, UserCheck, Lock, UserPlus, Warehouse, CheckCircle, Clock, Building, FileText, DollarSign, AlertTriangle, TrendingUp } from "lucide-react";
+import { Users, UserCheck, Lock, UserPlus, Warehouse, CheckCircle, Clock, Building, FileText, AlertTriangle, TrendingUp } from "lucide-react";
 import adminService from "../../services/adminService";
 import StatCard from "../../components/StatCard";
 import { useToast } from "../../components/Toast";
@@ -93,39 +93,9 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Financial Stats */}
-          <div className="admin-card">
-            <div className="admin-card-header"><h3>Hợp đồng & Thanh toán</h3></div>
-            <div className="admin-card-body">
-              <div className="admin-stats-grid">
-                <StatCard icon={<FileText size={20} />} value={report.totalContracts} label="Tổng hợp đồng" color="blue" />
-                <StatCard icon={<CheckCircle size={20} />} value={report.activeContracts} label="Đang hoạt động" color="green" />
-                <StatCard icon={<DollarSign size={20} />} value={(report.totalRevenue || 0).toLocaleString("vi-VN") + "₫"} label="Tổng doanh thu" color="green" />
-                <StatCard icon={<Clock size={20} />} value={(report.pendingPayments || 0).toLocaleString("vi-VN") + "₫"} label="Chờ thanh toán" color="orange" />
-                <StatCard icon={<AlertTriangle size={20} />} value={(report.overduePayments || 0).toLocaleString("vi-VN") + "₫"} label="Quá hạn" color="red" />
-              </div>
-            </div>
-          </div>
+          {/* Financial Stats Removed */}
 
-          {/* Monthly Revenue */}
-          {report.monthlyRevenue && report.monthlyRevenue.length > 0 && (
-            <div className="admin-card">
-              <div className="admin-card-header"><h3>Doanh thu theo tháng</h3></div>
-              <div className="admin-card-body" style={{ padding: 0 }}>
-                <table className="admin-table">
-                  <thead><tr><th>Tháng</th><th style={{ textAlign: "right" }}>Doanh thu</th></tr></thead>
-                  <tbody>
-                    {report.monthlyRevenue.map(m => (
-                      <tr key={m.period}>
-                        <td>{m.period}</td>
-                        <td style={{ textAlign: "right", fontWeight: 600 }}>{(m.amount || 0).toLocaleString("vi-VN")}₫</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {/* Monthly Revenue Removed */}
         </>
       )}
     </div>

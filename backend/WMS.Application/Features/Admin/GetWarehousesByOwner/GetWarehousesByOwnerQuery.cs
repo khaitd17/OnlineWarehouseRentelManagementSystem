@@ -22,6 +22,7 @@ public record OwnerWarehouseDto(
     string Address,
     double TotalArea,
     double AvailableArea,
+    double OccupancyRate,
     string? Status,
     string? OperatingHours,
     DateTime? CreatedAt,

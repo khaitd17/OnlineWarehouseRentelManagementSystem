@@ -55,6 +55,7 @@ public class GetWarehousesByOwnerHandler : IRequestHandler<GetWarehousesByOwnerQ
             .Take(pageSize)
             .Select(w => new OwnerWarehouseDto(
                 w.WarehouseId, w.Name, w.Address, w.TotalArea, w.AvailableArea,
+                w.TotalArea > 0 ? Math.Round((w.TotalArea - w.AvailableArea) / w.TotalArea * 100, 2) : 0,
                 w.Status, w.OperatingHours, w.CreatedAt, w.ApprovedAt
             ))
             .ToListAsync(cancellationToken);

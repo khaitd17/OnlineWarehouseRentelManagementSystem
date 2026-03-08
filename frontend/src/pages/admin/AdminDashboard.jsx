@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Users, UserCheck, Lock, Warehouse, FileText, CheckCircle, DollarSign, Clock, AlertTriangle, TrendingUp } from "lucide-react";
+import { Users, UserCheck, Lock, Warehouse, FileText, CheckCircle, Clock, AlertTriangle, TrendingUp } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import adminService from "../../services/adminService";
 import StatCard from "../../components/StatCard";
@@ -35,18 +35,7 @@ export default function AdminDashboard() {
     { name: "Khác", value: Math.max(0, (report.totalWarehouses || 0) - (report.approvedWarehouses || 0) - (report.pendingWarehouses || 0)) },
   ].filter(d => d.value > 0);
 
-  const revenueBarData = (report.monthlyRevenue || []).map(m => ({
-    period: m.period,
-    amount: m.amount || 0,
-  }));
-
-  const paymentPieData = [
-    { name: "Đã thanh toán", value: report.totalRevenue || 0 },
-    { name: "Chờ xử lý", value: report.pendingPayments || 0 },
-    { name: "Quá hạn", value: report.overduePayments || 0 },
-  ].filter(d => d.value > 0);
-
-  const formatVND = (value) => {
+  const formatValue = (value) => {
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
     return value;
@@ -56,7 +45,7 @@ export default function AdminDashboard() {
     <div>
       <div className="admin-page-header">
         <h1>Tổng quan hệ thống</h1>
-        <p>Thống kê tổng hợp về người dùng, kho bãi, hợp đồng và doanh thu</p>
+        <p>Thống kê tổng hợp về người dùng, kho bãi và hợp đồng</p>
       </div>
 
       {/* Stat Cards */}
@@ -68,53 +57,10 @@ export default function AdminDashboard() {
         <StatCard icon={<Clock size={20} />} value={report.pendingWarehouses} label="Kho chờ duyệt" color="orange" />
         <StatCard icon={<FileText size={20} />} value={report.totalContracts} label="Tổng hợp đồng" color="blue" />
         <StatCard icon={<CheckCircle size={20} />} value={report.activeContracts} label="HĐ đang hoạt động" color="green" />
-        <StatCard icon={<DollarSign size={20} />} value={(report.totalRevenue || 0).toLocaleString("vi-VN") + "₫"} label="Tổng doanh thu" color="green" />
+        <StatCard icon={<TrendingUp size={20} />} value={report.averageOccupancyRate + "%"} label="Tỷ lệ lấp đầy TB" color="blue" />
       </div>
 
-      {/* Charts Row 1 — Revenue Bar + Payment Pie */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 20, marginBottom: 20 }}>
-        {/* Monthly Revenue Bar Chart */}
-        <div className="admin-card">
-          <div className="admin-card-header"><h3>Doanh thu theo tháng</h3></div>
-          <div className="admin-card-body">
-            {revenueBarData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={revenueBarData} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="period" tick={{ fontSize: 12, fill: "#6b7280" }} />
-                  <YAxis tickFormatter={formatVND} tick={{ fontSize: 12, fill: "#6b7280" }} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: 4, border: "1px solid #e5e7eb", fontSize: 13 }}
-                    formatter={(value) => [value.toLocaleString("vi-VN") + "₫", "Doanh thu"]}
-                  />
-                  <Bar dataKey="amount" fill="#0095c7" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>Chưa có dữ liệu doanh thu</div>
-            )}
-          </div>
-        </div>
-
-        {/* Payment Distribution Pie */}
-        <div className="admin-card">
-          <div className="admin-card-header"><h3>Phân bổ thanh toán</h3></div>
-          <div className="admin-card-body">
-            {paymentPieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie data={paymentPieData} cx="50%" cy="50%" outerRadius={90} innerRadius={50} dataKey="value" paddingAngle={2} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                    {paymentPieData.map((_, idx) => <Cell key={idx} fill={COLORS[idx % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip formatter={(value) => value.toLocaleString("vi-VN") + "₫"} contentStyle={{ borderRadius: 4, border: "1px solid #e5e7eb", fontSize: 13 }} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div style={{ textAlign: "center", padding: 40, color: "#9ca3af" }}>Chưa có dữ liệu</div>
-            )}
-          </div>
-        </div>
+      <div style={{ marginBottom: 20 }}>
       </div>
 
       {/* Charts Row 2 — User Pie + Warehouse Pie */}
@@ -158,12 +104,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Extra Stats */}
-      <div className="admin-stats-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))" }}>
-        <StatCard icon={<Clock size={20} />} value={(report.pendingPayments || 0).toLocaleString("vi-VN") + "₫"} label="Thanh toán chờ xử lý" color="orange" />
-        <StatCard icon={<AlertTriangle size={20} />} value={(report.overduePayments || 0).toLocaleString("vi-VN") + "₫"} label="Thanh toán quá hạn" color="red" />
-        <StatCard icon={<TrendingUp size={20} />} value={report.averageOccupancyRate + "%"} label="Tỷ lệ lấp đầy TB" color="blue" />
-      </div>
+      {/* Extra Stats Removed */}
     </div>
   );
 }

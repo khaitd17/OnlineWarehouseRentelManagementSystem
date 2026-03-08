@@ -81,6 +81,7 @@ export default function WarehousesPage() {
     { key: "totalArea", label: "Diện tích", sortable: true, render: (v) => `${v} m²` },
     { key: "availableArea", label: "Khả dụng", sortable: true, render: (v) => `${v} m²` },
     { key: "status", label: "Trạng thái", sortable: true, render: (v) => <StatusBadge status={v} /> },
+    { key: "occupancyRate", label: "Lấp đầy", sortable: true, render: (v) => <span style={{ fontWeight: 600, color: v > 80 ? "#ef4444" : v > 50 ? "#f59e0b" : "#10b981" }}>{v}%</span> },
     { key: "createdAt", label: "Ngày tạo", sortable: true, render: (v) => v ? new Date(v).toLocaleDateString("vi-VN") : "—" },
     { key: "actions", label: "Thao tác", sortable: false, render: (_, row) => (
       <div className="admin-btn-group">

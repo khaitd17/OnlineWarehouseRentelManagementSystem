@@ -23,7 +23,8 @@ const WarehouseDetailsPage = () => {
       "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800",
       "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=800",
       "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=800"
-    ]
+    ],
+    occupancyRate: 75
   };
 
   return (
@@ -88,9 +89,15 @@ const WarehouseDetailsPage = () => {
               <span style={{ fontSize: '0.95rem', color: '#64748b' }}> {warehouse.unit}</span>
             </div>
             
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '12px' }}>
-              <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>Diện tích khả dụng</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{warehouse.area} m²</div>
+            <div style={{ marginBottom: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '12px' }}>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>Diện tích khả dụng</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>{warehouse.area} m²</div>
+              </div>
+              <div style={{ padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '12px' }}>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>Tỷ lệ lấp đầy</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: warehouse.occupancyRate > 80 ? '#ef4444' : '#10b981' }}>{warehouse.occupancyRate}%</div>
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
