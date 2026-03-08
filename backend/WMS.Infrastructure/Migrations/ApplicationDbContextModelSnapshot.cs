@@ -22,62 +22,6 @@ namespace WMS.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("WMS.Domain.Entities.RentalRequest", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("DurationMonths")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Notes")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime?>("RejectedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("RejectionReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<int>("RenterId")
-                        .HasColumnType("int");
-
-                    b.Property<double>("RequestedArea")
-                        .HasColumnType("float");
-
-                    b.Property<int?>("ReviewedBy")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("WarehouseId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RenterId");
-
-                    b.HasIndex("Status");
-
-                    b.HasIndex("WarehouseId");
-
-                    b.ToTable("RentalRequests");
-                });
-
             modelBuilder.Entity("WMS.Domain.Entities.Warehouse", b =>
                 {
                     b.Property<int>("Id")
@@ -133,17 +77,6 @@ namespace WMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Warehouses");
-                });
-
-            modelBuilder.Entity("WMS.Domain.Entities.RentalRequest", b =>
-                {
-                    b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
-                        .WithMany()
-                        .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Warehouse");
                 });
 #pragma warning restore 612, 618
         }

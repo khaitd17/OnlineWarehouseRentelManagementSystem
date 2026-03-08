@@ -11,8 +11,6 @@ public partial class InventoryRequest
 
     public int WarehouseId { get; set; }
 
-    public int? RentalAreaId { get; set; }
-
     public string Type { get; set; } = null!;
 
     public string? Status { get; set; }
@@ -30,8 +28,6 @@ public partial class InventoryRequest
     public virtual User? ConfirmedByNavigation { get; set; }
 
     public virtual ICollection<InventoryItem> InventoryItems { get; set; } = new List<InventoryItem>();
-
-    public virtual RentalArea? RentalArea { get; set; }
 
     public virtual User Renter { get; set; } = null!;
 
