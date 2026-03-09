@@ -72,7 +72,7 @@ export default function AccountsPage() {
     {
       key: "actions", label: "Thao tác", sortable: false, render: (_, row) => (
         <div className="admin-btn-group">
-          {row.status === "ACTIVE" ? (
+          {row.status === "ACTIVE"  && row.roleName !== "ADMIN" ? (
             <button className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => handleStatusToggle(row.userId, row.status)}>Khóa</button>
           ) : row.status === "LOCKED" ? (
             <button className="admin-btn admin-btn-sm admin-btn-success" onClick={() => handleStatusToggle(row.userId, row.status)}>Kích hoạt</button>

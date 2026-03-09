@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { label: "Tổng quan", path: "/admin", icon: LayoutDashboard, end: true },
   { label: "Tài khoản", path: "/admin/accounts", icon: Users },
   { label: "Kho bãi", path: "/admin/warehouses", icon: Warehouse },
-  { label: "Kiểm kê", path: "/admin/audit-sessions", icon: ClipboardList },
+  // { label: "Kiểm kê", path: "/admin/audit-sessions", icon: ClipboardList },
   { label: "Báo cáo", path: "/admin/reports", icon: BarChart3 },
 ];
 
