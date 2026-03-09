@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using WMS.Application.Features.Warehouses.CreateWarehouse;
-using WMS.Application.Features.Warehouses.GetAllWarehouses;
 using WMS.Application.Features.Warehouses.GetOwnerWarehouses;
 using WMS.Application.Features.Warehouses.GetWarehouseDetail;
 using WMS.Application.Features.Warehouses.UpdateWarehouse;
@@ -113,11 +112,19 @@ public class WarehouseController : ControllerBase
         });
     }
 
-    [HttpGet("approved")]
-    [AllowAnonymous]
-    public async Task<IActionResult> GetApprovedWarehouses([FromQuery] int limit = 6)
+    [HttpGet("my-warehouses")]
+    public async Task<IActionResult> GetMyWarehouses()
     {
-        var result = await _mediator.Send(new GetApprovedWarehousesQuery { Limit = limit });
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _mediator.Send(
+            new GetOwnerWarehousesQuery(int.Parse(userId))
+        );
+
         return Ok(result);
     }
 }
