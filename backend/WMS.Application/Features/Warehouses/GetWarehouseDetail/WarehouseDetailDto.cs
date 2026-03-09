@@ -25,4 +25,5 @@ public class WarehouseDetailDto
     public string? Status { get; set; }
 
     public DateTime? CreatedAt { get; set; }
+    public List<WarehouseImageDto> Images { get; set; } = new();
 }

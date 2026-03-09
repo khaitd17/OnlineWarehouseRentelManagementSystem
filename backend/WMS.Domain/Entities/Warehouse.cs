@@ -25,4 +25,5 @@ public class Warehouse
     public string Status { get; set; } = "PENDING";
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public List<WarehouseImage> Images { get; set; } = new();
 }

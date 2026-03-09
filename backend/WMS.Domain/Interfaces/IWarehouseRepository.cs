@@ -11,4 +11,6 @@ public interface IWarehouseRepository
     Task<Warehouse?> GetByIdAsync(int warehouseId, CancellationToken cancellationToken);
     Task<List<Warehouse>> GetByOwnerIdAsync(int ownerId, CancellationToken cancellationToken);
     Task UpdateAsync(Warehouse warehouse, CancellationToken cancellationToken);
+
+    Task<bool> ExistsAsync(int warehouseId, CancellationToken cancellationToken);
 }

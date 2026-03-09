@@ -9,7 +9,11 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+        
+        services.AddScoped<IWarehouseMediaRepository, WarehouseMediaRepository>();
 
+        services.AddScoped<IWarehouseDocumentRepository, WarehouseDocumentRepository>();
+        
         return services;
     }
 }

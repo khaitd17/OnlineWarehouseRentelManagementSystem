@@ -50,6 +50,8 @@ builder.Services.AddValidatorsFromAssemblyContaining(typeof(RegisterCommand));
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+builder.Services.AddScoped<IWarehouseMediaRepository, WarehouseMediaRepository>();
+builder.Services.AddScoped<IWarehouseDocumentRepository, WarehouseDocumentRepository>();
 builder.Services.AddScoped<IStaffAssigmentRepository, StaffAssigmentRepository>();
 
 // Services
