@@ -11,20 +11,28 @@ function Dashboard() {
       <Link to="/create-staff">
         <button>Tạo Nhân Viên</button>
       </Link>
-<br></br>
-            <Link to="/warehouse-new/6">
-        <button>Xem thử Warehouse ID = 6</button>
-   
+      <br />
+      <Link to="/warehouse-new/1">
+        <button>Xem thử Warehouse ID = 1</button>
       </Link>
-   <br></br>
-                  <Link to="/warehouse-new/7">
-        <button>Xem thử Warehouse ID = 7</button>
+      <br />
+      <Link to="/warehouse-new/2">
+        <button>Xem thử Warehouse ID = 2</button>
       </Link>
-
-   <br></br>
-
-
-            <Link to="/my-warehouses">
+      <br />
+      <Link to="/warehouse-new/3">
+        <button>Xem thử Warehouse ID = 3</button>
+      </Link>
+      <br />
+      <Link to="/warehouse-new/4">
+        <button>Xem thử Warehouse ID = 4</button>
+      </Link>
+      <br />
+      <Link to="/warehouse-new/5">
+        <button>Xem thử Warehouse ID = 5</button>
+      </Link>
+      <br />
+      <Link to="/my-warehouses">
         <button>Danh sách kho của tôi</button>
       </Link>
 

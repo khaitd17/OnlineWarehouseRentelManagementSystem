@@ -17,7 +17,7 @@ public partial class RentalRequest
 
     public int DurationMonths { get; set; }
 
-    public string Status { get; set; } = "DRAFT";
+    public string Status { get; set; } = "PENDING";
 
     public string? Notes { get; set; }
 

@@ -60,8 +60,24 @@ const WarehouseDetail = () => {
         notes: ""
       });
     } catch (err) {
-      console.error(err);
-      alert("Có lỗi xảy ra khi lưu yêu cầu. Vui lòng thử lại!");
+      console.error("Full error:", err);
+      console.error("Response data:", err.response?.data);
+      console.error("Status:", err.response?.status);
+      
+      let message;
+      if (err.response) {
+        // Server responded with error
+        const data = err.response.data;
+        const mainMsg = data?.message || "";
+        const errorDetail = data?.error || "";
+        const innerDetail = data?.inner || "";
+        message = `[${err.response.status}] ${mainMsg}${errorDetail ? "\nError: " + errorDetail : ""}${innerDetail ? "\nInner: " + innerDetail : ""}`;
+      } else if (err.request) {
+        message = "Không thể kết nối đến server. Kiểm tra backend đang chạy.";
+      } else {
+        message = err.message;
+      }
+      alert("Lỗi: " + message);
     } finally {
       setSaving(false);
     }

@@ -10,7 +10,7 @@ public class RentalRequest
     public double RequestedArea { get; private set; }
     public DateTime StartDate { get; private set; }
     public int DurationMonths { get; private set; }
-    public string Status { get; private set; } = "DRAFT";
+    public string Status { get; private set; } = "PENDING";
     public string? Notes { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public int? ReviewedBy { get; private set; }
@@ -38,7 +38,7 @@ public class RentalRequest
             StartDate = startDate,
             DurationMonths = durationMonths,
             Notes = notes,
-            Status = "DRAFT",
+            Status = "PENDING",
             CreatedAt = DateTime.UtcNow
         };
     }
