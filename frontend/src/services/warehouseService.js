@@ -72,3 +72,18 @@ export const submitWarehouse = async (warehouseId) => {
     }
   );
 };
+
+export const getMyWarehouses = async () => {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  const response = await axios.get(
+    `${API_URL}/my-warehouses`,
+    {
+      headers: {
+        Authorization: `Bearer ${user.token}`
+      }
+    }
+  );
+
+  return response.data;
+};

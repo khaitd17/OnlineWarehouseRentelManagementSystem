@@ -111,4 +111,20 @@ public class WarehouseController : ControllerBase
             message = "Warehouse submitted for approval"
         });
     }
+
+    [HttpGet("my-warehouses")]
+    public async Task<IActionResult> GetMyWarehouses()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _mediator.Send(
+            new GetOwnerWarehousesQuery(int.Parse(userId))
+        );
+
+        return Ok(result);
+    }
 }
