@@ -24,7 +24,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var userId = await _mediator.Send(new RegisterCommand(req.FullName, req.Email, req.Password, req.Phone));
+            var userId = await _mediator.Send(new RegisterCommand(req.FullName, req.Email, req.Password, req.Phone, req.RoleName));
             return StatusCode(201, new { message = "Đăng ký thành công.", userId });
         }
         catch (InvalidOperationException ex)
@@ -74,7 +74,7 @@ public class AuthController : ControllerBase
 }
 
 // ---- Request DTOs ----
-public record RegisterRequest(string FullName, string Email, string Password, string? Phone);
+public record RegisterRequest(string FullName, string Email, string Password, string? Phone, string RoleName);
 public record LoginRequest(string Email, string Password);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NewPassword);

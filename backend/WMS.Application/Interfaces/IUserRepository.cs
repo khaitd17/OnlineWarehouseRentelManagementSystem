@@ -11,6 +11,7 @@ namespace WMS.Application.Interfaces;
 public interface IUserRepository
 {
     Task<UserRecord?> GetByEmailAsync(string email, CancellationToken ct = default);
+    Task<UserRecord?> GetByEmailOrPhoneAsync(string identifier, CancellationToken ct = default);
     Task<UserRecord?> GetByIdAsync(int userId, CancellationToken ct = default);
     Task<int> CreateAsync(CreateUserDto dto, CancellationToken ct = default);
     Task<bool> UpdateProfileAsync(UpdateProfileCommand cmd, CancellationToken ct = default);
@@ -44,5 +45,5 @@ public record CreateUserDto(
     string Email,
     string PasswordHash,
     string? Phone,
-    int RoleId
+    string RoleName
 );

@@ -50,6 +50,8 @@ builder.Services.AddValidatorsFromAssemblyContaining(typeof(RegisterCommand));
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+builder.Services.AddScoped<IWarehouseMediaRepository, WarehouseMediaRepository>();
+builder.Services.AddScoped<IWarehouseDocumentRepository, WarehouseDocumentRepository>();
 builder.Services.AddScoped<IStaffAssigmentRepository, StaffAssigmentRepository>();
 
 // Services
@@ -107,6 +109,9 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
+
+// Cho phép public access file tĩnh (cho hình ảnh, avatar)
+app.UseStaticFiles();
 
 // Middleware order is important
 app.UseAuthentication();
