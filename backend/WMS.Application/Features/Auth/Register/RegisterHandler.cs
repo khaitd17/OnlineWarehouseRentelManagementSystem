@@ -22,13 +22,12 @@ public class RegisterHandler : IRequestHandler<RegisterCommand, int>
         // Hash password bằng BCrypt
         string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
-        // roleId = 3 là Renter (sẽ được UserRepository xử lý lookup)
         var dto = new CreateUserDto(
             FullName: request.FullName,
             Email: request.Email,
             PasswordHash: passwordHash,
             Phone: request.Phone,
-            RoleId: 0  // 0 = auto-lookup RoleName="Renter" in repository
+            RoleName: request.RoleName
         );
 
         return await _userRepo.CreateAsync(dto, cancellationToken);

@@ -1,7 +1,35 @@
-import React from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, Outlet, useNavigate } from 'react-router-dom';
 
 const MainLayout = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || {});
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      setIsAuthenticated(!!localStorage.getItem('token'));
+      setUser(JSON.parse(localStorage.getItem('user')) || {});
+    };
+
+    window.addEventListener('authChange', handleAuthChange);
+    // Also listen to storage events if login happens in another tab
+    window.addEventListener('storage', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('authChange', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setIsAuthenticated(false);
+    setUser({});
+    navigate('/');
+  };
+
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', color: '#333', backgroundColor: '#f9fbfd', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Navbar */}
@@ -27,27 +55,41 @@ const MainLayout = () => {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          {localStorage.getItem('token') ? (
+          {isAuthenticated ? (
             <>
-              <Link to="/dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem' }}>Dashboard</Link>
-              <Link to="/profile" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem' }}>Profile</Link>
-              <button 
-                onClick={() => {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('user');
-                  window.location.href = '/';
-                }}
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  color: '#ef4444', 
-                  fontWeight: 600, 
-                  fontSize: '0.9rem', 
-                  cursor: 'pointer' 
-                }}
-              >
-                Đăng xuất
-              </button>
+              {((user?.role || user?.roleName || '').toUpperCase() === 'OWNER') && (
+                <Link to="/dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>Dashboard</Link>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <Link to="/profile" title="Trang cá nhân" style={{ display: 'flex', alignItems: 'center' }}>
+                  <img 
+                    src={user?.avatarUrl || user?.AvatarUrl || "https://www.svgrepo.com/show/5125/avatar.svg"} 
+                    alt="Profile" 
+                    style={{ 
+                      width: '40px', 
+                      height: '40px', 
+                      borderRadius: '50%', 
+                      objectFit: 'cover', 
+                      border: '2px solid #e2e8f0', 
+                      cursor: 'pointer',
+                      backgroundColor: '#f1f5f9'
+                    }} 
+                  />
+                </Link>
+                <button 
+                  onClick={handleLogout}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    color: '#ef4444', 
+                    fontWeight: 600, 
+                    fontSize: '0.9rem', 
+                    cursor: 'pointer'
+                  }}
+                >
+                  Đăng xuất
+                </button>
+              </div>
             </>
           ) : (
             <>

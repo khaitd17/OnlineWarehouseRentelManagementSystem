@@ -2,6 +2,8 @@ using WMS.Application.Features.Auth.ForgotPassword;
 using WMS.Application.Features.Auth.ResetPassword;
 using WMS.Application.Features.Users.GetProfile;
 using WMS.Application.Features.Users.UpdateProfile;
+using WMS.Application.Interfaces;
+using WMS.Domain.Entities;
 
 namespace WMS.Application.Interfaces;
 
@@ -9,6 +11,7 @@ namespace WMS.Application.Interfaces;
 public interface IUserRepository
 {
     Task<UserRecord?> GetByEmailAsync(string email, CancellationToken ct = default);
+    Task<UserRecord?> GetByEmailOrPhoneAsync(string identifier, CancellationToken ct = default);
     Task<UserRecord?> GetByIdAsync(int userId, CancellationToken ct = default);
     Task<int> CreateAsync(CreateUserDto dto, CancellationToken ct = default);
     Task<bool> UpdateProfileAsync(UpdateProfileCommand cmd, CancellationToken ct = default);
@@ -20,6 +23,9 @@ public interface IUserRepository
     Task SaveResetTokenAsync(int userId, string rawToken, DateTime expiresAt, CancellationToken ct = default);
     Task InvalidateOldTokensAsync(int userId, CancellationToken ct = default);
     Task MarkTokenUsedAsync(string rawToken, CancellationToken ct = default);
+    Task<int?> IsExistEmail(string email, CancellationToken ct = default);
+    //Task<User> AddAsync(User user, CancellationToken ct = default);
+
 }
 
 public record UserRecord(
@@ -39,5 +45,5 @@ public record CreateUserDto(
     string Email,
     string PasswordHash,
     string? Phone,
-    int RoleId
+    string RoleName
 );

@@ -15,21 +15,22 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
 
     public async Task<int> Handle(CreateWarehouseCommand request, CancellationToken cancellationToken)
     {
-        var warehouse = new Warehouse(
-            request.Name,
-            request.Description,
-            request.Address,
-            request.City,
-            request.Province,
-            request.Area,
-            request.PricePerMonth,
-            request.WarehouseType,
-            request.Capacity,
-            request.OwnerId
-        );
+        var warehouse = new Warehouse
+        {
+            OwnerId = request.OwnerId,
+            Name = request.Name,
+            Address = request.Address,
+            Lat = request.Lat,
+            Lng = request.Lng,
+            Description = request.Description,
+            TotalArea = request.TotalArea,
+            AvailableArea = request.TotalArea,
+            OperatingHours = request.OperatingHours,
+            Status = "HIDDEN"
+        };
 
-        await _repository.AddAsync(warehouse);
+        var warehouseId = await _repository.CreateAsync(warehouse, cancellationToken);
 
-        return warehouse.Id;
+        return warehouseId;
     }
 }

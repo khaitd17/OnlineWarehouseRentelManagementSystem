@@ -1,73 +1,126 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { createWarehouse } from "../services/warehouseService";
 
-function CreateWarehouse() {
-  const [form, setForm] = useState({
-    warehouseName: "",
-    description: "",
+import StepIndicator from "../components/warehouse/StepIndicator";
+import Step1WarehouseInfo from "../components/warehouse/Step1WarehouseInfo";
+import Step2UploadImages from "../components/warehouse/Step2UploadImages";
+import Step3UploadDocuments from "../components/warehouse/Step3UploadDocuments";
+
+const CreateWarehouse = () => {
+
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  const [step, setStep] = useState(1);
+  const [warehouseId, setWarehouseId] = useState(null);
+
+  const [formData, setFormData] = useState({
+    name: "",
     address: "",
-    city: "",
-    province: "",
-    area: "",
-    pricePerMonth: "",
-    warehouseType: "",
-    capacity: ""
+    lat: "",
+    lng: "",
+    totalArea: "",
+    openTime: "",
+    closeTime: "",
+    description: ""
   });
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
     });
   };
 
+  const setLatLng = (lat, lng) => {
+    setFormData((prev) => ({
+      ...prev,
+      lat,
+      lng
+    }));
+  };
+
   const handleSubmit = async (e) => {
+
     e.preventDefault();
+
     try {
-      const token = localStorage.getItem("token");
-      await createWarehouse(form, token);
-      alert("Tạo kho thành công! Chờ admin duyệt.");
+
+      const payload = {
+        ownerId: user.userId,
+        name: formData.name,
+        address: formData.address,
+
+        lat: formData.lat ? parseFloat(formData.lat) : null,
+        lng: formData.lng ? parseFloat(formData.lng) : null,
+
+        description: formData.description,
+        totalArea: parseFloat(formData.totalArea),
+        operatingHours: `${formData.openTime} - ${formData.closeTime}`
+      };
+
+      const id = await createWarehouse(payload);
+
+      setWarehouseId(id);
+
+      setStep(2);
+
     } catch (error) {
+
       console.error(error);
-      alert("Có lỗi xảy ra!");
+      alert("Có lỗi khi tạo kho");
+
     }
+
   };
 
   return (
-    <div>
-      <h2>Tạo Kho Mới</h2>
-      <form onSubmit={handleSubmit}>
-        <input name="warehouseName" placeholder="Tên kho" onChange={handleChange} required />
-        <br />
 
-        <textarea name="description" placeholder="Mô tả" onChange={handleChange} />
-        <br />
+    <div style={{ maxWidth: "900px", margin: "40px auto", padding: "0 20px" }}>
 
-        <input name="address" placeholder="Địa chỉ" onChange={handleChange} required />
-        <br />
+      <div style={{ textAlign: "center", marginBottom: "30px" }}>
+        <h1>Tạo kho mới</h1>
+      </div>
 
-        <input name="city" placeholder="Thành phố" onChange={handleChange} required />
-        <br />
+      <StepIndicator step={step} />
 
-        <input name="province" placeholder="Tỉnh" onChange={handleChange} required />
-        <br />
+      {step === 1 && (
 
-        <input name="area" type="number" placeholder="Diện tích (m2)" onChange={handleChange} required />
-        <br />
+        <Step1WarehouseInfo
+          formData={formData}
+          handleChange={handleChange}
+          handleSubmit={handleSubmit}
+          setLatLng={setLatLng}
+        />
 
-        <input name="pricePerMonth" type="number" placeholder="Giá thuê / tháng" onChange={handleChange} required />
-        <br />
+      )}
 
-        <input name="warehouseType" placeholder="Loại kho" onChange={handleChange} required />
-        <br />
+      {step === 2 && (
 
-        <input name="capacity" type="number" placeholder="Sức chứa" onChange={handleChange} required />
-        <br />
+        <Step2UploadImages
+          warehouseId={warehouseId}
+          next={() => setStep(3)}
+        />
 
-        <button type="submit">Tạo kho</button>
-      </form>
+      )}
+
+      {step === 3 && (
+
+        <Step3UploadDocuments
+          warehouseId={warehouseId}
+          finish={() => setStep(4)}
+        />
+
+      )}
+
+      {step === 4 && (
+        <div style={{ textAlign: "center", marginTop: "40px" }}>
+          <h2>Tạo Kho Thành Công</h2>
+        </div>
+      )}
+
     </div>
+
   );
-}
+};
 
 export default CreateWarehouse;
