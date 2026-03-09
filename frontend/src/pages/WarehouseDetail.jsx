@@ -5,6 +5,7 @@ import rentalService from "../services/rentalService";
 
 const WarehouseDetail = () => {
   const { id } = useParams();
+
   const [warehouse, setWarehouse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -21,7 +22,7 @@ const WarehouseDetail = () => {
       const res = await api.get(`/Warehouse/${id}`);
       setWarehouse(res.data);
     } catch (err) {
-      console.error(err);
+      console.error("API ERROR:", err);
     } finally {
       setLoading(false);
     }
@@ -99,9 +100,14 @@ const WarehouseDetail = () => {
     );
   }
 
+  const imageUrl =
+    warehouse.images && warehouse.images.length > 0
+      ? `http://localhost:5276${warehouse.images[0].url}`
+      : "https://images.unsplash.com/photo-1553413077-190dd305871c";
+
   return (
     <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh" }}>
-      
+
       {/* HEADER */}
       <section
         style={{
@@ -151,7 +157,7 @@ const WarehouseDetail = () => {
           }}
         >
 
-          {/* LEFT SIDE */}
+          {/* LEFT */}
           <div>
 
             {/* IMAGE */}
@@ -164,7 +170,7 @@ const WarehouseDetail = () => {
               }}
             >
               <img
-                src="https://images.unsplash.com/photo-1553413077-190dd305871c"
+                src={imageUrl}
                 alt="warehouse"
                 style={{
                   width: "100%",
@@ -227,7 +233,7 @@ const WarehouseDetail = () => {
 
           </div>
 
-          {/* RIGHT SIDE */}
+          {/* RIGHT */}
           <div
             style={{
               position: "sticky",
@@ -260,6 +266,7 @@ const WarehouseDetail = () => {
                   gap: "16px"
                 }}
               >
+
                 <div>
                   <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
                     Tổng diện tích
@@ -304,6 +311,7 @@ const WarehouseDetail = () => {
                     {warehouse.status}
                   </div>
                 </div>
+
               </div>
 
               {/* BUTTON */}

@@ -16,10 +16,10 @@ public class LoginHandler : IRequestHandler<LoginCommand, LoginResult>
 
     public async Task<LoginResult> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var user = await _userRepo.GetByEmailAsync(request.Email, cancellationToken);
+        var user = await _userRepo.GetByEmailOrPhoneAsync(request.Email, cancellationToken);
 
         if (user == null)
-            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
+            throw new UnauthorizedAccessException("Email/SĐT hoặc mật khẩu không đúng.");
 
         if (user.Status == "SUSPENDED" || user.Status == "DELETED")
             throw new UnauthorizedAccessException("Tài khoản của bạn đã bị khóa hoặc xóa.");
@@ -37,7 +37,8 @@ public class LoginHandler : IRequestHandler<LoginCommand, LoginResult>
             user.FullName,
             user.Email,
             user.RoleName,
-            token
+            token,
+            user.AvatarUrl
         );
     }
 }

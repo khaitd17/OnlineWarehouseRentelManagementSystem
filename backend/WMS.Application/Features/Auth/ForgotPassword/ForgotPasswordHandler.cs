@@ -32,7 +32,7 @@ public class ForgotPasswordHandler : IRequestHandler<ForgotPasswordCommand, bool
         await _userRepo.SaveResetTokenAsync(
             userId: user.UserId,
             rawToken: rawToken,
-            expiresAt: DateTime.UtcNow.AddHours(1),
+            expiresAt: DateTime.UtcNow.AddMinutes(15),
             ct: cancellationToken
         );
 

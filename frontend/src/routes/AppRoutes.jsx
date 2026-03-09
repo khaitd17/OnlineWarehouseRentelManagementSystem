@@ -10,6 +10,8 @@ import Dashboard from "../pages/Dashboard";
 import ProfilePage from "../pages/ProfilePage";
 import CreateStaff from "../pages/CreateStaff";
 import ListStaff from "../pages/ListStaff";
+import ForgotPage from "../pages/ForgotPage";
+import ResetPasswordPage from "../pages/ResetPasswordPage";
 import ProtectedRoute from "./ProtectedRoute";
 import CreateWarehouse from "../pages/CreateWarehouse";
 import WarehouseDetail from "../pages/WarehouseDetail";
@@ -29,6 +31,8 @@ function AppRoutes() {
           <Route path="/warehouse/:id" element={<WarehouseDetailsPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/about" element={<AboutUsPage />} />
+          <Route path="/forgot-password" element={<ForgotPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           
           {/* Protected Routes */}
           <Route element={<ProtectedRoute />}>

@@ -76,12 +76,12 @@ namespace WMS.Application.Features.Staff.CreateStaff
                 // );
 
                 var dto = new CreateUserDto(
-    FullName: request.FullName,
-    Email: request.Email,
-    PasswordHash: passwordHash,
-    Phone: request.Phone,
-    RoleName: "Staff"
-);
+                    FullName: request.FullName,
+                    Email: request.Email,
+                    PasswordHash: passwordHash,
+                    Phone: request.Phone,
+                    RoleName: "STAFF"  // Staff role
+                );
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);
 

@@ -63,7 +63,7 @@ const OwnerWarehouseList = () => {
             </p>
 
             <p>
-              Status: <b>{w.status}</b>
+              Trạng Thái: <b>{w.status}</b>
             </p>
 
 <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
@@ -93,7 +93,7 @@ const OwnerWarehouseList = () => {
     }}
     onClick={() => navigate(`/warehouse-edit/${w.warehouseId}`)}
   >
-    Edit
+    Chỉnh Sửa
   </button>
 
 </div>

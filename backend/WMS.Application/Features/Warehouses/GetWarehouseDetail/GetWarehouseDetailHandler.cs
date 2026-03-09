@@ -35,7 +35,13 @@ public class GetWarehouseDetailHandler
             AvailableArea = warehouse.AvailableArea,
             OperatingHours = warehouse.OperatingHours,
             Status = warehouse.Status,
-            CreatedAt = warehouse.CreatedAt
+            CreatedAt = warehouse.CreatedAt,
+
+                Images = warehouse.Images.Select(x => new WarehouseImageDto
+                {
+                    ImageId = x.ImageId,
+                    Url = x.Url
+                }).ToList()
         };
     }
 }
