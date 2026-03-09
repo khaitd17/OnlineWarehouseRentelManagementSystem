@@ -12,6 +12,13 @@ const getAuth = () => {
   };
 };
 
+export const getFeaturedWarehouses = async (limit = 6) => {
+  const response = await axios.get(`${API_URL}/approved`, {
+    params: { limit }
+  });
+  return response.data;
+};
+
 export const createWarehouse = async (data) => {
 
   const user = JSON.parse(localStorage.getItem("user"));
