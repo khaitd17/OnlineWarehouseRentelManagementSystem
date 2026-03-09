@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using DomainWarehouse = WMS.Domain.Entities.Warehouse;
 using DbWarehouse = WMS.Infrastructure.Persistence.ScaffoldModels.Warehouse;
+using WMS.Domain.Entities;
 
 namespace WMS.Infrastructure.Repositories;
 
@@ -51,32 +52,43 @@ public class WarehouseRepository : IWarehouseRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<DomainWarehouse?> GetByIdAsync(
-        int warehouseId,
-        CancellationToken cancellationToken)
+public async Task<DomainWarehouse?> GetByIdAsync(
+    int warehouseId,
+    CancellationToken cancellationToken)
+{
+    var entity = await _context.Warehouses
+        .Include(x => x.WarehouseMedia)
+        .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId, cancellationToken);
+
+    if (entity == null)
+        return null;
+
+    return new DomainWarehouse
     {
-        var entity = await _context.Warehouses
-            .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId, cancellationToken);
+        WarehouseId = entity.WarehouseId,
+        OwnerId = entity.OwnerId,
+        Name = entity.Name,
+        Address = entity.Address,
+        Lat = entity.Lat,
+        Lng = entity.Lng,
+        Description = entity.Description,
+        TotalArea = entity.TotalArea,
+        AvailableArea = entity.AvailableArea,
+        OperatingHours = entity.OperatingHours,
+        Status = entity.Status ?? "UNKNOWN",
+        CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
 
-        if (entity == null)
-            return null;
-
-        return new DomainWarehouse
-        {
-            WarehouseId = entity.WarehouseId,
-            OwnerId = entity.OwnerId,
-            Name = entity.Name,
-            Address = entity.Address,
-            Lat = entity.Lat,
-            Lng = entity.Lng,
-            Description = entity.Description,
-            TotalArea = entity.TotalArea,
-            AvailableArea = entity.AvailableArea,
-            OperatingHours = entity.OperatingHours,
-            Status = entity.Status ?? "UNKNOWN",
-            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
-        };
-    }
+        Images = entity.WarehouseMedia
+            .Where(m => m.MediaType == "IMAGE")
+            .OrderBy(m => m.DisplayOrder)
+            .Select(m => new WarehouseImage
+            {
+                ImageId = m.MediaId,
+                Url = m.MediaUrl
+            })
+            .ToList()
+    };
+}
 
     public async Task<List<DomainWarehouse>> GetByOwnerIdAsync(
     int ownerId,
@@ -120,6 +132,12 @@ public class WarehouseRepository : IWarehouseRepository
 
         await _context.SaveChangesAsync(cancellationToken);
     }
-
+    public async Task<bool> ExistsAsync(
+        int warehouseId,
+        CancellationToken cancellationToken)
+    {
+        return await _context.Warehouses
+            .AnyAsync(x => x.WarehouseId == warehouseId, cancellationToken);
+    }
 
 }
