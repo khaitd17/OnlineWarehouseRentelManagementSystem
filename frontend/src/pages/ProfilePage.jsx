@@ -144,7 +144,9 @@ const ProfilePage = () => {
             <img src={profile.avatarUrl || "https://i.pravatar.cc/150?u=me"} alt="User" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }} />
             <div>
               <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '1rem' }}>{profile.fullName}</div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>{profile.roleName}</div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                {(profile.role || profile.roleName || '').toUpperCase() === 'RENTER' ? 'Người thuê' : (profile.role || profile.roleName || '').toUpperCase() === 'OWNER' ? 'Chủ kho' : (profile.role || profile.roleName)}
+              </div>
             </div>
           </div>
           
@@ -221,7 +223,9 @@ const ProfilePage = () => {
                       </div>
                       <div style={{ marginBottom: '1.2rem' }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', marginBottom: '4px' }}>VAI TRÒ</div>
-                        <div style={{ display: 'inline-block', backgroundColor: '#f0fdf4', color: '#166534', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>{profile.roleName}</div>
+                        <div style={{ display: 'inline-block', backgroundColor: '#f0fdf4', color: '#166534', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
+                          {(profile.role || profile.roleName || '').toUpperCase() === 'RENTER' ? 'Người thuê' : (profile.role || profile.roleName || '').toUpperCase() === 'OWNER' ? 'Chủ kho' : (profile.role || profile.roleName)}
+                        </div>
                       </div>
                     </div>
                   </div>

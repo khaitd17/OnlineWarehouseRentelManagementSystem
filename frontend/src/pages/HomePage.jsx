@@ -62,9 +62,7 @@ const HomePage = () => {
         backgroundImage: 'linear-gradient(to right, #0095c7, #0077a3)'
       }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 10 }}>
-          <span style={{ display: 'inline-block', backgroundColor: 'rgba(255,255,255,0.2)', padding: '0.4rem 1rem', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 600, marginBottom: '1.5rem' }}>
-            Dành cho khách thuê
-          </span>
+
           <h1 style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: '1.5rem', lineHeight: 1.2 }}>
             Tìm không gian lưu trữ hoàn hảo cho doanh nghiệp
           </h1>
