@@ -26,7 +26,7 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             TotalArea = request.TotalArea,
             AvailableArea = request.TotalArea,
             OperatingHours = request.OperatingHours,
-            Status = "PENDING"
+            Status = "HIDDEN"
         };
 
         var warehouseId = await _repository.CreateAsync(warehouse, cancellationToken);
