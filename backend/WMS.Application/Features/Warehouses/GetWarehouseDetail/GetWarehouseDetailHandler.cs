@@ -1,4 +1,5 @@
 using MediatR;
+using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Warehouses.GetWarehouseDetail;
@@ -7,10 +8,12 @@ public class GetWarehouseDetailHandler
     : IRequestHandler<GetWarehouseDetailQuery, WarehouseDetailDto?>
 {
     private readonly IWarehouseRepository _repository;
+    private readonly IUserRepository _userRepository;
 
-    public GetWarehouseDetailHandler(IWarehouseRepository repository)
+    public GetWarehouseDetailHandler(IWarehouseRepository repository, IUserRepository userRepository)
     {
         _repository = repository;
+        _userRepository = userRepository;
     }
 
     public async Task<WarehouseDetailDto?> Handle(
@@ -21,6 +24,8 @@ public class GetWarehouseDetailHandler
 
         if (warehouse == null)
             return null;
+
+        var owner = await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken);
 
         return new WarehouseDetailDto
         {
@@ -36,12 +41,14 @@ public class GetWarehouseDetailHandler
             OperatingHours = warehouse.OperatingHours,
             Status = warehouse.Status,
             CreatedAt = warehouse.CreatedAt,
-
-                Images = warehouse.Images.Select(x => new WarehouseImageDto
-                {
-                    ImageId = x.ImageId,
-                    Url = x.Url
-                }).ToList()
+            Images = warehouse.Images.Select(x => new WarehouseImageDto
+            {
+                ImageId = x.ImageId,
+                Url = x.Url
+            }).ToList(),
+            OwnerName = owner?.FullName,
+            OwnerPhone = owner?.Phone,
+            OwnerAvatarUrl = owner?.AvatarUrl
         };
     }
 }

@@ -1,45 +1,61 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import api from '../api/api';
 
 const WarehouseDetailsPage = () => {
+  const { id } = useParams();
   const [formData, setFormData] = useState({
     startDate: '',
     fullName: '',
     phone: ''
   });
+  const [warehouseData, setWarehouseData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [lightbox, setLightbox] = useState({ open: false, index: 0 });
 
-  const warehouse = {
-    id: 1,
-    title: "Kho Logistics ABC - Khu Công Nghiệp Tân Bình",
-    price: "45.000.000",
-    unit: "VNĐ/tháng",
-    area: "1200",
-    location: "Đường số 4, KCN Tân Bình, Quận Bình Tân, TP. Hồ Chí Minh",
-    rating: 4.8,
-    reviews: 24,
-    type: "Kho khô",
-    status: "Còn trống",
-    owner: {
-      name: "Nguyễn Văn A",
-      avatar: "https://i.pravatar.cc/150?u=a",
-      lastActive: "Phản hồi < 1h"
-    },
-    description: "Kho Logistics ABC tọa lạc tại vị trí đắc địa thuộc Khu Công Nghiệp Tân Bình, dễ dàng kết nối với các tuyến đường huyết mạch vào trung tâm thành phố và các tỉnh miền Tây. Hệ thống kho bãi được xây dựng theo tiêu chuẩn quốc tế, phù hợp cho nhiều loại hình lưu trữ hàng hóa.\n\nĐiểm nổi bật của kho bao gồm trần cao trên 12m giúp tối ưu không gian lưu trữ theo chiều dọc. Hệ thống cửa xuất nhập hàng (loading docks) hiện đại, hỗ trợ nhiều loại xe tải và container 40ft ra vào thuận tiện 24/7.",
-    amenities: [
-      { name: "Bảo vệ 24/7", icon: "🛡️" },
-      { name: "PCCC tiêu chuẩn", icon: "🧯" },
-      { name: "Xe nâng hỗ trợ", icon: "🚜" },
-      { name: "Internet tốc độ cao", icon: "🌐" },
-      { name: "Hệ thống thoát nước", icon: "💧" }
-    ],
-    images: [
-      "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1200",
-      "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=600",
-      "https://images.unsplash.com/photo-1565891741441-64926e441838?auto=format&fit=crop&q=80&w=600",
-      "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=600",
-      "https://images.unsplash.com/photo-1624927637280-f033784c1279?auto=format&fit=crop&q=80&w=600"
-    ]
-  };
+  useEffect(() => {
+    const fetchWarehouse = async () => {
+      try {
+        const res = await api.get(`/Warehouse/${id}`);
+        setWarehouseData(res.data);
+      } catch (err) {
+        console.error('Failed to load warehouse:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWarehouse();
+  }, [id]);
+
+  const FALLBACK_IMAGES = [
+    "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1200",
+    "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=600",
+    "https://images.unsplash.com/photo-1565891741441-64926e441838?auto=format&fit=crop&q=80&w=600",
+    "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=600",
+    "https://images.unsplash.com/photo-1624927637280-f033784c1279?auto=format&fit=crop&q=80&w=600"
+  ];
+
+  const getImageUrl = (url) =>
+    url ? `http://localhost:5276${url}` : null;
+
+  const warehouse = warehouseData ? {
+    id: warehouseData.warehouseId,
+    title: warehouseData.name,
+    area: warehouseData.totalArea,
+    availableArea: warehouseData.availableArea,
+    location: warehouseData.address,
+    status: warehouseData.status === 'APPROVED' ? 'Còn trống' : warehouseData.status,
+    description: warehouseData.description || '',
+    operatingHours: warehouseData.operatingHours,
+    lat: warehouseData.lat,
+    lng: warehouseData.lng,
+    images: warehouseData.images && warehouseData.images.length > 0
+      ? warehouseData.images.map(img => getImageUrl(img.url)).filter(Boolean)
+      : FALLBACK_IMAGES,
+    ownerName: warehouseData.ownerName || 'Chủ kho',
+    ownerPhone: warehouseData.ownerPhone || null,
+    ownerAvatarUrl: warehouseData.ownerAvatarUrl ? `http://localhost:5276${warehouseData.ownerAvatarUrl}` : `https://i.pravatar.cc/150?u=${warehouseData.ownerId}`,
+  } : null;
 
   const similarWarehouses = [
     {
@@ -81,6 +97,23 @@ const WarehouseDetailsPage = () => {
     </div>
   );
 
+  const openLightbox = (index) => setLightbox({ open: true, index });
+  const closeLightbox = () => setLightbox({ open: false, index: 0 });
+  const prevImage = (e) => { e.stopPropagation(); setLightbox(lb => ({ ...lb, index: (lb.index - 1 + (warehouse?.images.length || 1)) % (warehouse?.images.length || 1) })); };
+  const nextImage = (e) => { e.stopPropagation(); setLightbox(lb => ({ ...lb, index: (lb.index + 1) % (warehouse?.images.length || 1) })); };
+
+  if (loading) {
+    return (
+      <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Đang tải dữ liệu kho...</div>
+    );
+  }
+
+  if (!warehouse) {
+    return (
+      <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Không tìm thấy kho.</div>
+    );
+  }
+
   return (
     <div style={{ backgroundColor: '#fff', minHeight: '100vh' }}>
       {/* Container wraps the entire page content */}
@@ -94,6 +127,7 @@ const WarehouseDetailsPage = () => {
           <span>›</span>
           <span style={{ color: '#0f172a', fontWeight: 500 }}>{warehouse.title}</span>
         </nav>
+      
 
         {/* Title Section */}
         <div style={{ marginBottom: '1.5rem' }}>
@@ -103,41 +137,125 @@ const WarehouseDetailsPage = () => {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0095c7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
               {warehouse.location}
             </div>
-            <div style={{ backgroundColor: '#f0f9ff', color: '#0095c7', padding: '4px 8px', borderRadius: '6px', fontWeight: 700, fontSize: '0.9rem' }}>
-              ★ {warehouse.rating}/5
-            </div>
           </div>
         </div>
 
         {/* Image Gallery */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '1.5fr 1fr', 
-          gap: '12px', 
-          marginBottom: '2rem',
-          height: '450px' 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: warehouse.images.length > 1 ? '1.5fr 1fr' : '1fr',
+          gap: '12px',
+          marginBottom: '2rem'
         }}>
-          <div style={{ borderRadius: '12px', overflow: 'hidden' }}>
+          {/* Main image */}
+          <div
+            style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', height: '450px' }}
+            onClick={() => openLightbox(0)}
+          >
             <img src={warehouse.images[0]} alt="Main" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '12px' }}>
-            {warehouse.images.slice(1, 4).map((img, idx) => (
-              <div key={idx} style={{ borderRadius: '12px', overflow: 'hidden' }}>
-                <img src={img} alt={`Gallery ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-            ))}
-            <div style={{ borderRadius: '12px', overflow: 'hidden', position: 'relative' }}>
-              <img src={warehouse.images[4]} alt="More" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <div style={{ 
-                position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                color: '#fff', fontSize: '1.1rem', fontWeight: 600, cursor: 'pointer' 
-              }}>
-                +12 ảnh khác
-              </div>
+
+          {/* Side thumbnails — only render when there are extra images */}
+          {warehouse.images.length > 1 && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '12px', height: '450px' }}>
+              {warehouse.images.slice(1, 4).map((img, idx) => (
+                <div
+                  key={idx}
+                  style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', minHeight: 0 }}
+                  onClick={() => openLightbox(idx + 1)}
+                >
+                  <img src={img} alt={`Gallery ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ))}
+              {/* 4th cell: "see all" overlay if more than 4 images, else the 4th image itself */}
+              {warehouse.images.length > 4 ? (
+                <div
+                  style={{ borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: 'pointer', minHeight: 0 }}
+                  onClick={() => openLightbox(4)}
+                >
+                  <img src={warehouse.images[4]} alt="More" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <div style={{
+                    position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontSize: '1.1rem', fontWeight: 700
+                  }}>
+                    +{warehouse.images.length - 4} ảnh
+                  </div>
+                </div>
+              ) : warehouse.images[4] ? (
+                <div
+                  style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', minHeight: 0 }}
+                  onClick={() => openLightbox(4)}
+                >
+                  <img src={warehouse.images[4]} alt="Gallery 4" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {/* Lightbox Modal */}
+        {lightbox.open && (
+          <div
+            onClick={closeLightbox}
+            style={{
+              position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)',
+              zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}
+          >
+            {/* Close */}
+            <button
+              onClick={closeLightbox}
+              style={{
+                position: 'absolute', top: '20px', right: '24px',
+                background: 'none', border: 'none', color: '#fff',
+                fontSize: '2rem', cursor: 'pointer', lineHeight: 1
+              }}
+            >✕</button>
+
+            {/* Prev */}
+            {warehouse.images.length > 1 && (
+              <button
+                onClick={prevImage}
+                style={{
+                  position: 'absolute', left: '16px',
+                  background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
+                  fontSize: '2rem', cursor: 'pointer', borderRadius: '50%',
+                  width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >‹</button>
+            )}
+
+            {/* Image */}
+            <img
+              src={warehouse.images[lightbox.index]}
+              alt={`Ảnh ${lightbox.index + 1}`}
+              onClick={e => e.stopPropagation()}
+              style={{ maxHeight: '90vh', maxWidth: '90vw', objectFit: 'contain', borderRadius: '8px' }}
+            />
+
+            {/* Next */}
+            {warehouse.images.length > 1 && (
+              <button
+                onClick={nextImage}
+                style={{
+                  position: 'absolute', right: '16px',
+                  background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
+                  fontSize: '2rem', cursor: 'pointer', borderRadius: '50%',
+                  width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+              >›</button>
+            )}
+
+            {/* Counter */}
+            <div style={{
+              position: 'absolute', bottom: '24px',
+              color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem'
+            }}>
+              {lightbox.index + 1} / {warehouse.images.length}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Main Grid: Content + Sidebar */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '2rem' }}>
@@ -148,9 +266,9 @@ const WarehouseDetailsPage = () => {
             {/* Quick Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
               {[
-                { label: "DIỆN TÍCH", value: `${warehouse.area} m²`, icon: "📐" },
-                { label: "GIÁ THUÊ", value: "45M VND", icon: "💵" },
-                { label: "LOẠI KHO", value: warehouse.type, icon: "🏢" },
+                { label: "TỔNG DIỆN TÍCH", value: `${warehouse.area} m²`, icon: "📐" },
+                { label: "CÒN TRỐNG", value: `${warehouse.availableArea} m²`, icon: "📦" },
+                { label: "GIỜ HOẠT ĐỘNG", value: warehouse.operatingHours || 'Không rõ', icon: "🕐" },
                 { label: "TRẠNG THÁI", value: warehouse.status, icon: "✅" }
               ].map((stat, i) => (
                 <div key={i} style={{ backgroundColor: '#f8fafc', padding: '1.2rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #f1f5f9' }}>
@@ -169,50 +287,37 @@ const WarehouseDetailsPage = () => {
               </p>
             </section>
 
-            {/* Amenities */}
-            <section>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1.2rem' }}>Tiện ích đi kèm</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                {warehouse.amenities.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', backgroundColor: '#f0f9ff', borderRadius: '10px', color: '#1e293b', fontSize: '0.9rem', fontWeight: 600 }}>
-                    <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
-                    {item.name}
-                  </div>
-                ))}
-              </div>
-            </section>
 
-            {/* Map Placeholder */}
-            <section>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1.2rem' }}>Vị trí trên bản đồ</h2>
-              <div style={{ width: '100%', height: '300px', backgroundColor: '#f1f5f9', borderRadius: '16px', overflow: 'hidden', position: 'relative' }}>
-                <img src="https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/106.63,10.80,12/1200x300?access_token=none" alt="Map" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', backgroundColor: '#fff', padding: '12px 20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="#0095c7"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                  <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Khu Công Nghiệp Tân Bình</div>
-                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Quận Bình Tân, TP. HCM</div>
-                  </div>
+
+            {/* Map */}
+            {warehouse.lat && warehouse.lng && (
+              <section>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1.2rem' }}>Vị trí trên bản đồ</h2>
+                <div style={{ width: '100%', height: '300px', borderRadius: '16px', overflow: 'hidden' }}>
+                  <iframe
+                    title="map"
+                    width="100%"
+                    height="300"
+                    style={{ border: 0 }}
+                    src={`https://maps.google.com/maps?q=${warehouse.lat},${warehouse.lng}&z=15&output=embed`}
+                  ></iframe>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
 
           </div>
 
           {/* RIGHT: Sidebar sticky card */}
-          <aside style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <aside style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '20px', alignSelf: 'start' }}>
             <div style={{ 
               backgroundColor: '#fff', 
               borderRadius: '20px', 
               padding: '24px', 
               boxShadow: '0 4px 30px rgba(0,0,0,0.06)', 
-              border: '1px solid #f1f5f9',
-              position: 'sticky',
-              top: '20px'
+              border: '1px solid #f1f5f9'
             }}>
               <div style={{ marginBottom: '1.5rem' }}>
-                <span style={{ fontSize: '1.7rem', fontWeight: 800, color: '#0095c7' }}>{warehouse.price}đ</span>
-                <span style={{ fontSize: '0.9rem', color: '#64748b' }}>/tháng</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Diện tích còn trống: {warehouse.availableArea} m²</span>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '1.5rem' }}>
@@ -261,11 +366,13 @@ const WarehouseDetailsPage = () => {
               </button>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
-                <img src={warehouse.owner.avatar} alt="Owner" style={{ width: '48px', height: '48px', borderRadius: '50%' }} />
+                <img src={warehouse.ownerAvatarUrl} alt="Owner" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
                 <div>
                   <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Chủ kho</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>{warehouse.owner.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 600 }}>● {warehouse.owner.lastActive}</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>{warehouse.ownerName}</div>
+                  {warehouse.ownerPhone && (
+                    <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '2px' }}>{warehouse.ownerPhone}</div>
+                  )}
                 </div>
               </div>
             </div>

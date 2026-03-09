@@ -9,7 +9,7 @@ export const getMyWarehouses = async () => {
 };
 
 export const getFeaturedWarehouses = async (limit = 6) => {
-  const response = await axios.get(`${API_URL}/approved`, {
+  const response = await axiosClient.get("/Warehouse/approved", {
     params: { limit }
   });
   return response.data;
