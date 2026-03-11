@@ -1,11 +1,12 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const PortfolioTable = () => {
   const warehouses = [
-    { name: 'Kho Trung Tâm Logistics Phía Bắc', location: 'Jersey City, NJ', occupancy: 85, revenue: '$45,000', status: 'ACTIVE' },
-    { name: 'Trung Tâm Lưu Trữ Phía Nam', location: 'Austin, TX', occupancy: 62, revenue: '$32,800', status: 'ACTIVE' },
-    { name: 'Kho Bãi Phía Đông', location: 'Brooklyn, NY', occupancy: 95, revenue: '$58,200', status: 'AT CAPACITY' },
-    { name: 'Ga Cánh Phía Tây', location: 'Denver, CO', occupancy: 48, revenue: '$21,400', status: 'ACTIVE' },
+    { name: 'North Logistics Hub', location: 'Jersey City, NJ', occupancy: 85, revenue: '$45,000', status: 'ACTIVE' },
+    { name: 'South Storage Center', location: 'Austin, TX', occupancy: 62, revenue: '$32,800', status: 'ACTIVE' },
+    { name: 'East Coast Depot', location: 'Brooklyn, NY', occupancy: 95, revenue: '$58,200', status: 'AT CAPACITY' },
+    { name: 'West Wing Terminal', location: 'Denver, CO', occupancy: 48, revenue: '$21,400', status: 'ACTIVE' },
   ];
 
   const getStatusColor = (status) => {
@@ -32,17 +33,17 @@ const PortfolioTable = () => {
       flex: 1
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>Danh mục kho bãi</h3>
-        <button style={{ color: '#1152d4', background: 'none', border: 'none', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}>Xem tất cả</button>
+        <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>Warehouse Portfolio</h3>
+        <Link to="/my-warehouses" style={{ color: '#1152d4', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none' }}>View All</Link>
       </div>
 
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-            <th style={{ textAlign: 'left', padding: '12px 0', color: '#9ca3af', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Tên Kho</th>
-            <th style={{ textAlign: 'left', padding: '12px 0', color: '#9ca3af', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Tỉ lệ lấp đầy</th>
-            <th style={{ textAlign: 'left', padding: '12px 0', color: '#9ca3af', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Doanh thu tháng</th>
-            <th style={{ textAlign: 'right', padding: '12px 0', color: '#9ca3af', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase' }}>Trạng thái</th>
+            <th style={{ textAlign: 'left', padding: '12px 0', color: '#94a3b8', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>WAREHOUSE NAME</th>
+            <th style={{ textAlign: 'left', padding: '12px 0', color: '#94a3b8', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>OCCUPANCY</th>
+            <th style={{ textAlign: 'left', padding: '12px 0', color: '#94a3b8', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>MONTHLY REV</th>
+            <th style={{ textAlign: 'right', padding: '12px 0', color: '#94a3b8', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>STATUS</th>
           </tr>
         </thead>
         <tbody>
