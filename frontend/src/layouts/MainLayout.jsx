@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 
-const DASHBOARD_PATHS = ['/dashboard', '/my-warehouses', '/post-warehouse', '/create-warehouse', '/warehouse-edit', '/warehouse-new', '/create-staff', '/list-staff', '/my-rental-requests', '/pending-rental-requests', '/rental-request', '/renter-dashboard', '/staff-dashboard'];
+const DASHBOARD_PATHS = [
+  // Owner paths
+  '/dashboard', '/my-warehouses', '/post-warehouse', '/create-warehouse',
+  '/warehouse-edit', '/warehouse-new', '/create-staff', '/list-staff',
+  '/pending-rental-requests', '/rental-request',
+  // Staff / Manager paths
+  '/staff-dashboard', '/inbound-requests', '/outbound-requests',
+  '/confirm-movement', '/create-inbound', '/create-outbound',
+  // Renter paths
+  '/renter-dashboard', '/my-rental-requests', '/renter-inbound-requests', '/renter-outbound-requests',
+  // Shared paths (all roles)
+  '/transaction-history', '/profile',
+];
 
 const MainLayout = () => {
   const location = useLocation();

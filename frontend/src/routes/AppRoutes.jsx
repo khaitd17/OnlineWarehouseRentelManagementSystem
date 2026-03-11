@@ -32,6 +32,8 @@ import StaffDashboard from "../pages/Requests/StaffDashboard";
 import RenterDashboard from "../pages/Requests/RenterDashboard";
 import CreateInboundRequest from "../pages/Requests/CreateInboundRequest";
 import TransactionHistory from "../pages/Requests/TransactionHistory";
+import RenterInboundList from "../pages/Requests/RenterInboundList";
+import RenterOutboundList from "../pages/Requests/RenterOutboundList";
 
 function AppRoutes() {
   return (
@@ -64,8 +66,6 @@ function AppRoutes() {
               <Route path="/list-staff" element={<ListStaff />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
-              <Route path="/outbound-requests" element={<OutboundRequestsList />} />
-              <Route path="/create-inbound" element={<CreateInboundRequest />} />
             </Route>
           </Route>
 
@@ -76,8 +76,7 @@ function AppRoutes() {
               <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
               <Route path="/outbound-requests" element={<OutboundRequestsList />} />
               <Route path="/confirm-movement" element={<ConfirmMovement />} />
-              <Route path="/create-inbound" element={<CreateInboundRequest />} />
-              <Route path="/create-outbound" element={<CreateOutboundRequest />} />
+              <Route path="/transaction-history" element={<TransactionHistory />} />
             </Route>
           </Route>
 
@@ -85,10 +84,10 @@ function AppRoutes() {
           <Route element={<RoleBasedRoute allowedRoles={['RENTER']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/renter-dashboard" element={<RenterDashboard />} />
-              <Route path="/create-inbound" element={<CreateInboundRequest />} />
-              <Route path="/create-outbound" element={<CreateOutboundRequest />} />
-              <Route path="/outbound-requests" element={<OutboundRequestsList />} />
+              <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
+              <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
               <Route path="/my-rental-requests" element={<MyRentalRequests />} />
+              <Route path="/transaction-history" element={<TransactionHistory />} />
             </Route>
           </Route>
 
@@ -96,6 +95,8 @@ function AppRoutes() {
           <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OWNER', 'RENTER']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/transaction-history" element={<TransactionHistory />} />
+              <Route path="/create-inbound" element={<CreateInboundRequest />} />
+              <Route path="/create-outbound" element={<CreateOutboundRequest />} />
             </Route>
           </Route>
 

@@ -1,183 +1,169 @@
-import React from 'react';
+import React, { useState } from 'react';
+
+const MOCK_DATA = [
+  { id: '#ORD-7721', warehouse: 'Central HUB (A)', item: 'Industrial Steel Pipes', quantity: '500 units', destination: 'Chicago, IL', shippingDate: 'Nov 15, 2023', status: 'Đang chờ', createdDate: 'Nov 10, 2023' },
+  { id: '#ORD-7722', warehouse: 'West Coast Log.', item: 'High-Grade Copper Wire', quantity: '1,200 units', destination: 'Austin, TX', shippingDate: 'Nov 14, 2023', status: 'Đã giao', createdDate: 'Nov 09, 2023' },
+  { id: '#ORD-7723', warehouse: 'Central HUB (A)', item: 'Aluminium Sheets (4×8)', quantity: '300 units', destination: 'Seattle, WA', shippingDate: 'Nov 18, 2023', status: 'Đã hủy', createdDate: 'Nov 11, 2023' },
+  { id: '#ORD-7724', warehouse: 'Southern Depot (C)', item: 'Mounting Brackets', quantity: '2,500 units', destination: 'Miami, FL', shippingDate: 'Nov 16, 2023', status: 'Đang chờ', createdDate: 'Nov 12, 2023' },
+  { id: '#ORD-7725', warehouse: 'West Coast Log.', item: 'Power Converters', quantity: '45 units', destination: 'Portland, OR', shippingDate: 'Nov 13, 2023', status: 'Đã giao', createdDate: 'Nov 08, 2023' },
+];
+
+const STATUS_FILTERS = ['Tất cả', 'Đang chờ', 'Đã giao', 'Đã hủy'];
+
+const StatusBadge = ({ status }) => {
+  const map = {
+    'Đang chờ': 'bg-amber-100 text-amber-700 border border-amber-200',
+    'Đã giao': 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+    'Đã hủy': 'bg-slate-100 text-slate-600 border border-slate-200',
+  };
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[status] || 'bg-slate-100 text-slate-600'}`}>
+      {status}
+    </span>
+  );
+};
 
 const OutboundRequestsList = () => {
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState('Tất cả');
+
+  const filtered = MOCK_DATA.filter(row => {
+    const matchSearch = !search || [row.id, row.item, row.destination].some(v => v.toLowerCase().includes(search.toLowerCase()));
+    const matchStatus = activeFilter === 'Tất cả' || row.status === activeFilter;
+    return matchSearch && matchStatus;
+  });
+
   return (
     <div className="w-full flex-1 flex flex-col min-w-0" style={{ fontFamily: 'Inter, sans-serif' }}>
 
-{/*  Page Title and CTA  */}
-<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-<div>
-<h1 className="text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Outbound Requests</h1>
-<p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Manage and track your outgoing shipments and delivery orders.</p>
-</div>
-<button className="bg-primary hover:bg-primary/90 text-white px-5 py-2.5 rounded-lg font-bold text-sm flex items-center gap-2 transition-all shadow-sm shadow-primary/20">
-<span className="material-symbols-outlined text-lg">add_circle</span>
-                Create Outbound Request
-            </button>
-</div>
-{/*  Filters Section  */}
-<div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 mb-6 shadow-sm">
-<div className="flex flex-col lg:flex-row gap-4">
-<div className="flex-1 relative">
-<span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-<input className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" placeholder="Search by Request ID, Item or Destination..." type="text"/>
-</div>
-<div className="flex flex-wrap gap-2">
-<button className="px-4 py-2.5 rounded-lg bg-primary/10 text-primary font-semibold text-sm border border-primary/20">All Requests</button>
-<button className="px-4 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-colors">Pending</button>
-<button className="px-4 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-colors">Shipped</button>
-<button className="px-4 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-100 transition-colors">Cancelled</button>
-<div className="h-10 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
-<button className="px-3 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
-<span className="material-symbols-outlined text-lg">filter_list</span>
-<span className="text-sm font-medium">More Filters</span>
-</button>
-</div>
-</div>
-</div>
-{/*  Table Container  */}
-<div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-<div className="overflow-x-auto @container">
-<table className="w-full text-left border-collapse">
-<thead>
-<tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-<th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Request ID</th>
-<th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Warehouse</th>
-<th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Item Name</th>
-<th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Quantity</th>
-<th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Destination</th>
-<th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Shipping Date</th>
-<th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-<th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Created Date</th>
-<th className="px-6 py-4 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
-</tr>
-</thead>
-<tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-<tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
-<td className="px-6 py-4 text-sm font-bold text-primary">#ORD-7721</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Central HUB (A)</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">Industrial Steel Pipes</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">500 units</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Chicago, IL</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Nov 15, 2023</td>
-<td className="px-6 py-4">
-<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                    Pending
-                                </span>
-</td>
-<td className="px-6 py-4 text-sm text-slate-400">Nov 10, 2023</td>
-<td className="px-6 py-4 text-right">
-<div className="flex justify-end gap-2">
-<button className="p-1.5 text-slate-400 hover:text-primary transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
-<button className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
-</div>
-</td>
-</tr>
-<tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
-<td className="px-6 py-4 text-sm font-bold text-primary">#ORD-7722</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">West Coast Log.</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">High-Grade Copper Wire</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">1,200 units</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Austin, TX</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Nov 14, 2023</td>
-<td className="px-6 py-4">
-<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                    Shipped
-                                </span>
-</td>
-<td className="px-6 py-4 text-sm text-slate-400">Nov 09, 2023</td>
-<td className="px-6 py-4 text-right">
-<div className="flex justify-end gap-2">
-<button className="p-1.5 text-slate-400 hover:text-primary transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
-<button className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
-</div>
-</td>
-</tr>
-<tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
-<td className="px-6 py-4 text-sm font-bold text-primary">#ORD-7723</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Central HUB (A)</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">Aluminium Sheets (4x8)</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">300 units</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Seattle, WA</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Nov 18, 2023</td>
-<td className="px-6 py-4">
-<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                                    Cancelled
-                                </span>
-</td>
-<td className="px-6 py-4 text-sm text-slate-400">Nov 11, 2023</td>
-<td className="px-6 py-4 text-right">
-<div className="flex justify-end gap-2">
-<button className="p-1.5 text-slate-400 hover:text-primary transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
-<button className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
-</div>
-</td>
-</tr>
-<tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
-<td className="px-6 py-4 text-sm font-bold text-primary">#ORD-7724</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Southern Depot (C)</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">Mounting Brackets</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">2,500 units</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Miami, FL</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Nov 16, 2023</td>
-<td className="px-6 py-4">
-<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                    Pending
-                                </span>
-</td>
-<td className="px-6 py-4 text-sm text-slate-400">Nov 12, 2023</td>
-<td className="px-6 py-4 text-right">
-<div className="flex justify-end gap-2">
-<button className="p-1.5 text-slate-400 hover:text-primary transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
-<button className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
-</div>
-</td>
-</tr>
-<tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors">
-<td className="px-6 py-4 text-sm font-bold text-primary">#ORD-7725</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">West Coast Log.</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300 font-medium">Power Converters</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">45 units</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Portland, OR</td>
-<td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">Nov 13, 2023</td>
-<td className="px-6 py-4">
-<span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                    Shipped
-                                </span>
-</td>
-<td className="px-6 py-4 text-sm text-slate-400">Nov 08, 2023</td>
-<td className="px-6 py-4 text-right">
-<div className="flex justify-end gap-2">
-<button className="p-1.5 text-slate-400 hover:text-primary transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
-<button className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
-</div>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-{/*  Pagination  */}
-<div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-<p className="text-sm text-slate-500 dark:text-slate-400">
-                    Showing <span className="font-semibold text-slate-900 dark:text-slate-100">1</span> to <span className="font-semibold text-slate-900 dark:text-slate-100">5</span> of <span className="font-semibold text-slate-900 dark:text-slate-100">84</span> requests
-                </p>
-<div className="flex items-center gap-2">
-<button className="flex items-center justify-center size-9 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-<span className="material-symbols-outlined text-lg">chevron_left</span>
-</button>
-<button className="flex items-center justify-center size-9 rounded-lg bg-primary text-white font-bold text-sm">1</button>
-<button className="flex items-center justify-center size-9 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm">2</button>
-<button className="flex items-center justify-center size-9 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm">3</button>
-<span className="text-slate-400 px-1">...</span>
-<button className="flex items-center justify-center size-9 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium text-sm">12</button>
-<button className="flex items-center justify-center size-9 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-<span className="material-symbols-outlined text-lg">chevron_right</span>
-</button>
-</div>
-</div>
-</div>
+      {/* ── Page Header ── */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Yêu cầu xuất kho</h1>
+        <p className="text-slate-500 text-sm mt-1">Quản lý và theo dõi các lô hàng xuất kho và đơn hàng vận chuyển.</p>
+      </div>
 
-</div>
+      {/* ── Filter Card ── */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 mb-6">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#00b2d6]/30 focus:border-[#00b2d6] text-sm placeholder-slate-400 outline-none transition-all"
+              placeholder="Tìm kiếm theo ID, Mặt hàng hoặc Điểm đến..."
+              type="text"
+            />
+          </div>
+
+          {/* Status pills + more filter */}
+          <div className="flex flex-wrap items-center gap-2">
+            {STATUS_FILTERS.map(f => (
+              <button
+                key={f}
+                onClick={() => setActiveFilter(f)}
+                className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
+                  activeFilter === f
+                    ? 'bg-[#00b2d6]/10 text-[#00b2d6] border border-[#00b2d6]/30'
+                    : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
+            <div className="h-8 w-px bg-slate-200 mx-1" />
+            <button className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors text-sm font-medium">
+              <span className="material-symbols-outlined text-lg">filter_list</span>
+              Thêm bộ lọc
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Table Card ── */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Mã yêu cầu</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Nhà kho</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Tên mặt hàng</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Số lượng</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Điểm đến</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Ngày giao hàng</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Trạng thái</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Ngày tạo</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filtered.map(row => (
+                <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-6 py-4 text-sm font-bold text-[#00b2d6]">{row.id}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{row.warehouse}</td>
+                  <td className="px-6 py-4 text-sm text-slate-700 font-medium">{row.item}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{row.quantity}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{row.destination}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{row.shippingDate}</td>
+                  <td className="px-6 py-4">
+                    <StatusBadge status={row.status} />
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-500">{row.createdDate}</td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-1">
+                      <button title="Chỉnh sửa" className="p-1.5 text-slate-400 hover:text-[#00b2d6] hover:bg-slate-100 rounded-lg transition-colors">
+                        <span className="material-symbols-outlined text-lg leading-none">edit</span>
+                      </button>
+                      <button title="Xóa" className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                        <span className="material-symbols-outlined text-lg leading-none">delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={9} className="px-6 py-12 text-center text-slate-400 text-sm">
+                    Không tìm thấy yêu cầu nào.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
+          <span className="text-sm text-slate-500">
+            Hiển thị <span className="font-bold text-slate-700">1</span> đến <span className="font-bold text-slate-700">5</span> trong số <span className="font-bold text-slate-700">84</span> yêu cầu
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-lg">chevron_left</span>
+            </button>
+            {[1, 2, 3].map(n => (
+              <button
+                key={n}
+                className={`flex items-center justify-center w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
+                  n === 1 ? 'bg-[#00b2d6] text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+            <span className="px-1 text-slate-400 text-sm">...</span>
+            <button className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+              12
+            </button>
+            <button className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+              <span className="material-symbols-outlined text-lg">chevron_right</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

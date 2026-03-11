@@ -15,28 +15,29 @@ const Sidebar = () => {
 
   const allMenus = {
     OWNER: [
-      { icon: 'home', label: 'Overview', path: '/dashboard' },
-      { icon: 'warehouse', label: 'My Warehouses', path: '/my-warehouses' },
-      { icon: 'add_box', label: 'Create New Warehouse', path: '/post-warehouse' },
-      { icon: 'group', label: 'Staff Management', path: '/list-staff', section: 'MANAGEMENT' },
-      { icon: 'person_add', label: 'Create Employee', path: '/create-staff' },
-      { icon: 'bar_chart', label: 'Revenue & Analytics', path: '/analytics', section: 'INSIGHTS' },
-      { icon: 'settings', label: 'Settings', path: '/settings', isBottom: true },
+      { icon: 'dashboard', label: 'Tổng quan', path: '/dashboard' },
+      { icon: 'warehouse', label: 'Kho của tôi', path: '/my-warehouses' },
+      { icon: 'add_circle', label: 'Tạo kho mới', path: '/post-warehouse' },
+      { icon: 'group', label: 'Quản lý nhân viên', path: '/list-staff', section: 'QUẢN LÝ' },
+      { icon: 'person_add', label: 'Tạo nhân viên', path: '/create-staff' },
+      { icon: 'bar_chart', label: 'Phân tích doanh thu', path: '/analytics', section: 'BÁO CÁO' },
+      { icon: 'settings', label: 'Cài đặt', path: '/settings', isBottom: true },
     ],
     RENTER: [
       { icon: 'dashboard', label: 'Bảng điều khiển', path: '/renter-dashboard' },
-      { icon: 'inventory_2', label: 'Tồn kho', path: '/my-rental-requests' },
-      { icon: 'move_to_inbox', label: 'Yêu cầu nhập', path: '/create-inbound' },
-      { icon: 'outbox', label: 'Yêu cầu xuất', path: '/outbound-requests' },
+      { icon: 'move_to_inbox', label: 'Yêu cầu nhập kho', path: '/renter-inbound-requests' },
+      { icon: 'outbox', label: 'Yêu cầu xuất kho', path: '/renter-outbound-requests' },
+      { icon: 'add_circle', label: 'Tạo yêu cầu nhập', path: '/create-inbound' },
+      { icon: 'upload', label: 'Tạo yêu cầu xuất', path: '/create-outbound' },
       { icon: 'bar_chart', label: 'Báo cáo', path: '/transaction-history' },
       { icon: 'settings', label: 'Cài đặt', path: '/settings', isBottom: true },
     ],
     STAFF: [
       { icon: 'dashboard', label: 'Bảng điều khiển', path: '/staff-dashboard' },
-      { icon: 'move_to_inbox', label: 'Nhiệm vụ Nhập kho', path: '/inbound-requests' },
-      { icon: 'outbox', label: 'Nhiệm vụ Xuất kho', path: '/outbound-requests' },
-      { icon: 'inventory_2', label: 'Tồn kho', path: '/inventory' },
-      { icon: 'history', label: 'Giao dịch', path: '/transaction-history' },
+      { icon: 'move_to_inbox', label: 'Yêu cầu nhập kho', path: '/inbound-requests' },
+      { icon: 'outbox', label: 'Yêu cầu xuất kho', path: '/outbound-requests' },
+      { icon: 'swap_horiz', label: 'Xác nhận di chuyển', path: '/confirm-movement' },
+      { icon: 'history', label: 'Lịch sử giao dịch', path: '/transaction-history' },
       { icon: 'settings', label: 'Cài đặt', path: '/settings', isBottom: true },
     ],
   };
@@ -44,8 +45,8 @@ const Sidebar = () => {
   allMenus['MANAGER'] = allMenus['STAFF'];
 
   const menuItems = allMenus[userRole] || allMenus['OWNER'];
-  const accentColor = userRole === 'OWNER' ? '#2563eb' : '#00b2d6';
-  const activeBg = userRole === 'OWNER' ? '#eff6ff' : '#e0f2fe';
+  const accentColor = '#00b2d6';
+  const activeBg = '#e0f2fe';
 
   return (
     <div style={{
