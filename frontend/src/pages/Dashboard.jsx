@@ -1,13 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-<<<<<<< Updated upstream
-import StatsCards from '../components/Dashboard/StatsCards';
-import PortfolioTable from '../components/Dashboard/PortfolioTable';
-import RecentActivity from '../components/Dashboard/RecentActivity';
-=======
->>>>>>> Stashed changes
 
-// Custom KPI icons - solid/filled style like reference
+// Custom KPI icons
 const IconMoney = () => (
   <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" className="text-blue-600 shrink-0">
     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1.41 16.09V20h-2.67v-1.93c-1.71-.36-3.16-1.46-3.27-3.4h1.96c.1 1.05.82 1.87 2.65 1.87 1.96 0 2.4-.98 2.4-1.59 0-.83-.44-1.61-2.67-2.14-2.48-.6-4.18-1.62-4.18-3.67 0-1.72 1.39-2.84 3.11-3.21V4h2.67v1.95c1.86.45 2.79 1.86 2.85 3.39H14.3c-.05-1.11-.64-1.87-2.22-1.87-1.5 0-2.4.68-2.4 1.64 0 .84.65 1.39 2.67 1.91s4.18 1.39 4.18 3.91c-.01 1.83-1.38 2.83-3.12 3.16z"/>
@@ -31,69 +25,6 @@ const IconGroup = () => (
 
 const Dashboard = () => {
   return (
-<<<<<<< Updated upstream
-    <div style={{ fontFamily: 'Inter, sans-serif' }}>
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0, color: '#111827' }}>Dashboard Overview</h1>
-        <p style={{ margin: '8px 0 0', fontSize: '0.9rem', color: '#64748b' }}>
-          Real-time performance metrics across your warehouse portfolio.
-        </p>
-      </div>
-
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-        <button
-          style={{
-            padding: '10px 16px',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            backgroundColor: '#fff',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            color: '#475569',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-            <line x1="16" y1="2" x2="16" y2="6" />
-            <line x1="8" y1="2" x2="8" y2="6" />
-            <line x1="3" y1="10" x2="21" y2="10" />
-          </svg>
-          Last 30 Days
-        </button>
-        <button
-          style={{
-            padding: '10px 16px',
-            border: 'none',
-            borderRadius: '8px',
-            backgroundColor: '#2563eb',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            color: '#fff',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          Export Report
-        </button>
-      </div>
-
-      <StatsCards />
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 380px)', gap: '24px', alignItems: 'start' }}>
-        <PortfolioTable />
-        <RecentActivity />
-=======
     <div className="w-full flex-1 flex flex-col min-w-0" style={{ fontFamily: 'Inter, sans-serif' }}>
       <div className="space-y-6">
         {/* Header */}
@@ -310,7 +241,7 @@ const Dashboard = () => {
             </Link>
           </div>
         </div>
->>>>>>> Stashed changes
+
       </div>
     </div>
   );

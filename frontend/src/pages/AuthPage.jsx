@@ -34,9 +34,7 @@ const AuthPage = () => {
         
         const user = authService.getCurrentUser();
         const role = (user?.role || user?.roleName || '').toUpperCase();
-        if (role === 'OWNER') navigate('/dashboard');
-        else if (role === 'RENTER') navigate('/renter-dashboard');
-        else if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
+        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
         else navigate('/');
       } else {
         await authService.register({
@@ -54,9 +52,7 @@ const AuthPage = () => {
         
         const user = authService.getCurrentUser();
         const role = (user?.role || user?.roleName || '').toUpperCase();
-        if (role === 'OWNER') navigate('/dashboard');
-        else if (role === 'RENTER') navigate('/renter-dashboard');
-        else if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
+        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
         else navigate('/');
       }
     } catch (err) {

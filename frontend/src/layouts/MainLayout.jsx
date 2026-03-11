@@ -77,12 +77,7 @@ const MainLayout = () => {
                   Dashboard
                 </Link>
               )}
-              {((user?.role || user?.roleName || '').toUpperCase() === 'RENTER') && (
-                <Link to="/renter-dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>Dashboard</Link>
-              )}
-              {((user?.role || user?.roleName || '').toUpperCase() === 'STAFF') && (
-                <Link to="/staff-dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>Dashboard</Link>
-              )}
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <Link to="/profile" title="Trang cá nhân" style={{ display: 'flex', alignItems: 'center' }}>
                   <img 

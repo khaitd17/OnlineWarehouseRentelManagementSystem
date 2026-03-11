@@ -8,8 +8,6 @@ import AuthPage from "../pages/AuthPage";
 import PostWarehousePage from "../pages/PostWarehousePage";
 import AboutUsPage from "../pages/AboutUsPage";
 import Dashboard from "../pages/Dashboard";
-import RenterDashboard from "../pages/RenterDashboard";
-import StaffDashboard from "../pages/StaffDashboard";
 import ProfilePage from "../pages/ProfilePage";
 import CreateStaff from "../pages/CreateStaff";
 import ListStaff from "../pages/ListStaff";
@@ -51,24 +49,6 @@ function AppRoutes() {
           {/* Protected Routes - chung cho mọi user đã đăng nhập */}
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<ProfilePage />} />
-<<<<<<< Updated upstream
-            <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/post-warehouse" element={<PostWarehousePage />} />
-              <Route path="/create-warehouse" element={<CreateWarehouse />} />
-              <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />
-              <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
-              <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
-              <Route path="/create-staff" element={<CreateStaff />} />
-              <Route path="/list-staff" element={<ListStaff />} />
-              <Route path="/my-rental-requests" element={<MyRentalRequests />} />
-              <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
-              <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
-              <Route path="/renter-dashboard" element={<RenterDashboard />} />
-              <Route path="/staff-dashboard" element={<StaffDashboard />} />
-            </Route>
-=======
->>>>>>> Stashed changes
           </Route>
 
           {/* Role-Based Routes cho OWNER */}
