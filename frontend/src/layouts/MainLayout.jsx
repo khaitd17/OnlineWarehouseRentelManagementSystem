@@ -65,8 +65,17 @@ const MainLayout = () => {
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {isAuthenticated ? (
             <>
-              {((user?.role || user?.roleName || '').toUpperCase() === 'OWNER') && (
-                <Link to="/dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>Dashboard</Link>
+              {/* Hiển thị link Dashboard tuỳ theo role người dùng */}
+              {user && (
+                <Link 
+                  to={
+                    (user.role || user.roleName || '').toUpperCase() === 'STAFF' || (user.role || user.roleName || '').toUpperCase() === 'MANAGER' ? '/staff-dashboard' : 
+                    (user.role || user.roleName || '').toUpperCase() === 'RENTER' ? '/renter-dashboard' : 
+                    '/dashboard'
+                  } 
+                  style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>
+                  Dashboard
+                </Link>
               )}
               {((user?.role || user?.roleName || '').toUpperCase() === 'RENTER') && (
                 <Link to="/renter-dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>Dashboard</Link>

@@ -87,6 +87,7 @@ const IconBox = ({ size = 20, color = 'currentColor' }) => (
 const Sidebar = () => {
   const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+<<<<<<< Updated upstream
   const userRole = (user?.role || user?.roleName || 'OWNER').toUpperCase();
 
   const isActive = (path) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
@@ -100,6 +101,45 @@ const Sidebar = () => {
     { icon: IconBarChart, label: 'Revenue & Analytics', path: '/analytics', section: 'INSIGHTS' },
     { icon: IconSettings, label: 'Settings', path: '/settings' },
   ];
+=======
+  const userRole = (user.role || user.roleName || '').toUpperCase();
+
+  // Define menus based on Roles (Owner: WarehouseConnect style, Renter/Staff: OWRMS style)
+  const allMenus = {
+    OWNER: [
+      { icon: 'home', label: 'Overview', path: '/dashboard', active: location.pathname === '/dashboard' },
+      { icon: 'warehouse', label: 'My Warehouses', path: '/my-warehouses', active: location.pathname === '/my-warehouses' },
+      { icon: 'add_box', label: 'Create New Warehouse', path: '/post-warehouse', active: location.pathname === '/post-warehouse' },
+      { icon: 'group', label: 'Staff Management', path: '/list-staff', section: 'MANAGEMENT', active: location.pathname === '/list-staff' },
+      { icon: 'person_add', label: 'Create Employee', path: '/create-staff', active: location.pathname === '/create-staff' },
+      { icon: 'bar_chart', label: 'Revenue & Analytics', path: '/analytics', section: 'INSIGHTS', active: location.pathname === '/analytics' },
+      { icon: 'settings', label: 'Settings', path: '/settings', active: location.pathname === '/settings', isBottom: true },
+    ],
+    RENTER: [
+      { icon: 'dashboard', label: 'Bảng điều khiển', path: '/renter-dashboard', active: location.pathname === '/renter-dashboard' },
+      { icon: 'inventory_2', label: 'Tồn kho', path: '/my-rental-requests', active: location.pathname === '/my-rental-requests' },
+      { icon: 'login', label: 'Yêu cầu nhập', path: '/create-inbound', active: location.pathname === '/create-inbound' },
+      { icon: 'logout', label: 'Yêu cầu xuất', path: '/outbound-requests', active: location.pathname === '/outbound-requests' },
+      { icon: 'bar_chart', label: 'Báo cáo', path: '/transaction-history', active: location.pathname === '/transaction-history' },
+      { icon: 'settings', label: 'Cài đặt', path: '/settings', active: location.pathname === '/settings', isBottom: true },
+    ],
+    STAFF: [
+      { icon: 'dashboard', label: 'Bảng điều khiển', path: '/staff-dashboard', active: location.pathname === '/staff-dashboard' },
+      { icon: 'input', label: 'Nhiệm vụ Nhập kho', path: '/inbound-requests', active: location.pathname === '/inbound-requests' },
+      { icon: 'output', label: 'Nhiệm vụ Xuất kho', path: '/outbound-requests', active: location.pathname === '/outbound-requests' },
+      { icon: 'inventory_2', label: 'Tồn kho', path: '/inventory', active: location.pathname === '/inventory' },
+      { icon: 'history', label: 'Giao dịch', path: '/transaction-history', active: location.pathname === '/transaction-history' },
+      { icon: 'settings', label: 'Cài đặt', path: '/settings', active: location.pathname === '/settings', isBottom: true },
+    ]
+  };
+
+  // Alias MANAGER to STAFF menu for now
+  allMenus['MANAGER'] = allMenus['STAFF'];
+
+  // Default menu if role is missing/unknown
+  const menuItems = allMenus[userRole] || allMenus['OWNER'];
+  const accentColor = userRole === 'OWNER' ? '#2563eb' : '#00b2d6';
+>>>>>>> Stashed changes
 
   const renterMenus = [
     { icon: IconGrid, label: 'Bảng điều khiển', path: '/renter-dashboard' },
@@ -131,7 +171,10 @@ const Sidebar = () => {
   return (
     <div style={{
       width: '240px',
+<<<<<<< Updated upstream
       minWidth: '240px',
+=======
+>>>>>>> Stashed changes
       height: '100vh',
       backgroundColor: sidebarBg,
       borderRight: '1px solid #e2e8f0',
@@ -140,6 +183,7 @@ const Sidebar = () => {
       position: 'fixed',
       left: 0,
       top: 0,
+<<<<<<< Updated upstream
       fontFamily: 'Inter, sans-serif',
       zIndex: 40,
     }}>
@@ -163,10 +207,40 @@ const Sidebar = () => {
           </h1>
           {userRole === 'OWNER' && (
             <p style={{ fontSize: '0.65rem', margin: '2px 0 0', color: '#6b7280', fontWeight: 600, letterSpacing: '0.05em' }}>OWNER PORTAL</p>
+=======
+      fontFamily: 'Inter, sans-serif'
+    }}>
+      {/* Logo Section - Owner: WarehouseConnect, Renter/Staff: OWRMS */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '32px', padding: '0 8px' }}>
+        <div style={{ 
+          width: '36px', 
+          height: '36px', 
+          backgroundColor: userRole === 'OWNER' ? '#2563eb' : '#00b2d6', 
+          borderRadius: '8px', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          color: '#fff',
+          flexShrink: 0
+        }}>
+          <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+             <path d="M12 3L4 9v12h16V9l-8-6zm0 2.5l5 3.75V19h-3v-5h-4v5H7v-9.75l5-3.75z"/>
+          </svg>
+        </div>
+        <div>
+          {userRole === 'OWNER' ? (
+            <>
+              <h1 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: '#111827', letterSpacing: '0.3px' }}>WarehouseConnect</h1>
+              <p style={{ fontSize: '0.65rem', fontWeight: 600, margin: '2px 0 0', color: '#6b7280', letterSpacing: '0.05em' }}>OWNER PORTAL</p>
+            </>
+          ) : (
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: '#00b2d6', letterSpacing: '0.5px' }}>OWRMS</h1>
+>>>>>>> Stashed changes
           )}
         </div>
       </div>
 
+<<<<<<< Updated upstream
       <nav style={{ flex: 1, overflowY: 'auto', padding: '0 12px' }}>
         {menuItems.map((item, idx) => {
           const active = isActive(item.path);
@@ -239,6 +313,78 @@ const Sidebar = () => {
             <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
           </svg>
         </button>
+=======
+      <nav style={{ flex: 1, overflowY: 'auto' }}>
+        {menuItems.map((item, index) => {
+          if (item.isBottom) {
+             return (
+              <React.Fragment key={index}>
+                <div style={{ height: '1px', backgroundColor: '#e5e7eb', margin: '16px 8px' }}></div>
+                <Link 
+                  to={item.path}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    color: item.active ? accentColor : '#4b5563',
+                    backgroundColor: item.active ? (userRole === 'OWNER' ? '#eff6ff' : '#e0f2fe') : 'transparent',
+                    marginBottom: '4px',
+                    fontWeight: item.active ? 600 : 500,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
+                  <span style={{ fontSize: '0.95rem' }}>{item.label}</span>
+                </Link>
+              </React.Fragment>
+             );
+          }
+
+          return (
+          <React.Fragment key={index}>
+            {item.section && (
+              <p style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', margin: '24px 8px 12px', letterSpacing: '0.05em' }}>{item.section}</p>
+            )}
+            <Link 
+              to={item.path}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                color: item.active ? accentColor : '#4b5563',
+                backgroundColor: item.active ? (userRole === 'OWNER' ? '#eff6ff' : '#e0f2fe') : 'transparent',
+                marginBottom: '4px',
+                fontWeight: item.active ? 600 : 500,
+                transition: 'all 0.2s'
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
+              <span style={{ fontSize: '0.95rem' }}>{item.label}</span>
+            </Link>
+          </React.Fragment>
+        )})}
+      </nav>
+
+      {/* User Info Bottom */}
+      <div style={{ marginTop: 'auto', borderTop: '1px solid #f0f0f0', paddingTop: '20px', display: 'flex', alignItems: 'center', gap: '12px', padding: '20px 8px 0' }}>
+        <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <img src={user.avatarUrl || user.AvatarUrl || `https://ui-avatars.com/api/?name=${userRole}&background=random`} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {user.fullName || user.FullName || userRole}
+          </p>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+            {userRole === 'OWNER' ? 'Regional Director' : userRole === 'RENTER' ? 'Người thuê cao cấp' : 'Quản trị kho'}
+          </p>
+        </div>
+>>>>>>> Stashed changes
       </div>
     </div>
   );
