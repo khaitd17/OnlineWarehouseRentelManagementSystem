@@ -89,7 +89,7 @@ const RenterDashboard = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#111827' }}>Bảng điều khiển Người thuê</h1>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#111827' }}>Bảng điều khiển</h1>
           <p style={{ margin: '6px 0 0', fontSize: '0.875rem', color: '#64748b' }}>
             Chào mừng trở lại, <strong>{name}</strong>. Đây là những gì đang diễn ra hôm nay.
           </p>

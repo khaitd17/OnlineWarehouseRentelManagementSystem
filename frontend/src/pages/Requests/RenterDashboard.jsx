@@ -10,7 +10,7 @@ const RenterDashboard = () => {
       {/* Dashboard Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-slate-900">Bảng điều khiển Người thuê</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-slate-900">Bảng điều khiển</h2>
           <p className="text-slate-500 text-sm mt-1">Chào mừng trở lại, {userName}. Đây là những gì đang diễn ra hôm nay.</p>
         </div>
         <div className="flex items-center gap-3">

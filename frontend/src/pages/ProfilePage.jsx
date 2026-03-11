@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import userService from "../services/userService";
 
 const ProfilePage = () => {
@@ -7,6 +8,7 @@ const ProfilePage = () => {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
   const [isEditing, setIsEditing] = useState(false);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -144,9 +146,11 @@ const ProfilePage = () => {
             <img src={profile.avatarUrl || "https://i.pravatar.cc/150?u=me"} alt="User" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #fff', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }} />
             <div>
               <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '1rem' }}>{profile.fullName}</div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-                {(profile.role || profile.roleName || '').toUpperCase() === 'RENTER' ? 'Người thuê' : (profile.role || profile.roleName || '').toUpperCase() === 'OWNER' ? 'Chủ kho' : (profile.role || profile.roleName)}
-              </div>
+              {(() => {
+                const r = (profile.role || profile.roleName || '').toUpperCase();
+                const label = r === 'RENTER' ? 'Người thuê' : r === 'OWNER' ? 'Chủ kho' : r === 'STAFF' || r === 'MANAGER' ? 'Nhân viên' : (profile.role || profile.roleName);
+                return <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>{label}</div>;
+              })()}
             </div>
           </div>
           
@@ -156,9 +160,26 @@ const ProfilePage = () => {
           <SidebarItem id="settings" icon="⚙️" label="Cài đặt tài khoản" />
           <SidebarItem id="notifications" icon="🔔" label="Thông báo" />
           
-          <div style={{ marginTop: 'auto', padding: '16px', borderTop: '1px solid #e2e8f0' }}>
-            <button style={{ background: 'none', border: 'none', color: '#ef4444', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              🚪 Đăng xuất
+          <div style={{ marginTop: '1rem', padding: '16px', borderTop: '1px solid #e2e8f0' }}>
+            <button
+              onClick={() => {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                window.dispatchEvent(new Event('authChange'));
+                navigate('/auth');
+              }}
+              style={{
+                background: 'none', border: '1.5px solid #fee2e2', color: '#ef4444',
+                fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 16px', borderRadius: '10px', width: '100%',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>logout</span>
+              Đăng xuất
             </button>
           </div>
         </aside>
@@ -223,9 +244,11 @@ const ProfilePage = () => {
                       </div>
                       <div style={{ marginBottom: '1.2rem' }}>
                         <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', marginBottom: '4px' }}>VAI TRÒ</div>
-                        <div style={{ display: 'inline-block', backgroundColor: '#f0fdf4', color: '#166534', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
-                          {(profile.role || profile.roleName || '').toUpperCase() === 'RENTER' ? 'Người thuê' : (profile.role || profile.roleName || '').toUpperCase() === 'OWNER' ? 'Chủ kho' : (profile.role || profile.roleName)}
-                        </div>
+                        {(() => {
+                          const r = (profile.role || profile.roleName || '').toUpperCase();
+                          const label = r === 'RENTER' ? 'Người thuê' : r === 'OWNER' ? 'Chủ kho' : r === 'STAFF' || r === 'MANAGER' ? 'Nhân viên' : (profile.role || profile.roleName);
+                          return <div style={{ display: 'inline-block', backgroundColor: '#f0fdf4', color: '#166534', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>{label}</div>;
+                        })()}
                       </div>
                     </div>
                   </div>
