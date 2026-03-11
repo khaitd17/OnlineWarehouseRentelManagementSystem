@@ -34,11 +34,8 @@ const AuthPage = () => {
         
         const user = authService.getCurrentUser();
         const role = (user?.role || user?.roleName || '').toUpperCase();
-        if (role === 'OWNER') {
-          navigate('/dashboard');
-        } else {
-          navigate('/');
-        }
+        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
+        else navigate('/');
       } else {
         await authService.register({
           fullName: formData.fullName,
@@ -55,11 +52,8 @@ const AuthPage = () => {
         
         const user = authService.getCurrentUser();
         const role = (user?.role || user?.roleName || '').toUpperCase();
-        if (role === 'OWNER') {
-          navigate('/dashboard');
-        } else {
-          navigate('/');
-        }
+        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
+        else navigate('/');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
@@ -128,14 +122,18 @@ const AuthPage = () => {
           {!isLogin && (
             <>
               {/* Role Selection */}
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '4px' }}>
-                <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', pading: '8px', border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px', cursor: 'pointer', backgroundColor: formData.roleName === 'RENTER' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'RENTER' ? '#0095c7' : '#d1d5db' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '4px' }}>
+                <label style={{ flex: '1 1 80px', minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: formData.roleName === 'RENTER' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'RENTER' ? '#0095c7' : '#d1d5db' }}>
                   <input type="radio" name="roleName" value="RENTER" checked={formData.roleName === 'RENTER'} onChange={handleInputChange} style={{ display: 'none' }} />
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: formData.roleName === 'RENTER' ? '#0095c7' : '#4b5563', textAlign: 'center', width: '100%' }}>Khách thuê</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: formData.roleName === 'RENTER' ? '#0095c7' : '#4b5563', textAlign: 'center' }}>Khách thuê</span>
                 </label>
-                <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px', pading: '8px', border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px', cursor: 'pointer', backgroundColor: formData.roleName === 'OWNER' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'OWNER' ? '#0095c7' : '#d1d5db' }}>
+                <label style={{ flex: '1 1 80px', minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: formData.roleName === 'OWNER' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'OWNER' ? '#0095c7' : '#d1d5db' }}>
                   <input type="radio" name="roleName" value="OWNER" checked={formData.roleName === 'OWNER'} onChange={handleInputChange} style={{ display: 'none' }} />
-                  <span style={{ fontSize: '0.9rem', fontWeight: 600, color: formData.roleName === 'OWNER' ? '#0095c7' : '#4b5563', textAlign: 'center', width: '100%' }}>Chủ kho</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: formData.roleName === 'OWNER' ? '#0095c7' : '#4b5563', textAlign: 'center' }}>Chủ kho</span>
+                </label>
+                <label style={{ flex: '1 1 80px', minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: formData.roleName === 'STAFF' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'STAFF' ? '#0095c7' : '#d1d5db' }}>
+                  <input type="radio" name="roleName" value="STAFF" checked={formData.roleName === 'STAFF'} onChange={handleInputChange} style={{ display: 'none' }} />
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: formData.roleName === 'STAFF' ? '#0095c7' : '#4b5563', textAlign: 'center' }}>Nhân viên</span>
                 </label>
               </div>
 
@@ -211,26 +209,8 @@ const AuthPage = () => {
             cursor: 'pointer',
             transition: 'background-color 0.2s'
           }}>
-            <img src="https://www.svgrepo.com/show/511330/apple-173.svg" width="20" height="20" alt="Apple" />
-            Đăng nhập với Apple
-          </button>
-          <button style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            backgroundColor: '#fff',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            padding: '12px',
-            fontSize: '0.95rem',
-            fontWeight: 600,
-            color: '#374151',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s'
-          }}>
-            <img src="https://www.svgrepo.com/show/475656/google_color.svg" width="20" height="20" alt="Google" />
-            Đăng nhập với Google
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="20" height="20" alt="Google" />
+            Continue with Google
           </button>
         </div>
 
