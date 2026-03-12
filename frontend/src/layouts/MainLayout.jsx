@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+
+const DASHBOARD_PATHS = [
+  // Owner paths
+  '/dashboard', '/my-warehouses', '/post-warehouse', '/create-warehouse',
+  '/warehouse-edit', '/warehouse-new', '/create-staff', '/list-staff',
+  '/pending-rental-requests', '/rental-request',
+  // Staff / Manager paths
+  '/staff-dashboard', '/inbound-requests', '/outbound-requests',
+  '/confirm-movement', '/create-inbound', '/create-outbound',
+  // Renter paths
+  '/renter-dashboard', '/my-rental-requests', '/renter-inbound-requests', '/renter-outbound-requests',
+  // Shared paths (all roles)
+  '/transaction-history', '/profile',
+];
 
 const MainLayout = () => {
+  const location = useLocation();
+  const isDashboard = DASHBOARD_PATHS.some(p => location.pathname === p || location.pathname.startsWith(p + '/'));
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || {});
   const navigate = useNavigate();
@@ -30,6 +46,10 @@ const MainLayout = () => {
     navigate('/');
   };
 
+  if (isDashboard) {
+    return <Outlet />;
+  }
+
   return (
     <div style={{ fontFamily: 'Inter, sans-serif', color: '#333', backgroundColor: '#f9fbfd', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Navbar */}
@@ -57,9 +77,19 @@ const MainLayout = () => {
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           {isAuthenticated ? (
             <>
-              {((user?.role || user?.roleName || '').toUpperCase() === 'OWNER') && (
-                <Link to="/dashboard" style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>Dashboard</Link>
+              {/* Hiển thị link Dashboard tuỳ theo role người dùng */}
+              {user && (
+                <Link 
+                  to={
+                    (user.role || user.roleName || '').toUpperCase() === 'STAFF' || (user.role || user.roleName || '').toUpperCase() === 'MANAGER' ? '/staff-dashboard' : 
+                    (user.role || user.roleName || '').toUpperCase() === 'RENTER' ? '/renter-dashboard' : 
+                    '/dashboard'
+                  } 
+                  style={{ textDecoration: 'none', color: '#555', fontWeight: 600, fontSize: '0.9rem', marginRight: '1rem' }}>
+                  Dashboard
+                </Link>
               )}
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <Link to="/profile" title="Trang cá nhân" style={{ display: 'flex', alignItems: 'center' }}>
                   <img 

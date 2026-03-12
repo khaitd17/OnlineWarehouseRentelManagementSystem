@@ -1,41 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { getFeaturedWarehouses } from '../services/warehouseService';
 
 const HomePage = () => {
   const navigate = useNavigate();
-  
-  const featuredWarehouses = [
-    {
-      id: 1,
-      title: "Kho lạnh tiêu chuẩn quốc tế - KCN Tân Bình",
-      price: "250.000",
-      area: "200",
-      location: "Quận Tân Bình, TP. HCM",
-      tags: ["Nhiệt độ -20°C", "Xe tải 10 tấn", "PCCC tự động"],
-      rating: 4.8,
-      image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800"
-    },
-    {
-      id: 2,
-      title: "Kho thường lưu trữ hàng hóa - Quận 7",
-      price: "180.000",
-      area: "500",
-      location: "Quận 7, TP. HCM",
-      tags: ["Đường container 40ft", "Bảo vệ 24/7", "Trần cao 8m"],
-      rating: 4.5,
-      image: "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=800"
-    },
-    {
-      id: 3,
-      title: "Nhà xưởng đa năng diện tích lớn - Bình Dương",
-      price: "120.000",
-      area: "1000",
-      location: "Thuận An, Bình Dương",
-      tags: ["Điện 3 pha", "Có vp làm việc", "Khuôn viên độc lập"],
-      rating: 4.7,
-      image: "https://images.unsplash.com/photo-1565891741441-64926e441838?auto=format&fit=crop&q=80&w=800"
-    }
-  ];
+  const [warehouses, setWarehouses] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchWarehouses = async () => {
+      try {
+        const data = await getFeaturedWarehouses(6);
+        setWarehouses(data);
+      } catch (err) {
+        console.error('Failed to fetch warehouses:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchWarehouses();
+  }, []);
 
   const categories = [
     { name: 'Kho mát / lạnh', icon: '❄️', desc: 'Lưu trữ thực phẩm, dược phẩm' },
@@ -176,8 +160,14 @@ const HomePage = () => {
         </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '30px' }}>
-          {featuredWarehouses.map(w => (
-            <div key={w.id} style={{ 
+          {loading ? (
+            <p style={{ color: '#64748b', fontSize: '1rem', gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 0' }}>Đang tải dữ liệu...</p>
+          ) : warehouses.length === 0 ? (
+            <p style={{ color: '#64748b', fontSize: '1rem', gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 0' }}>Chưa có kho bãi nào được duyệt.</p>
+          ) : (
+          warehouses.map(w => (
+            <Link to={`/warehouse/${w.warehouseId}`} key={w.warehouseId} style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div style={{ 
               backgroundColor: '#fff', 
               borderRadius: '20px', 
               overflow: 'hidden', 
@@ -186,43 +176,44 @@ const HomePage = () => {
               transition: 'transform 0.3s ease, box-shadow 0.3s ease'
             }} onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.1)'; }} onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.04)'; }}>
               <div style={{ position: 'relative' }}>
-                <img src={w.image} alt={w.title} style={{ width: '100%', height: '240px', objectFit: 'cover' }} />
-                <div style={{ position: 'absolute', top: '16px', right: '16px', backgroundColor: '#fff', padding: '6px 10px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                  <span style={{ color: '#f59e0b' }}>★</span> {w.rating}
-                </div>
-                <div style={{ position: 'absolute', bottom: '16px', left: '16px', display: 'flex', gap: '8px' }}>
-                  {w.tags.slice(0, 2).map((tag, idx) => (
-                    <span key={idx} style={{ backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(4px)', color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
+                <img 
+                  src={w.imageUrl ? `http://localhost:5276${w.imageUrl}` : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800'} 
+                  alt={w.name} 
+                  style={{ width: '100%', height: '240px', objectFit: 'cover' }} 
+                />
               </div>
               
               <div style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px', lineHeight: 1.4 }}>{w.title}</h3>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px', lineHeight: 1.4 }}>{w.name}</h3>
                 <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                  {w.location}
+                  {w.address}
                 </p>
+                {w.description && (
+                  <p style={{ color: '#475569', fontSize: '0.85rem', marginBottom: '16px', lineHeight: 1.5, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {w.description}
+                  </p>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
                   <div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>GIÁ THUÊ</div>
-                    <div>
-                      <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0095c7' }}>{w.price}</span>
-                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}> VNĐ/m²</span>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>TỔNG DIỆN TÍCH</div>
+                    <div style={{ color: '#334155', fontSize: '1rem', fontWeight: 700 }}>
+                      {w.totalArea} m²
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>DIỆN TÍCH</div>
-                    <div style={{ color: '#334155', fontSize: '1rem', fontWeight: 700 }}>
-                      {w.area} m²
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>CÒN TRỐNG</div>
+                    <div>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0095c7' }}>{w.availableArea}</span>
+                      <span style={{ fontSize: '0.85rem', color: '#64748b' }}> m²</span>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          ))}
+            </Link>
+          ))
+          )}
         </div>
       </section>
 

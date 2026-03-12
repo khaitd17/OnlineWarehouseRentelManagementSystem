@@ -53,6 +53,7 @@ builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
 builder.Services.AddScoped<IWarehouseMediaRepository, WarehouseMediaRepository>();
 builder.Services.AddScoped<IWarehouseDocumentRepository, WarehouseDocumentRepository>();
 builder.Services.AddScoped<IStaffAssigmentRepository, StaffAssigmentRepository>();
+builder.Services.AddScoped<IRentalRequestRepository, RentalRequestRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();

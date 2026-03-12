@@ -37,8 +37,6 @@ public partial class User
 
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
 
-    public virtual ICollection<RentalArea> RentalAreas { get; set; } = new List<RentalArea>();
-
     public virtual ICollection<RentalRequest> RentalRequestRenters { get; set; } = new List<RentalRequest>();
 
     public virtual ICollection<RentalRequest> RentalRequestReviewedByNavigations { get; set; } = new List<RentalRequest>();

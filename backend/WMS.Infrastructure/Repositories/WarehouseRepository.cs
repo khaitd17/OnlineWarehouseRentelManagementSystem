@@ -140,4 +140,42 @@ public async Task<DomainWarehouse?> GetByIdAsync(
             .AnyAsync(x => x.WarehouseId == warehouseId, cancellationToken);
     }
 
+    public async Task<List<DomainWarehouse>> GetApprovedWarehousesAsync(
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var warehouses = await _context.Warehouses
+            .Include(w => w.WarehouseMedia)
+            .Include(w => w.Ratings)
+            .Where(w => w.Status == "APPROVED")
+            .OrderByDescending(w => w.CreatedAt)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        return warehouses.Select(entity => new DomainWarehouse
+        {
+            WarehouseId = entity.WarehouseId,
+            OwnerId = entity.OwnerId,
+            Name = entity.Name,
+            Address = entity.Address,
+            Lat = entity.Lat,
+            Lng = entity.Lng,
+            Description = entity.Description,
+            TotalArea = entity.TotalArea,
+            AvailableArea = entity.AvailableArea,
+            OperatingHours = entity.OperatingHours,
+            Status = entity.Status ?? "UNKNOWN",
+            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
+            Images = entity.WarehouseMedia
+                .Where(m => m.MediaType == "IMAGE")
+                .OrderBy(m => m.DisplayOrder)
+                .Select(m => new WarehouseImage
+                {
+                    ImageId = m.MediaId,
+                    Url = m.MediaUrl
+                })
+                .ToList()
+        }).ToList();
+    }
+
 }

@@ -8,6 +8,13 @@ export const getMyWarehouses = async () => {
   return response.data;
 };
 
+export const getFeaturedWarehouses = async (limit = 6) => {
+  const response = await axiosClient.get("/Warehouse/approved", {
+    params: { limit }
+  });
+  return response.data;
+};
+
 export const createWarehouse = async (data) => {
   const response = await axiosClient.post("/Warehouse/create", data);
   return response.data.warehouseId;

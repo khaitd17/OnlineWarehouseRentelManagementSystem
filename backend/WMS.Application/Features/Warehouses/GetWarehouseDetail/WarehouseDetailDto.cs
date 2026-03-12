@@ -26,4 +26,8 @@ public class WarehouseDetailDto
 
     public DateTime? CreatedAt { get; set; }
     public List<WarehouseImageDto> Images { get; set; } = new();
+
+    public string? OwnerName { get; set; }
+    public string? OwnerPhone { get; set; }
+    public string? OwnerAvatarUrl { get; set; }
 }

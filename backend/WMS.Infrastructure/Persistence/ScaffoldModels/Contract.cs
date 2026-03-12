@@ -9,8 +9,6 @@ public partial class Contract
 
     public int RequestId { get; set; }
 
-    public int? RentalAreaId { get; set; }
-
     public int RenterId { get; set; }
 
     public int WarehouseId { get; set; }
@@ -43,11 +41,9 @@ public partial class Contract
 
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
 
-    public virtual RentalArea? RentalArea { get; set; }
+    public virtual RentalRequest Request { get; set; } = null!;
 
     public virtual User Renter { get; set; } = null!;
-
-    public virtual RentalRequest Request { get; set; } = null!;
 
     public virtual Warehouse Warehouse { get; set; } = null!;
 }
