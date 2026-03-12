@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WMS.Domain.Entities;
 
 namespace WMS.Infrastructure.Persistence.ScaffoldModels
 {
@@ -20,7 +21,7 @@ namespace WMS.Infrastructure.Persistence.ScaffoldModels
 
         public string Status { get; set; } = "Assigned";
 
-        public Task Task { get; set; } = null!;
+        public WarehouseTask WarehouseTask { get; set; } = null!;
 
         public WarehouseMembership Membership { get; set; } = null!;
     }

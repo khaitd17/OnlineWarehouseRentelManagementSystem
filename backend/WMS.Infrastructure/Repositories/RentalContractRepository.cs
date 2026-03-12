@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence.ScaffoldModels;
+using WMS.Infrastructure.Persistence;
 using SystemTask = System.Threading.Tasks.Task;
 
 using DomainRentalContract = WMS.Domain.Entities.RentalContract;
-using DbContract = WMS.Infrastructure.Persistence.ScaffoldModels.Contract;
+using DbContract = WMS.Domain.Entities.Contract;
 
 namespace WMS.Infrastructure.Repositories;
 

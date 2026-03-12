@@ -1,11 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence.ScaffoldModels;
 using System.Threading.Tasks;
-
-using DomainWarehouse = WMS.Domain.Entities.Warehouse;
-using DbWarehouse = WMS.Infrastructure.Persistence.ScaffoldModels.Warehouse;
 using WMS.Domain.Entities;
+using WMS.Infrastructure.Persistence;
 
 namespace WMS.Infrastructure.Repositories;
 
@@ -18,9 +15,9 @@ public class WarehouseRepository : IWarehouseRepository
         _context = context;
     }
 
-    public async Task<int> CreateAsync(DomainWarehouse warehouse, CancellationToken cancellationToken)
+    public async Task<int> CreateAsync(Warehouse warehouse, CancellationToken cancellationToken)
     {
-        var entity = new DbWarehouse
+        var entity = new Warehouse
         {
             OwnerId = warehouse.OwnerId,
             Name = warehouse.Name,
@@ -52,7 +49,7 @@ public class WarehouseRepository : IWarehouseRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-public async Task<DomainWarehouse?> GetByIdAsync(
+public async Task<Warehouse?> GetByIdAsync(
     int warehouseId,
     CancellationToken cancellationToken)
 {
@@ -63,7 +60,7 @@ public async Task<DomainWarehouse?> GetByIdAsync(
     if (entity == null)
         return null;
 
-    return new DomainWarehouse
+    return new Warehouse
     {
         WarehouseId = entity.WarehouseId,
         OwnerId = entity.OwnerId,
@@ -76,21 +73,11 @@ public async Task<DomainWarehouse?> GetByIdAsync(
         AvailableArea = entity.AvailableArea,
         OperatingHours = entity.OperatingHours,
         Status = entity.Status ?? "UNKNOWN",
-        CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
-
-        Images = entity.WarehouseMedia
-            .Where(m => m.MediaType == "IMAGE")
-            .OrderBy(m => m.DisplayOrder)
-            .Select(m => new WarehouseImage
-            {
-                ImageId = m.MediaId,
-                Url = m.MediaUrl
-            })
-            .ToList()
+        CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
     };
 }
 
-    public async Task<List<DomainWarehouse>> GetByOwnerIdAsync(
+    public async Task<List<Warehouse>> GetByOwnerIdAsync(
     int ownerId,
     CancellationToken cancellationToken)
     {
@@ -98,7 +85,7 @@ public async Task<DomainWarehouse?> GetByIdAsync(
             .Where(w => w.OwnerId == ownerId)
             .ToListAsync(cancellationToken);
 
-        return warehouses.Select(entity => new DomainWarehouse
+        return warehouses.Select(entity => new Warehouse
         {
             WarehouseId = entity.WarehouseId,
             OwnerId = entity.OwnerId,
@@ -115,7 +102,7 @@ public async Task<DomainWarehouse?> GetByIdAsync(
         }).ToList();
     }
     public async System.Threading.Tasks.Task UpdateAsync(
-        DomainWarehouse warehouse,
+        Warehouse warehouse,
         CancellationToken cancellationToken)
     {
         var entity = await _context.Warehouses
@@ -140,7 +127,7 @@ public async Task<DomainWarehouse?> GetByIdAsync(
             .AnyAsync(x => x.WarehouseId == warehouseId, cancellationToken);
     }
 
-    public async Task<List<DomainWarehouse>> GetApprovedWarehousesAsync(
+    public async Task<List<Warehouse>> GetApprovedWarehousesAsync(
         int limit,
         CancellationToken cancellationToken)
     {
@@ -152,7 +139,7 @@ public async Task<DomainWarehouse?> GetByIdAsync(
             .Take(limit)
             .ToListAsync(cancellationToken);
 
-        return warehouses.Select(entity => new DomainWarehouse
+        return warehouses.Select(entity => new Warehouse
         {
             WarehouseId = entity.WarehouseId,
             OwnerId = entity.OwnerId,
@@ -165,16 +152,7 @@ public async Task<DomainWarehouse?> GetByIdAsync(
             AvailableArea = entity.AvailableArea,
             OperatingHours = entity.OperatingHours,
             Status = entity.Status ?? "UNKNOWN",
-            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
-            Images = entity.WarehouseMedia
-                .Where(m => m.MediaType == "IMAGE")
-                .OrderBy(m => m.DisplayOrder)
-                .Select(m => new WarehouseImage
-                {
-                    ImageId = m.MediaId,
-                    Url = m.MediaUrl
-                })
-                .ToList()
+            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
         }).ToList();
     }
 

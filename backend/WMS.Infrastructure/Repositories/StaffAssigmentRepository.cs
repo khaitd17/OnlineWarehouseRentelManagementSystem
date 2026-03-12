@@ -1,6 +1,6 @@
 ﻿using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence.ScaffoldModels;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace WMS.Infrastructure.Repositories

@@ -30,7 +30,7 @@ public class RentalContract
         decimal? depositAmount = null,
         string? terms = null)
     {
-        if (!request.IsApproved)
+        if (request.Status != "APPROVED")
             throw new InvalidOperationException("Can only create contract from approved request");
 
         var endDate = request.StartDate.AddMonths(request.DurationMonths);

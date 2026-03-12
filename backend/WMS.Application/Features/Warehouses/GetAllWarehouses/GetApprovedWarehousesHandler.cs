@@ -28,8 +28,8 @@ public class GetApprovedWarehousesHandler
             Description = w.Description,
             TotalArea = w.TotalArea,
             AvailableArea = w.AvailableArea,
-            ImageUrl = w.Images.FirstOrDefault()?.Url,
-            CreatedAt = w.CreatedAt
+            ImageUrl = w.Images.FirstOrDefault()?.MediaUrl,
+            CreatedAt = w.CreatedAt ?? DateTime.UtcNow
         }).ToList();
     }
 }

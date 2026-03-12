@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence.ScaffoldModels;
+using WMS.Domain.Entities;
+using WMS.Infrastructure.Persistence;
+
 using Task = System.Threading.Tasks.Task;
 
 namespace WMS.Infrastructure.Repositories;

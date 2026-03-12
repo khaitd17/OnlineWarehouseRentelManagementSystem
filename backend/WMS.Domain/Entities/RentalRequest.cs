@@ -1,25 +1,45 @@
+using System;
+using System.Collections.Generic;
+
 namespace WMS.Domain.Entities;
 
-public class RentalRequest
+public partial class RentalRequest
 {
-    private RentalRequest() { } // For EF Core
+    public int RequestId { get; set; }
 
-    public int RequestId { get; private set; }
-    public int RenterId { get; private set; }
-    public int WarehouseId { get; private set; }
-    public double RequestedArea { get; private set; }
-    public DateTime StartDate { get; private set; }
-    public int DurationMonths { get; private set; }
-    public string Status { get; private set; } = "PENDING";
-    public string? Notes { get; private set; }
-    public DateTime CreatedAt { get; private set; }
-    public int? ReviewedBy { get; private set; }
-    public DateTime? ReviewedAt { get; private set; }
-    public string? RejectionReason { get; private set; }
-    public string? ContractImageUrl { get; private set; }
+    public int RenterId { get; set; }
 
-    // Navigation properties
-    public Warehouse? Warehouse { get; set; }
+    public int WarehouseId { get; set; }
+
+    public double RequestedArea { get; set; }
+
+    public DateTime StartDate { get; set; }
+
+    public int DurationMonths { get; set; }
+
+    public string Status { get; set; } = "PENDING";
+
+    public string? Notes { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public int? ReviewedBy { get; set; }
+
+    public DateTime? ReviewedAt { get; set; }
+
+    public string? RejectionReason { get; set; }
+
+    public string? ContractImageUrl { get; set; }
+
+    public virtual User Renter { get; set; } = null!;
+
+    public virtual User? ReviewedByNavigation { get; set; }
+
+    public virtual Warehouse Warehouse { get; set; } = null!;
+
+    public virtual ICollection<Contract> Contracts { get; set; } = new List<Contract>();
 
     // Factory method
     public static RentalRequest Create(
@@ -55,17 +75,6 @@ public class RentalRequest
         ContractImageUrl = contractImageUrl;
     }
 
-    public void Cancel(int renterId)
-    {
-        if (RenterId != renterId)
-            throw new UnauthorizedAccessException("Only the renter can cancel this request");
-
-        if (Status != "PENDING" && Status != "APPROVED")
-            throw new InvalidOperationException($"Cannot cancel request with status {Status}");
-
-        Status = "CANCELLED";
-    }
-
     public void Reject(int reviewerId, string rejectionReason)
     {
         if (Status != "PENDING")
@@ -80,16 +89,18 @@ public class RentalRequest
         RejectionReason = rejectionReason;
     }
 
-    public bool IsPending => Status == "PENDING";
-    public bool IsApproved => Status == "APPROVED";
-    public bool IsRejected => Status == "REJECTED";
-    public bool IsDraft => Status == "DRAFT";
+    public void Cancel()
+    {
+        if (Status != "PENDING" && Status != "APPROVED")
+            throw new InvalidOperationException($"Cannot cancel request with status {Status}");
+
+        Status = "CANCELLED";
+    }
 
     public void Send()
     {
-        if (Status != "DRAFT")
+        if (Status != "PENDING")
             throw new InvalidOperationException($"Cannot send request with status {Status}");
-        
-        Status = "PENDING";
+        // Send can be called on PENDING status, just marking it as sent
     }
 }
