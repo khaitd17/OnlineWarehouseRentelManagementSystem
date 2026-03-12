@@ -2,7 +2,8 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using WMS.Application.Common;
 using WMS.Application.Features.Audit.GetAuditSessions;
-using WMS.Infrastructure.Persistence.ScaffoldModels;
+using WMS.Infrastructure.Persistence;
+using WMS.Domain.Entities;
 
 namespace WMS.Infrastructure.Handlers.Audit;
 
