@@ -99,19 +99,23 @@ namespace WMS.Application.Features.Staff.CreateStaff
                 staffUserId = existingUserId.Value;
             }
 
-            // Create assignment
-            var assignment = new StaffAssignment(
-                staffId: staffUserId,
-                warehouseId: request.WarehouseId,
-                status: "Active",
-                assignedAt: request.StartDate != null
-                    ? request.StartDate.Value.ToDateTime(TimeOnly.MinValue)
-                    : DateTime.Now,
-                endDate: request.EndDate,
-                notes: request.Notes
-            );
+            // [COMMENTED OUT - Database schema changes in progress]
+            // Staff assignment creation is temporarily disabled
+            // Original assignment creation logic commented out below:
+            
+            // // Create assignment
+            // var assignment = new StaffAssignment(
+            //     staffId: staffUserId,
+            //     warehouseId: request.WarehouseId,
+            //     status: "Active",
+            //     assignedAt: request.StartDate != null
+            //         ? request.StartDate.Value.ToDateTime(TimeOnly.MinValue)
+            //         : DateTime.Now,
+            //     endDate: request.EndDate,
+            //     notes: request.Notes
+            // );
 
-            await _staffAssigmentRepository.AddAsync(assignment, cancellationToken);
+            // await _staffAssigmentRepository.AddAsync(assignment, cancellationToken);
 
             return staffUserId;
         }

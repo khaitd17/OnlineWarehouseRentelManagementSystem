@@ -17,57 +17,61 @@ namespace WMS.Application.Features.Staff.ListStaff
             _warehouseRepository = warehouseRepository;
         }
 
+        // [COMMENTED OUT - Database schema changes in progress]
+        // Staff listing functionality is temporarily disabled
         public async Task<ListStaffResponse> Handle(
             ListStaffCommand request,
             CancellationToken cancellationToken)
         {
-            // If WarehouseId is provided, check authorization
-            if (request.WarehouseId.HasValue)
-            {
-                var warehouseOwnerId = await _warehouseRepository.FindWarehouseOwnerById(
-                    request.WarehouseId.Value, cancellationToken);
+            throw new NotImplementedException("Staff listing is currently disabled. Database changes are in progress.");
+            
+            // // If WarehouseId is provided, check authorization
+            // if (request.WarehouseId.HasValue)
+            // {
+            //     var warehouseOwnerId = await _warehouseRepository.FindWarehouseOwnerById(
+            //         request.WarehouseId.Value, cancellationToken);
 
-                if (warehouseOwnerId == null)
-                    throw new Exception($"Warehouse with id {request.WarehouseId} not found");
+            //     if (warehouseOwnerId == null)
+            //         throw new Exception($"Warehouse with id {request.WarehouseId} not found");
 
-                // Check if current user is the owner of the warehouse
-                if (warehouseOwnerId.Value != request.OwnerId)
-                    throw new Exception($"User {request.OwnerId} is not the owner of warehouse {request.WarehouseId}");
+            //     // Check if current user is the owner of the warehouse
+            //     if (warehouseOwnerId.Value != request.OwnerId)
+            //         throw new Exception($"User {request.OwnerId} is not the owner of warehouse {request.WarehouseId}");
 
-                // Get staff by warehouse
-                List<StaffAssignmentDto> staffData;
+            //     // Get staff by warehouse
+            //     List<StaffAssignmentDto> staffData;
 
-                if (!string.IsNullOrEmpty(request.SearchKeyword))
-                {
-                    staffData = await _staffAssignmentRepository.SearchStaffByWarehouseIdAsync(
-                        request.WarehouseId.Value, request.SearchKeyword, cancellationToken);
-                }
-                else
-                {
-                    staffData = await _staffAssignmentRepository.GetStaffByWarehouseIdAsync(
-                        request.WarehouseId.Value, cancellationToken);
-                }
+            //     if (!string.IsNullOrEmpty(request.SearchKeyword))
+            //     {
+            //         staffData = await _staffAssignmentRepository.SearchStaffByWarehouseIdAsync(
+            //             request.WarehouseId.Value, request.SearchKeyword, cancellationToken);
+            //     }
+            //     else
+            //     {
+            //         staffData = await _staffAssignmentRepository.GetStaffByWarehouseIdAsync(
+            //             request.WarehouseId.Value, cancellationToken);
+            //     }
 
-                return MapToResponse(staffData, request.PageNumber, request.PageSize);
-            }
-            else
-            {
-                // Get all staff by owner (get all data, paginate in-memory)
-                List<StaffAssignmentDto> staffData;
+            //     return MapToResponse(staffData, request.PageNumber, request.PageSize);
+            // }
+            // else
+            // {
+            //     // Get all staff by owner (get all data, paginate in-memory)
+            //     List<StaffAssignmentDto> staffData;
 
-                if (!string.IsNullOrEmpty(request.SearchKeyword))
-                {
-                    staffData = await _staffAssignmentRepository.SearchStaffByOwnerIdAsync(
-                        request.OwnerId, request.SearchKeyword, cancellationToken);
-                }
-                else
-                {
-                    staffData = await _staffAssignmentRepository.GetStaffByOwnerIdAsync(
-                        request.OwnerId, cancellationToken);
-                }
+            //     if (!string.IsNullOrEmpty(request.SearchKeyword))
+            //     {
+            //         staffData = await _staffAssignmentRepository.SearchStaffByOwnerIdAsync(
+            //             request.OwnerId, request.SearchKeyword, cancellationToken);
+            //     }
+            //     else
+            //     {
+            //         staffData = await _staffAssignmentRepository.GetStaffByOwnerIdAsync(
+            //             request.OwnerId, cancellationToken);
+            //     }
 
-                return MapToResponse(staffData, request.PageNumber, request.PageSize);
-            }
+            //     return MapToResponse(staffData, request.PageNumber, request.PageSize);
+            // }
         }
 
         private ListStaffResponse MapToResponse(

@@ -49,6 +49,9 @@ namespace WMS.API.Controllers
             }
         }
 
+        // [COMMENTED OUT - Database schema changes in progress]
+        // Staff listing functionality is temporarily disabled
+        /*
         [HttpGet("list")]
         public async Task<IActionResult> ListStaff(
             [FromQuery] int? warehouseId,
@@ -76,7 +79,11 @@ namespace WMS.API.Controllers
                     new { message = ex.Message });
             }
         }
+        */
 
+        // [COMMENTED OUT - Database schema changes in progress]
+        // Staff assignment deactivation is temporarily disabled
+        /*
         [HttpPost("inactive")]
 
         public async Task<IActionResult> InactiveStaffAssignment(
@@ -106,7 +113,11 @@ namespace WMS.API.Controllers
                     new { message = ex.Message });
             }
         }
+        */
 
+        // [COMMENTED OUT - Database schema changes in progress]
+        // Staff assignment functionality is temporarily disabled
+        /*
         [HttpPost("assign")]
         public async Task<IActionResult> AssignStaffToWarehouse(
             [FromBody] AssignStaffToWarehouseRequest request,
@@ -138,6 +149,7 @@ namespace WMS.API.Controllers
                     new { message = ex.Message });
             }
         }
+        */
     }
 
     public class InactiveStaffRequest

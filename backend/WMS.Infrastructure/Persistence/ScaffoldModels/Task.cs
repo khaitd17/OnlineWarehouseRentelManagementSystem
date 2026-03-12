@@ -5,33 +5,19 @@ namespace WMS.Infrastructure.Persistence.ScaffoldModels;
 
 public partial class Task
 {
-    public int TaskId { get; set; }
+    public int Id { get; set; }
 
     public int WarehouseId { get; set; }
 
-    public int? AssigneeId { get; set; }
+    public int TaskTypeId { get; set; }
 
-    public int CreatedBy { get; set; }
+    public string Status { get; set; } = "Pending";
 
-    public string Title { get; set; } = null!;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public string? Description { get; set; }
+    public Warehouse Warehouse { get; set; } = null!;
 
-    public string? Status { get; set; }
+    public TaskType TaskType { get; set; } = null!;
 
-    public string? Priority { get; set; }
-
-    public DateTime? Deadline { get; set; }
-
-    public DateTime? CreatedAt { get; set; }
-
-    public DateTime? UpdatedAt { get; set; }
-
-    public DateTime? CompletedAt { get; set; }
-
-    public virtual User? Assignee { get; set; }
-
-    public virtual User CreatedByNavigation { get; set; } = null!;
-
-    public virtual Warehouse Warehouse { get; set; } = null!;
+    public ICollection<TaskAssignment> Assignments { get; set; } = new List<TaskAssignment>();
 }

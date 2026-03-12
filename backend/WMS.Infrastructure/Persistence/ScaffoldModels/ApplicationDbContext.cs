@@ -35,8 +35,15 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
-    public virtual DbSet<StaffAssignment> StaffAssignments { get; set; }
+    public virtual DbSet<WarehouseMembership> WarehouseMemberships { get; set; }
 
+    public virtual DbSet<WarehouseRole> WarehouseRoles { get; set; }
+
+    public virtual DbSet<Skill> Skills { get; set; }
+
+    public virtual DbSet<TaskType> TaskTypes { get; set; }
+
+    public virtual DbSet<TaskAssignment> TaskAssignments { get; set; }
     public virtual DbSet<Task> Tasks { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
@@ -468,98 +475,174 @@ public partial class ApplicationDbContext : DbContext
                 .HasColumnName("role_name");
         });
 
-        modelBuilder.Entity<StaffAssignment>(entity =>
+       
+
+        modelBuilder.Entity<Task>(entity =>
+{
+    entity.ToTable("tasks");
+
+    entity.HasKey(e => e.Id);
+
+    entity.Property(e => e.Id)
+        .HasColumnName("task_id");
+
+    entity.Property(e => e.WarehouseId)
+        .HasColumnName("warehouse_id");
+
+    entity.Property(e => e.TaskTypeId)
+        .HasColumnName("task_type_id");
+
+    entity.Property(e => e.Status)
+        .HasMaxLength(30)
+        .HasColumnName("status");
+
+    entity.Property(e => e.CreatedAt)
+        .HasDefaultValueSql("(getdate())")
+        .HasColumnName("created_at");
+
+    entity.HasOne(e => e.Warehouse)
+        .WithMany()
+        .HasForeignKey(e => e.WarehouseId);
+
+    entity.HasOne(e => e.TaskType)
+        .WithMany(t => t.Tasks)
+        .HasForeignKey(e => e.TaskTypeId);
+});
+        modelBuilder.Entity<WarehouseMembership>(entity =>
         {
-            entity.HasKey(e => e.AssignmentId).HasName("PK__staff_as__DA891814E470C971");
+            entity.ToTable("warehouse_memberships");
 
-            entity.ToTable("staff_assignments");
+            entity.HasKey(e => e.Id);
 
-            entity.HasIndex(e => new { e.StaffId, e.WarehouseId, e.Status }, "UQ_staff_assignments").IsUnique();
+            entity.Property(e => e.Id)
+                .HasColumnName("membership_id");
 
-            entity.HasIndex(e => e.StaffId, "idx_staff_assignments_staff");
+            entity.Property(e => e.UserId)
+                .HasColumnName("user_id");
 
-            entity.HasIndex(e => e.Status, "idx_staff_assignments_status");
+            entity.Property(e => e.WarehouseId)
+                .HasColumnName("warehouse_id");
 
-            entity.HasIndex(e => e.WarehouseId, "idx_staff_assignments_warehouse");
+            entity.Property(e => e.WarehouseRoleId)
+                .HasColumnName("warehouse_role_id");
 
-            entity.Property(e => e.AssignmentId).HasColumnName("assignment_id");
+            entity.Property(e => e.IsActive)
+                .HasColumnName("is_active");
+
+            entity.Property(e => e.CreatedAt)
+                .HasColumnName("created_at")
+                .HasDefaultValueSql("(getdate())");
+
+            // unique user per warehouse
+            entity.HasIndex(e => new { e.UserId, e.WarehouseId })
+                .IsUnique();
+
+            entity.HasOne(e => e.User)
+                .WithMany(u => u.WarehouseMemberships)
+                .HasForeignKey(e => e.UserId);
+
+            entity.HasOne(e => e.Warehouse)
+                .WithMany(w => w.WarehouseMemberships)
+                .HasForeignKey(e => e.WarehouseId);
+
+            entity.HasOne(e => e.Role)
+                .WithMany(r => r.Memberships)
+                .HasForeignKey(e => e.WarehouseRoleId);
+        });
+        modelBuilder.Entity<WarehouseRole>(entity =>
+        {
+            entity.ToTable("warehouse_roles");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).HasColumnName("role_id");
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(50)
+                .HasColumnName("name");
+        });
+        modelBuilder.Entity<Skill>(entity =>
+        {
+            entity.ToTable("skills");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).HasColumnName("skill_id");
+
+            entity.Property(e => e.Code)
+                .HasMaxLength(50)
+                .HasColumnName("code");
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .HasColumnName("name");
+        });
+        modelBuilder.Entity<TaskType>(entity =>
+        {
+            entity.ToTable("task_types");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).HasColumnName("task_type_id");
+
+            entity.Property(e => e.Code)
+                .HasMaxLength(50)
+                .HasColumnName("code");
+
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .HasColumnName("name");
+        });
+        modelBuilder.Entity<TaskAssignment>(entity =>
+        {
+            entity.ToTable("task_assignments");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id).HasColumnName("assignment_id");
+
+            entity.Property(e => e.TaskId).HasColumnName("task_id");
+
+            entity.Property(e => e.MembershipId).HasColumnName("membership_id");
+
             entity.Property(e => e.AssignedAt)
                 .HasDefaultValueSql("(getdate())")
                 .HasColumnName("assigned_at");
-            entity.Property(e => e.EndDate).HasColumnName("end_date");
-            entity.Property(e => e.Notes).HasColumnName("notes");
-            entity.Property(e => e.StaffId).HasColumnName("staff_id");
-            entity.Property(e => e.Status)
-                .HasMaxLength(20)
-                .HasDefaultValue("ACTIVE")
-                .HasColumnName("status");
-            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
 
-            entity.HasOne(d => d.Staff).WithMany(p => p.StaffAssignments)
-                .HasForeignKey(d => d.StaffId)
-                .HasConstraintName("FK_staff_assignments_staff");
+            entity.Property(e => e.CompletedAt)
+                .HasColumnName("completed_at");
 
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.StaffAssignments)
-                .HasForeignKey(d => d.WarehouseId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_staff_assignments_warehouse");
+            entity.HasOne(e => e.Task)
+                .WithMany(t => t.Assignments)
+                .HasForeignKey(e => e.TaskId);
+
+            entity.HasOne(e => e.Membership)
+                .WithMany(m => m.TaskAssignments)
+                .HasForeignKey(e => e.MembershipId);
         });
-
-        modelBuilder.Entity<Task>(entity =>
+        modelBuilder.Entity<WarehouseMembership>()
+    .HasMany(m => m.Skills)
+    .WithMany(s => s.Memberships)
+    .UsingEntity<Dictionary<string, object>>(
+        "warehouse_membership_skills",
+        j => j.HasOne<Skill>().WithMany().HasForeignKey("skill_id"),
+        j => j.HasOne<WarehouseMembership>().WithMany().HasForeignKey("membership_id"),
+        j =>
         {
-            entity.HasKey(e => e.TaskId).HasName("PK__tasks__0492148DBFCF261D");
-
-            entity.ToTable("tasks", tb => tb.HasTrigger("TR_tasks_updated_at"));
-
-            entity.HasIndex(e => e.AssigneeId, "idx_tasks_assignee");
-
-            entity.HasIndex(e => e.Deadline, "idx_tasks_deadline");
-
-            entity.HasIndex(e => e.Priority, "idx_tasks_priority");
-
-            entity.HasIndex(e => e.Status, "idx_tasks_status");
-
-            entity.HasIndex(e => e.WarehouseId, "idx_tasks_warehouse");
-
-            entity.Property(e => e.TaskId).HasColumnName("task_id");
-            entity.Property(e => e.AssigneeId).HasColumnName("assignee_id");
-            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnName("created_at");
-            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
-            entity.Property(e => e.Deadline).HasColumnName("deadline");
-            entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.Priority)
-                .HasMaxLength(20)
-                .HasDefaultValue("MEDIUM")
-                .HasColumnName("priority");
-            entity.Property(e => e.Status)
-                .HasMaxLength(20)
-                .HasDefaultValue("TODO")
-                .HasColumnName("status");
-            entity.Property(e => e.Title)
-                .HasMaxLength(255)
-                .HasColumnName("title");
-            entity.Property(e => e.UpdatedAt)
-                .HasDefaultValueSql("(getdate())")
-                .HasColumnName("updated_at");
-            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
-
-            entity.HasOne(d => d.Assignee).WithMany(p => p.TaskAssignees)
-                .HasForeignKey(d => d.AssigneeId)
-                .HasConstraintName("FK_tasks_assignee");
-
-            entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.TaskCreatedByNavigations)
-                .HasForeignKey(d => d.CreatedBy)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_tasks_creator");
-
-            entity.HasOne(d => d.Warehouse).WithMany(p => p.Tasks)
-                .HasForeignKey(d => d.WarehouseId)
-                .HasConstraintName("FK_tasks_warehouse");
+            j.HasKey("membership_id", "skill_id");
         });
 
+        modelBuilder.Entity<TaskType>()
+    .HasMany(t => t.RequiredSkills)
+    .WithMany(s => s.TaskTypes)
+    .UsingEntity<Dictionary<string, object>>(
+        "task_type_skills",
+        j => j.HasOne<Skill>().WithMany().HasForeignKey("skill_id"),
+        j => j.HasOne<TaskType>().WithMany().HasForeignKey("task_type_id"),
+        j =>
+        {
+            j.HasKey("task_type_id", "skill_id");
+        });
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.UserId).HasName("PK__users__B9BE370FD71B3418");
