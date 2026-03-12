@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Application.Features.Users.UpdateProfile;
 using WMS.Application.Interfaces;
-using WMS.Infrastructure.Persistence.ScaffoldModels;
+using WMS.Domain.Entities;
+using WMS.Infrastructure.Persistence;
+
 using SystemTask = System.Threading.Tasks.Task;
 
 namespace WMS.Infrastructure.Repositories;

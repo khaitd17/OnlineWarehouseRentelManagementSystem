@@ -1,6 +1,9 @@
+using System;
+using System.Collections.Generic;
+
 namespace WMS.Domain.Entities;
 
-public class Warehouse
+public partial class Warehouse
 {
     public int WarehouseId { get; set; }
 
@@ -22,8 +25,42 @@ public class Warehouse
 
     public string? OperatingHours { get; set; }
 
-    public string Status { get; set; } = "PENDING";
+    public string? Status { get; set; }
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public List<WarehouseImage> Images { get; set; } = new();
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? UpdatedAt { get; set; }
+
+    public DateTime? ApprovedAt { get; set; }
+
+    public int? ApprovedBy { get; set; }
+
+    public string? RejectionReason { get; set; }
+
+    public virtual User? ApprovedByNavigation { get; set; }
+
+    public virtual ICollection<AuditSession> AuditSessions { get; set; } = new List<AuditSession>();
+
+    public virtual ICollection<Contract> Contracts { get; set; } = new List<Contract>();
+
+    public virtual ICollection<Equipment> Equipment { get; set; } = new List<Equipment>();
+
+    public virtual ICollection<InventoryRequest> InventoryRequests { get; set; } = new List<InventoryRequest>();
+
+    public virtual User Owner { get; set; } = null!;
+
+    public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+
+    public virtual ICollection<RentalRequest> RentalRequests { get; set; } = new List<RentalRequest>();
+
+    public virtual ICollection<WarehouseTask> Tasks { get; set; } = new List<WarehouseTask>();
+
+    public virtual ICollection<WarehouseDocument> WarehouseDocuments { get; set; } = new List<WarehouseDocument>();
+
+    public virtual ICollection<WarehouseMedium> WarehouseMedia { get; set; } = new List<WarehouseMedium>();
+    
+    public ICollection<WarehouseMembership> WarehouseMemberships { get; set; } = new List<WarehouseMembership>();
+
+    // Alias for WarehouseMedia to support legacy code
+    public ICollection<WarehouseMedium> Images => WarehouseMedia;
 }

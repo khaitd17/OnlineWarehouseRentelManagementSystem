@@ -40,11 +40,11 @@ public class GetWarehouseDetailHandler
             AvailableArea = warehouse.AvailableArea,
             OperatingHours = warehouse.OperatingHours,
             Status = warehouse.Status,
-            CreatedAt = warehouse.CreatedAt,
+            CreatedAt = warehouse.CreatedAt ?? DateTime.UtcNow,
             Images = warehouse.Images.Select(x => new WarehouseImageDto
             {
-                ImageId = x.ImageId,
-                Url = x.Url
+                ImageId = x.MediaId,
+                Url = x.MediaUrl
             }).ToList(),
             OwnerName = owner?.FullName,
             OwnerPhone = owner?.Phone,

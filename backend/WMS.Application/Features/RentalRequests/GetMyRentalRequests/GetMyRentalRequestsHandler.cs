@@ -44,7 +44,7 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
                 DurationMonths = r.DurationMonths,
                 Status = r.Status,
                 Notes = r.Notes,
-                CreatedAt = r.CreatedAt,
+                CreatedAt = r.CreatedAt ?? DateTime.UtcNow,
                 ReviewedBy = r.ReviewedBy,
                 ReviewedByName = null,
                 ReviewedAt = r.ReviewedAt,

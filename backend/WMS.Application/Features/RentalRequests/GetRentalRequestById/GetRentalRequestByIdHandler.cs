@@ -44,7 +44,7 @@ public class GetRentalRequestByIdHandler : IRequestHandler<GetRentalRequestByIdQ
             DurationMonths = rentalRequest.DurationMonths,
             Status = rentalRequest.Status,
             Notes = rentalRequest.Notes,
-            CreatedAt = rentalRequest.CreatedAt,
+            CreatedAt = rentalRequest.CreatedAt ?? DateTime.UtcNow,
             ReviewedBy = rentalRequest.ReviewedBy,
             ReviewedByName = null,
             ReviewedAt = rentalRequest.ReviewedAt,

@@ -8,7 +8,7 @@ using WMS.Application.Behaviors;
 using WMS.Application.Features.Auth.Register;
 using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence.ScaffoldModels;
+using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Repositories;
 using WMS.Infrastructure.Services;
 
@@ -32,7 +32,7 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "OWRMS API", Version = "v1" });
 });
 
-// Database Context - dùng ScaffoldModels DbContext (database-first)
+// Database Context - merged from ScaffoldModels
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -96,6 +96,21 @@ builder.Services.AddAuthorization();
 // ==========================================
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (!context.Roles.Any())
+    {
+        context.Roles.AddRange(
+            new WMS.Domain.Entities.Role { RoleName = "RENTER", Description = "Khách thuê" },
+            new WMS.Domain.Entities.Role { RoleName = "OWNER", Description = "Chủ kho" },
+            new WMS.Domain.Entities.Role { RoleName = "STAFF", Description = "Nhân viên" },
+            new WMS.Domain.Entities.Role { RoleName = "ADMIN", Description = "Quản trị viên" }
+        );
+        context.SaveChanges();
+    }
+}
 
 // ==========================================
 // 3. Configure the HTTP request pipeline

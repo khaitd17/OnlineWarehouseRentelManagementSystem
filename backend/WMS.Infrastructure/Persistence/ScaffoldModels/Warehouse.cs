@@ -53,11 +53,12 @@ public partial class Warehouse
 
     public virtual ICollection<RentalRequest> RentalRequests { get; set; } = new List<RentalRequest>();
 
-    public virtual ICollection<StaffAssignment> StaffAssignments { get; set; } = new List<StaffAssignment>();
 
     public virtual ICollection<Task> Tasks { get; set; } = new List<Task>();
 
     public virtual ICollection<WarehouseDocument> WarehouseDocuments { get; set; } = new List<WarehouseDocument>();
 
     public virtual ICollection<WarehouseMedium> WarehouseMedia { get; set; } = new List<WarehouseMedium>();
+    public ICollection<WarehouseMembership> WarehouseMemberships { get; set; }
+        = new List<WarehouseMembership>();
 }
