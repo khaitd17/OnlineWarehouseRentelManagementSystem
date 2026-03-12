@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
+import AdminLayout from "../layouts/AdminLayout";
 import DashboardLayout from "../layouts/DashboardLayout";
 import HomePage from "../pages/HomePage";
 import SearchResultsPage from "../pages/SearchResultsPage";
@@ -34,6 +35,15 @@ import CreateInboundRequest from "../pages/Requests/CreateInboundRequest";
 import TransactionHistory from "../pages/Requests/TransactionHistory";
 import RenterInboundList from "../pages/Requests/RenterInboundList";
 import RenterOutboundList from "../pages/Requests/RenterOutboundList";
+
+// Admin pages
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import AccountsPage from "../pages/admin/AccountsPage";
+import WarehousesPage from "../pages/admin/WarehousesPage";
+import WarehouseDetailPage from "../pages/admin/WarehouseDetailPage";
+import AuditSessionsPage from "../pages/admin/AuditSessionsPage";
+import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
+import ReportsPage from "../pages/admin/ReportsPage";
 
 function AppRoutes() {
   return (
@@ -102,7 +112,19 @@ function AppRoutes() {
 
         </Route>
 
-        {/* Legacy redirect or direct access if needed */}
+        {/* Admin Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route element={<AdminLayout />}>
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/accounts" element={<AccountsPage />} />
+            <Route path="/admin/warehouses" element={<WarehousesPage />} />
+            <Route path="/admin/warehouses/:id" element={<WarehouseDetailPage />} />
+            <Route path="/admin/audit-sessions" element={<AuditSessionsPage />} />
+            <Route path="/admin/audit-sessions/:id" element={<AuditSessionDetailPage />} />
+            <Route path="/admin/reports" element={<ReportsPage />} />
+          </Route>
+        </Route>
+
         <Route path="/login" element={<AuthPage />} />
       </Routes>
     </BrowserRouter>
