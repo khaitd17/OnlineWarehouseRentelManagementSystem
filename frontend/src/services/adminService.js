@@ -27,6 +27,7 @@ const adminService = {
     recordAuditResults: (id,data) => axiosClient.post(`/audit-sessions/${id}/results`,data),
     getAuditResults: (id,params) => axiosClient.get(`/audit-sessions/${id}/results`,{ params }),
     exportAuditReport: (id) => axiosClient.get(`/audit-sessions/${id}/export`,{ responseType: "blob" }),
+    closeAuditSession: (id,data) => axiosClient.put(`/audit-sessions/${id}/close`,data || {}),
 };
 
 export default adminService;

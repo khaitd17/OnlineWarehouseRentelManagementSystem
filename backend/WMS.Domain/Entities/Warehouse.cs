@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WMS.Domain.Entities;
 
@@ -62,5 +63,6 @@ public partial class Warehouse
     public ICollection<WarehouseMembership> WarehouseMemberships { get; set; } = new List<WarehouseMembership>();
 
     // Alias for WarehouseMedia to support legacy code
+    [NotMapped]
     public ICollection<WarehouseMedium> Images => WarehouseMedia;
 }

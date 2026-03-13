@@ -39,7 +39,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // MediatR Registration - scan tất cả handlers trong Application assembly
 builder.Services.AddMediatR(cfg =>
 {
-    cfg.RegisterServicesFromAssemblies(typeof(RegisterCommand).Assembly);
+    cfg.RegisterServicesFromAssemblies(
+        typeof(RegisterCommand).Assembly,
+        typeof(ApplicationDbContext).Assembly);
     cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
 
