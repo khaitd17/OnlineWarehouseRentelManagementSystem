@@ -6,6 +6,16 @@ const authService = {
     if (response.data.token) {
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(response.data));
+
+      // Automatically fetch warehouse context after login
+      try {
+        const ctxResponse = await axiosClient.get("/auth/warehouse-context");
+        const ctx = ctxResponse.data;
+        localStorage.setItem("warehouseContext", JSON.stringify(ctx));
+        console.log("[WarehouseContext]", ctx);
+      } catch (err) {
+        console.warn("[WarehouseContext] Failed to fetch context:", err);
+      }
     }
     return response.data;
   },
@@ -31,11 +41,17 @@ const authService = {
   logout: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("warehouseContext");
   },
 
   getCurrentUser: () => {
     const user = localStorage.getItem("user");
     return user ? JSON.parse(user) : null;
+  },
+
+  getWarehouseContext: () => {
+    const ctx = localStorage.getItem("warehouseContext");
+    return ctx ? JSON.parse(ctx) : null;
   },
 };
 

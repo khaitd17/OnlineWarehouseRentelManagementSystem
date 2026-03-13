@@ -1,9 +1,13 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using WMS.Application.Features.Auth.ForgotPassword;
 using WMS.Application.Features.Auth.Login;
 using WMS.Application.Features.Auth.Register;
 using WMS.Application.Features.Auth.ResetPassword;
+using WMS.Infrastructure.Persistence;
 
 namespace WMS.API.Controllers;
 
@@ -12,13 +16,15 @@ namespace WMS.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ApplicationDbContext _db;
 
-    public AuthController(IMediator mediator)
+    public AuthController(IMediator mediator, ApplicationDbContext db)
     {
         _mediator = mediator;
+        _db = db;
     }
 
-    /// <summary>Đăng ký tài khoản mới (role: Renter)</summary>
+    /// <summary>Đăng ký tài khoản mới (role: USER)</summary>
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest req)
     {
@@ -48,12 +54,64 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>Lấy thông tin bối cảnh kho của người dùng hiện tại</summary>
+    [HttpGet("warehouse-context")]
+    [Authorize]
+    public async Task<IActionResult> GetWarehouseContext()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            return Unauthorized(new { message = "User ID not found in token." });
+
+        var user = await _db.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.UserId == userId);
+
+        if (user == null)
+            return NotFound(new { message = "User not found." });
+
+        var memberships = await _db.WarehouseMemberships
+            .Where(m => m.UserId == userId && m.IsActive)
+            .Include(m => m.Warehouse)
+            .Include(m => m.Role)
+            .Include(m => m.Skills)
+            .Include(m => m.Zones)
+            .ToListAsync();
+
+        var warehouseItems = memberships.Select(m =>
+        {
+            // Group zones by skill: each skill gets the list of all zone codes in this membership
+            var skillEntries = m.Skills.Select(skill => new
+            {
+                skill = skill.Code,
+                zones = m.Zones.Select(z => z.Code).ToList()
+            }).ToList();
+
+            return new
+            {
+                warehouseId   = m.WarehouseId,
+                warehouseName = m.Warehouse.Name,
+                role          = m.Role.Code,
+                skills        = skillEntries
+            };
+        }).ToList();
+
+        var context = new
+        {
+            userId     = user.UserId,
+            name       = user.FullName,
+            systemRole = user.Role?.RoleName?.ToLower() ?? "user",
+            warehouses = warehouseItems
+        };
+
+        return Ok(context);
+    }
+
     /// <summary>Yêu cầu gửi email đặt lại mật khẩu</summary>
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest req)
     {
         await _mediator.Send(new ForgotPasswordCommand(req.Email));
-        // Luôn trả 200 để không lộ email tồn tại hay không
         return Ok(new { message = "Nếu email tồn tại, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu." });
     }
 
@@ -78,3 +136,4 @@ public record RegisterRequest(string FullName, string Email, string Password, st
 public record LoginRequest(string Email, string Password);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NewPassword);
+

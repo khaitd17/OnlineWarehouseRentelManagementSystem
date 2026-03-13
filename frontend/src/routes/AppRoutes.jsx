@@ -63,7 +63,7 @@ function AppRoutes() {
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
 
-          {/* Role-Based Routes cho OWNER */}
+          {/* Role-Based Routes cho OWNER (quản lý kho, tạo kho) */}
           <Route element={<RoleBasedRoute allowedRoles={['OWNER']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
@@ -72,10 +72,17 @@ function AppRoutes() {
               <Route path="/create-warehouse" element={<CreateWarehouse />} />
               <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />
               <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
-              <Route path="/create-staff" element={<CreateStaff />} />
-              <Route path="/list-staff" element={<ListStaff />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
+            </Route>
+          </Route>
+
+          {/* Quản lý nhân viên — mọi USER đã đăng nhập đều truy cập được,
+              quyền thực sự được kiểm tra trong trang qua WarehouseMembership API */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<DashboardLayout />}>
+              <Route path="/create-staff" element={<CreateStaff />} />
+              <Route path="/list-staff" element={<ListStaff />} />
             </Route>
           </Route>
 

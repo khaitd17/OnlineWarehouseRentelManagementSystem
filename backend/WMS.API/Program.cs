@@ -54,6 +54,7 @@ builder.Services.AddScoped<IWarehouseMediaRepository, WarehouseMediaRepository>(
 builder.Services.AddScoped<IWarehouseDocumentRepository, WarehouseDocumentRepository>();
 builder.Services.AddScoped<IStaffAssigmentRepository, StaffAssigmentRepository>();
 builder.Services.AddScoped<IRentalRequestRepository, RentalRequestRepository>();
+builder.Services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -100,16 +101,8 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    if (!context.Roles.Any())
-    {
-        context.Roles.AddRange(
-            new WMS.Domain.Entities.Role { RoleName = "RENTER", Description = "Khách thuê" },
-            new WMS.Domain.Entities.Role { RoleName = "OWNER", Description = "Chủ kho" },
-            new WMS.Domain.Entities.Role { RoleName = "STAFF", Description = "Nhân viên" },
-            new WMS.Domain.Entities.Role { RoleName = "ADMIN", Description = "Quản trị viên" }
-        );
-        context.SaveChanges();
-    }
+    // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
+    DatabaseSeeder.Seed(context);
 }
 
 // ==========================================

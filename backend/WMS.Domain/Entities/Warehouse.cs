@@ -61,6 +61,8 @@ public partial class Warehouse
     
     public ICollection<WarehouseMembership> WarehouseMemberships { get; set; } = new List<WarehouseMembership>();
 
+    public virtual ICollection<Zone> Zones { get; set; } = new List<Zone>();
+
     // Alias for WarehouseMedia to support legacy code
     public ICollection<WarehouseMedium> Images => WarehouseMedia;
 }
