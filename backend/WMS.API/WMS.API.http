@@ -1,6 +1,86 @@
 @WMS.API_HostAddress = http://localhost:5276
+@token = YOUR_JWT_TOKEN_HERE
 
 GET {{WMS.API_HostAddress}}/weatherforecast/
 Accept: application/json
+
+###
+
+# ===================================
+# RENTAL REQUESTS API TESTS
+# ===================================
+
+### 1. Create Rental Request (Renter)
+POST {{WMS.API_HostAddress}}/api/rental-requests
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "warehouseId": 1,
+  "requestedArea": 100.0,
+  "startDate": "2026-04-01T00:00:00",
+  "durationMonths": 6,
+  "notes": "Need storage for inventory"
+}
+
+###
+
+### 2. Get Rental Request by ID
+GET {{WMS.API_HostAddress}}/api/rental-requests/1
+Authorization: Bearer {{token}}
+
+###
+
+### 3. Get My Rental Requests (Renter)
+GET {{WMS.API_HostAddress}}/api/rental-requests/my-requests
+Authorization: Bearer {{token}}
+
+###
+
+### 4. Get Pending Requests (Owner)
+GET {{WMS.API_HostAddress}}/api/rental-requests/pending
+Authorization: Bearer {{token}}
+
+###
+
+### 5. Approve Rental Request (Owner)
+POST {{WMS.API_HostAddress}}/api/rental-requests/1/approve
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "requestId": 1,
+  "monthlyPayment": 5000000,
+  "depositAmount": 5000000,
+  "terms": "Standard rental terms apply"
+}
+
+###
+
+### 6. Reject Rental Request (Owner)
+POST {{WMS.API_HostAddress}}/api/rental-requests/1/reject
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "requestId": 1,
+  "rejectionReason": "Insufficient insurance coverage"
+}
+
+###
+
+# ===================================
+# RENTAL CONTRACTS API TESTS
+# ===================================
+
+### 7. Get Rental Contract by ID
+GET {{WMS.API_HostAddress}}/api/rental-contracts/1
+Authorization: Bearer {{token}}
+
+###
+
+### 8. Get My Rental Contracts
+GET {{WMS.API_HostAddress}}/api/rental-contracts/my-contracts
+Authorization: Bearer {{token}}
 
 ###

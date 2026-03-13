@@ -37,15 +37,12 @@ public partial class User
 
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
 
-    public virtual ICollection<RentalArea> RentalAreas { get; set; } = new List<RentalArea>();
-
     public virtual ICollection<RentalRequest> RentalRequestRenters { get; set; } = new List<RentalRequest>();
 
     public virtual ICollection<RentalRequest> RentalRequestReviewedByNavigations { get; set; } = new List<RentalRequest>();
 
     public virtual Role Role { get; set; } = null!;
 
-    public virtual ICollection<StaffAssignment> StaffAssignments { get; set; } = new List<StaffAssignment>();
 
     public virtual ICollection<Task> TaskAssignees { get; set; } = new List<Task>();
 
@@ -56,4 +53,6 @@ public partial class User
     public virtual ICollection<WarehouseDocument> WarehouseDocuments { get; set; } = new List<WarehouseDocument>();
 
     public virtual ICollection<Warehouse> WarehouseOwners { get; set; } = new List<Warehouse>();
+    public ICollection<WarehouseMembership> WarehouseMemberships { get; set; }
+            = new List<WarehouseMembership>();
 }

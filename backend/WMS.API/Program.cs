@@ -1,12 +1,14 @@
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using WMS.Application.Behaviors;
 using WMS.Application.Features.Auth.Register;
 using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence.ScaffoldModels;
+using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Repositories;
 using WMS.Infrastructure.Services;
 
@@ -17,7 +19,11 @@ var builder = WebApplication.CreateBuilder(args);
 // ==========================================
 
 // Add Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+    });
 
 // Swashbuckle/Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -26,26 +32,33 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "OWRMS API", Version = "v1" });
 });
 
-// Database Context - dùng ScaffoldModels DbContext (database-first)
+// Database Context - merged from ScaffoldModels
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// MediatR Registration - scan tất cả handlers trong Application và Infrastructure assembly
+// MediatR Registration - scan tất cả handlers trong Application assembly
 builder.Services.AddMediatR(cfg =>
 {
-    cfg.RegisterServicesFromAssemblies(
-        typeof(RegisterCommand).Assembly,
-        typeof(WMS.Infrastructure.Handlers.Admin.GetAccountsHandler).Assembly);
+    cfg.RegisterServicesFromAssemblies(typeof(RegisterCommand).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
 });
+
+// FluentValidation Registration
+builder.Services.AddValidatorsFromAssemblyContaining(typeof(RegisterCommand));
 
 // ---- Dependency Injection ----
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IWarehouseRepository, WarehouseRepository>();
+builder.Services.AddScoped<IWarehouseMediaRepository, WarehouseMediaRepository>();
+builder.Services.AddScoped<IWarehouseDocumentRepository, WarehouseDocumentRepository>();
+builder.Services.AddScoped<IStaffAssigmentRepository, StaffAssigmentRepository>();
+builder.Services.AddScoped<IRentalRequestRepository, RentalRequestRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -65,26 +78,39 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "A_VERY_SECRET_DEVELOPMENT_KEY_THAT_IS_LONG_ENOUGH"))
     };
 });
-
-builder.Services.AddAuthorization();
-
-// CORS - cho phép frontend React (localhost:3000) gọi API
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins("http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
-    });
+    options.AddPolicy("AllowFrontend",
+        policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyHeader()
+                  .AllowAnyMethod();
+        });
 });
+builder.Services.AddAuthorization();
+
 
 // ==========================================
 // 2. Build the Application
 // ==========================================
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    if (!context.Roles.Any())
+    {
+        context.Roles.AddRange(
+            new WMS.Domain.Entities.Role { RoleName = "RENTER", Description = "Khách thuê" },
+            new WMS.Domain.Entities.Role { RoleName = "OWNER", Description = "Chủ kho" },
+            new WMS.Domain.Entities.Role { RoleName = "STAFF", Description = "Nhân viên" },
+            new WMS.Domain.Entities.Role { RoleName = "ADMIN", Description = "Quản trị viên" }
+        );
+        context.SaveChanges();
+    }
+}
 
 // ==========================================
 // 3. Configure the HTTP request pipeline
@@ -99,6 +125,9 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 app.UseCors("AllowFrontend");
+
+// Cho phép public access file tĩnh (cho hình ảnh, avatar)
+app.UseStaticFiles();
 
 // Middleware order is important
 app.UseAuthentication();

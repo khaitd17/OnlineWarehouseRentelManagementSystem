@@ -12,5 +12,6 @@ public record LoginResult(
     string FullName,
     string Email,
     string Role,
-    string Token
+    string Token,
+    string? AvatarUrl = null
 );

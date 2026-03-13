@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Application.Features.Users.UpdateProfile;
 using WMS.Application.Interfaces;
-using WMS.Infrastructure.Persistence.ScaffoldModels;
+using WMS.Domain.Entities;
+using WMS.Infrastructure.Persistence;
+
 using SystemTask = System.Threading.Tasks.Task;
 
 namespace WMS.Infrastructure.Repositories;
@@ -23,6 +25,14 @@ public class UserRepository : IUserRepository
         return user == null ? null : MapToRecord(user);
     }
 
+    public async System.Threading.Tasks.Task<UserRecord?> GetByEmailOrPhoneAsync(string identifier, CancellationToken ct = default)
+    {
+        var user = await _db.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Email == identifier || u.Phone == identifier, ct);
+        return user == null ? null : MapToRecord(user);
+    }
+
     public async System.Threading.Tasks.Task<UserRecord?> GetByIdAsync(int userId, CancellationToken ct = default)
     {
         var user = await _db.Users
@@ -33,15 +43,16 @@ public class UserRepository : IUserRepository
 
     public async System.Threading.Tasks.Task<int> CreateAsync(CreateUserDto dto, CancellationToken ct = default)
     {
-        int roleId = dto.RoleId;
-
-        if (roleId == 0)
+        string roleName = string.IsNullOrWhiteSpace(dto.RoleName) ? "RENTER" : dto.RoleName.ToUpper();
+        
+        var role = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == roleName, ct);
+        if (role == null)
         {
-            var renterRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == "Renter", ct);
-            if (renterRole == null)
-                throw new InvalidOperationException("Role 'Renter' không tồn tại trong hệ thống.");
-            roleId = renterRole.RoleId;
+            // Fallback to "RENTER" if provided role is not found, or throw exception.
+            throw new InvalidOperationException($"Role '{roleName}' không tồn tại trong hệ thống.");
         }
+        
+        int roleId = role.RoleId;
 
         var user = new User
         {
@@ -156,4 +167,13 @@ public class UserRepository : IUserRepository
         u.Role.RoleName,
         u.CreatedAt
     );
+
+    public async Task<int?> IsExistEmail(string email, CancellationToken ct = default)
+    {
+        return await _db.Users
+            .Where(x => x.Email == email)
+            .Select(x => (int?)x.UserId)
+            .FirstOrDefaultAsync(ct);
+    }
+
 }
