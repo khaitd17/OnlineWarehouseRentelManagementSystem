@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { XCircle } from "lucide-react";
 import adminService from "../../services/adminService";
 import BaseTable from "../../components/BaseTable";
 import FilterBar from "../../components/FilterBar";
@@ -19,6 +20,9 @@ export default function AuditSessionsPage() {
   // Create modal
   const defaultCreateModal = { open: false, warehouseId: "", notes: "", errors: {}, loading: false };
   const [createModal, setCreateModal] = useState(defaultCreateModal);
+
+  // Close modal
+  const [closeModal, setCloseModal] = useState({ open: false, auditId: null, notes: "", loading: false });
 
   useEffect(() => { adminService.getWarehousesLookup().then(r => { if (r.data.success) setWarehouses(r.data.data); }).catch(() => {}); }, []);
 
@@ -64,6 +68,19 @@ export default function AuditSessionsPage() {
     } catch { showToast("Lỗi khi xuất báo cáo", "error"); }
   };
 
+  const handleCloseSession = async () => {
+    setCloseModal(p => ({ ...p, loading: true }));
+    try {
+      const res = await adminService.closeAuditSession(closeModal.auditId, { notes: closeModal.notes || null });
+      if (res.data.success) {
+        showToast(res.data.message);
+        fetchData();
+        setCloseModal({ open: false, auditId: null, notes: "", loading: false });
+      } else showToast(res.data.message, "error");
+    } catch (e) { showToast(e.response?.data?.message || "Lỗi khi đóng phiên", "error"); }
+    setCloseModal(p => ({ ...p, loading: false }));
+  };
+
   const columns = [
     { key: "auditId", label: "ID", width: "60px" },
     { key: "warehouseName", label: "Kho", sortable: true, render: (v) => <span style={{ fontWeight: 500 }}>{v}</span> },
@@ -75,6 +92,9 @@ export default function AuditSessionsPage() {
     { key: "actions", label: "Thao tác", sortable: false, render: (_, row) => (
       <div className="admin-btn-group">
         <button className="admin-btn admin-btn-sm admin-btn-primary" onClick={() => navigate(`/admin/audit-sessions/${row.auditId}`)}>Chi tiết</button>
+        {row.status === "OPEN" && (
+          <button className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => setCloseModal({ open: true, auditId: row.auditId, notes: "", loading: false })} title="Đóng phiên kiểm kê">🔒</button>
+        )}
         <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={() => handleExport(row.auditId)}>CSV</button>
       </div>
     )},
@@ -116,6 +136,24 @@ export default function AuditSessionsPage() {
         <div className="admin-form-group">
           <label>Ghi chú</label>
           <textarea className="admin-textarea" value={createModal.notes} onChange={(e) => setCreateModal(p => ({ ...p, notes: e.target.value }))} placeholder="Ghi chú (tuỳ chọn)..." />
+        </div>
+      </Modal>
+
+      {/* Close Session Modal */}
+      <Modal isOpen={closeModal.open} onClose={() => setCloseModal({ open: false, auditId: null, notes: "", loading: false })} title="Đóng phiên kiểm kê"
+        footer={<>
+          <button className="admin-btn admin-btn-outline" onClick={() => setCloseModal({ open: false, auditId: null, notes: "", loading: false })} disabled={closeModal.loading}>Hủy</button>
+          <button className="admin-btn admin-btn-danger" onClick={handleCloseSession} disabled={closeModal.loading}>{closeModal.loading ? "Đang xử lý..." : "Xác nhận đóng"}</button>
+        </>}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", padding: 12, background: "#fef2f2", borderRadius: 6, marginBottom: 16 }}>
+            <XCircle size={20} color="#dc2626" />
+            <span style={{ fontSize: 13, color: "#991b1b" }}>Sau khi đóng, phiên kiểm kê <strong>#{closeModal.auditId}</strong> sẽ <strong>không thể ghi nhận thêm</strong> kết quả.</span>
+          </div>
+          <div className="admin-form-group">
+            <label>Ghi chú khi đóng (tùy chọn)</label>
+            <textarea className="admin-textarea" placeholder="Nhập ghi chú..." value={closeModal.notes} onChange={(e) => setCloseModal(p => ({ ...p, notes: e.target.value }))} />
+          </div>
         </div>
       </Modal>
     </div>

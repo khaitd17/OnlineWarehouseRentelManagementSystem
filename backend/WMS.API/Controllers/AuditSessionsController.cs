@@ -9,6 +9,7 @@ using WMS.Application.Features.Audit.GetAuditResults;
 using WMS.Application.Features.Audit.GetAuditSessionDetail;
 using WMS.Application.Features.Audit.GetAuditSessions;
 using WMS.Application.Features.Audit.RecordAuditResults;
+using WMS.Application.Features.Audit.CloseAuditSession;
 
 namespace WMS.API.Controllers;
 
@@ -113,6 +114,18 @@ public class AuditSessionsController : ControllerBase
         return File(result.Data!.FileContent, "text/csv; charset=utf-8", result.Data.FileName);
     }
 
+    /// <summary>Đóng phiên kiểm kê</summary>
+    [HttpPut("{id}/close")]
+    public async Task<IActionResult> CloseSession(int id, [FromBody] CloseAuditSessionRequest? request)
+    {
+        var result = await _mediator.Send(new CloseAuditSessionCommand(id, request?.Notes));
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
     // ==============================
     // HELPERS
     // ==============================
@@ -139,3 +152,6 @@ public record RecordAuditResultItem(
     int ActualQty,
     string? DiscrepancyReason
 );
+
+public record CloseAuditSessionRequest(string? Notes);
+
