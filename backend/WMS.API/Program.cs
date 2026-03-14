@@ -80,6 +80,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IInventoryRequestRepository, WM
 builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseInventoryRepository, WMS.Infrastructure.Repositories.WarehouseInventoryRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IInventoryTransactionRepository, WMS.Infrastructure.Repositories.InventoryTransactionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalContractRepository, WMS.Infrastructure.Repositories.RentalContractRepository>();
+builder.Services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -138,6 +139,12 @@ var app = builder.Build();
 //         context.SaveChanges();
 //     }
 // }
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
+    DatabaseSeeder.Seed(context);
+}
 
 // ==========================================
 // 3. Configure the HTTP request pipeline

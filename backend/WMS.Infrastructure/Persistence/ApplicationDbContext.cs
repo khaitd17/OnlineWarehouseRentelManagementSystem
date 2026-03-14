@@ -34,6 +34,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<WarehouseRole> WarehouseRoles { get; set; }
 
+    public virtual DbSet<Zone> Zones { get; set; }
+
     public virtual DbSet<Skill> Skills { get; set; }
 
     public virtual DbSet<TaskType> TaskTypes { get; set; }
@@ -344,6 +346,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
             entity.Property(e => e.WarehouseRoleId).HasColumnName("warehouse_role_id");
             entity.Property(e => e.IsActive).HasColumnName("is_active");
+            entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
+            entity.Property(e => e.IsAllZone).HasColumnName("is_all_zone").HasDefaultValue(false);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(getdate())");
             entity.HasIndex(e => new { e.UserId, e.WarehouseId }).IsUnique();
             entity.HasOne(e => e.User).WithMany(u => u.WarehouseMemberships).HasForeignKey(e => e.UserId);
@@ -356,7 +360,26 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("warehouse_roles");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("role_id");
-            entity.Property(e => e.Name).HasMaxLength(50).HasColumnName("name");
+            entity.Property(e => e.Code).HasMaxLength(50).HasColumnName("code");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+        });
+
+        modelBuilder.Entity<Zone>(entity =>
+        {
+            entity.ToTable("zones");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("zone_id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.Code).HasMaxLength(50).HasColumnName("code");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            
+            entity.HasOne(e => e.Warehouse)
+                  .WithMany(w => w.Zones)
+                  .HasForeignKey(e => e.WarehouseId)
+                  .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         modelBuilder.Entity<Skill>(entity =>
@@ -398,6 +421,15 @@ public class ApplicationDbContext : DbContext
                 j => j.HasOne<Skill>().WithMany().HasForeignKey("skill_id"),
                 j => j.HasOne<WarehouseMembership>().WithMany().HasForeignKey("membership_id"),
                 j => { j.HasKey("membership_id", "skill_id"); });
+
+        modelBuilder.Entity<WarehouseMembership>()
+            .HasMany(m => m.Zones)
+            .WithMany(z => z.Memberships)
+            .UsingEntity<Dictionary<string, object>>(
+                "warehouse_membership_zones",
+                j => j.HasOne<Zone>().WithMany().HasForeignKey("zone_id"),
+                j => j.HasOne<WarehouseMembership>().WithMany().HasForeignKey("membership_id"),
+                j => { j.HasKey("membership_id", "zone_id"); });
 
         modelBuilder.Entity<TaskType>()
             .HasMany(t => t.RequiredSkills)

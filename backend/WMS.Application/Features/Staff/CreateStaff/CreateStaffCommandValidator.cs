@@ -23,10 +23,10 @@ namespace WMS.Application.Features.Staff.CreateStaff
             RuleFor(x => x.WarehouseId)
                 .GreaterThan(0).WithMessage("WarehouseId phải lớn hơn 0");
 
-            RuleFor(x => x.EndDate)
-                .GreaterThan(x => x.StartDate)
-                .When(x => x.StartDate.HasValue && x.EndDate.HasValue)
-                .WithMessage("Ngày kết thúc phải sau ngày bắt đầu");
+            RuleFor(x => x.TargetRoleCode)
+                .NotEmpty().WithMessage("TargetRoleCode không được để trống")
+                .Must(r => r == "MANAGER" || r == "STAFF")
+                .WithMessage("Role hợp lệ là: MANAGER hoặc STAFF");
         }
     }
 }
