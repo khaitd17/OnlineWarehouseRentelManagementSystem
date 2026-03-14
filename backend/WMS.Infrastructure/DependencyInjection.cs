@@ -13,6 +13,10 @@ public static class DependencyInjection
         services.AddScoped<IWarehouseMediaRepository, WarehouseMediaRepository>();
 
         services.AddScoped<IWarehouseDocumentRepository, WarehouseDocumentRepository>();
+
+        services.AddScoped<IInventoryRequestRepository, InventoryRequestRepository>();
+
+        services.AddScoped<IRentalContractRepository, RentalContractRepository>();
         
         return services;
     }
