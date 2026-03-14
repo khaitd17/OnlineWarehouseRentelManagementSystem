@@ -30,6 +30,26 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "OWRMS API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Nhập: Bearer {token}"
+    });
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                { Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 // Database Context - merged from ScaffoldModels
@@ -54,6 +74,10 @@ builder.Services.AddScoped<IWarehouseMediaRepository, WarehouseMediaRepository>(
 builder.Services.AddScoped<IWarehouseDocumentRepository, WarehouseDocumentRepository>();
 builder.Services.AddScoped<IStaffAssigmentRepository, StaffAssigmentRepository>();
 builder.Services.AddScoped<IRentalRequestRepository, RentalRequestRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IInventoryRequestRepository, WMS.Infrastructure.Repositories.InventoryRequestRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseInventoryRepository, WMS.Infrastructure.Repositories.WarehouseInventoryRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IInventoryTransactionRepository, WMS.Infrastructure.Repositories.InventoryTransactionRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalContractRepository, WMS.Infrastructure.Repositories.RentalContractRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -97,20 +121,21 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    if (!context.Roles.Any())
-    {
-        context.Roles.AddRange(
-            new WMS.Domain.Entities.Role { RoleName = "RENTER", Description = "Khách thuê" },
-            new WMS.Domain.Entities.Role { RoleName = "OWNER", Description = "Chủ kho" },
-            new WMS.Domain.Entities.Role { RoleName = "STAFF", Description = "Nhân viên" },
-            new WMS.Domain.Entities.Role { RoleName = "ADMIN", Description = "Quản trị viên" }
-        );
-        context.SaveChanges();
-    }
-}
+// Role seeding disabled — data already exists in DB, EF mapping causes SqlException
+// using (var scope = app.Services.CreateScope())
+// {
+//     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+//     if (!context.Roles.Any())
+//     {
+//         context.Roles.AddRange(
+//             new WMS.Domain.Entities.Role { RoleName = "RENTER", Description = "Khách thuê" },
+//             new WMS.Domain.Entities.Role { RoleName = "OWNER",  Description = "Chủ kho" },
+//             new WMS.Domain.Entities.Role { RoleName = "STAFF",  Description = "Nhân viên" },
+//             new WMS.Domain.Entities.Role { RoleName = "ADMIN",  Description = "Quản trị viên" }
+//         );
+//         context.SaveChanges();
+//     }
+// }
 
 // ==========================================
 // 3. Configure the HTTP request pipeline
