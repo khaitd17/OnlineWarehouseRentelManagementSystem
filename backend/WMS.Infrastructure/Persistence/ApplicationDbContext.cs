@@ -58,6 +58,10 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<WarehouseMedium> WarehouseMedia { get; set; }
 
+    public virtual DbSet<WarehouseInventory> WarehouseInventories { get; set; }
+
+    public virtual DbSet<InventoryTransaction> InventoryTransactions { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -193,6 +197,46 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.ConfirmedByNavigation).WithMany(p => p.InventoryRequestConfirmedByNavigations).HasForeignKey(d => d.ConfirmedBy).HasConstraintName("FK_inventory_requests_confirmer");
             entity.HasOne(d => d.Renter).WithMany(p => p.InventoryRequestRenters).HasForeignKey(d => d.RenterId).HasConstraintName("FK_inventory_requests_renter");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.InventoryRequests).HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_inventory_requests_warehouse");
+        });
+
+        modelBuilder.Entity<WarehouseInventory>(entity =>
+        {
+            entity.HasKey(e => e.InventoryId).HasName("PK_warehouse_inventory");
+            entity.ToTable("warehouse_inventory");
+            entity.HasIndex(e => new { e.WarehouseId, e.ItemName }, "UQ_warehouse_inventory_item").IsUnique();
+            entity.Property(e => e.InventoryId).HasColumnName("inventory_id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.ItemName).HasMaxLength(200).HasColumnName("item_name");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.Unit).HasMaxLength(50).HasDefaultValue("cái").HasColumnName("unit");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
+            entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId)
+                .OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_warehouse_inventory_wh");
+        });
+
+        modelBuilder.Entity<InventoryTransaction>(entity =>
+        {
+            entity.HasKey(e => e.TransactionId).HasName("PK_inventory_transactions");
+            entity.ToTable("inventory_transactions");
+            entity.HasIndex(e => e.WarehouseId, "idx_inv_transactions_warehouse");
+            entity.HasIndex(e => e.Type, "idx_inv_transactions_type");
+            entity.HasIndex(e => e.CreatedAt, "idx_inv_transactions_created");
+            entity.Property(e => e.TransactionId).HasColumnName("transaction_id");
+            entity.Property(e => e.InvReqId).HasColumnName("inv_req_id");
+            entity.Property(e => e.Type).HasMaxLength(20).HasColumnName("type");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.ItemName).HasMaxLength(200).HasColumnName("item_name");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.Unit).HasMaxLength(50).HasDefaultValue("cái").HasColumnName("unit");
+            entity.Property(e => e.PerformedBy).HasColumnName("performed_by");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.HasOne(d => d.InvReq).WithMany().HasForeignKey(d => d.InvReqId)
+                .HasConstraintName("FK_inv_transactions_request");
+            entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId)
+                .OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_inv_transactions_warehouse");
+            entity.HasOne(d => d.PerformedByNavigation).WithMany().HasForeignKey(d => d.PerformedBy)
+                .HasConstraintName("FK_inv_transactions_performer");
         });
 
         modelBuilder.Entity<Payment>(entity =>
