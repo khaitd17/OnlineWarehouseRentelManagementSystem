@@ -18,6 +18,7 @@ const Sidebar = () => {
       { icon: 'dashboard', label: 'Tổng quan', path: '/dashboard' },
       { icon: 'warehouse', label: 'Kho của tôi', path: '/my-warehouses' },
       { icon: 'add_circle', label: 'Tạo kho mới', path: '/post-warehouse' },
+      { icon: 'inventory_2', label: 'Yêu cầu nhập/xuất', path: '/owner-inventory-requests', section: 'YÊU CẦU' },
       { icon: 'group', label: 'Quản lý nhân viên', path: '/list-staff', section: 'QUẢN LÝ' },
       { icon: 'person_add', label: 'Tạo nhân viên', path: '/create-staff' },
       { icon: 'bar_chart', label: 'Phân tích doanh thu', path: '/analytics', section: 'BÁO CÁO' },
