@@ -18,9 +18,13 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
 
     public async Task<ApiResponse<int>> Handle(CreateAuditSessionCommand request, CancellationToken cancellationToken)
     {
-        var warehouseExists = await _db.Warehouses.AnyAsync(w => w.WarehouseId == request.WarehouseId, cancellationToken);
-        if (!warehouseExists)
+        var warehouse = await _db.Warehouses.FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseId, cancellationToken);
+        if (warehouse == null)
             return ApiResponse<int>.ErrorResponse($"Không tìm thấy kho với ID {request.WarehouseId}.");
+
+        // Kiểm tra quyền sở hữu kho
+        if (warehouse.OwnerId != request.CreatedBy)
+            return ApiResponse<int>.ErrorResponse("Bạn không có quyền tạo phiên kiểm kê cho kho này. Chỉ chủ kho mới có thể thực hiện.");
 
         var creatorExists = await _db.Users.AnyAsync(u => u.UserId == request.CreatedBy, cancellationToken);
         if (!creatorExists)

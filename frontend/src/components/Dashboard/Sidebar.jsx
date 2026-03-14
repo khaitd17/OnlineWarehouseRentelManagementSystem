@@ -20,6 +20,7 @@ const Sidebar = () => {
       { icon: 'add_circle', label: 'Tạo kho mới', path: '/post-warehouse' },
       { icon: 'group', label: 'Quản lý nhân viên', path: '/list-staff', section: 'QUẢN LÝ' },
       { icon: 'person_add', label: 'Tạo nhân viên', path: '/create-staff' },
+      { icon: 'fact_check', label: 'Kiểm kê kho', path: '/owner-audit-sessions' },
       { icon: 'bar_chart', label: 'Phân tích doanh thu', path: '/analytics', section: 'BÁO CÁO' },
       { icon: 'settings', label: 'Cài đặt', path: '/settings', isBottom: true },
     ],

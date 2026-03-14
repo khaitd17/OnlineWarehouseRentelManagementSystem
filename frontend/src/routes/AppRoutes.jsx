@@ -45,6 +45,10 @@ import AuditSessionsPage from "../pages/admin/AuditSessionsPage";
 import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
 import ReportsPage from "../pages/admin/ReportsPage";
 
+// Owner audit pages
+import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
+import OwnerAuditSessionDetailPage from "../pages/OwnerAuditSessionDetailPage";
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -76,6 +80,8 @@ function AppRoutes() {
               <Route path="/list-staff" element={<ListStaff />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
+              <Route path="/owner-audit-sessions" element={<OwnerAuditSessionsPage />} />
+              <Route path="/owner-audit-sessions/:id" element={<OwnerAuditSessionDetailPage />} />
             </Route>
           </Route>
 

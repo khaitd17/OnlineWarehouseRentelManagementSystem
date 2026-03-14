@@ -25,8 +25,9 @@ public class AuditSessionsController : ControllerBase
         _mediator = mediator;
     }
 
-    /// <summary>Tạo phiên kiểm kê mới</summary>
+    /// <summary>Tạo phiên kiểm kê mới (chỉ OWNER)</summary>
     [HttpPost]
+    [Authorize(Roles = "OWNER")]
     public async Task<IActionResult> Create([FromBody] CreateAuditSessionRequest request)
     {
         if (request.WarehouseId <= 0)
@@ -66,8 +67,9 @@ public class AuditSessionsController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Ghi nhận kết quả kiểm kê</summary>
+    /// <summary>Ghi nhận kết quả kiểm kê (chỉ OWNER)</summary>
     [HttpPost("{id}/results")]
+    [Authorize(Roles = "OWNER")]
     public async Task<IActionResult> RecordResults(int id, [FromBody] RecordAuditResultsRequest request)
     {
         if (request.Items == null || request.Items.Count == 0)
@@ -81,7 +83,8 @@ public class AuditSessionsController : ControllerBase
             i.ItemName, i.ExpectedQty, i.ActualQty, i.DiscrepancyReason
         )).ToList();
 
-        var result = await _mediator.Send(new RecordAuditResultsCommand(id, items, request.CompleteSession));
+        int userId = GetCurrentUserId();
+        var result = await _mediator.Send(new RecordAuditResultsCommand(id, items, request.CompleteSession, userId));
 
         if (!result.Success)
             return BadRequest(result);
@@ -114,11 +117,13 @@ public class AuditSessionsController : ControllerBase
         return File(result.Data!.FileContent, "text/csv; charset=utf-8", result.Data.FileName);
     }
 
-    /// <summary>Đóng phiên kiểm kê</summary>
+    /// <summary>Đóng phiên kiểm kê (chỉ OWNER)</summary>
     [HttpPut("{id}/close")]
+    [Authorize(Roles = "OWNER")]
     public async Task<IActionResult> CloseSession(int id, [FromBody] CloseAuditSessionRequest? request)
     {
-        var result = await _mediator.Send(new CloseAuditSessionCommand(id, request?.Notes));
+        int userId = GetCurrentUserId();
+        var result = await _mediator.Send(new CloseAuditSessionCommand(id, request?.Notes, userId));
 
         if (!result.Success)
             return BadRequest(result);

@@ -18,9 +18,15 @@ public class RecordAuditResultsHandler : IRequestHandler<RecordAuditResultsComma
 
     public async Task<ApiResponse<bool>> Handle(RecordAuditResultsCommand request, CancellationToken cancellationToken)
     {
-        var session = await _db.AuditSessions.FirstOrDefaultAsync(a => a.AuditId == request.AuditId, cancellationToken);
+        var session = await _db.AuditSessions
+            .Include(a => a.Warehouse)
+            .FirstOrDefaultAsync(a => a.AuditId == request.AuditId, cancellationToken);
         if (session == null)
             return ApiResponse<bool>.ErrorResponse($"Không tìm thấy phiên kiểm kê với ID {request.AuditId}.");
+
+        // Kiểm tra quyền sở hữu kho
+        if (session.Warehouse.OwnerId != request.UserId)
+            return ApiResponse<bool>.ErrorResponse("Bạn không có quyền ghi nhận kết quả cho phiên kiểm kê này. Chỉ chủ kho mới có thể thực hiện.");
 
         if (session.Status != "OPEN")
             return ApiResponse<bool>.ErrorResponse("Phiên kiểm kê đã hoàn thành, không thể ghi nhận thêm kết quả.");

@@ -12,6 +12,9 @@ import { useToast } from "../../components/Toast";
 export default function AuditSessionsPage() {
   const showToast = useToast();
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = (user.role || user.roleName || "").toUpperCase();
+  const isOwner = userRole === "OWNER";
   const [data, setData] = useState({ items: [], totalCount: 0, page: 1, pageSize: 10, totalPages: 0 });
   const [loading, setLoading] = useState(true);
   const [warehouses, setWarehouses] = useState([]);
@@ -92,7 +95,7 @@ export default function AuditSessionsPage() {
     { key: "actions", label: "Thao tác", sortable: false, render: (_, row) => (
       <div className="admin-btn-group">
         <button className="admin-btn admin-btn-sm admin-btn-primary" onClick={() => navigate(`/admin/audit-sessions/${row.auditId}`)}>Chi tiết</button>
-        {row.status === "OPEN" && (
+        {isOwner && row.status === "OPEN" && (
           <button className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => setCloseModal({ open: true, auditId: row.auditId, notes: "", loading: false })} title="Đóng phiên kiểm kê">🔒</button>
         )}
         <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={() => handleExport(row.auditId)}>CSV</button>
@@ -112,7 +115,7 @@ export default function AuditSessionsPage() {
           <h1>Phiên kiểm kê</h1>
           <p>Quản lý phiên kiểm kê kho và ghi nhận kết quả</p>
         </div>
-        <button className="admin-btn admin-btn-primary" onClick={() => setCreateModal({ ...defaultCreateModal, open: true })}>+ Tạo phiên kiểm kê</button>
+        {isOwner && <button className="admin-btn admin-btn-primary" onClick={() => setCreateModal({ ...defaultCreateModal, open: true })}>+ Tạo phiên kiểm kê</button>}
       </div>
 
       <FilterBar filters={filterConfig} values={filters} onChange={handleFilter} searchPlaceholder="Tìm theo tên kho, người tạo..." />
