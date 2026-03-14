@@ -5,7 +5,7 @@ const DASHBOARD_PATHS = [
   // Owner paths
   '/dashboard', '/my-warehouses', '/post-warehouse', '/create-warehouse',
   '/warehouse-edit', '/warehouse-new', '/create-staff', '/list-staff',
-  '/pending-rental-requests', '/rental-request',
+  '/pending-rental-requests', '/rental-request', '/owner-inventory-requests',
   // Staff / Manager paths
   '/staff-dashboard', '/inbound-requests', '/outbound-requests',
   '/confirm-movement', '/create-inbound', '/create-outbound',
@@ -65,8 +65,23 @@ const MainLayout = () => {
         zIndex: 1000
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-          <Link to="/" style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0095c7', textDecoration: 'none', letterSpacing: '-0.5px' }}>
-            OWRMS
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              backgroundColor: '#00b2d6',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              flexShrink: 0,
+            }}>
+              <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+                <path d="M12 3L4 9v12h16V9l-8-6zm0 2.5l5 3.75V19h-3v-5h-4v5H7v-9.75l5-3.75z"/>
+              </svg>
+            </div>
+            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#00b2d6', letterSpacing: '0.5px' }}>OWRMS</span>
           </Link>
           <div style={{ display: 'flex', gap: '1.5rem' }}>
             <Link to="/" style={{ textDecoration: 'none', color: '#555', fontWeight: 500, fontSize: '0.95rem' }}>Trang chủ</Link>
@@ -135,7 +150,7 @@ const MainLayout = () => {
               }}>
                 Đăng tin cho thuê
               </Link>
-              <Link to="/auth" style={{ textDecoration: 'none', color: '#0095c7', fontWeight: 600, fontSize: '0.9rem' }}>Đăng nhập</Link>
+              <button onClick={() => navigate('/auth', { state: { mode: 'login' } })} style={{ background: 'none', border: 'none', color: '#0095c7', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', padding: 0 }}>Đăng nhập</button>
             </>
           )}
         </div>

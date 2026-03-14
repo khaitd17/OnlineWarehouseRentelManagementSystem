@@ -35,6 +35,7 @@ import CreateInboundRequest from "../pages/Requests/CreateInboundRequest";
 import TransactionHistory from "../pages/Requests/TransactionHistory";
 import RenterInboundList from "../pages/Requests/RenterInboundList";
 import RenterOutboundList from "../pages/Requests/RenterOutboundList";
+import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
 
 // Admin pages
 import AdminDashboard from "../pages/admin/AdminDashboard";
@@ -74,6 +75,7 @@ function AppRoutes() {
               <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
+              <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
             </Route>
           </Route>
 

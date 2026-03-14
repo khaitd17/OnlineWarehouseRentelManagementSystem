@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import authService from '../services/authService';
 
 const AuthPage = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const location = useLocation();
+  const [isLogin, setIsLogin] = useState(location.state?.mode !== 'register');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -15,6 +16,11 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (location.state?.mode === 'login') setIsLogin(true);
+    else if (location.state?.mode === 'register') setIsLogin(false);
+  }, [location.state]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -131,10 +137,7 @@ const AuthPage = () => {
                   <input type="radio" name="roleName" value="OWNER" checked={formData.roleName === 'OWNER'} onChange={handleInputChange} style={{ display: 'none' }} />
                   <span style={{ fontSize: '0.875rem', fontWeight: 600, color: formData.roleName === 'OWNER' ? '#0095c7' : '#4b5563', textAlign: 'center' }}>Chủ kho</span>
                 </label>
-                <label style={{ flex: '1 1 80px', minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: formData.roleName === 'STAFF' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'STAFF' ? '#0095c7' : '#d1d5db' }}>
-                  <input type="radio" name="roleName" value="STAFF" checked={formData.roleName === 'STAFF'} onChange={handleInputChange} style={{ display: 'none' }} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: formData.roleName === 'STAFF' ? '#0095c7' : '#4b5563', textAlign: 'center' }}>Nhân viên</span>
-                </label>
+
               </div>
 
               <InputWrapper icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>}>

@@ -1,37 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import inventoryService from '../../services/inventoryService';
 
-const MOCK_DATA = [
-  { id: '#ORD-7721', warehouse: 'Central HUB (A)', item: 'Industrial Steel Pipes', quantity: '500 units', destination: 'Chicago, IL', shippingDate: 'Nov 15, 2023', status: 'Đang chờ', createdDate: 'Nov 10, 2023' },
-  { id: '#ORD-7722', warehouse: 'West Coast Log.', item: 'High-Grade Copper Wire', quantity: '1,200 units', destination: 'Austin, TX', shippingDate: 'Nov 14, 2023', status: 'Đã giao', createdDate: 'Nov 09, 2023' },
-  { id: '#ORD-7723', warehouse: 'Central HUB (A)', item: 'Aluminium Sheets (4×8)', quantity: '300 units', destination: 'Seattle, WA', shippingDate: 'Nov 18, 2023', status: 'Đã hủy', createdDate: 'Nov 11, 2023' },
-  { id: '#ORD-7724', warehouse: 'Southern Depot (C)', item: 'Mounting Brackets', quantity: '2,500 units', destination: 'Miami, FL', shippingDate: 'Nov 16, 2023', status: 'Đang chờ', createdDate: 'Nov 12, 2023' },
-  { id: '#ORD-7725', warehouse: 'West Coast Log.', item: 'Power Converters', quantity: '45 units', destination: 'Portland, OR', shippingDate: 'Nov 13, 2023', status: 'Đã giao', createdDate: 'Nov 08, 2023' },
-];
+/* ── Status config ────────────────────────────────────────────── */
+const STATUS_MAP = {
+  PENDING:   { label: 'Đang chờ', cls: 'bg-amber-100 text-amber-700 border border-amber-200' },
+  CONFIRMED: { label: 'Đã duyệt', cls: 'bg-emerald-100 text-emerald-700 border border-emerald-200' },
+  REJECTED:  { label: 'Từ chối',  cls: 'bg-rose-100 text-rose-700 border border-rose-200' },
+};
 
-const STATUS_FILTERS = ['Tất cả', 'Đang chờ', 'Đã giao', 'Đã hủy'];
+const STATUS_FILTERS = ['Tất cả', 'PENDING', 'CONFIRMED', 'REJECTED'];
+const STATUS_LABELS  = { 'Tất cả': 'Tất cả', PENDING: 'Đang chờ', CONFIRMED: 'Đã duyệt', REJECTED: 'Từ chối' };
 
 const StatusBadge = ({ status }) => {
-  const map = {
-    'Đang chờ': 'bg-amber-100 text-amber-700 border border-amber-200',
-    'Đã giao': 'bg-emerald-100 text-emerald-700 border border-emerald-200',
-    'Đã hủy': 'bg-slate-100 text-slate-600 border border-slate-200',
-  };
+  const s = STATUS_MAP[status] || { label: status, cls: 'bg-slate-100 text-slate-600' };
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${map[status] || 'bg-slate-100 text-slate-600'}`}>
-      {status}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${s.cls}`}>
+      {s.label}
     </span>
   );
 };
 
 const OutboundRequestsList = () => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('Tất cả');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const PAGE_SIZE = 10;
 
-  const filtered = MOCK_DATA.filter(row => {
-    const matchSearch = !search || [row.id, row.item, row.destination].some(v => v.toLowerCase().includes(search.toLowerCase()));
-    const matchStatus = activeFilter === 'Tất cả' || row.status === activeFilter;
-    return matchSearch && matchStatus;
-  });
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const statusParam = activeFilter !== 'Tất cả' ? activeFilter : undefined;
+      const res = await inventoryService.getInventoryRequests({
+        type: 'OUTBOUND',
+        status: statusParam,
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      const payload = res.data || {};
+      setData(Array.isArray(payload.items) ? payload.items : []);
+      setTotalPages(payload.totalPages || 1);
+      setTotalCount(payload.totalCount || 0);
+    } catch {
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeFilter, page]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const filtered = search
+    ? data.filter(r =>
+        String(r.invReqId).includes(search) ||
+        r.items?.[0]?.itemName?.toLowerCase().includes(search.toLowerCase()) ||
+        r.renterName?.toLowerCase().includes(search.toLowerCase()) ||
+        r.warehouseName?.toLowerCase().includes(search.toLowerCase())
+      )
+    : data;
 
   return (
     <div className="w-full flex-1 flex flex-col min-w-0" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -52,31 +81,26 @@ const OutboundRequestsList = () => {
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#00b2d6]/30 focus:border-[#00b2d6] text-sm placeholder-slate-400 outline-none transition-all"
-              placeholder="Tìm kiếm theo ID, Mặt hàng hoặc Điểm đến..."
+              placeholder="Tìm kiếm theo ID, Mặt hàng, Người yêu cầu..."
               type="text"
             />
           </div>
 
-          {/* Status pills + more filter */}
+          {/* Status pills */}
           <div className="flex flex-wrap items-center gap-2">
             {STATUS_FILTERS.map(f => (
               <button
                 key={f}
-                onClick={() => setActiveFilter(f)}
+                onClick={() => { setActiveFilter(f); setPage(1); }}
                 className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all ${
                   activeFilter === f
                     ? 'bg-[#00b2d6]/10 text-[#00b2d6] border border-[#00b2d6]/30'
                     : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                {f}
+                {STATUS_LABELS[f]}
               </button>
             ))}
-            <div className="h-8 w-px bg-slate-200 mx-1" />
-            <button className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors text-sm font-medium">
-              <span className="material-symbols-outlined text-lg">filter_list</span>
-              Thêm bộ lọc
-            </button>
           </div>
         </div>
       </div>
@@ -90,42 +114,42 @@ const OutboundRequestsList = () => {
                 <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Mã yêu cầu</th>
                 <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Nhà kho</th>
                 <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Tên mặt hàng</th>
-                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Số lượng</th>
-                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Điểm đến</th>
-                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Ngày giao hàng</th>
+                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Người yêu cầu</th>
                 <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Trạng thái</th>
                 <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Ngày tạo</th>
-                <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filtered.map(row => (
-                <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-bold text-[#00b2d6]">{row.id}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{row.warehouse}</td>
-                  <td className="px-6 py-4 text-sm text-slate-700 font-medium">{row.item}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{row.quantity}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{row.destination}</td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{row.shippingDate}</td>
-                  <td className="px-6 py-4">
-                    <StatusBadge status={row.status} />
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-500">{row.createdDate}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-1">
-                      <button title="Chỉnh sửa" className="p-1.5 text-slate-400 hover:text-[#00b2d6] hover:bg-slate-100 rounded-lg transition-colors">
-                        <span className="material-symbols-outlined text-lg leading-none">edit</span>
-                      </button>
-                      <button title="Xóa" className="p-1.5 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
-                        <span className="material-symbols-outlined text-lg leading-none">delete</span>
-                      </button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-sm">
+                    <span className="material-symbols-outlined text-3xl block mb-2">sync</span>Đang tải dữ liệu...
                   </td>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
+              ) : filtered.map(row => {
+                const firstItem = row.items?.[0];
+                const totalQty = row.items?.reduce((s, i) => s + i.quantity, 0) || 0;
+                return (
+                  <tr key={row.invReqId} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-4 text-sm font-bold text-[#00b2d6]">#{row.invReqId}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{row.warehouseName || '—'}</td>
+                    <td className="px-6 py-4 text-sm text-slate-700 font-medium">
+                      <div>{firstItem?.itemName || '—'}</div>
+                      {firstItem && <div className="text-xs text-slate-400">{totalQty.toLocaleString()} {firstItem.unit}</div>}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{row.renterName || '—'}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={row.status} />
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-500">
+                      {row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+              {!loading && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-slate-400 text-sm">
+                  <td colSpan={6} className="px-6 py-12 text-center text-slate-400 text-sm">
                     Không tìm thấy yêu cầu nào.
                   </td>
                 </tr>
@@ -137,27 +161,32 @@ const OutboundRequestsList = () => {
         {/* Pagination Footer */}
         <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
           <span className="text-sm text-slate-500">
-            Hiển thị <span className="font-bold text-slate-700">1</span> đến <span className="font-bold text-slate-700">5</span> trong số <span className="font-bold text-slate-700">84</span> yêu cầu
+            Tổng <span className="font-bold text-slate-700">{totalCount}</span> yêu cầu
           </span>
           <div className="flex items-center gap-1.5">
-            <button className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <span className="material-symbols-outlined text-lg">chevron_left</span>
             </button>
-            {[1, 2, 3].map(n => (
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(n => (
               <button
                 key={n}
+                onClick={() => setPage(n)}
                 className={`flex items-center justify-center w-9 h-9 rounded-lg text-sm font-semibold transition-colors ${
-                  n === 1 ? 'bg-[#00b2d6] text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                  n === page ? 'bg-[#00b2d6] text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 {n}
               </button>
             ))}
-            <span className="px-1 text-slate-400 text-sm">...</span>
-            <button className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
-              12
-            </button>
-            <button className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
               <span className="material-symbols-outlined text-lg">chevron_right</span>
             </button>
           </div>

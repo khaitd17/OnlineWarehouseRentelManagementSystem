@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Package, CheckCircle, AlertTriangle, ListChecks } from "lucide-react";
+import { Package, CheckCircle, AlertTriangle, ListChecks, XCircle } from "lucide-react";
 import adminService from "../../services/adminService";
 import BaseTable from "../../components/BaseTable";
 import Pagination from "../../components/Pagination";
@@ -22,6 +22,9 @@ export default function AuditSessionDetailPage() {
   // Record results modal
   const defaultRecordModal = { open: false, items: [{ itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }], completeSession: false, loading: false };
   const [recordModal, setRecordModal] = useState(defaultRecordModal);
+
+  // Close session modal
+  const [closeModal, setCloseModal] = useState({ open: false, notes: "", loading: false });
 
   useEffect(() => { fetchDetail(); }, [id]); // eslint-disable-line
 
@@ -88,6 +91,20 @@ export default function AuditSessionDetailPage() {
     setRecordModal(p => ({ ...p, loading: false }));
   };
 
+  // Close session
+  const handleClose = async () => {
+    setCloseModal(p => ({ ...p, loading: true }));
+    try {
+      const res = await adminService.closeAuditSession(id, { notes: closeModal.notes || null });
+      if (res.data.success) {
+        showToast(res.data.message);
+        fetchDetail();
+        setCloseModal({ open: false, notes: "", loading: false });
+      } else showToast(res.data.message, "error");
+    } catch (e) { showToast(e.response?.data?.message || "Lỗi khi đóng phiên kiểm kê", "error"); }
+    setCloseModal(p => ({ ...p, loading: false }));
+  };
+
   if (loading) return <div style={{ textAlign: "center", padding: 60, color: "#6b7280" }}>Đang tải...</div>;
   if (!session) return <div style={{ textAlign: "center", padding: 60, color: "#ef4444" }}>Không tìm thấy phiên kiểm kê.</div>;
 
@@ -114,7 +131,10 @@ export default function AuditSessionDetailPage() {
         </div>
         <div className="admin-btn-group">
           {session.status === "OPEN" && (
-            <button className="admin-btn admin-btn-primary" onClick={() => setRecordModal({ open: true, items: [{ itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }], completeSession: false, loading: false })}>+ Ghi nhận kết quả</button>
+            <>
+              <button className="admin-btn admin-btn-primary" onClick={() => setRecordModal({ open: true, items: [{ itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }], completeSession: false, loading: false })}>+ Ghi nhận kết quả</button>
+              <button className="admin-btn admin-btn-danger" onClick={() => setCloseModal({ open: true, notes: "", loading: false })}>🔒 Đóng phiên kiểm kê</button>
+            </>
           )}
           <button className="admin-btn admin-btn-outline" onClick={handleExport}>Xuất CSV</button>
         </div>
@@ -174,6 +194,24 @@ export default function AuditSessionDetailPage() {
             <input type="checkbox" checked={recordModal.completeSession} onChange={(e) => setRecordModal(p => ({ ...p, completeSession: e.target.checked }))} />
             Hoàn thành phiên kiểm kê sau khi lưu
           </label>
+        </div>
+      </Modal>
+
+      {/* Close Session Modal */}
+      <Modal isOpen={closeModal.open} onClose={() => setCloseModal({ open: false, notes: "", loading: false })} title="Đóng phiên kiểm kê"
+        footer={<>
+          <button className="admin-btn admin-btn-outline" onClick={() => setCloseModal({ open: false, notes: "", loading: false })} disabled={closeModal.loading}>Hủy</button>
+          <button className="admin-btn admin-btn-danger" onClick={handleClose} disabled={closeModal.loading}>{closeModal.loading ? "Đang xử lý..." : "Xác nhận đóng"}</button>
+        </>}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", padding: 12, background: "#fef2f2", borderRadius: 6, marginBottom: 16 }}>
+            <XCircle size={20} color="#dc2626" />
+            <span style={{ fontSize: 13, color: "#991b1b" }}>Sau khi đóng, phiên kiểm kê sẽ <strong>không thể ghi nhận thêm</strong> kết quả.</span>
+          </div>
+          <div className="admin-form-group">
+            <label>Ghi chú khi đóng (tùy chọn)</label>
+            <textarea className="admin-textarea" placeholder="Nhập ghi chú..." value={closeModal.notes} onChange={(e) => setCloseModal(p => ({ ...p, notes: e.target.value }))} />
+          </div>
         </div>
       </Modal>
     </div>

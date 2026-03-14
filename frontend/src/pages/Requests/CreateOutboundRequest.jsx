@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axiosClient from '../../services/axiosClient';
+import inventoryService from '../../services/inventoryService';
 
 const FIELD = ({ label, children }) => (
   <div className="flex flex-col gap-1.5">
@@ -13,23 +15,69 @@ const inputCls =
 
 const CreateOutboundRequest = () => {
   const navigate = useNavigate();
+
+  const [warehouses, setWarehouses] = useState([]);
+  const [loadingWH, setLoadingWH] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
   const [form, setForm] = useState({
-    warehouse: '',
+    warehouseId: '',
     itemName: '',
     qty: 1,
     unit: 'Pallet',
     destination: '',
-    shippingDate: '',
     description: '',
     notes: '',
   });
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const handleSubmit = (e) => {
+  // Tải danh sách kho renter đang thuê
+  useEffect(() => {
+    axiosClient.get('/rental-contracts/my-contracts')
+      .then(res => {
+        const contracts = Array.isArray(res.data) ? res.data : [];
+        const seen = new Set();
+        const whs = contracts
+          .reduce((acc, c) => {
+            if (c.warehouseId && !seen.has(c.warehouseId)) {
+              seen.add(c.warehouseId);
+              acc.push({ warehouseId: c.warehouseId, name: c.warehouseName || `Kho #${c.warehouseId}` });
+            }
+            return acc;
+          }, []);
+        setWarehouses(whs);
+      })
+      .catch(() => setWarehouses([]))
+      .finally(() => setLoadingWH(false));
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert('Yêu cầu xuất kho đã được tạo thành công!');
-    navigate(-1);
+    setError('');
+    if (!form.warehouseId) { setError('Vui lòng chọn kho xuất hàng.'); return; }
+    if (!form.itemName.trim()) { setError('Vui lòng nhập tên mặt hàng.'); return; }
+
+    setSubmitting(true);
+    try {
+      await inventoryService.createInventoryRequest({
+        warehouseId: Number(form.warehouseId),
+        type: 'OUTBOUND',
+        notes: form.notes || null,
+        items: [{
+          itemName: form.itemName.trim(),
+          quantity: Number(form.qty),
+          unit: form.unit,
+          description: form.description || null,
+        }],
+      });
+      navigate('/renter-outbound-requests', { state: { created: true } });
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Tạo yêu cầu thất bại. Vui lòng thử lại.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -56,13 +104,16 @@ const CreateOutboundRequest = () => {
             </p>
           </div>
         </div>
-        <button
-          className="text-xs font-bold whitespace-nowrap flex items-center gap-1 text-amber-600 hover:opacity-70 transition-opacity"
-        >
-          Tìm hiểu thêm
-          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-        </button>
       </div>
+
+      {/* Error alert */}
+      {error && (
+        <div className="mb-6 rounded-lg px-4 py-3 flex items-center gap-2 text-sm font-medium"
+          style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
+          <span className="material-symbols-outlined text-[18px]">error</span>
+          {error}
+        </div>
+      )}
 
       {/* Form card */}
       <form
@@ -76,18 +127,24 @@ const CreateOutboundRequest = () => {
             <div className="space-y-5">
               <FIELD label="Chọn kho xuất hàng">
                 <div className="relative">
-                  <select
-                    value={form.warehouse}
-                    onChange={set('warehouse')}
-                    className={inputCls + ' appearance-none pr-10'}
-                    required
-                  >
-                    <option value="">Chọn kho xuất hàng</option>
-                    <option value="wh-01">Kho Quận 7 - TP.HCM</option>
-                    <option value="wh-02">Kho Sóng Thần - Bình Dương</option>
-                    <option value="wh-03">Kho Cảng Hải Phòng</option>
-                    <option value="wh-04">Kho Hòa Lạc - Hà Nội</option>
-                  </select>
+                  {loadingWH ? (
+                    <div className={inputCls + ' text-slate-400'}>Đang tải danh sách kho...</div>
+                  ) : (
+                    <select
+                      value={form.warehouseId}
+                      onChange={set('warehouseId')}
+                      className={inputCls + ' appearance-none pr-10'}
+                      required
+                    >
+                      <option value="">Chọn kho xuất hàng</option>
+                      {warehouses.length > 0
+                        ? warehouses.map(w => (
+                            <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>
+                          ))
+                        : <option value="" disabled>Không có kho đang thuê</option>
+                      }
+                    </select>
+                  )}
                   <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     expand_more
                   </span>
@@ -162,22 +219,11 @@ const CreateOutboundRequest = () => {
                     onChange={set('destination')}
                     placeholder="Nhập địa chỉ đường phố, thành phố, mã bưu chính"
                     className={inputCls + ' pr-10'}
-                    required
                   />
                   <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
                     location_on
                   </span>
                 </div>
-              </FIELD>
-
-              <FIELD label="Ngày dự kiến xuất hàng">
-                <input
-                  type="date"
-                  value={form.shippingDate}
-                  onChange={set('shippingDate')}
-                  className={inputCls}
-                  required
-                />
               </FIELD>
 
               <FIELD label="Ghi chú vận chuyển">
@@ -198,17 +244,20 @@ const CreateOutboundRequest = () => {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="px-6 py-2.5 rounded-lg border border-slate-200 bg-white font-semibold text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+            disabled={submitting}
+            className="px-6 py-2.5 rounded-lg border border-slate-200 bg-white font-semibold text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
           >
             Hủy bỏ
           </button>
           <button
             type="submit"
-            className="px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all shadow-sm hover:opacity-90 flex items-center gap-2"
+            disabled={submitting || loadingWH}
+            className="px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all shadow-sm hover:opacity-90 flex items-center gap-2 disabled:opacity-60"
             style={{ backgroundColor: '#00b2d6' }}
           >
+            {submitting && <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>}
             <span className="material-symbols-outlined text-[18px]">send</span>
-            Tạo yêu cầu xuất kho
+            {submitting ? 'Đang tạo...' : 'Tạo yêu cầu xuất kho'}
           </button>
         </div>
       </form>
