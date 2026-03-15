@@ -80,6 +80,7 @@ function AppRoutes() {
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
               <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
+              <Route path="/settings" element={<ProfilePage />} />
             </Route>
           </Route>
 

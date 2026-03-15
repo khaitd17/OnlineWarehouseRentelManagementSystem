@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace WMS.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitFull : Migration
+    public partial class Init : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -254,6 +254,29 @@ namespace WMS.Infrastructure.Migrations
                         column: x => x.warehouse_id,
                         principalTable: "warehouses",
                         principalColumn: "warehouse_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "rental_areas",
+                columns: table => new
+                {
+                    rental_area_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    warehouse_id = table.Column<int>(type: "int", nullable: false),
+                    name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    size = table.Column<double>(type: "float", nullable: false),
+                    description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_rental_areas", x => x.rental_area_id);
+                    table.ForeignKey(
+                        name: "FK_rental_areas_warehouse",
+                        column: x => x.warehouse_id,
+                        principalTable: "warehouses",
+                        principalColumn: "warehouse_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -938,6 +961,11 @@ namespace WMS.Infrastructure.Migrations
                 column: "contract_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_rental_areas_warehouse_id",
+                table: "rental_areas",
+                column: "warehouse_id");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_rental_requests_created_at",
                 table: "rental_requests",
                 column: "created_at");
@@ -1135,6 +1163,9 @@ namespace WMS.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "ratings");
+
+            migrationBuilder.DropTable(
+                name: "rental_areas");
 
             migrationBuilder.DropTable(
                 name: "task_assignments");

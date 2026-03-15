@@ -22,10 +22,18 @@ public class WarehouseDetailDto
 
     public string? OperatingHours { get; set; }
 
+    public bool Is24HoursAccess { get; set; }
+
+    public TimeSpan? OpenTime { get; set; }
+
+    public TimeSpan? CloseTime { get; set; }
+
     public string? Status { get; set; }
 
     public DateTime? CreatedAt { get; set; }
     public List<WarehouseImageDto> Images { get; set; } = new();
+
+    public string? DocumentStatus { get; set; }
 
     public string? OwnerName { get; set; }
     public string? OwnerPhone { get; set; }

@@ -6,8 +6,19 @@ import axiosClient from '../../services/axiosClient';
 const MENU_BY_ROLE = {
   OWNER: [
     { icon: 'dashboard',      label: 'Tổng quan',          path: '/dashboard' },
+    { icon: 'add_circle',     label: 'Tạo kho mới',        path: '/create-warehouse' },
     { icon: 'warehouse',      label: 'Kho của tôi',        path: '/my-warehouses' },
-    { icon: 'add_circle',     label: 'Tạo kho mới',        path: '/post-warehouse' },
+    { icon: 'inventory_2',    label: 'Yêu cầu nhập/xuất',  path: '/owner-inventory-requests', section: 'YÊU CẦU' },
+    { icon: 'pending_actions',label: 'Yêu cầu thuê kho',   path: '/pending-rental-requests' },
+    { icon: 'group',          label: 'Quản lý nhân viên',  path: '/list-staff',       section: 'NHÂN SỰ' },
+    { icon: 'person_add',     label: 'Thêm nhân viên',     path: '/create-staff' },
+    { icon: 'calendar_month', label: 'Lịch công việc',     path: '/task-scheduling',  section: 'VẬN HÀNH' },
+    { icon: 'settings',       label: 'Cài đặt',            path: '/settings',         isBottom: true },
+  ],
+  USER: [
+    { icon: 'dashboard',      label: 'Tổng quan',          path: '/dashboard' },
+    { icon: 'add_circle',     label: 'Tạo kho mới',        path: '/create-warehouse' },
+    { icon: 'warehouse',      label: 'Kho của tôi',        path: '/my-warehouses' },
     { icon: 'inventory_2',    label: 'Yêu cầu nhập/xuất',  path: '/owner-inventory-requests', section: 'YÊU CẦU' },
     { icon: 'pending_actions',label: 'Yêu cầu thuê kho',   path: '/pending-rental-requests' },
     { icon: 'group',          label: 'Quản lý nhân viên',  path: '/list-staff',       section: 'NHÂN SỰ' },
@@ -17,6 +28,7 @@ const MENU_BY_ROLE = {
   ],
   OPERATOR: [
     { icon: 'dashboard',      label: 'Tổng quan',          path: '/dashboard' },
+    { icon: 'add_circle',     label: 'Tạo kho mới',        path: '/create-warehouse' },
     { icon: 'warehouse',      label: 'Kho của tôi',        path: '/my-warehouses' },
     { icon: 'inventory_2',    label: 'Yêu cầu nhập/xuất',  path: '/owner-inventory-requests', section: 'YÊU CẦU' },
     { icon: 'pending_actions',label: 'Yêu cầu thuê kho',   path: '/pending-rental-requests' },
@@ -92,7 +104,8 @@ const Sidebar = () => {
             return;
           }
         }
-        setWarehouseRole('STAFF');
+        // If no specifically prioritized warehouse role is found, don't force 'STAFF'
+        // This allows the systemRole (like USER or OWNER) to take precedence.
       })
       .catch(() => setWarehouseRole(null))
       .finally(() => setLoading(false));

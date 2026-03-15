@@ -12,8 +12,8 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260315100853_InitFull")]
-    partial class InitFull
+    [Migration("20260315105619_Init")]
+    partial class Init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -691,6 +691,46 @@ namespace WMS.Infrastructure.Migrations
                         });
 
                     b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.RentalArea", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("rental_area_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<double>("Size")
+                        .HasColumnType("float")
+                        .HasColumnName("size");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("rental_areas", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.RentalRequest", b =>
@@ -1883,6 +1923,18 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.RentalArea", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany("RentalAreas")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_rental_areas_warehouse");
+
+                    b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.RentalRequest", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.User", "Renter")
@@ -2182,6 +2234,8 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("InventoryRequests");
 
                     b.Navigation("Ratings");
+
+                    b.Navigation("RentalAreas");
 
                     b.Navigation("RentalRequests");
 

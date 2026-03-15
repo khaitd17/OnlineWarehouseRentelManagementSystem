@@ -16,6 +16,7 @@ const WarehouseDetail = () => {
     notes: ""
   });
   const [saving, setSaving] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
 
   const getWarehouseDetail = async () => {
     try {
@@ -100,10 +101,32 @@ const WarehouseDetail = () => {
     );
   }
 
-  const imageUrl =
-    warehouse.images && warehouse.images.length > 0
-      ? `http://localhost:5276${warehouse.images[0].url}`
-      : "https://images.unsplash.com/photo-1553413077-190dd305871c";
+  // Robustly extract images from any possible property name variant
+  const allImages = warehouse.images || warehouse.Images || warehouse.warehouseMedia || warehouse.WarehouseMedia || [];
+  
+  // Debug log to help identify data structure issues
+  console.log("Warehouse Data:", warehouse);
+  console.log("Extracted Images:", allImages);
+
+  const getImageUrl = (img) => {
+    if (!img) return "https://images.unsplash.com/photo-1553413077-190dd305871c";
+    
+    // Check multiple possible URL property names
+    const rawUrl = img.url || img.Url || img.mediaUrl || img.MediaUrl || (typeof img === 'string' ? img : null);
+    
+    if (!rawUrl) return "https://images.unsplash.com/photo-1553413077-190dd305871c";
+    
+    // Ensure the URL is absolute
+    if (rawUrl.startsWith('http')) return rawUrl;
+    
+    // Normalize leading slash
+    const normalizedUrl = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+    return `http://localhost:5276${normalizedUrl}`;
+  };
+
+  const currentImageUrl = allImages.length > 0 
+    ? getImageUrl(allImages[activeImage]) 
+    : "https://images.unsplash.com/photo-1553413077-190dd305871c";
 
   return (
     <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh" }}>
@@ -159,8 +182,7 @@ const WarehouseDetail = () => {
 
           {/* LEFT */}
           <div>
-
-            {/* IMAGE */}
+            {/* IMAGE GALLERY */}
             <div
               style={{
                 background: "#fff",
@@ -169,15 +191,50 @@ const WarehouseDetail = () => {
                 boxShadow: "0 10px 30px rgba(0,0,0,0.05)"
               }}
             >
-              <img
-                src={imageUrl}
-                alt="warehouse"
-                style={{
-                  width: "100%",
-                  height: "420px",
-                  objectFit: "cover"
-                }}
-              />
+              <div style={{ position: "relative", height: "420px", width: "100%" }}>
+                <img
+                  src={currentImageUrl}
+                  alt="warehouse"
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover"
+                  }}
+                />
+              </div>
+              
+              {allImages.length > 1 && (
+                <div style={{ 
+                  display: "flex", 
+                  gap: "10px", 
+                  padding: "15px", 
+                  overflowX: "auto", 
+                  borderTop: "1px solid #f1f5f9",
+                  backgroundColor: "#fff"
+                }}>
+                  {allImages.map((img, idx) => (
+                    <div 
+                      key={idx}
+                      onClick={() => setActiveImage(idx)}
+                      style={{ 
+                        width: "80px", 
+                        height: "60px", 
+                        borderRadius: "8px", 
+                        overflow: "hidden", 
+                        cursor: "pointer",
+                        border: activeImage === idx ? "2px solid #0095c7" : "2px solid transparent",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      <img 
+                        src={getImageUrl(img)} 
+                        alt={`thumb-${idx}`} 
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* DESCRIPTION */}
@@ -289,8 +346,15 @@ const WarehouseDetail = () => {
                   <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
                     Giờ hoạt động
                   </div>
-                  <div style={{ fontWeight: 700 }}>
-                    {warehouse.operatingHours || "Không có thông tin"}
+                  <div style={{ fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
+                    {warehouse.is24HoursAccess ? (
+                      <>
+                        <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#0ea5e9" }}>schedule</span>
+                        <span>24/7 (Truy cập tự quản)</span>
+                      </>
+                    ) : (
+                      warehouse.operatingHours || "Không có thông tin"
+                    )}
                   </div>
                 </div>
 
@@ -298,7 +362,6 @@ const WarehouseDetail = () => {
                   <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
                     Trạng thái
                   </div>
-
                   <div
                     style={{
                       fontWeight: 700,
@@ -309,6 +372,27 @@ const WarehouseDetail = () => {
                     }}
                   >
                     {warehouse.status}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                    Tình trạng tài liệu
+                  </div>
+                  <div
+                    style={{
+                      fontWeight: 700,
+                      color:
+                        warehouse.documentStatus === "APPROVED" || warehouse.documentStatus === "VERIFIED"
+                          ? "#16a34a"
+                          : warehouse.documentStatus === "MISSING"
+                          ? "#ef4444"
+                          : "#f59e0b"
+                    }}
+                  >
+                    {warehouse.documentStatus === "MISSING" ? "Chưa có" : 
+                     warehouse.documentStatus === "PENDING" ? "Đang chờ duyệt" : 
+                     warehouse.documentStatus === "APPROVED" ? "Đã xác minh" : warehouse.documentStatus}
                   </div>
                 </div>
 
