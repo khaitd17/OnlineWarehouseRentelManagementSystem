@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
 using BCrypt.Net;
 
@@ -101,9 +102,15 @@ namespace WMS.Infrastructure.Persistence
                     OperatingHours = "08:00 - 18:00",
                     CreatedAt      = DateTime.UtcNow,
                     ApprovedAt     = DateTime.UtcNow,
-                    ApprovedBy     = adminUser.UserId
+                    ApprovedBy     = adminUser.UserId,
+                    HasZone        = true
                 };
                 context.Warehouses.Add(warehouse);
+                context.SaveChanges();
+            }
+            else if (!warehouse.HasZone)
+            {
+                warehouse.HasZone = true;
                 context.SaveChanges();
             }
 
@@ -124,9 +131,15 @@ namespace WMS.Infrastructure.Persistence
                     OperatingHours = "07:00 - 17:00",
                     CreatedAt      = DateTime.UtcNow,
                     ApprovedAt     = DateTime.UtcNow,
-                    ApprovedBy     = adminUser.UserId
+                    ApprovedBy     = adminUser.UserId,
+                    HasZone        = true
                 };
                 context.Warehouses.Add(warehouse2);
+                context.SaveChanges();
+            }
+            else if (!warehouse2.HasZone)
+            {
+                warehouse2.HasZone = true;
                 context.SaveChanges();
             }
 
@@ -140,11 +153,14 @@ namespace WMS.Infrastructure.Persistence
                 context.SaveChanges();
             }
 
-            // Add Zones for warehouse 2
+            // Add Zones for warehouse 2 — Hải Phòng
             if (!context.Zones.Any(z => z.WarehouseId == warehouse2.WarehouseId))
             {
-                var zone2A = new Zone { Code = "Z-A", Name = "Khu A", WarehouseId = warehouse2.WarehouseId, Description = "Khu A chung", IsActive = true, CreatedAt = DateTime.UtcNow };
-                context.Zones.Add(zone2A);
+                var zone2A = new Zone { Code = "Z-A", Name = "Khu A - Cảng",      WarehouseId = warehouse2.WarehouseId, Description = "Khu tiếp nhận container từ cảng",  IsActive = true, CreatedAt = DateTime.UtcNow };
+                var zone2B = new Zone { Code = "Z-B", Name = "Khu B - Khô",       WarehouseId = warehouse2.WarehouseId, Description = "Khu lưu trữ hàng hóa khô",          IsActive = true, CreatedAt = DateTime.UtcNow };
+                var zone2C = new Zone { Code = "Z-C", Name = "Khu C - Lạnh",      WarehouseId = warehouse2.WarehouseId, Description = "Khu lưu trữ hàng đông lạnh",         IsActive = true, CreatedAt = DateTime.UtcNow };
+                var zone2D = new Zone { Code = "Z-D", Name = "Khu D - Xuất khẩu", WarehouseId = warehouse2.WarehouseId, Description = "Khu tập kết hàng chờ xuất khẩu",    IsActive = true, CreatedAt = DateTime.UtcNow };
+                context.Zones.AddRange(zone2A, zone2B, zone2C, zone2D);
                 context.SaveChanges();
             }
 
@@ -170,20 +186,46 @@ namespace WMS.Infrastructure.Persistence
             context.SaveChanges();
 
             // Add Task Types
-            var taskTypes = new[]
+            var taskTypeData = new[]
             {
-                new TaskType { Code = "INBOUND", Name = "Nhập kho" },
-                new TaskType { Code = "OUTBOUND", Name = "Xuất kho" },
-                new TaskType { Code = "AUDIT", Name = "Kiểm kê định kỳ" }
+                new { Code = "INBOUND",       Name = "Nhập kho",           Description = "Tiếp nhận hàng hoá vào kho",               IsAllSkill = false },
+                new { Code = "OUTBOUND",      Name = "Xuất kho",           Description = "Xuất hàng hoá ra khỏi kho",                IsAllSkill = false },
+                new { Code = "AUDIT",         Name = "Kiểm kê định kỳ",    Description = "Đếm và đối chiếu tồn kho",                 IsAllSkill = false },
+                new { Code = "EQUIP_MAINT",   Name = "Bảo trì thiết bị",   Description = "Bảo dưỡng và sửa chữa thiết bị kho",      IsAllSkill = false },
+                new { Code = "GENERAL_CLEAN", Name = "Vệ sinh kho",        Description = "Vệ sinh toàn bộ hoặc khu vực kho",         IsAllSkill = true  },
+                new { Code = "ZONE_INSPECT",  Name = "Kiểm tra khu vực",   Description = "Tuần tra và kiểm tra tình trạng zone",     IsAllSkill = true  },
+                new { Code = "OTHER",         Name = "Khác",               Description = "Task tổng quát, không yêu cầu skill cụ thể", IsAllSkill = true  },
             };
 
-            foreach (var tt in taskTypes)
+            foreach (var tt in taskTypeData)
             {
                 if (!context.TaskTypes.Any(t => t.Code == tt.Code))
                 {
-                    context.TaskTypes.Add(tt);
+                    context.TaskTypes.Add(new TaskType
+                    {
+                        Code        = tt.Code,
+                        Name        = tt.Name,
+                        Description = tt.Description,
+                        IsAllSkill  = tt.IsAllSkill,
+                    });
                 }
             }
+            context.SaveChanges();
+
+            var skInbound   = context.Skills.FirstOrDefault(s => s.Code == "INBOUND");
+            var skOutbound  = context.Skills.FirstOrDefault(s => s.Code == "OUTBOUND");
+            var skInventory = context.Skills.FirstOrDefault(s => s.Code == "INVENTORY");
+            var skForklift  = context.Skills.FirstOrDefault(s => s.Code == "FORKLIFT");
+
+            var ttInbound  = context.TaskTypes.First(t => t.Code == "INBOUND");
+            var ttOutbound = context.TaskTypes.First(t => t.Code == "OUTBOUND");
+            var ttAudit    = context.TaskTypes.First(t => t.Code == "AUDIT");
+            var ttEquip    = context.TaskTypes.First(t => t.Code == "EQUIP_MAINT");
+
+            if (ttInbound.SkillId  == null) { ttInbound.SkillId  = skInbound?.Id; }
+            if (ttOutbound.SkillId == null) { ttOutbound.SkillId = skOutbound?.Id; }
+            if (ttAudit.SkillId    == null) { ttAudit.SkillId    = skInventory?.Id; }
+            if (ttEquip.SkillId    == null) { ttEquip.SkillId    = skForklift?.Id; }
             context.SaveChanges();
 
             // Warehouse Roles — truy vấn bằng Code, Name là text hiển thị
@@ -289,6 +331,76 @@ namespace WMS.Infrastructure.Persistence
                     CreatedAt       = DateTime.UtcNow
                 };
                 context.WarehouseMemberships.Add(membership2);
+                context.SaveChanges();
+            }
+
+            var managerUser = context.Users.FirstOrDefault(u => u.Email == "manager1@owrms.com");
+            if (managerUser == null)
+            {
+                managerUser = new User
+                {
+                    Email        = "manager1@owrms.com",
+                    FullName     = "Lê Thị Manager",
+                    PasswordHash = defaultPasswordHash,
+                    RoleId       = userRoleId,
+                    Status       = "ACTIVE",
+                    Phone        = "0905999888",
+                    CreatedAt    = DateTime.UtcNow
+                };
+                context.Users.Add(managerUser);
+                context.SaveChanges();
+            }
+
+            var managerMembership = context.WarehouseMemberships
+                .FirstOrDefault(m => m.UserId == managerUser.UserId && m.WarehouseId == warehouse.WarehouseId);
+            if (managerMembership == null)
+            {
+                managerMembership = new WarehouseMembership
+                {
+                    UserId          = managerUser.UserId,
+                    WarehouseId     = warehouse.WarehouseId,
+                    WarehouseRoleId = managerWhRole.Id,
+                    IsActive        = true,
+                    IsAllSkill      = true,
+                    IsAllZone       = true,
+                    CreatedAt       = DateTime.UtcNow
+                };
+                context.WarehouseMemberships.Add(managerMembership);
+                context.SaveChanges();
+            }
+
+            if (!context.WarehouseTasks.Any())
+            {
+                var ttIds = context.TaskTypes.ToDictionary(t => t.Code, t => t.Id);
+                var zA = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-A");
+                var zB = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-B");
+                var zA2 = context.Zones.First(z => z.WarehouseId == warehouse2.WarehouseId && z.Code == "Z-A");
+
+                // Task 1: vệ sinh toàn kho 1 — IsAllZone=true, đã lên lịch 08:00 ngày 16/3
+                var t1 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["GENERAL_CLEAN"], IsAllZone = true,  Status = "Pending",    ScheduledAt = new DateTime(2026,3,17,8,0,0,DateTimeKind.Utc),  Note = "Vệ sinh toàn bộ kho Hà Nội" };
+                // Task 2: kiểm tra Zone A+B — IsAllZone=false, đã lên lịch 07:30 ngày 15/3
+                var t2 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["ZONE_INSPECT"],  IsAllZone = false, Status = "InProgress", ScheduledAt = new DateTime(2026,3,15,7,30,0,DateTimeKind.Utc), Note = "Kiểm tra khu A và B" };
+                // Task 3: nhập kho Zone A — IsAllZone=false, đã lên lịch 09:00 ngày 17/3
+                var t3 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["INBOUND"],       IsAllZone = false, Status = "Pending",    ScheduledAt = new DateTime(2026,3,18,9,0,0,DateTimeKind.Utc),  Note = "Tiếp nhận lô hàng mới" };
+                // Task 4: xuất kho Zone A — IsAllZone=false, đã lên lịch 10:00 ngày 18/3
+                var t4 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["OUTBOUND"],      IsAllZone = false, Status = "Pending",    ScheduledAt = new DateTime(2026,3,19,10,0,0,DateTimeKind.Utc), Note = "Xuất hàng đơn #001" };
+                // Task 5: kiểm kê Zone B — IsAllZone=false, đã lên lịch 08:00 ngày 19/3
+                var t5 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["AUDIT"],         IsAllZone = false, Status = "Pending",    ScheduledAt = new DateTime(2026,3,20,8,0,0,DateTimeKind.Utc),  Note = "Kiểm kê Zone B" };
+                // Task 6: bảo trì toàn kho 1 — IsAllZone=true, hoàn thành
+                var t6 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["EQUIP_MAINT"],   IsAllZone = true,  Status = "Completed",  ScheduledAt = new DateTime(2026,3,16,8,0,0,DateTimeKind.Utc),  Note = "Bảo trì xe nâng" };
+                // Task 7: vệ sinh kho 2 — IsAllZone=true, chưa lên lịch
+                var t7 = new WarehouseTask { WarehouseId = warehouse2.WarehouseId, TaskTypeId = ttIds["GENERAL_CLEAN"], IsAllZone = true,  Status = "Pending",    ScheduledAt = null, Note = "Vệ sinh kho Hải Phòng" };
+                // Task 8: OTHER kho 1 — IsAllZone=true, chưa lên lịch
+                var t8 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["OTHER"],         IsAllZone = true,  Status = "Pending",    ScheduledAt = null, Note = "Hỗ trợ đặc biệt theo yêu cầu" };
+
+                context.WarehouseTasks.AddRange(t1, t2, t3, t4, t5, t6, t7, t8);
+                context.SaveChanges();
+
+                // Gán zones cho task có IsAllZone=false
+                t2.Zones.Add(zA); t2.Zones.Add(zB);
+                t3.Zones.Add(zA);
+                t4.Zones.Add(zA);
+                t5.Zones.Add(zB);
                 context.SaveChanges();
             }
         }

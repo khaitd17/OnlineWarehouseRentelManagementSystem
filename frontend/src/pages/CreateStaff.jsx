@@ -161,7 +161,7 @@ function CreateStaff() {
     chip:       (active) => ({ padding:"4px 12px", borderRadius:"16px", border:"1.5px solid " + (active ? "#4f46e5" : "#d1d5db"), background: active ? "#ede9fe" : "#fff", color: active ? "#4f46e5" : "#374151", cursor:"pointer", fontSize:"13px", fontWeight:"500", transition:"all .15s" }),
     submitBtn:  { width:"100%", padding:"12px", background:"#4f46e5", color:"#fff", border:"none", borderRadius:"8px", fontSize:"16px", fontWeight:"700", cursor:"pointer", transition:"background .2s" },
     cancelBtn:  { width:"100%", padding:"12px", background:"#f3f4f6", color:"#374151", border:"none", borderRadius:"8px", fontSize:"15px", fontWeight:"600", cursor:"pointer", marginTop:"10px" },
-    badgePill:  (color) => ({ display:"inline-block", background:color, padding:"3px 10px", borderRadius:"12px", fontSize:"12px", fontWeight:"600", marginLeft:"8px" }),
+    badgePill:  (color) => ({ display:"inline-block", background:color, color:"#fff", padding:"3px 10px", borderRadius:"12px", fontSize:"12px", fontWeight:"600", marginLeft:"8px" }),
     alert:      (type) => ({ padding:"12px 16px", borderRadius:"8px", marginBottom:"16px", fontSize:"14px",
                               background: type==="error" ? "#fef2f2" : "#f0fdf4",
                               color:      type==="error" ? "#b91c1c"  : "#166534",

@@ -94,13 +94,13 @@ namespace WMS.Application.Features.Staff.CreateStaff
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);
 
-                // Gửi email thông tin đăng nhập
-                await _emailService.SendInfo(
-                    request.Email,
-                    request.FullName,
-                    "Thông tin tài khoản đăng nhập",
-                    $"Email: {request.Email}, Mật khẩu: {rawPassword}"
-                );
+                // Gửi email thông tin đăng nhập (tạm comment để test)
+                // await _emailService.SendInfo(
+                //     request.Email,
+                //     request.FullName,
+                //     "Thông tin tài khoản đăng nhập",
+                //     $"Email: {request.Email}, Mật khẩu: {rawPassword}"
+                // );
             }
             else
             {

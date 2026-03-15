@@ -28,6 +28,8 @@ public partial class Warehouse
 
     public string? Status { get; set; }
 
+    public bool HasZone { get; set; } = false;
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,7 +14,6 @@ namespace WMS.Infrastructure.Persistence.ScaffoldModels
 
         public string Name { get; set; } = null!;
 
-        public ICollection<Skill> RequiredSkills { get; set; } = new List<Skill>();
 
         public ICollection<Task> Tasks { get; set; } = new List<Task>();
     }

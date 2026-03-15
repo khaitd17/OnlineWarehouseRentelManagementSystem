@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace WMS.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class Init : Migration
+    public partial class InitFull : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -41,26 +41,13 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "task_types",
-                columns: table => new
-                {
-                    task_type_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_task_types", x => x.task_type_id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "warehouse_roles",
                 columns: table => new
                 {
                     role_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
+                    code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -95,27 +82,25 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "task_type_skills",
+                name: "task_types",
                 columns: table => new
                 {
-                    task_type_id = table.Column<int>(type: "int", nullable: false),
-                    skill_id = table.Column<int>(type: "int", nullable: false)
+                    task_type_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    is_all_skill = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    skill_id = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_task_type_skills", x => new { x.task_type_id, x.skill_id });
+                    table.PrimaryKey("PK_task_types", x => x.task_type_id);
                     table.ForeignKey(
-                        name: "FK_task_type_skills_skills_skill_id",
+                        name: "FK_task_types_skills_skill_id",
                         column: x => x.skill_id,
                         principalTable: "skills",
-                        principalColumn: "skill_id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_task_type_skills_task_types_task_type_id",
-                        column: x => x.task_type_id,
-                        principalTable: "task_types",
-                        principalColumn: "task_type_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "skill_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -137,8 +122,7 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_password_reset_tokens_user",
                         column: x => x.user_id,
                         principalTable: "users",
-                        principalColumn: "user_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -157,6 +141,7 @@ namespace WMS.Infrastructure.Migrations
                     available_area = table.Column<double>(type: "float", nullable: false),
                     operating_hours = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true, defaultValue: "PENDING"),
+                    has_zone = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "(getdate())"),
                     updated_at = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "(getdate())"),
                     approved_at = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -204,8 +189,7 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_audit_sessions_warehouse",
                         column: x => x.warehouse_id,
                         principalTable: "warehouses",
-                        principalColumn: "warehouse_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "warehouse_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -232,8 +216,7 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_equipments_warehouse",
                         column: x => x.warehouse_id,
                         principalTable: "warehouses",
-                        principalColumn: "warehouse_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "warehouse_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -323,7 +306,10 @@ namespace WMS.Infrastructure.Migrations
                     warehouse_id = table.Column<int>(type: "int", nullable: false),
                     task_type_id = table.Column<int>(type: "int", nullable: false),
                     status = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
+                    scheduled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    note = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    is_all_zone = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
@@ -332,14 +318,12 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_tasks_task_types_task_type_id",
                         column: x => x.task_type_id,
                         principalTable: "task_types",
-                        principalColumn: "task_type_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "task_type_id");
                     table.ForeignKey(
                         name: "FK_tasks_warehouses_warehouse_id",
                         column: x => x.warehouse_id,
                         principalTable: "warehouses",
-                        principalColumn: "warehouse_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "warehouse_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -372,6 +356,28 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_warehouse_documents_warehouse",
                         column: x => x.warehouse_id,
                         principalTable: "warehouses",
+                        principalColumn: "warehouse_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "warehouse_inventory",
+                columns: table => new
+                {
+                    inventory_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    warehouse_id = table.Column<int>(type: "int", nullable: false),
+                    item_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    quantity = table.Column<int>(type: "int", nullable: false),
+                    unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "cái"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_warehouse_inventory", x => x.inventory_id);
+                    table.ForeignKey(
+                        name: "FK_warehouse_inventory_wh",
+                        column: x => x.warehouse_id,
+                        principalTable: "warehouses",
                         principalColumn: "warehouse_id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -387,8 +393,7 @@ namespace WMS.Infrastructure.Migrations
                     media_type = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
                     display_order = table.Column<int>(type: "int", nullable: true, defaultValue: 0),
                     is_primary = table.Column<bool>(type: "bit", nullable: true, defaultValue: false),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "(getdate())"),
-                    WarehouseId1 = table.Column<int>(type: "int", nullable: true)
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "(getdate())")
                 },
                 constraints: table =>
                 {
@@ -396,12 +401,6 @@ namespace WMS.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "FK_warehouse_media_warehouse",
                         column: x => x.warehouse_id,
-                        principalTable: "warehouses",
-                        principalColumn: "warehouse_id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_warehouse_media_warehouses_WarehouseId1",
-                        column: x => x.WarehouseId1,
                         principalTable: "warehouses",
                         principalColumn: "warehouse_id");
                 });
@@ -416,6 +415,8 @@ namespace WMS.Infrastructure.Migrations
                     warehouse_id = table.Column<int>(type: "int", nullable: false),
                     warehouse_role_id = table.Column<int>(type: "int", nullable: false),
                     is_active = table.Column<bool>(type: "bit", nullable: false),
+                    is_all_skill = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    is_all_zone = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
                 },
                 constraints: table =>
@@ -425,20 +426,40 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_warehouse_memberships_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
-                        principalColumn: "user_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "user_id");
                     table.ForeignKey(
                         name: "FK_warehouse_memberships_warehouse_roles_warehouse_role_id",
                         column: x => x.warehouse_role_id,
                         principalTable: "warehouse_roles",
-                        principalColumn: "role_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "role_id");
                     table.ForeignKey(
                         name: "FK_warehouse_memberships_warehouses_warehouse_id",
                         column: x => x.warehouse_id,
                         principalTable: "warehouses",
-                        principalColumn: "warehouse_id",
-                        onDelete: ReferentialAction.NoAction);
+                        principalColumn: "warehouse_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "zones",
+                columns: table => new
+                {
+                    zone_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    warehouse_id = table.Column<int>(type: "int", nullable: false),
+                    code = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_zones", x => x.zone_id);
+                    table.ForeignKey(
+                        name: "FK_zones_warehouses_warehouse_id",
+                        column: x => x.warehouse_id,
+                        principalTable: "warehouses",
+                        principalColumn: "warehouse_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -462,8 +483,7 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_audit_results_audit",
                         column: x => x.audit_id,
                         principalTable: "audit_sessions",
-                        principalColumn: "audit_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "audit_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -486,7 +506,43 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_inventory_items_request",
                         column: x => x.inv_req_id,
                         principalTable: "inventory_requests",
-                        principalColumn: "inv_req_id",
+                        principalColumn: "inv_req_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "inventory_transactions",
+                columns: table => new
+                {
+                    transaction_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    inv_req_id = table.Column<int>(type: "int", nullable: false),
+                    type = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    warehouse_id = table.Column<int>(type: "int", nullable: false),
+                    item_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    quantity = table.Column<int>(type: "int", nullable: false),
+                    unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "cái"),
+                    performed_by = table.Column<int>(type: "int", nullable: false),
+                    notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_inventory_transactions", x => x.transaction_id);
+                    table.ForeignKey(
+                        name: "FK_inv_transactions_performer",
+                        column: x => x.performed_by,
+                        principalTable: "users",
+                        principalColumn: "user_id");
+                    table.ForeignKey(
+                        name: "FK_inv_transactions_request",
+                        column: x => x.inv_req_id,
+                        principalTable: "inventory_requests",
+                        principalColumn: "inv_req_id");
+                    table.ForeignKey(
+                        name: "FK_inv_transactions_warehouse",
+                        column: x => x.warehouse_id,
+                        principalTable: "warehouses",
+                        principalColumn: "warehouse_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -551,14 +607,12 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_task_assignments_tasks_task_id",
                         column: x => x.task_id,
                         principalTable: "tasks",
-                        principalColumn: "task_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "task_id");
                     table.ForeignKey(
                         name: "FK_task_assignments_warehouse_memberships_membership_id",
                         column: x => x.membership_id,
                         principalTable: "warehouse_memberships",
-                        principalColumn: "membership_id",
-                        onDelete: ReferentialAction.NoAction);
+                        principalColumn: "membership_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -586,6 +640,54 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "task_zones",
+                columns: table => new
+                {
+                    task_id = table.Column<int>(type: "int", nullable: false),
+                    zone_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_task_zones", x => new { x.task_id, x.zone_id });
+                    table.ForeignKey(
+                        name: "FK_task_zones_tasks_task_id",
+                        column: x => x.task_id,
+                        principalTable: "tasks",
+                        principalColumn: "task_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_task_zones_zones_zone_id",
+                        column: x => x.zone_id,
+                        principalTable: "zones",
+                        principalColumn: "zone_id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "warehouse_membership_zones",
+                columns: table => new
+                {
+                    membership_id = table.Column<int>(type: "int", nullable: false),
+                    zone_id = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_warehouse_membership_zones", x => new { x.membership_id, x.zone_id });
+                    table.ForeignKey(
+                        name: "FK_warehouse_membership_zones_warehouse_memberships_membership_id",
+                        column: x => x.membership_id,
+                        principalTable: "warehouse_memberships",
+                        principalColumn: "membership_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_warehouse_membership_zones_zones_zone_id",
+                        column: x => x.zone_id,
+                        principalTable: "zones",
+                        principalColumn: "zone_id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "payments",
                 columns: table => new
                 {
@@ -609,8 +711,7 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_payments_contract",
                         column: x => x.contract_id,
                         principalTable: "contracts",
-                        principalColumn: "contract_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "contract_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -645,8 +746,7 @@ namespace WMS.Infrastructure.Migrations
                         name: "FK_ratings_warehouse",
                         column: x => x.warehouse_id,
                         principalTable: "warehouses",
-                        principalColumn: "warehouse_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "warehouse_id");
                 });
 
             migrationBuilder.CreateIndex(
@@ -757,6 +857,31 @@ namespace WMS.Infrastructure.Migrations
                 column: "confirmed_by");
 
             migrationBuilder.CreateIndex(
+                name: "idx_inv_transactions_created",
+                table: "inventory_transactions",
+                column: "created_at");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_inv_transactions_type",
+                table: "inventory_transactions",
+                column: "type");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_inv_transactions_warehouse",
+                table: "inventory_transactions",
+                column: "warehouse_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_inventory_transactions_inv_req_id",
+                table: "inventory_transactions",
+                column: "inv_req_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_inventory_transactions_performed_by",
+                table: "inventory_transactions",
+                column: "performed_by");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_prt_token",
                 table: "password_reset_tokens",
                 column: "token",
@@ -859,9 +984,14 @@ namespace WMS.Infrastructure.Migrations
                 column: "task_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_task_type_skills_skill_id",
-                table: "task_type_skills",
+                name: "IX_task_types_skill_id",
+                table: "task_types",
                 column: "skill_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_task_zones_zone_id",
+                table: "task_zones",
+                column: "zone_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_tasks_task_type_id",
@@ -910,6 +1040,12 @@ namespace WMS.Infrastructure.Migrations
                 column: "warehouse_id");
 
             migrationBuilder.CreateIndex(
+                name: "UQ_warehouse_inventory_item",
+                table: "warehouse_inventory",
+                columns: new[] { "warehouse_id", "item_name" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "idx_warehouse_media_order",
                 table: "warehouse_media",
                 columns: new[] { "warehouse_id", "display_order" });
@@ -920,14 +1056,14 @@ namespace WMS.Infrastructure.Migrations
                 column: "warehouse_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_warehouse_media_WarehouseId1",
-                table: "warehouse_media",
-                column: "WarehouseId1");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_warehouse_membership_skills_skill_id",
                 table: "warehouse_membership_skills",
                 column: "skill_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_warehouse_membership_zones_zone_id",
+                table: "warehouse_membership_zones",
+                column: "zone_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_warehouse_memberships_user_id_warehouse_id",
@@ -969,6 +1105,11 @@ namespace WMS.Infrastructure.Migrations
                 name: "IX_warehouses_approved_by",
                 table: "warehouses",
                 column: "approved_by");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_zones_warehouse_id",
+                table: "zones",
+                column: "warehouse_id");
         }
 
         /// <inheritdoc />
@@ -984,6 +1125,9 @@ namespace WMS.Infrastructure.Migrations
                 name: "inventory_items");
 
             migrationBuilder.DropTable(
+                name: "inventory_transactions");
+
+            migrationBuilder.DropTable(
                 name: "password_reset_tokens");
 
             migrationBuilder.DropTable(
@@ -996,16 +1140,22 @@ namespace WMS.Infrastructure.Migrations
                 name: "task_assignments");
 
             migrationBuilder.DropTable(
-                name: "task_type_skills");
+                name: "task_zones");
 
             migrationBuilder.DropTable(
                 name: "warehouse_documents");
+
+            migrationBuilder.DropTable(
+                name: "warehouse_inventory");
 
             migrationBuilder.DropTable(
                 name: "warehouse_media");
 
             migrationBuilder.DropTable(
                 name: "warehouse_membership_skills");
+
+            migrationBuilder.DropTable(
+                name: "warehouse_membership_zones");
 
             migrationBuilder.DropTable(
                 name: "audit_sessions");
@@ -1020,10 +1170,10 @@ namespace WMS.Infrastructure.Migrations
                 name: "tasks");
 
             migrationBuilder.DropTable(
-                name: "skills");
+                name: "warehouse_memberships");
 
             migrationBuilder.DropTable(
-                name: "warehouse_memberships");
+                name: "zones");
 
             migrationBuilder.DropTable(
                 name: "rental_requests");
@@ -1036,6 +1186,9 @@ namespace WMS.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "warehouses");
+
+            migrationBuilder.DropTable(
+                name: "skills");
 
             migrationBuilder.DropTable(
                 name: "users");

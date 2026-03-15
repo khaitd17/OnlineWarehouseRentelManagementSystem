@@ -193,6 +193,30 @@ public class StaffController : ControllerBase
         catch (UnauthorizedAccessException ex) { return StatusCode(403, new { message = ex.Message }); }
         catch (InvalidOperationException ex)   { return BadRequest(new { message = ex.Message }); }
     }
+
+    [HttpGet("my-warehouses")]
+    public async Task<IActionResult> MyWarehouses(CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        var allowed = new[] { "OWNER", "MANAGER", "OPERATOR" };
+        var list = await _db.WarehouseMemberships
+            .Where(m => m.UserId == userId && m.IsActive && allowed.Contains(m.Role.Code))
+            .Include(m => m.Role)
+            .Include(m => m.Warehouse)
+            .Select(m => new
+            {
+                warehouseId   = m.WarehouseId,
+                warehouseName = m.Warehouse.Name,
+                roleCode      = m.Role.Code,
+                hasZone       = m.Warehouse.HasZone,
+            })
+            .ToListAsync(ct);
+
+        return Ok(list);
+    }
 }
 
 public record ToggleMembershipRequest(int MembershipId);
