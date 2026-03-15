@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -12,6 +12,7 @@ import Dashboard from "../pages/Dashboard";
 import ProfilePage from "../pages/ProfilePage";
 import CreateStaff from "../pages/CreateStaff";
 import ListStaff from "../pages/ListStaff";
+import TaskSchedulingPage from "../pages/TaskSchedulingPage";
 import ForgotPage from "../pages/ForgotPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import ProtectedRoute from "./ProtectedRoute";
@@ -64,8 +65,8 @@ function AppRoutes() {
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
 
-          {/* Role-Based Routes cho OWNER (quản lý kho, tạo kho) */}
-          <Route element={<RoleBasedRoute allowedRoles={['OWNER']} />}>
+          {/* ── Dashboard & Warehouse Management ── mọi user đăng nhập đều vào được */}
+          <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
@@ -76,20 +77,14 @@ function AppRoutes() {
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
               <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
-            </Route>
-          </Route>
-
-          {/* Quản lý nhân viên — mọi USER đã đăng nhập đều truy cập được,
-              quyền thực sự được kiểm tra trong trang qua WarehouseMembership API */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<DashboardLayout />}>
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
+              <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
             </Route>
           </Route>
 
           {/* Role-Based Routes cho STAFF/MANAGER */}
-          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER']} />}>
+          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'USER', 'OWNER']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/staff-dashboard" element={<StaffDashboard />} />
               <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
@@ -106,14 +101,12 @@ function AppRoutes() {
               <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
               <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
               <Route path="/my-rental-requests" element={<MyRentalRequests />} />
-              <Route path="/transaction-history" element={<TransactionHistory />} />
             </Route>
           </Route>
 
           {/* Routes cho Cả STAFF/MANAGER/OWNER/RENTER */}
-          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OWNER', 'RENTER']} />}>
+          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OWNER', 'RENTER', 'USER']} />}>
             <Route element={<DashboardLayout />}>
-              <Route path="/transaction-history" element={<TransactionHistory />} />
               <Route path="/create-inbound" element={<CreateInboundRequest />} />
               <Route path="/create-outbound" element={<CreateOutboundRequest />} />
             </Route>

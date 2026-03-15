@@ -12,6 +12,4 @@ public partial class Skill
     public string Name { get; set; } = null!;
 
     public ICollection<WarehouseMembership> Memberships { get; set; } = new List<WarehouseMembership>();
-
-    public ICollection<TaskType> TaskTypes { get; set; } = new List<TaskType>();
 }

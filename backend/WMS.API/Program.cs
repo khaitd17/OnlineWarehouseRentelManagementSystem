@@ -82,6 +82,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IInventoryTransactionRepository
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalContractRepository, WMS.Infrastructure.Repositories.RentalContractRepository>();
 builder.Services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalAreaRepository, WMS.Infrastructure.Repositories.RentalAreaRepository>();
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
