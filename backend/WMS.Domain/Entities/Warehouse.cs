@@ -64,6 +64,8 @@ public partial class Warehouse
 
     public virtual ICollection<Zone> Zones { get; set; } = new List<Zone>();
 
+    public virtual ICollection<RentalArea> RentalAreas { get; set; } = new List<RentalArea>();
+
     // Alias for WarehouseMedia to support legacy code
     // Alias for WarehouseMedia to support legacy code - NotMapped so EF Core ignores it
     [NotMapped]
