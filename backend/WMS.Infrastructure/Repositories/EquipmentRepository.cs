@@ -44,6 +44,9 @@ public class EquipmentRepository : IEquipmentRepository
         if (existing != null)
         {
             existing.Name = equipment.Name;
+            existing.Type = equipment.Type;
+            existing.Location = equipment.Location;
+            existing.Description = equipment.Description;
             existing.Specifications = equipment.Specifications;
             existing.Status = equipment.Status;
             existing.IotDeviceId = equipment.IotDeviceId;

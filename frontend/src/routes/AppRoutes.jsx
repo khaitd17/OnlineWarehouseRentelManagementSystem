@@ -47,6 +47,8 @@ import AuditSessionsPage from "../pages/admin/AuditSessionsPage";
 import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
 import ReportsPage from "../pages/admin/ReportsPage";
 
+import EquipmentManagement from "../pages/EquipmentManagement";
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -79,6 +81,7 @@ function AppRoutes() {
               <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
+              <Route path="/equipment-management" element={<EquipmentManagement />} />
               <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
               <Route path="/settings" element={<ProfilePage />} />
             </Route>

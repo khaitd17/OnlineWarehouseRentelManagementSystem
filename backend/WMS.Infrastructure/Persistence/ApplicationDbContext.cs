@@ -161,6 +161,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IotDeviceId).HasMaxLength(100).HasColumnName("iot_device_id");
             entity.Property(e => e.LastMaintenanceDate).HasColumnName("last_maintenance_date");
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Type).HasMaxLength(50).HasColumnName("type");
+            entity.Property(e => e.Location).HasMaxLength(255).HasColumnName("location");
+            entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.NextMaintenanceDate).HasColumnName("next_maintenance_date");
             entity.Property(e => e.PurchaseDate).HasColumnName("purchase_date");
             entity.Property(e => e.Specifications).HasColumnName("specifications");
