@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../api/api";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import RentalAreaManagement from "../components/warehouse/RentalAreaManagement";
 
 const ChonViTri = ({ setLatLng }) => {
   useMapEvents({
@@ -249,6 +250,9 @@ const EditWarehouse = () => {
         </button>
 
       </form>
+
+      {/* RENTAL AREA MANAGEMENT COMPONENT */}
+      <RentalAreaManagement warehouseId={id} />
 
     </div>
   );

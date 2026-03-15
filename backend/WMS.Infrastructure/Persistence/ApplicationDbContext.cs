@@ -64,6 +64,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<InventoryTransaction> InventoryTransactions { get; set; }
 
+    public virtual DbSet<RentalArea> RentalAreas { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -240,11 +242,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Notes).HasColumnName("notes");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.HasOne(d => d.InvReq).WithMany().HasForeignKey(d => d.InvReqId)
-                .HasConstraintName("FK_inv_transactions_request");
+                .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_inv_transactions_request");
             entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_inv_transactions_warehouse");
             entity.HasOne(d => d.PerformedByNavigation).WithMany().HasForeignKey(d => d.PerformedBy)
-                .HasConstraintName("FK_inv_transactions_performer");
+                .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_inv_transactions_performer");
         });
 
         modelBuilder.Entity<Payment>(entity =>
@@ -605,6 +607,24 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsUsed).HasDefaultValue(false).HasColumnName("is_used");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).HasConstraintName("FK_password_reset_tokens_user");
+        });
+
+        modelBuilder.Entity<RentalArea>(entity =>
+        {
+            entity.ToTable("rental_areas");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("rental_area_id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Size).HasColumnName("size");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+
+            entity.HasOne(e => e.Warehouse)
+                  .WithMany(w => w.RentalAreas)
+                  .HasForeignKey(e => e.WarehouseId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_rental_areas_warehouse");
         });
     }
 }
