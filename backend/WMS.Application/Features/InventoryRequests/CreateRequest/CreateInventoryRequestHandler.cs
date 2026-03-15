@@ -31,18 +31,31 @@ public class CreateInventoryRequestHandler
 {
     private readonly IInventoryRequestRepository _repo;
     private readonly IWarehouseInventoryRepository _invRepo;
+    private readonly IWarehouseRepository _warehouseRepo;
 
     public CreateInventoryRequestHandler(
         IInventoryRequestRepository repo,
-        IWarehouseInventoryRepository invRepo)
+        IWarehouseInventoryRepository invRepo,
+        IWarehouseRepository warehouseRepo)
     {
         _repo    = repo;
         _invRepo = invRepo;
+        _warehouseRepo = warehouseRepo;
     }
 
     public async Task<InventoryRequestDto> Handle(
         CreateInventoryRequestCommand cmd, CancellationToken cancellationToken)
     {
+        var warehouse = await _warehouseRepo.GetByIdAsync(cmd.WarehouseId, cancellationToken);
+        if (warehouse == null) throw new KeyNotFoundException("Warehouse not found");
+
+        if (!warehouse.IsCurrentlyAccessible())
+        {
+            var timeStr = warehouse.Is24HoursAccess ? "24/7" : $"{warehouse.OpenTime} - {warehouse.CloseTime}";
+            throw new InvalidOperationException(
+                $"Kho hiện đang đóng cửa. Thời gian hoạt động: {timeStr}. Vui lòng thực hiện yêu cầu trong giờ làm việc.");
+        }
+
         // For OUTBOUND: pre-check each item's inventory before creating request
         if (cmd.Type.ToUpper() == "OUTBOUND")
         {

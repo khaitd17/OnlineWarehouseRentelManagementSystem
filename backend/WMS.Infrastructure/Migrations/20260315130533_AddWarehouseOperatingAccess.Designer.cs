@@ -12,8 +12,8 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260315061224_FixInventoryTransactionCascade")]
-    partial class FixInventoryTransactionCascade
+    [Migration("20260315130533_AddWarehouseOperatingAccess")]
+    partial class AddWarehouseOperatingAccess
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -693,6 +693,46 @@ namespace WMS.Infrastructure.Migrations
                     b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.RentalArea", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("rental_area_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("name");
+
+                    b.Property<double>("Size")
+                        .HasColumnType("float")
+                        .HasColumnName("size");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("rental_areas", (string)null);
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.RentalRequest", b =>
                 {
                     b.Property<int>("RequestId")
@@ -901,13 +941,29 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("code");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsAllSkill")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_all_skill");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("name");
 
+                    b.Property<int?>("SkillId")
+                        .HasColumnType("int")
+                        .HasColumnName("skill_id");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("SkillId");
 
                     b.ToTable("task_types", (string)null);
                 });
@@ -1198,6 +1254,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("float")
                         .HasColumnName("available_area");
 
+                    b.Property<TimeSpan?>("CloseTime")
+                        .HasColumnType("time")
+                        .HasColumnName("close_time");
+
                     b.Property<DateTime?>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -1207,6 +1267,18 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
+
+                    b.Property<bool>("HasZone")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("has_zone");
+
+                    b.Property<bool>("Is24HoursAccess")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_24_hours_access");
 
                     b.Property<double?>("Lat")
                         .HasColumnType("float")
@@ -1221,6 +1293,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("name");
+
+                    b.Property<TimeSpan?>("OpenTime")
+                        .HasColumnType("time")
+                        .HasColumnName("open_time");
 
                     b.Property<string>("OperatingHours")
                         .HasMaxLength(100)
@@ -1539,6 +1615,20 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("(getdate())");
 
+                    b.Property<bool>("IsAllZone")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_all_zone");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("note");
+
+                    b.Property<DateTime?>("ScheduledAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("scheduled_at");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -1610,19 +1700,19 @@ namespace WMS.Infrastructure.Migrations
                     b.ToTable("zones", (string)null);
                 });
 
-            modelBuilder.Entity("task_type_skills", b =>
+            modelBuilder.Entity("task_zones", b =>
                 {
-                    b.Property<int>("task_type_id")
+                    b.Property<int>("task_id")
                         .HasColumnType("int");
 
-                    b.Property<int>("skill_id")
+                    b.Property<int>("zone_id")
                         .HasColumnType("int");
 
-                    b.HasKey("task_type_id", "skill_id");
+                    b.HasKey("task_id", "zone_id");
 
-                    b.HasIndex("skill_id");
+                    b.HasIndex("zone_id");
 
-                    b.ToTable("task_type_skills");
+                    b.ToTable("task_zones");
                 });
 
             modelBuilder.Entity("warehouse_membership_skills", b =>
@@ -1660,7 +1750,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.AuditSession", "Audit")
                         .WithMany("AuditResults")
                         .HasForeignKey("AuditId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_audit_results_audit");
 
@@ -1678,7 +1768,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("AuditSessions")
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_audit_sessions_warehouse");
 
@@ -1719,7 +1809,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("Equipment")
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_equipments_warehouse");
 
@@ -1731,7 +1821,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.InventoryRequest", "InvReq")
                         .WithMany("InventoryItems")
                         .HasForeignKey("InvReqId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_inventory_items_request");
 
@@ -1800,7 +1890,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_password_reset_tokens_user");
 
@@ -1812,7 +1902,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.Contract", "Contract")
                         .WithMany("Payments")
                         .HasForeignKey("ContractId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_payments_contract");
 
@@ -1824,6 +1914,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.Contract", "Contract")
                         .WithMany("Ratings")
                         .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.NoAction)
                         .HasConstraintName("FK_ratings_contract");
 
                     b.HasOne("WMS.Domain.Entities.User", "Renter")
@@ -1835,13 +1926,25 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("Ratings")
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_ratings_warehouse");
 
                     b.Navigation("Contract");
 
                     b.Navigation("Renter");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.RentalArea", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany("RentalAreas")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_rental_areas_warehouse");
 
                     b.Navigation("Warehouse");
                 });
@@ -1878,18 +1981,28 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.WarehouseMembership", "Membership")
                         .WithMany("TaskAssignments")
                         .HasForeignKey("MembershipId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WMS.Domain.Entities.WarehouseTask", "Task")
                         .WithMany("Assignments")
                         .HasForeignKey("TaskId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Membership");
 
                     b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.TaskType", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.Skill", "Skill")
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Skill");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.User", b =>
@@ -1927,12 +2040,13 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.User", "VerifiedByNavigation")
                         .WithMany("WarehouseDocuments")
                         .HasForeignKey("VerifiedBy")
+                        .OnDelete(DeleteBehavior.NoAction)
                         .HasConstraintName("FK_warehouse_documents_verifier");
 
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("WarehouseDocuments")
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_warehouse_documents_warehouse");
 
@@ -1958,7 +2072,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("WarehouseMedia")
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_warehouse_media_warehouse");
 
@@ -1970,7 +2084,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.User", "User")
                         .WithMany("WarehouseMemberships")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
@@ -1982,7 +2096,7 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.WarehouseRole", "Role")
                         .WithMany("Memberships")
                         .HasForeignKey("WarehouseRoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Role");
@@ -1997,13 +2111,13 @@ namespace WMS.Infrastructure.Migrations
                     b.HasOne("WMS.Domain.Entities.TaskType", "TaskType")
                         .WithMany("Tasks")
                         .HasForeignKey("TaskTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("Tasks")
                         .HasForeignKey("WarehouseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("TaskType");
@@ -2021,17 +2135,17 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
-            modelBuilder.Entity("task_type_skills", b =>
+            modelBuilder.Entity("task_zones", b =>
                 {
-                    b.HasOne("WMS.Domain.Entities.Skill", null)
+                    b.HasOne("WMS.Domain.Entities.WarehouseTask", null)
                         .WithMany()
-                        .HasForeignKey("skill_id")
+                        .HasForeignKey("task_id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WMS.Domain.Entities.TaskType", null)
+                    b.HasOne("WMS.Domain.Entities.Zone", null)
                         .WithMany()
-                        .HasForeignKey("task_type_id")
+                        .HasForeignKey("zone_id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -2134,6 +2248,8 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("InventoryRequests");
 
                     b.Navigation("Ratings");
+
+                    b.Navigation("RentalAreas");
 
                     b.Navigation("RentalRequests");
 

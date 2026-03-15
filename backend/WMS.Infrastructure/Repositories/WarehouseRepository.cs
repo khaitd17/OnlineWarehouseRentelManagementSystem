@@ -28,6 +28,9 @@ public class WarehouseRepository : IWarehouseRepository
             TotalArea = warehouse.TotalArea,
             AvailableArea = warehouse.AvailableArea,
             OperatingHours = warehouse.OperatingHours,
+            Is24HoursAccess = warehouse.Is24HoursAccess,
+            OpenTime = warehouse.OpenTime,
+            CloseTime = warehouse.CloseTime,
             Status = warehouse.Status,
             CreatedAt = warehouse.CreatedAt
         };
@@ -55,6 +58,7 @@ public async Task<Warehouse?> GetByIdAsync(
 {
     var entity = await _context.Warehouses
         .Include(x => x.WarehouseMedia)
+        .Include(x => x.WarehouseDocuments)
         .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId, cancellationToken);
 
     if (entity == null)
@@ -72,8 +76,28 @@ public async Task<Warehouse?> GetByIdAsync(
         TotalArea = entity.TotalArea,
         AvailableArea = entity.AvailableArea,
         OperatingHours = entity.OperatingHours,
+        Is24HoursAccess = entity.Is24HoursAccess,
+        OpenTime = entity.OpenTime,
+        CloseTime = entity.CloseTime,
         Status = entity.Status ?? "UNKNOWN",
-        CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
+        CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
+        WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
+        {
+            MediaId = m.MediaId,
+            WarehouseId = m.WarehouseId,
+            MediaUrl = m.MediaUrl,
+            MediaType = m.MediaType,
+            IsPrimary = m.IsPrimary,
+            DisplayOrder = m.DisplayOrder
+        }).ToList(),
+        WarehouseDocuments = entity.WarehouseDocuments.Select(d => new WarehouseDocument
+        {
+            DocumentId = d.DocumentId,
+            WarehouseId = d.WarehouseId,
+            DocumentType = d.DocumentType,
+            DocumentUrl = d.DocumentUrl,
+            Status = d.Status
+        }).ToList()
     };
 }
 
@@ -82,6 +106,7 @@ public async Task<Warehouse?> GetByIdAsync(
     CancellationToken cancellationToken)
     {
         var warehouses = await _context.Warehouses
+            .Include(w => w.WarehouseMedia)
             .Where(w => w.OwnerId == ownerId)
             .ToListAsync(cancellationToken);
 
@@ -97,8 +122,20 @@ public async Task<Warehouse?> GetByIdAsync(
             TotalArea = entity.TotalArea,
             AvailableArea = entity.AvailableArea,
             OperatingHours = entity.OperatingHours,
+            Is24HoursAccess = entity.Is24HoursAccess,
+            OpenTime = entity.OpenTime,
+            CloseTime = entity.CloseTime,
             Status = entity.Status ?? "UNKNOWN",
-            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
+            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
+            WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
+            {
+                MediaId = m.MediaId,
+                WarehouseId = m.WarehouseId,
+                MediaUrl = m.MediaUrl,
+                MediaType = m.MediaType,
+                IsPrimary = m.IsPrimary,
+                DisplayOrder = m.DisplayOrder
+            }).ToList()
         }).ToList();
     }
     public async System.Threading.Tasks.Task UpdateAsync(
@@ -115,6 +152,9 @@ public async Task<Warehouse?> GetByIdAsync(
         entity.Lng = warehouse.Lng;
         entity.Description = warehouse.Description;
         entity.OperatingHours = warehouse.OperatingHours;
+        entity.Is24HoursAccess = warehouse.Is24HoursAccess;
+        entity.OpenTime = warehouse.OpenTime;
+        entity.CloseTime = warehouse.CloseTime;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -151,8 +191,20 @@ public async Task<Warehouse?> GetByIdAsync(
             TotalArea = entity.TotalArea,
             AvailableArea = entity.AvailableArea,
             OperatingHours = entity.OperatingHours,
+            Is24HoursAccess = entity.Is24HoursAccess,
+            OpenTime = entity.OpenTime,
+            CloseTime = entity.CloseTime,
             Status = entity.Status ?? "UNKNOWN",
-            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow
+            CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
+            WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
+            {
+                MediaId = m.MediaId,
+                WarehouseId = m.WarehouseId,
+                MediaUrl = m.MediaUrl,
+                MediaType = m.MediaType,
+                IsPrimary = m.IsPrimary,
+                DisplayOrder = m.DisplayOrder
+            }).ToList()
         }).ToList();
     }
 

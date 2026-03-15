@@ -36,7 +36,10 @@ const WarehouseDetailsPage = () => {
   ];
 
   const getImageUrl = (url) =>
-    url ? `http://localhost:5276${url}` : null;
+    url ? `http://localhost:5276${url.startsWith('/') ? url : '/' + url}` : null;
+
+  // Robustly extract images from any possible property name variant
+  const rawImages = warehouseData?.images || warehouseData?.Images || warehouseData?.warehouseMedia || warehouseData?.WarehouseMedia || [];
 
   const warehouse = warehouseData ? {
     id: warehouseData.warehouseId,
@@ -49,8 +52,11 @@ const WarehouseDetailsPage = () => {
     operatingHours: warehouseData.operatingHours,
     lat: warehouseData.lat,
     lng: warehouseData.lng,
-    images: warehouseData.images && warehouseData.images.length > 0
-      ? warehouseData.images.map(img => getImageUrl(img.url)).filter(Boolean)
+    images: rawImages.length > 0
+      ? rawImages.map(img => {
+          const u = img.url || img.Url || img.mediaUrl || img.MediaUrl || (typeof img === 'string' ? img : null);
+          return getImageUrl(u);
+        }).filter(Boolean)
       : FALLBACK_IMAGES,
     ownerName: warehouseData.ownerName || 'Chủ kho',
     ownerPhone: warehouseData.ownerPhone || null,

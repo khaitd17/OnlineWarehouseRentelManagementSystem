@@ -548,6 +548,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Lng).HasColumnName("lng");
             entity.Property(e => e.Name).HasMaxLength(255).HasColumnName("name");
             entity.Property(e => e.OperatingHours).HasMaxLength(100).HasColumnName("operating_hours");
+            entity.Property(e => e.Is24HoursAccess).HasColumnName("is_24_hours_access").HasDefaultValue(false);
+            entity.Property(e => e.OpenTime).HasColumnName("open_time");
+            entity.Property(e => e.CloseTime).HasColumnName("close_time");
             entity.Property(e => e.OwnerId).HasColumnName("owner_id");
             entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");

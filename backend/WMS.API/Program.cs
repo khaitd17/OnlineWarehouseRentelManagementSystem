@@ -83,6 +83,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalContractRepository, WMS.
 builder.Services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalAreaRepository, WMS.Infrastructure.Repositories.RentalAreaRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -162,8 +163,18 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
-// Cho phép public access file tĩnh (cho hình ảnh, avatar)
+// Cho phép public access file tĩnh (cho hình ảnh, avatar trong wwwroot)
 app.UseStaticFiles();
+
+// Mapping thêm thư mục uploads ở ngoài wwwroot (nơi lưu ảnh kho)
+var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "uploads");
+if (!Directory.Exists(uploadsPath)) Directory.CreateDirectory(uploadsPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 // Middleware order is important
 app.UseAuthentication();

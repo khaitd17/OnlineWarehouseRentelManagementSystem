@@ -27,6 +27,14 @@ public class GetWarehouseDetailHandler
 
         var owner = await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken);
 
+        // Determine overall document status
+        string docStatus = "MISSING";
+        if (warehouse.WarehouseDocuments != null && warehouse.WarehouseDocuments.Any())
+        {
+            // For simplicity, take the status of the most recent document or first one
+            docStatus = warehouse.WarehouseDocuments.First().Status ?? "PENDING";
+        }
+
         return new WarehouseDetailDto
         {
             WarehouseId = warehouse.WarehouseId,
@@ -39,6 +47,9 @@ public class GetWarehouseDetailHandler
             TotalArea = warehouse.TotalArea,
             AvailableArea = warehouse.AvailableArea,
             OperatingHours = warehouse.OperatingHours,
+            Is24HoursAccess = warehouse.Is24HoursAccess,
+            OpenTime = warehouse.OpenTime,
+            CloseTime = warehouse.CloseTime,
             Status = warehouse.Status,
             CreatedAt = warehouse.CreatedAt ?? DateTime.UtcNow,
             Images = warehouse.Images.Select(x => new WarehouseImageDto
@@ -46,6 +57,7 @@ public class GetWarehouseDetailHandler
                 ImageId = x.MediaId,
                 Url = x.MediaUrl
             }).ToList(),
+            DocumentStatus = docStatus,
             OwnerName = owner?.FullName,
             OwnerPhone = owner?.Phone,
             OwnerAvatarUrl = owner?.AvatarUrl
