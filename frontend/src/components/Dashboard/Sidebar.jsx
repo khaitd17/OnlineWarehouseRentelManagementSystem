@@ -13,6 +13,7 @@ const MENU_BY_ROLE = {
     { icon: 'group',          label: 'Quản lý nhân viên',  path: '/list-staff',       section: 'NHÂN SỰ' },
     { icon: 'person_add',     label: 'Thêm nhân viên',     path: '/create-staff' },
     { icon: 'calendar_month', label: 'Lịch công việc',     path: '/task-scheduling',  section: 'VẬN HÀNH' },
+    { icon: 'precision_manufacturing', label: 'Quản lý thiết bị', path: '/equipment-management' },
     { icon: 'settings',       label: 'Cài đặt',            path: '/settings',         isBottom: true },
   ],
   USER: [
@@ -24,6 +25,7 @@ const MENU_BY_ROLE = {
     { icon: 'group',          label: 'Quản lý nhân viên',  path: '/list-staff',       section: 'NHÂN SỰ' },
     { icon: 'person_add',     label: 'Thêm nhân viên',     path: '/create-staff' },
     { icon: 'calendar_month', label: 'Lịch công việc',     path: '/task-scheduling',  section: 'VẬN HÀNH' },
+    { icon: 'precision_manufacturing', label: 'Quản lý thiết bị', path: '/equipment-management' },
     { icon: 'settings',       label: 'Cài đặt',            path: '/settings',         isBottom: true },
   ],
   OPERATOR: [
@@ -35,6 +37,7 @@ const MENU_BY_ROLE = {
     { icon: 'group',          label: 'Quản lý nhân viên',  path: '/list-staff',       section: 'NHÂN SỰ' },
     { icon: 'person_add',     label: 'Thêm nhân viên',     path: '/create-staff' },
     { icon: 'calendar_month', label: 'Lịch công việc',     path: '/task-scheduling',  section: 'VẬN HÀNH' },
+    { icon: 'precision_manufacturing', label: 'Quản lý thiết bị', path: '/equipment-management' },
     { icon: 'settings',       label: 'Cài đặt',            path: '/settings',         isBottom: true },
   ],
   MANAGER: [
@@ -42,6 +45,7 @@ const MENU_BY_ROLE = {
     { icon: 'group',           label: 'Quản lý nhân viên', path: '/list-staff',       section: 'NHÂN SỰ' },
     { icon: 'person_add',      label: 'Thêm nhân viên',    path: '/create-staff' },
     { icon: 'calendar_month',  label: 'Lịch công việc',    path: '/task-scheduling',  section: 'VẬN HÀNH' },
+    { icon: 'precision_manufacturing', label: 'Quản lý thiết bị', path: '/equipment-management' },
     { icon: 'move_to_inbox',   label: 'Nhập kho',          path: '/inbound-requests', section: 'KHO' },
     { icon: 'outbox',          label: 'Xuất kho',          path: '/outbound-requests' },
     { icon: 'history',         label: 'Lịch sử giao dịch', path: '/transaction-history' },
@@ -52,6 +56,7 @@ const MENU_BY_ROLE = {
     { icon: 'move_to_inbox',label: 'Yêu cầu nhập kho',   path: '/inbound-requests' },
     { icon: 'outbox',       label: 'Yêu cầu xuất kho',   path: '/outbound-requests' },
     { icon: 'swap_horiz',   label: 'Xác nhận di chuyển', path: '/confirm-movement' },
+    { icon: 'precision_manufacturing', label: 'Quản lý thiết bị', path: '/equipment-management' },
     { icon: 'history',      label: 'Lịch sử giao dịch',  path: '/transaction-history' },
     { icon: 'settings',     label: 'Cài đặt',             path: '/settings',         isBottom: true },
   ],
