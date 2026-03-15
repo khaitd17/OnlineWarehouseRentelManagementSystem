@@ -16,6 +16,8 @@ public record AuditSessionDetailDto(
     DateTime? CreatedAt,
     DateTime? CompletedAt,
     string? Notes,
+    int? AssignedTo,
+    string? AssignedToName,
     List<AuditResultItemDto> Results,
     AuditSummaryDto Summary
 );
@@ -27,7 +29,9 @@ public record AuditResultItemDto(
     int ActualQty,
     int? Discrepancy,
     string? DiscrepancyReason,
-    DateTime? CreatedAt
+    DateTime? CreatedAt,
+    int? RecordedBy,
+    string? RecordedByName
 );
 
 public record AuditSummaryDto(

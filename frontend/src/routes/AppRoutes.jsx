@@ -50,6 +50,14 @@ import ReportsPage from "../pages/admin/ReportsPage";
 import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
 import OwnerAuditSessionDetailPage from "../pages/OwnerAuditSessionDetailPage";
 
+// Renter audit pages
+import RenterAuditSessionsPage from "../pages/RenterAuditSessionsPage";
+import RenterAuditSessionDetailPage from "../pages/RenterAuditSessionDetailPage";
+
+// Staff audit pages
+import StaffAuditSessionsPage from "../pages/StaffAuditSessionsPage";
+import StaffAuditSessionDetailPage from "../pages/StaffAuditSessionDetailPage";
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -95,6 +103,8 @@ function AppRoutes() {
               <Route path="/outbound-requests" element={<OutboundRequestsList />} />
               <Route path="/confirm-movement" element={<ConfirmMovement />} />
               <Route path="/transaction-history" element={<TransactionHistory />} />
+              <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
+              <Route path="/staff-audit-sessions/:id" element={<StaffAuditSessionDetailPage />} />
             </Route>
           </Route>
 
@@ -106,6 +116,8 @@ function AppRoutes() {
               <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
               <Route path="/my-rental-requests" element={<MyRentalRequests />} />
               <Route path="/transaction-history" element={<TransactionHistory />} />
+              <Route path="/renter-audit-sessions" element={<RenterAuditSessionsPage />} />
+              <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
             </Route>
           </Route>
 

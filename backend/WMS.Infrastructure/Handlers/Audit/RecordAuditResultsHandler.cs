@@ -24,12 +24,15 @@ public class RecordAuditResultsHandler : IRequestHandler<RecordAuditResultsComma
         if (session == null)
             return ApiResponse<bool>.ErrorResponse($"Không tìm thấy phiên kiểm kê với ID {request.AuditId}.");
 
-        // Kiểm tra quyền sở hữu kho
-        if (session.Warehouse.OwnerId != request.UserId)
-            return ApiResponse<bool>.ErrorResponse("Bạn không có quyền ghi nhận kết quả cho phiên kiểm kê này. Chỉ chủ kho mới có thể thực hiện.");
+        // Kiểm tra quyền: STAFF được gán hoặc OWNER kho
+        bool isOwner = session.Warehouse.OwnerId == request.UserId;
+        bool isAssignedStaff = session.AssignedTo == request.UserId;
 
-        if (session.Status != "OPEN")
-            return ApiResponse<bool>.ErrorResponse("Phiên kiểm kê đã hoàn thành, không thể ghi nhận thêm kết quả.");
+        if (!isOwner && !isAssignedStaff)
+            return ApiResponse<bool>.ErrorResponse("Bạn không có quyền ghi nhận kết quả cho phiên kiểm kê này.");
+
+        if (session.Status != "APPROVED" && session.Status != "IN_PROGRESS" && session.Status != "OPEN")
+            return ApiResponse<bool>.ErrorResponse("Phiên kiểm kê chưa được duyệt hoặc đã hoàn thành, không thể ghi nhận kết quả.");
 
         if (request.Items == null || request.Items.Count == 0)
             return ApiResponse<bool>.ErrorResponse("Danh sách kết quả kiểm kê không được để trống.",
@@ -58,8 +61,15 @@ public class RecordAuditResultsHandler : IRequestHandler<RecordAuditResultsComma
                 ExpectedQty = item.ExpectedQty,
                 ActualQty = item.ActualQty,
                 DiscrepancyReason = item.DiscrepancyReason,
+                RecordedBy = request.UserId,
                 CreatedAt = DateTime.UtcNow
             });
+        }
+
+        // Chuyển trạng thái sang IN_PROGRESS nếu đang ở APPROVED
+        if (session.Status == "APPROVED" || session.Status == "OPEN")
+        {
+            session.Status = "IN_PROGRESS";
         }
 
         if (request.CompleteSession)
