@@ -83,4 +83,13 @@ public class EquipmentRepository : IEquipmentRepository
             await _context.SaveChangesAsync(cancellationToken);
         }
     }
+
+    public async Task<List<Equipment>> GetByOwnerIdAsync(int ownerId, CancellationToken cancellationToken)
+    {
+        return await _context.Equipments
+            .Include(e => e.Warehouse)
+            .Where(e => e.Warehouse != null && e.Warehouse.OwnerId == ownerId)
+            .OrderByDescending(e => e.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

@@ -14,6 +14,7 @@ public partial class VWarehouseOccupancy
     public double AvailableArea { get; set; }
 
     public double OccupiedArea { get; set; }
+    public double ReservedArea { get; set; }
 
     public double OccupancyRate { get; set; }
 }

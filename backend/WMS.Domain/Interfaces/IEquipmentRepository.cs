@@ -10,4 +10,5 @@ public interface IEquipmentRepository
     Task UpdateAsync(Equipment equipment, CancellationToken cancellationToken);
     Task DeleteAsync(int equipmentId, CancellationToken cancellationToken);
     Task UpdateStatusAsync(int equipmentId, string status, CancellationToken cancellationToken);
+    Task<List<Equipment>> GetByOwnerIdAsync(int ownerId, CancellationToken cancellationToken);
 }
