@@ -16,6 +16,9 @@ public class RentalContract
     public decimal? DepositAmount { get; private set; }
     public string Status { get; private set; } = "DRAFT";
     public string? Terms { get; private set; }
+    public string? ContractFileUrl { get; private set; }
+    public string? SignedFileUrl { get; private set; }
+    public DateTime? SignedAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -56,6 +59,31 @@ public class RentalContract
     }
 
     // Domain methods
+    public void SetContractFileUrl(string url)
+    {
+        ContractFileUrl = url;
+    }
+
+    public void MarkPendingSignature()
+    {
+        if (Status != "DRAFT" && Status != "PENDING_SIGNATURE")
+            throw new InvalidOperationException($"Cannot mark pending signature for contract with status {Status}");
+
+        Status = "PENDING_SIGNATURE";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Sign(string signedFileUrl)
+    {
+        if (Status != "PENDING_SIGNATURE")
+            throw new InvalidOperationException($"Cannot sign contract with status {Status}");
+
+        SignedFileUrl = signedFileUrl;
+        SignedAt = DateTime.UtcNow;
+        Status = "ACTIVE";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void Activate()
     {
         if (Status != "DRAFT")
@@ -91,6 +119,7 @@ public class RentalContract
     }
 
     public bool IsDraft => Status == "DRAFT";
+    public bool IsPendingSignature => Status == "PENDING_SIGNATURE";
     public bool IsActive => Status == "ACTIVE";
     public bool IsExpired => Status == "EXPIRED";
     public bool IsTerminated => Status == "TERMINATED";

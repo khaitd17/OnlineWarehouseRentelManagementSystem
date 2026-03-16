@@ -68,6 +68,10 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<Notification> Notifications { get; set; }
 
+    public virtual DbSet<ContractVerification> ContractVerifications { get; set; }
+
+    public virtual DbSet<ContractLog> ContractLogs { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -133,6 +137,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ContractId).HasColumnName("contract_id");
             entity.Property(e => e.ContractNumber).HasMaxLength(100).HasColumnName("contract_number");
             entity.Property(e => e.ContractUrl).HasColumnName("contract_url");
+            entity.Property(e => e.SignedFileUrl).HasMaxLength(500).HasColumnName("signed_file_url");
+            entity.Property(e => e.SignedAt).HasColumnName("signed_at");
+            entity.Property(e => e.Terms).HasColumnName("terms");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.DepositAmount).HasColumnType("decimal(15, 2)").HasColumnName("deposit_amount");
             entity.Property(e => e.EndDate).HasColumnName("end_date");
@@ -652,6 +659,36 @@ public class ApplicationDbContext : DbContext
                   .HasForeignKey(e => e.WarehouseId)
                   .OnDelete(DeleteBehavior.Cascade)
                   .HasConstraintName("FK_rental_areas_warehouse");
+        });
+
+        modelBuilder.Entity<ContractVerification>(entity =>
+        {
+            entity.HasKey(e => e.VerificationId).HasName("PK_contract_verifications");
+            entity.ToTable("contract_verifications");
+            entity.HasIndex(e => e.ContractId, "idx_cv_contract");
+            entity.HasIndex(e => e.UserId, "idx_cv_user");
+            entity.Property(e => e.VerificationId).HasColumnName("verification_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.OtpCode).HasMaxLength(6).HasColumnName("otp_code");
+            entity.Property(e => e.IsVerified).HasDefaultValue(false).HasColumnName("is_verified");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<ContractLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PK_contract_logs");
+            entity.ToTable("contract_logs");
+            entity.HasIndex(e => e.ContractId, "idx_cl_contract");
+            entity.Property(e => e.LogId).HasColumnName("log_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Action).HasMaxLength(50).HasColumnName("action");
+            entity.Property(e => e.IpAddress).HasMaxLength(50).HasColumnName("ip_address");
+            entity.Property(e => e.Details).HasColumnName("details");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
         });
     }
 }

@@ -4,6 +4,7 @@ import rentalService from "../services/rentalService";
 
 const statusConfig = {
   DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
+  PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
   ACTIVE:     { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
   EXPIRED:    { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },

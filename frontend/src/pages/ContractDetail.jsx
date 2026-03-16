@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
+import ContractSigningModal from "../components/ContractSigningModal";
 
 const statusConfig = {
   DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
+  PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
   ACTIVE:     { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
   EXPIRED:    { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
@@ -47,6 +49,12 @@ const ContractDetail = () => {
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showSigningModal, setShowSigningModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const reloadContract = () => {
+    setRefreshKey(k => k + 1);
+  };
 
   useEffect(() => {
     rentalService.getContractById(id)
@@ -57,7 +65,7 @@ const ContractDetail = () => {
         else setError("Không thể tải thông tin hợp đồng.");
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, refreshKey]);
 
   if (loading) return <div style={{ padding: "2rem", color: "#64748b" }}>Đang tải...</div>;
 
@@ -144,8 +152,66 @@ const ContractDetail = () => {
       {contract.status === "DRAFT" && (
         <div style={{ marginTop: "1rem", padding: "1rem 1.5rem", backgroundColor: "#fefce8",
           borderRadius: "12px", border: "1px solid #fde047", color: "#854d0e", fontSize: "0.9rem" }}>
-          <strong>Hợp đồng đang chờ ký.</strong> Vui lòng liên hệ chủ kho để hoàn tất quá trình ký kết.
+          <strong>Hợp đồng đang chờ ký.</strong> Vui lòng ký kết hợp đồng để kích hoạt.
         </div>
+      )}
+
+      {/* PDF Links */}
+      {(contract.contractFileUrl || contract.signedFileUrl) && (
+        <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginTop: "1rem" }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
+            paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9" }}>
+            Tài liệu hợp đồng
+          </h2>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+            {contract.contractFileUrl && (
+              <a href={contract.contractFileUrl} target="_blank" rel="noopener noreferrer"
+                style={{ color: "#0095c7", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
+                📄 Hợp đồng gốc
+              </a>
+            )}
+            {contract.signedFileUrl && (
+              <a href={contract.signedFileUrl} target="_blank" rel="noopener noreferrer"
+                style={{ color: "#16a34a", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
+                ✓ Hợp đồng đã ký ({formatDate(contract.signedAt)})
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Signing Button - Only for PENDING_SIGNATURE status */}
+      {contract.status === "PENDING_SIGNATURE" && (
+        <button
+          onClick={() => setShowSigningModal(true)}
+          style={{
+            marginTop: "1rem",
+            width: "100%",
+            padding: "1rem",
+            backgroundColor: "#0095c7",
+            color: "#fff",
+            border: "none",
+            borderRadius: "12px",
+            fontWeight: 700,
+            fontSize: "1rem",
+            cursor: "pointer",
+            transition: "background-color 0.2s",
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0077a3"}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#0095c7"}
+        >
+          ✍️ Ký hợp đồng
+        </button>
+      )}
+
+      {/* Signing Modal */}
+      {showSigningModal && (
+        <ContractSigningModal
+          contract={contract}
+          onClose={() => setShowSigningModal(false)}
+          onSignSuccess={reloadContract}
+        />
       )}
     </div>
   );

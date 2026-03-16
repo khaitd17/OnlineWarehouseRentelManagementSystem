@@ -14,7 +14,6 @@ const PendingRentalRequests = () => {
 
   // Modal state for approve/reject
   const [actionModal, setActionModal] = useState(null); // { type: 'approve'|'reject', request }
-  const [contractFile, setContractFile] = useState(null);
   const [monthlyPayment, setMonthlyPayment] = useState("");
   const [depositAmount, setDepositAmount] = useState("");
   const [terms, setTerms] = useState("");
@@ -49,7 +48,6 @@ const PendingRentalRequests = () => {
 
   const openApproveModal = (req) => {
     setActionModal({ type: "approve", request: req });
-    setContractFile(null);
     setMonthlyPayment("");
     setDepositAmount("");
     setTerms("");
@@ -65,40 +63,15 @@ const PendingRentalRequests = () => {
   };
 
   const handleApprove = async () => {
-    if (!contractFile) {
-      alert("Vui lòng chọn file hợp đồng");
-      return;
-    }
     if (!monthlyPayment || parseFloat(monthlyPayment) <= 0) {
       alert("Vui lòng nhập giá thuê hàng tháng hợp lệ");
       return;
     }
     setActionLoading(true);
     try {
-      // Upload contract image first
-      const formData = new FormData();
-      formData.append("file", contractFile);
-
-      const uploadRes = await fetch("http://localhost:5276/api/upload/contract", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        const error = await uploadRes.json();
-        throw new Error(error.message || "Upload failed");
-      }
-
-      const uploadData = await uploadRes.json();
-      const contractImageUrl = uploadData.url;
-
-      // Approve with full contract info
       const payload = {
         requestId: actionModal.request.requestId,
-        contractImageUrl: contractImageUrl,
+        contractImageUrl: null,
         monthlyPayment: parseFloat(monthlyPayment),
         depositAmount: depositAmount ? parseFloat(depositAmount) : null,
         terms: terms.trim() || null,
@@ -108,12 +81,16 @@ const PendingRentalRequests = () => {
         actionModal.request.requestId,
         payload
       );
-      alert(`Đã duyệt yêu cầu thuê thành công! Hợp đồng #${result.contractId} đã được tạo.`);
+      alert(
+        `Đã gửi thông tin đến người thuê thành công! Hợp đồng #${result.contractId} đang chờ người thuê ký.`
+      );
       closeModal();
       fetchPending();
     } catch (err) {
       console.error(err);
-      alert(err.message || "Có lỗi khi duyệt yêu cầu");
+      alert(
+        err.response?.data?.message || err.message || "Có lỗi khi gửi thông tin"
+      );
     } finally {
       setActionLoading(false);
     }
@@ -148,7 +125,7 @@ const PendingRentalRequests = () => {
           Yêu cầu thuê chờ duyệt
         </h1>
         <p style={{ color: "#64748b", marginTop: "0.3rem" }}>
-          Duyệt hoặc từ chối các yêu cầu thuê kho của bạn
+          Xem xét và gửi đề xuất hoặc từ chối các yêu cầu thuê kho
         </p>
       </div>
 
@@ -293,44 +270,46 @@ const PendingRentalRequests = () => {
                     )}
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "0.8rem",
-                      alignSelf: "center",
-                    }}
-                  >
-                    <button
-                      onClick={() => openApproveModal(req)}
+                  {req.status === "PENDING" && (
+                    <div
                       style={{
-                        padding: "0.6rem 1.2rem",
-                        borderRadius: "10px",
-                        border: "none",
-                        backgroundColor: "#16a34a",
-                        color: "#fff",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        fontSize: "0.88rem",
+                        display: "flex",
+                        gap: "0.8rem",
+                        alignSelf: "center",
                       }}
                     >
-                      ✓ Duyệt
-                    </button>
-                    <button
-                      onClick={() => openRejectModal(req)}
-                      style={{
-                        padding: "0.6rem 1.2rem",
-                        borderRadius: "10px",
-                        border: "none",
-                        backgroundColor: "#dc2626",
-                        color: "#fff",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        fontSize: "0.88rem",
-                      }}
-                    >
-                      ✗ Từ chối
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => openApproveModal(req)}
+                        style={{
+                          padding: "0.6rem 1.2rem",
+                          borderRadius: "10px",
+                          border: "none",
+                          backgroundColor: "#2563eb",
+                          color: "#fff",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontSize: "0.88rem",
+                        }}
+                      >
+                        📋 Gửi đề xuất
+                      </button>
+                      <button
+                        onClick={() => openRejectModal(req)}
+                        style={{
+                          padding: "0.6rem 1.2rem",
+                          borderRadius: "10px",
+                          border: "none",
+                          backgroundColor: "#dc2626",
+                          color: "#fff",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontSize: "0.88rem",
+                        }}
+                      >
+                        ✗ Từ chối
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -376,7 +355,7 @@ const PendingRentalRequests = () => {
                     marginBottom: "0.5rem",
                   }}
                 >
-                  Duyệt yêu cầu #{actionModal.request.requestId}
+                  Gửi đề xuất đến người thuê #{actionModal.request.requestId}
                 </h2>
                 <p
                   style={{
@@ -385,30 +364,10 @@ const PendingRentalRequests = () => {
                     marginBottom: "1.5rem",
                   }}
                 >
-                  Nhập thông tin thanh toán để duyệt yêu cầu thuê
+                  Nhập thông tin thanh toán để gửi đề xuất đến người thuê. Người thuê sẽ nhận thông báo và tiến hành ký hợp đồng.
                 </p>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                  <div style={groupStyle}>
-                    <label style={modalLabelStyle}>
-                      Hợp đồng thuê (ảnh hoặc PDF) *
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => setContractFile(e.target.files?.[0] || null)}
-                      style={{
-                        ...modalInputStyle,
-                        padding: "0.6rem",
-                      }}
-                    />
-                    {contractFile && (
-                      <p style={{ fontSize: "0.82rem", color: "#16a34a", marginTop: "0.3rem" }}>
-                        ✓ Đã chọn: {contractFile.name}
-                      </p>
-                    )}
-                  </div>
-
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                     <div style={groupStyle}>
                       <label style={modalLabelStyle}>Giá thuê/tháng (VNĐ) *</label>
@@ -476,13 +435,13 @@ const PendingRentalRequests = () => {
                       padding: "0.6rem 1.2rem",
                       borderRadius: "10px",
                       border: "none",
-                      backgroundColor: actionLoading ? "#94a3b8" : "#16a34a",
+                      backgroundColor: actionLoading ? "#94a3b8" : "#2563eb",
                       color: "#fff",
                       fontWeight: 600,
                       cursor: actionLoading ? "not-allowed" : "pointer",
                     }}
                   >
-                    {actionLoading ? "Đang xử lý..." : "Xác nhận duyệt"}
+                    {actionLoading ? "Đang gửi..." : "Gửi đến người thuê"}
                   </button>
                 </div>
               </>

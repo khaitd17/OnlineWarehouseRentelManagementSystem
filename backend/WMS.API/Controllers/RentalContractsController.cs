@@ -5,6 +5,10 @@ using System.Security.Claims;
 using WMS.Application.Features.RentalContracts.GetRentalContractById;
 using WMS.Application.Features.RentalContracts.GetMyRentalContracts;
 using WMS.Application.Features.RentalContracts.GetContractsByWarehouse;
+using WMS.Application.Features.RentalContracts.SendContractOtp;
+using WMS.Application.Features.RentalContracts.VerifyContractOtp;
+using WMS.Application.Features.RentalContracts.SignContract;
+using WMS.Application.Features.RentalContracts.GetContractLogs;
 
 namespace WMS.API.Controllers;
 
@@ -31,9 +35,6 @@ public class RentalContractsController : ControllerBase
         return int.Parse(userId);
     }
 
-    /// <summary>
-    /// Get rental contract by ID (renter or owner)
-    /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetRentalContractById(int id)
     {
@@ -61,9 +62,6 @@ public class RentalContractsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get my rental contracts (renter view)
-    /// </summary>
     [HttpGet("my-contracts")]
     public async Task<IActionResult> GetMyRentalContracts()
     {
@@ -79,9 +77,6 @@ public class RentalContractsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get all contracts for a warehouse (owner view)
-    /// </summary>
     [HttpGet("warehouse/{warehouseId}")]
     public async Task<IActionResult> GetContractsByWarehouse(int warehouseId)
     {
@@ -108,4 +103,127 @@ public class RentalContractsController : ControllerBase
             return StatusCode(500, new { message = "An error occurred", error = ex.Message });
         }
     }
+
+    [HttpPost("{id}/send-otp")]
+    public async Task<IActionResult> SendContractOtp(int id)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await _mediator.Send(new SendContractOtpCommand
+            {
+                ContractId = id,
+                UserId = userId
+            });
+            return Ok(new { message = "OTP sent successfully" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/verify-otp")]
+    public async Task<IActionResult> VerifyContractOtp(int id, [FromBody] VerifyOtpRequest body)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await _mediator.Send(new VerifyContractOtpCommand
+            {
+                ContractId = id,
+                UserId = userId,
+                OtpCode = body.OtpCode
+            });
+            return Ok(new { message = "OTP verified successfully" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/sign")]
+    public async Task<IActionResult> SignContract(int id, [FromBody] SignContractRequest body)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+            var result = await _mediator.Send(new SignContractCommand
+            {
+                ContractId = id,
+                UserId = userId,
+                SignatureBase64 = body.SignatureBase64,
+                IpAddress = ipAddress
+            });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpGet("{id}/logs")]
+    public async Task<IActionResult> GetContractLogs(int id)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _mediator.Send(new GetContractLogsQuery
+            {
+                ContractId = id,
+                UserId = userId
+            });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+}
+
+public class VerifyOtpRequest
+{
+    public string OtpCode { get; set; } = null!;
+}
+
+public class SignContractRequest
+{
+    public string SignatureBase64 { get; set; } = null!;
 }

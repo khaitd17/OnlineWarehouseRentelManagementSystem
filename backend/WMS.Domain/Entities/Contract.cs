@@ -15,6 +15,12 @@ public partial class Contract
 
     public string? ContractUrl { get; set; }
 
+    public string? SignedFileUrl { get; set; }
+
+    public DateTime? SignedAt { get; set; }
+
+    public string? Terms { get; set; }
+
     public string? ContractNumber { get; set; }
 
     public DateOnly StartDate { get; set; }

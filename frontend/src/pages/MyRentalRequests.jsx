@@ -140,14 +140,14 @@ const MyRentalRequests = () => {
                     borderRadius: "10px", padding: "0.8rem 1rem",
                     display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.6rem" }}>
                     <div style={{ color: "#15803d", fontSize: "0.9rem", fontWeight: 600 }}>
-                      ✅ Yêu cầu đã được duyệt! Hợp đồng đã được tạo — chờ ký.
+                      ✅ Chủ kho đã gửi đề xuất! Hợp đồng đã được tạo — chờ bạn ký.
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); navigate("/my-contracts"); }}
                       style={{ padding: "0.45rem 1rem", borderRadius: "8px", border: "none",
                         backgroundColor: "#16a34a", color: "#fff",
                         fontWeight: 600, cursor: "pointer", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
-                      Xem hợp đồng →
+                      Xem & ký hợp đồng →
                     </button>
                   </div>
                 )}

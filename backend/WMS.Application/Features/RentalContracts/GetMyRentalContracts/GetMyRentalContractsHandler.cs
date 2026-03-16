@@ -52,6 +52,9 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
                 DepositAmount = contract.DepositAmount,
                 Status = contract.Status,
                 Terms = contract.Terms,
+                ContractFileUrl = contract.ContractFileUrl,
+                SignedFileUrl = contract.SignedFileUrl,
+                SignedAt = contract.SignedAt,
                 CreatedAt = contract.CreatedAt
             });
         }

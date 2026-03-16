@@ -77,6 +77,8 @@ public class RentalContractRepository : IRentalContractRepository
             TotalValue = contract.TotalValue,
             DepositAmount = contract.DepositAmount,
             Status = contract.Status,
+            Terms = contract.Terms,
+            ContractUrl = contract.ContractFileUrl,
             CreatedAt = contract.CreatedAt
         };
 
@@ -94,6 +96,10 @@ public class RentalContractRepository : IRentalContractRepository
 
         dbContract.Status = contract.Status;
         dbContract.UpdatedAt = DateTime.UtcNow;
+        dbContract.ContractUrl = contract.ContractFileUrl;
+        dbContract.SignedFileUrl = contract.SignedFileUrl;
+        dbContract.SignedAt = contract.SignedAt;
+        dbContract.Terms = contract.Terms;
 
         await _context.SaveChangesAsync();
     }
@@ -118,6 +124,9 @@ public class RentalContractRepository : IRentalContractRepository
         var depositAmountProp = typeof(DomainRentalContract).GetProperty("DepositAmount");
         var statusProp = typeof(DomainRentalContract).GetProperty("Status");
         var termsProp = typeof(DomainRentalContract).GetProperty("Terms");
+        var contractFileUrlProp = typeof(DomainRentalContract).GetProperty("ContractFileUrl");
+        var signedFileUrlProp = typeof(DomainRentalContract).GetProperty("SignedFileUrl");
+        var signedAtProp = typeof(DomainRentalContract).GetProperty("SignedAt");
         var createdAtProp = typeof(DomainRentalContract).GetProperty("CreatedAt");
         var updatedAtProp = typeof(DomainRentalContract).GetProperty("UpdatedAt");
 
@@ -132,7 +141,10 @@ public class RentalContractRepository : IRentalContractRepository
         totalValueProp?.SetValue(domainContract, dbContract.TotalValue);
         depositAmountProp?.SetValue(domainContract, dbContract.DepositAmount);
         statusProp?.SetValue(domainContract, dbContract.Status);
-        termsProp?.SetValue(domainContract, null); // DB doesn't have Terms field
+        termsProp?.SetValue(domainContract, dbContract.Terms);
+        contractFileUrlProp?.SetValue(domainContract, dbContract.ContractUrl);
+        signedFileUrlProp?.SetValue(domainContract, dbContract.SignedFileUrl);
+        signedAtProp?.SetValue(domainContract, dbContract.SignedAt);
         createdAtProp?.SetValue(domainContract, dbContract.CreatedAt ?? DateTime.UtcNow);
         updatedAtProp?.SetValue(domainContract, dbContract.UpdatedAt);
 
