@@ -1,4 +1,6 @@
 using MediatR;
+using WMS.Application.Interfaces;
+using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.RentalRequests.RejectRentalRequest;
@@ -7,13 +9,19 @@ public class RejectRentalRequestHandler : IRequestHandler<RejectRentalRequestCom
 {
     private readonly IRentalRequestRepository _rentalRequestRepository;
     private readonly IWarehouseRepository _warehouseRepository;
+    private readonly INotificationRepository _notificationRepository;
+    private readonly INotificationSender _notificationSender;
 
     public RejectRentalRequestHandler(
         IRentalRequestRepository rentalRequestRepository,
-        IWarehouseRepository warehouseRepository)
+        IWarehouseRepository warehouseRepository,
+        INotificationRepository notificationRepository,
+        INotificationSender notificationSender)
     {
         _rentalRequestRepository = rentalRequestRepository;
         _warehouseRepository = warehouseRepository;
+        _notificationRepository = notificationRepository;
+        _notificationSender = notificationSender;
     }
 
     public async Task<Unit> Handle(RejectRentalRequestCommand request, CancellationToken cancellationToken)
@@ -35,7 +43,18 @@ public class RejectRentalRequestHandler : IRequestHandler<RejectRentalRequestCom
         rentalRequest.Reject(request.ReviewerId, request.RejectionReason);
         await _rentalRequestRepository.UpdateAsync(rentalRequest);
 
-        // TODO: Send notification to renter
+        // Send notification to renter
+        var notification = new Notification
+        {
+            UserId = rentalRequest.RenterId,
+            Title = "Yêu cầu thuê kho đã bị từ chối",
+            Message = $"Yêu cầu thuê kho {warehouse.Name} đã bị từ chối. Lý do: {request.RejectionReason}",
+            Type = "CONTRACT_REJECTED",
+            ReferenceId = rentalRequest.RequestId,
+            ReferenceType = "RENTAL_REQUEST"
+        };
+        await _notificationRepository.AddAsync(notification);
+        await _notificationSender.SendToUserAsync(rentalRequest.RenterId, notification);
 
         return Unit.Value;
     }

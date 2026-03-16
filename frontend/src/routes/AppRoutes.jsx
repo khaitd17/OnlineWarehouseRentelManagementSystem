@@ -23,6 +23,9 @@ import EditWarehouse from "../pages/EditWarehouse";
 import MyRentalRequests from "../pages/MyRentalRequests";
 import PendingRentalRequests from "../pages/PendingRentalRequests";
 import RentalRequestDetail from "../pages/RentalRequestDetail";
+import MyContracts from "../pages/MyContracts";
+import ContractDetail from "../pages/ContractDetail";
+import WarehouseContracts from "../pages/WarehouseContracts";
 import RoleBasedRoute from "./RoleBasedRoute";
 
 // Import New Pages for Requests
@@ -78,6 +81,10 @@ function AppRoutes() {
               <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
+              <Route path="/my-rental-requests" element={<MyRentalRequests />} />
+              <Route path="/my-contracts" element={<MyContracts />} />
+              <Route path="/contracts/:id" element={<ContractDetail />} />
+              <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
               <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
@@ -104,7 +111,6 @@ function AppRoutes() {
               <Route path="/renter-dashboard" element={<RenterDashboard />} />
               <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
               <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
-              <Route path="/my-rental-requests" element={<MyRentalRequests />} />
             </Route>
           </Route>
 

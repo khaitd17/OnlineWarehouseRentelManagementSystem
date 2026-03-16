@@ -40,6 +40,22 @@ const rentalService = {
     const response = await axiosClient.post(`/rental-requests/${id}/send`);
     return response.data;
   },
+
+  // ── Contract APIs ──────────────────────────────────────────────
+  getMyContracts: async () => {
+    const response = await axiosClient.get("/rental-contracts/my-contracts");
+    return response.data;
+  },
+
+  getContractById: async (id) => {
+    const response = await axiosClient.get(`/rental-contracts/${id}`);
+    return response.data;
+  },
+
+  getContractsByWarehouse: async (warehouseId) => {
+    const response = await axiosClient.get(`/rental-contracts/warehouse/${warehouseId}`);
+    return response.data;
+  },
 };
 
 export default rentalService;

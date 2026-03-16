@@ -15,6 +15,9 @@ const PendingRentalRequests = () => {
   // Modal state for approve/reject
   const [actionModal, setActionModal] = useState(null); // { type: 'approve'|'reject', request }
   const [contractFile, setContractFile] = useState(null);
+  const [monthlyPayment, setMonthlyPayment] = useState("");
+  const [depositAmount, setDepositAmount] = useState("");
+  const [terms, setTerms] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -47,6 +50,9 @@ const PendingRentalRequests = () => {
   const openApproveModal = (req) => {
     setActionModal({ type: "approve", request: req });
     setContractFile(null);
+    setMonthlyPayment("");
+    setDepositAmount("");
+    setTerms("");
   };
 
   const openRejectModal = (req) => {
@@ -63,12 +69,16 @@ const PendingRentalRequests = () => {
       alert("Vui lòng chọn file hợp đồng");
       return;
     }
+    if (!monthlyPayment || parseFloat(monthlyPayment) <= 0) {
+      alert("Vui lòng nhập giá thuê hàng tháng hợp lệ");
+      return;
+    }
     setActionLoading(true);
     try {
       // Upload contract image first
       const formData = new FormData();
       formData.append("file", contractFile);
-      
+
       const uploadRes = await fetch("http://localhost:5276/api/upload/contract", {
         method: "POST",
         headers: {
@@ -76,26 +86,29 @@ const PendingRentalRequests = () => {
         },
         body: formData,
       });
-      
+
       if (!uploadRes.ok) {
         const error = await uploadRes.json();
         throw new Error(error.message || "Upload failed");
       }
-      
+
       const uploadData = await uploadRes.json();
       const contractImageUrl = uploadData.url;
-      
-      // Then approve with contract URL
+
+      // Approve with full contract info
       const payload = {
         requestId: actionModal.request.requestId,
         contractImageUrl: contractImageUrl,
+        monthlyPayment: parseFloat(monthlyPayment),
+        depositAmount: depositAmount ? parseFloat(depositAmount) : null,
+        terms: terms.trim() || null,
       };
-      
-      await rentalService.approveRentalRequest(
+
+      const result = await rentalService.approveRentalRequest(
         actionModal.request.requestId,
         payload
       );
-      alert("Đã duyệt yêu cầu thuê thành công!");
+      alert(`Đã duyệt yêu cầu thuê thành công! Hợp đồng #${result.contractId} đã được tạo.`);
       closeModal();
       fetchPending();
     } catch (err) {
@@ -394,6 +407,42 @@ const PendingRentalRequests = () => {
                         ✓ Đã chọn: {contractFile.name}
                       </p>
                     )}
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div style={groupStyle}>
+                      <label style={modalLabelStyle}>Giá thuê/tháng (VNĐ) *</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={monthlyPayment}
+                        onChange={(e) => setMonthlyPayment(e.target.value)}
+                        placeholder="VD: 5000000"
+                        style={modalInputStyle}
+                      />
+                    </div>
+                    <div style={groupStyle}>
+                      <label style={modalLabelStyle}>Tiền đặt cọc (VNĐ)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value)}
+                        placeholder="Không bắt buộc"
+                        style={modalInputStyle}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={groupStyle}>
+                    <label style={modalLabelStyle}>Điều khoản hợp đồng</label>
+                    <textarea
+                      rows="3"
+                      value={terms}
+                      onChange={(e) => setTerms(e.target.value)}
+                      placeholder="Các điều khoản đặc biệt (nếu có)"
+                      style={{ ...modalInputStyle, resize: "vertical" }}
+                    />
                   </div>
                 </div>
 

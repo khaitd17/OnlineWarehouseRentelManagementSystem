@@ -11,6 +11,7 @@ using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Repositories;
 using WMS.Infrastructure.Services;
+using WMS.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,11 +85,16 @@ builder.Services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalAreaRepository, WMS.Infrastructure.Repositories.RentalAreaRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.Infrastructure.Repositories.NotificationRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
+
+// SignalR
+builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationSender, WMS.API.Hubs.SignalRNotificationSender>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -107,15 +113,31 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "A_VERY_SECRET_DEVELOPMENT_KEY_THAT_IS_LONG_ENOUGH"))
     };
+
+    // Allow SignalR to receive token from query string
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/notifications"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
 });
 builder.Services.AddAuthorization();
@@ -181,5 +203,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

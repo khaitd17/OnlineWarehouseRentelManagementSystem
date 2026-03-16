@@ -66,6 +66,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<RentalArea> RentalAreas { get; set; }
 
+    public virtual DbSet<Notification> Notifications { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -613,6 +615,25 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsUsed).HasDefaultValue(false).HasColumnName("is_used");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).HasConstraintName("FK_password_reset_tokens_user");
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.NotificationId).HasName("PK_notifications");
+            entity.ToTable("notifications");
+            entity.HasIndex(e => e.UserId, "idx_notifications_user");
+            entity.HasIndex(e => e.IsRead, "idx_notifications_is_read");
+            entity.HasIndex(e => e.CreatedAt, "idx_notifications_created_at");
+            entity.Property(e => e.NotificationId).HasColumnName("notification_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Title).HasMaxLength(255).HasColumnName("title");
+            entity.Property(e => e.Message).HasColumnName("message");
+            entity.Property(e => e.Type).HasMaxLength(50).HasColumnName("type");
+            entity.Property(e => e.ReferenceId).HasColumnName("reference_id");
+            entity.Property(e => e.ReferenceType).HasMaxLength(50).HasColumnName("reference_type");
+            entity.Property(e => e.IsRead).HasDefaultValue(false).HasColumnName("is_read");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).HasConstraintName("FK_notifications_user");
         });
 
         modelBuilder.Entity<RentalArea>(entity =>

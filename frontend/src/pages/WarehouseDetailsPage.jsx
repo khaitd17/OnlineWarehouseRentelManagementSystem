@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../api/api';
+import rentalService from '../services/rentalService';
 
 const WarehouseDetailsPage = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
+    requestedArea: '',
     startDate: '',
-    fullName: '',
-    phone: ''
+    durationMonths: '',
+    notes: ''
   });
   const [warehouseData, setWarehouseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState({ open: false, index: 0 });
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMsg, setSubmitMsg] = useState(null); // { type: 'success'|'error', text }
+
+  const isLoggedIn = !!localStorage.getItem('token');
 
   useEffect(() => {
     const fetchWarehouse = async () => {
@@ -38,7 +45,6 @@ const WarehouseDetailsPage = () => {
   const getImageUrl = (url) =>
     url ? `http://localhost:5276${url.startsWith('/') ? url : '/' + url}` : null;
 
-  // Robustly extract images from any possible property name variant
   const rawImages = warehouseData?.images || warehouseData?.Images || warehouseData?.warehouseMedia || warehouseData?.WarehouseMedia || [];
 
   const warehouse = warehouseData ? {
@@ -64,37 +70,51 @@ const WarehouseDetailsPage = () => {
   } : null;
 
   const similarWarehouses = [
-    {
-      id: 2,
-      title: "Kho Sài Gòn Logistics - KCN Vĩnh Lộc",
-      location: "Bình Chánh, TP. HCM",
-      price: "38M",
-      area: "850",
-      type: "KHO KHÔ",
-      image: "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=600"
-    },
-    {
-      id: 3,
-      title: "Kho Lạnh Công Nghệ Cao - Long An",
-      location: "Cần Giuộc, Long An",
-      price: "52M",
-      area: "1000",
-      type: "KHO LẠNH",
-      image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=600"
-    },
-    {
-      id: 4,
-      title: "Hệ Thống Kho Phân Phối Gò Vấp",
-      location: "Phường 14, Gò Vấp, TP. HCM",
-      price: "25M",
-      area: "500",
-      type: "KHO KHÔ",
-      image: "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=600"
-    }
+    { id: 2, title: "Kho Sài Gòn Logistics - KCN Vĩnh Lộc", location: "Bình Chánh, TP. HCM", price: "38M", area: "850", type: "KHO KHÔ", image: "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=600" },
+    { id: 3, title: "Kho Lạnh Công Nghệ Cao - Long An", location: "Cần Giuộc, Long An", price: "52M", area: "1000", type: "KHO LẠNH", image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=600" },
+    { id: 4, title: "Hệ Thống Kho Phân Phối Gò Vấp", location: "Phường 14, Gò Vấp, TP. HCM", price: "25M", area: "500", type: "KHO KHÔ", image: "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=600" }
   ];
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setSubmitMsg(null);
+  };
+
+  const handleSubmitRequest = async () => {
+    if (!isLoggedIn) {
+      navigate('/auth');
+      return;
+    }
+
+    const area = parseFloat(formData.requestedArea);
+    const duration = parseInt(formData.durationMonths);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const startDate = formData.startDate ? new Date(formData.startDate) : null;
+
+    if (!area || area <= 0) { setSubmitMsg({ type: 'error', text: 'Vui lòng nhập diện tích cần thuê.' }); return; }
+    if (warehouse && area > warehouse.availableArea) { setSubmitMsg({ type: 'error', text: `Diện tích vượt quá diện tích còn trống (${warehouse.availableArea} m²).` }); return; }
+    if (!formData.startDate) { setSubmitMsg({ type: 'error', text: 'Vui lòng chọn ngày bắt đầu.' }); return; }
+    if (startDate < today) { setSubmitMsg({ type: 'error', text: 'Ngày bắt đầu phải từ hôm nay trở đi.' }); return; }
+    if (!duration || duration < 1 || duration > 60) { setSubmitMsg({ type: 'error', text: 'Thời hạn thuê từ 1 đến 60 tháng.' }); return; }
+
+    setSubmitting(true);
+    try {
+      await rentalService.createRentalRequest({
+        warehouseId: warehouse.id,
+        requestedArea: area,
+        startDate: formData.startDate,
+        durationMonths: duration,
+        notes: formData.notes.trim() || null,
+      });
+      setSubmitMsg({ type: 'success', text: 'Yêu cầu thuê kho đã được gửi! Chủ kho sẽ xem xét và phản hồi sớm.' });
+      setFormData({ requestedArea: '', startDate: '', durationMonths: '', notes: '' });
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
+      setSubmitMsg({ type: 'error', text: msg });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const Badge = ({ children, color = "#0095c7" }) => (
@@ -109,22 +129,19 @@ const WarehouseDetailsPage = () => {
   const nextImage = (e) => { e.stopPropagation(); setLightbox(lb => ({ ...lb, index: (lb.index + 1) % (warehouse?.images.length || 1) })); };
 
   if (loading) {
-    return (
-      <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Đang tải dữ liệu kho...</div>
-    );
+    return <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Đang tải dữ liệu kho...</div>;
   }
 
   if (!warehouse) {
-    return (
-      <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Không tìm thấy kho.</div>
-    );
+    return <div style={{ padding: '4rem', textAlign: 'center', color: '#64748b' }}>Không tìm thấy kho.</div>;
   }
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   return (
     <div style={{ backgroundColor: '#fff', minHeight: '100vh' }}>
-      {/* Container wraps the entire page content */}
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1.5rem 1rem' }}>
-        
+
         {/* Breadcrumbs */}
         <nav style={{ marginBottom: '1.2rem', display: 'flex', gap: '8px', fontSize: '0.85rem', color: '#64748b' }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Trang chủ</Link>
@@ -133,7 +150,6 @@ const WarehouseDetailsPage = () => {
           <span>›</span>
           <span style={{ color: '#0f172a', fontWeight: 500 }}>{warehouse.title}</span>
         </nav>
-      
 
         {/* Title Section */}
         <div style={{ marginBottom: '1.5rem' }}>
@@ -147,52 +163,26 @@ const WarehouseDetailsPage = () => {
         </div>
 
         {/* Image Gallery */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: warehouse.images.length > 1 ? '1.5fr 1fr' : '1fr',
-          gap: '12px',
-          marginBottom: '2rem'
-        }}>
-          {/* Main image */}
-          <div
-            style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', height: '450px' }}
-            onClick={() => openLightbox(0)}
-          >
+        <div style={{ display: 'grid', gridTemplateColumns: warehouse.images.length > 1 ? '1.5fr 1fr' : '1fr', gap: '12px', marginBottom: '2rem' }}>
+          <div style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', height: '450px' }} onClick={() => openLightbox(0)}>
             <img src={warehouse.images[0]} alt="Main" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </div>
-
-          {/* Side thumbnails — only render when there are extra images */}
           {warehouse.images.length > 1 && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '12px', height: '450px' }}>
               {warehouse.images.slice(1, 4).map((img, idx) => (
-                <div
-                  key={idx}
-                  style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', minHeight: 0 }}
-                  onClick={() => openLightbox(idx + 1)}
-                >
+                <div key={idx} style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', minHeight: 0 }} onClick={() => openLightbox(idx + 1)}>
                   <img src={img} alt={`Gallery ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               ))}
-              {/* 4th cell: "see all" overlay if more than 4 images, else the 4th image itself */}
               {warehouse.images.length > 4 ? (
-                <div
-                  style={{ borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: 'pointer', minHeight: 0 }}
-                  onClick={() => openLightbox(4)}
-                >
+                <div style={{ borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: 'pointer', minHeight: 0 }} onClick={() => openLightbox(4)}>
                   <img src={warehouse.images[4]} alt="More" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <div style={{
-                    position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#fff', fontSize: '1.1rem', fontWeight: 700
-                  }}>
+                  <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>
                     +{warehouse.images.length - 4} ảnh
                   </div>
                 </div>
               ) : warehouse.images[4] ? (
-                <div
-                  style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', minHeight: 0 }}
-                  onClick={() => openLightbox(4)}
-                >
+                <div style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', minHeight: 0 }} onClick={() => openLightbox(4)}>
                   <img src={warehouse.images[4]} alt="Gallery 4" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               ) : null}
@@ -202,62 +192,16 @@ const WarehouseDetailsPage = () => {
 
         {/* Lightbox Modal */}
         {lightbox.open && (
-          <div
-            onClick={closeLightbox}
-            style={{
-              position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)',
-              zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}
-          >
-            {/* Close */}
-            <button
-              onClick={closeLightbox}
-              style={{
-                position: 'absolute', top: '20px', right: '24px',
-                background: 'none', border: 'none', color: '#fff',
-                fontSize: '2rem', cursor: 'pointer', lineHeight: 1
-              }}
-            >✕</button>
-
-            {/* Prev */}
+          <div onClick={closeLightbox} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={closeLightbox} style={{ position: 'absolute', top: '20px', right: '24px', background: 'none', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
             {warehouse.images.length > 1 && (
-              <button
-                onClick={prevImage}
-                style={{
-                  position: 'absolute', left: '16px',
-                  background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
-                  fontSize: '2rem', cursor: 'pointer', borderRadius: '50%',
-                  width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-              >‹</button>
+              <button onClick={prevImage} style={{ position: 'absolute', left: '16px', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer', borderRadius: '50%', width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
             )}
-
-            {/* Image */}
-            <img
-              src={warehouse.images[lightbox.index]}
-              alt={`Ảnh ${lightbox.index + 1}`}
-              onClick={e => e.stopPropagation()}
-              style={{ maxHeight: '90vh', maxWidth: '90vw', objectFit: 'contain', borderRadius: '8px' }}
-            />
-
-            {/* Next */}
+            <img src={warehouse.images[lightbox.index]} alt={`Ảnh ${lightbox.index + 1}`} onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', maxWidth: '90vw', objectFit: 'contain', borderRadius: '8px' }} />
             {warehouse.images.length > 1 && (
-              <button
-                onClick={nextImage}
-                style={{
-                  position: 'absolute', right: '16px',
-                  background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
-                  fontSize: '2rem', cursor: 'pointer', borderRadius: '50%',
-                  width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}
-              >›</button>
+              <button onClick={nextImage} style={{ position: 'absolute', right: '16px', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer', borderRadius: '50%', width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
             )}
-
-            {/* Counter */}
-            <div style={{
-              position: 'absolute', bottom: '24px',
-              color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem'
-            }}>
+            <div style={{ position: 'absolute', bottom: '24px', color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>
               {lightbox.index + 1} / {warehouse.images.length}
             </div>
           </div>
@@ -265,11 +209,9 @@ const WarehouseDetailsPage = () => {
 
         {/* Main Grid: Content + Sidebar */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '2rem' }}>
-          
+
           {/* LEFT: Content */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-            
-            {/* Quick Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
               {[
                 { label: "TỔNG DIỆN TÍCH", value: `${warehouse.area} m²`, icon: "📐" },
@@ -285,92 +227,113 @@ const WarehouseDetailsPage = () => {
               ))}
             </div>
 
-            {/* Description */}
             <section>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1rem' }}>Mô tả chi tiết</h2>
-              <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.7, whiteSpace: 'pre-line' }}>
-                {warehouse.description}
-              </p>
+              <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{warehouse.description}</p>
             </section>
 
-
-
-            {/* Map */}
             {warehouse.lat && warehouse.lng && (
               <section>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1.2rem' }}>Vị trí trên bản đồ</h2>
                 <div style={{ width: '100%', height: '300px', borderRadius: '16px', overflow: 'hidden' }}>
-                  <iframe
-                    title="map"
-                    width="100%"
-                    height="300"
-                    style={{ border: 0 }}
-                    src={`https://maps.google.com/maps?q=${warehouse.lat},${warehouse.lng}&z=15&output=embed`}
-                  ></iframe>
+                  <iframe title="map" width="100%" height="300" style={{ border: 0 }}
+                    src={`https://maps.google.com/maps?q=${warehouse.lat},${warehouse.lng}&z=15&output=embed`}></iframe>
                 </div>
               </section>
             )}
-
           </div>
 
-          {/* RIGHT: Sidebar sticky card */}
+          {/* RIGHT: Sidebar — Rental Request Form */}
           <aside style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '20px', alignSelf: 'start' }}>
-            <div style={{ 
-              backgroundColor: '#fff', 
-              borderRadius: '20px', 
-              padding: '24px', 
-              boxShadow: '0 4px 30px rgba(0,0,0,0.06)', 
-              border: '1px solid #f1f5f9'
-            }}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>Diện tích còn trống: {warehouse.availableArea} m²</span>
+            <div style={{ backgroundColor: '#fff', borderRadius: '20px', padding: '24px', boxShadow: '0 4px 30px rgba(0,0,0,0.06)', border: '1px solid #f1f5f9' }}>
+
+              <div style={{ marginBottom: '1.2rem' }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Gửi yêu cầu thuê kho</h3>
+                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Diện tích còn trống: <strong>{warehouse.availableArea} m²</strong></p>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>NGÀY BẮT ĐẦU THUÊ</label>
-                  <input type="date" name="startDate" value={formData.startDate} onChange={handleInputChange} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} />
+              {/* Feedback message */}
+              {submitMsg && (
+                <div style={{
+                  padding: '10px 14px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 500,
+                  marginBottom: '1rem',
+                  backgroundColor: submitMsg.type === 'success' ? '#dcfce7' : '#fef2f2',
+                  color: submitMsg.type === 'success' ? '#16a34a' : '#dc2626',
+                  border: `1px solid ${submitMsg.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+                }}>
+                  {submitMsg.text}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>HỌ VÀ TÊN</label>
-                  <input type="text" name="fullName" placeholder="Nhập họ và tên" value={formData.fullName} onChange={handleInputChange} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} />
+              )}
+
+              {/* Form fields */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '1.2rem' }}>
+                <div style={fieldGroup}>
+                  <label style={fieldLabel}>DIỆN TÍCH CẦN THUÊ (m²) *</label>
+                  <input
+                    type="number" name="requestedArea" min="1" step="0.1"
+                    placeholder={`Tối đa ${warehouse.availableArea} m²`}
+                    value={formData.requestedArea} onChange={handleInputChange}
+                    style={fieldInput}
+                  />
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>SỐ ĐIỆN THOẠI</label>
-                  <input type="text" name="phone" placeholder="Nhập số điện thoại" value={formData.phone} onChange={handleInputChange} style={{ padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} />
+                <div style={fieldGroup}>
+                  <label style={fieldLabel}>NGÀY BẮT ĐẦU *</label>
+                  <input
+                    type="date" name="startDate" min={todayStr}
+                    value={formData.startDate} onChange={handleInputChange}
+                    style={fieldInput}
+                  />
+                </div>
+                <div style={fieldGroup}>
+                  <label style={fieldLabel}>THỜI HẠN THUÊ (tháng) *</label>
+                  <input
+                    type="number" name="durationMonths" min="1" max="60"
+                    placeholder="VD: 6"
+                    value={formData.durationMonths} onChange={handleInputChange}
+                    style={fieldInput}
+                  />
+                </div>
+                <div style={fieldGroup}>
+                  <label style={fieldLabel}>GHI CHÚ</label>
+                  <textarea
+                    name="notes" rows="3"
+                    placeholder="Yêu cầu đặc biệt (nếu có)"
+                    value={formData.notes} onChange={handleInputChange}
+                    style={{ ...fieldInput, resize: 'vertical' }}
+                  />
                 </div>
               </div>
 
-              <button style={{ 
-                width: '100%', 
-                backgroundColor: '#0095c7', 
-                color: '#fff', 
-                padding: '14px', 
-                borderRadius: '8px', 
-                fontWeight: 700, 
-                fontSize: '1rem', 
-                border: 'none', 
-                cursor: 'pointer',
-                marginBottom: '12px',
-                transition: 'background-color 0.2s'
-              }}>
-                Đặt lịch xem kho
-              </button>
-              <button style={{ 
-                width: '100%', 
-                backgroundColor: '#fff', 
-                color: '#0095c7', 
-                padding: '14px', 
-                borderRadius: '8px', 
-                fontWeight: 700, 
-                fontSize: '1rem', 
-                border: '1px solid #0095c7', 
-                cursor: 'pointer',
-                marginBottom: '20px'
-              }}>
-                Liên hệ chủ kho
-              </button>
+              {/* Submit button */}
+              {isLoggedIn ? (
+                <button
+                  onClick={handleSubmitRequest}
+                  disabled={submitting}
+                  style={{
+                    width: '100%', backgroundColor: submitting ? '#94a3b8' : '#0095c7',
+                    color: '#fff', padding: '14px', borderRadius: '8px',
+                    fontWeight: 700, fontSize: '1rem', border: 'none',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    marginBottom: '12px', transition: 'background-color 0.2s'
+                  }}
+                >
+                  {submitting ? 'Đang gửi...' : 'Gửi yêu cầu thuê kho'}
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate('/auth')}
+                  style={{
+                    width: '100%', backgroundColor: '#0095c7', color: '#fff',
+                    padding: '14px', borderRadius: '8px', fontWeight: 700,
+                    fontSize: '1rem', border: 'none', cursor: 'pointer',
+                    marginBottom: '12px',
+                  }}
+                >
+                  Đăng nhập để gửi yêu cầu
+                </button>
+              )}
 
+              {/* Owner info */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
                 <img src={warehouse.ownerAvatarUrl} alt="Owner" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
                 <div>
@@ -384,14 +347,7 @@ const WarehouseDetailsPage = () => {
             </div>
 
             {/* Verification Badge */}
-            <div style={{ 
-              backgroundColor: '#eff6ff', 
-              padding: '16px', 
-              borderRadius: '12px', 
-              border: '1px solid #dbeafe',
-              display: 'flex',
-              gap: '12px'
-            }}>
+            <div style={{ backgroundColor: '#eff6ff', padding: '16px', borderRadius: '12px', border: '1px solid #dbeafe', display: 'flex', gap: '12px' }}>
               <div style={{ backgroundColor: '#0095c7', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
               </div>
@@ -403,7 +359,6 @@ const WarehouseDetailsPage = () => {
               </div>
             </div>
           </aside>
-
         </div>
 
         {/* Similar Warehouses */}
@@ -412,7 +367,6 @@ const WarehouseDetailsPage = () => {
             <h2 style={{ fontSize: '1.55rem', fontWeight: 800, color: '#1e293b' }}>Kho tương tự</h2>
             <Link to="/search" style={{ color: '#0095c7', fontWeight: 700, fontSize: '0.9rem', textDecoration: 'none' }}>Xem tất cả ›</Link>
           </div>
-          
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
             {similarWarehouses.map((w) => (
               <div key={w.id} style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #f1f5f9', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
@@ -439,8 +393,7 @@ const WarehouseDetailsPage = () => {
         </section>
 
       </div>
-      
-      {/* Footer minimal */}
+
       <footer style={{ backgroundColor: '#0f172a', padding: '3rem 1rem', textAlign: 'center', color: '#94a3b8' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#fff', marginBottom: '1rem', fontWeight: 800, fontSize: '1.2rem' }}>
           🏢 OWRMS
@@ -451,5 +404,8 @@ const WarehouseDetailsPage = () => {
   );
 };
 
-export default WarehouseDetailsPage;
+const fieldGroup = { display: 'flex', flexDirection: 'column', gap: '6px' };
+const fieldLabel = { fontSize: '0.72rem', fontWeight: 700, color: '#64748b', letterSpacing: '0.04em' };
+const fieldInput = { padding: '11px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' };
 
+export default WarehouseDetailsPage;

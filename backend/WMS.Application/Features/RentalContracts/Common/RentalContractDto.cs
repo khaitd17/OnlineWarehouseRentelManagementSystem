@@ -7,9 +7,11 @@ public class RentalContractDto
     public string ContractNumber { get; set; } = null!;
     public int RenterId { get; set; }
     public string RenterName { get; set; } = null!;
+    public string RenterEmail { get; set; } = null!;
     public int WarehouseId { get; set; }
     public string WarehouseName { get; set; } = null!;
-    public DateTime StartDate { get; set; }
+    public string WarehouseAddress { get; set; } = null!;
+public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal MonthlyPayment { get; set; }
     public decimal TotalValue { get; set; }

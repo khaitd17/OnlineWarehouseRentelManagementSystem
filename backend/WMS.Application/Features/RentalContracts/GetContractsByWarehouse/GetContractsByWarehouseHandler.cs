@@ -3,15 +3,15 @@ using WMS.Application.Features.RentalContracts.Common;
 using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
 
-namespace WMS.Application.Features.RentalContracts.GetMyRentalContracts;
+namespace WMS.Application.Features.RentalContracts.GetContractsByWarehouse;
 
-public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQuery, IEnumerable<RentalContractDto>>
+public class GetContractsByWarehouseHandler : IRequestHandler<GetContractsByWarehouseQuery, IEnumerable<RentalContractDto>>
 {
     private readonly IRentalContractRepository _contractRepo;
     private readonly IUserRepository _userRepo;
     private readonly IWarehouseRepository _warehouseRepo;
 
-    public GetMyRentalContractsHandler(
+    public GetContractsByWarehouseHandler(
         IRentalContractRepository contractRepo,
         IUserRepository userRepo,
         IWarehouseRepository warehouseRepo)
@@ -22,17 +22,21 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
     }
 
     public async Task<IEnumerable<RentalContractDto>> Handle(
-        GetMyRentalContractsQuery request,
+        GetContractsByWarehouseQuery request,
         CancellationToken cancellationToken)
     {
-        var contracts = await _contractRepo.GetByRenterIdAsync(request.UserId);
+        var warehouse = await _warehouseRepo.GetByIdAsync(request.WarehouseId, cancellationToken)
+            ?? throw new InvalidOperationException("Warehouse not found");
 
-        var renter = await _userRepo.GetByIdAsync(request.UserId, cancellationToken);
+        if (warehouse.OwnerId != request.OwnerId)
+            throw new UnauthorizedAccessException("Only warehouse owner can view contracts");
+
+        var contracts = await _contractRepo.GetByWarehouseIdAsync(request.WarehouseId);
 
         var result = new List<RentalContractDto>();
         foreach (var contract in contracts)
         {
-            var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, cancellationToken);
+            var renter = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
 
             result.Add(new RentalContractDto
             {
@@ -43,8 +47,8 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
                 RenterName = renter?.FullName ?? "Unknown",
                 RenterEmail = renter?.Email ?? "",
                 WarehouseId = contract.WarehouseId,
-                WarehouseName = warehouse?.Name ?? "Unknown",
-                WarehouseAddress = warehouse?.Address ?? "",
+                WarehouseName = warehouse.Name,
+                WarehouseAddress = warehouse.Address,
                 StartDate = contract.StartDate,
                 EndDate = contract.EndDate,
                 MonthlyPayment = contract.MonthlyPayment,
