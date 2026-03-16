@@ -7,6 +7,7 @@ const MENU_BY_ROLE = {
   OWNER: [
     { icon: 'dashboard',      label: 'Tổng quan',          path: '/dashboard' },
     { icon: 'add_circle',     label: 'Tạo kho mới',        path: '/create-warehouse' },
+    { icon: 'donut_large',    label: 'Biểu đồ công suất',   path: '/occupancy-dashboard' },
     { icon: 'warehouse',      label: 'Kho của tôi',        path: '/my-warehouses' },
     { icon: 'inventory_2',    label: 'Yêu cầu nhập/xuất',  path: '/owner-inventory-requests', section: 'YÊU CẦU' },
     { icon: 'pending_actions',label: 'Yêu cầu thuê kho',   path: '/pending-rental-requests' },
@@ -19,6 +20,7 @@ const MENU_BY_ROLE = {
   USER: [
     { icon: 'dashboard',      label: 'Tổng quan',          path: '/dashboard' },
     { icon: 'add_circle',     label: 'Tạo kho mới',        path: '/create-warehouse' },
+    { icon: 'donut_large',    label: 'Biểu đồ công suất',   path: '/occupancy-dashboard' },
     { icon: 'warehouse',      label: 'Kho của tôi',        path: '/my-warehouses' },
     { icon: 'inventory_2',    label: 'Yêu cầu nhập/xuất',  path: '/owner-inventory-requests', section: 'YÊU CẦU' },
     { icon: 'pending_actions',label: 'Yêu cầu thuê kho',   path: '/pending-rental-requests' },
@@ -31,6 +33,7 @@ const MENU_BY_ROLE = {
   OPERATOR: [
     { icon: 'dashboard',      label: 'Tổng quan',          path: '/dashboard' },
     { icon: 'add_circle',     label: 'Tạo kho mới',        path: '/create-warehouse' },
+    { icon: 'donut_large',    label: 'Biểu đồ công suất',   path: '/occupancy-dashboard' },
     { icon: 'warehouse',      label: 'Kho của tôi',        path: '/my-warehouses' },
     { icon: 'inventory_2',    label: 'Yêu cầu nhập/xuất',  path: '/owner-inventory-requests', section: 'YÊU CẦU' },
     { icon: 'pending_actions',label: 'Yêu cầu thuê kho',   path: '/pending-rental-requests' },

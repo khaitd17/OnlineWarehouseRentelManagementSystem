@@ -208,4 +208,12 @@ public async Task<Warehouse?> GetByIdAsync(
         }).ToList();
     }
 
+    public async Task<List<VWarehouseOccupancy>> GetOccupancyStatsByOwnerAsync(
+        int ownerId,
+        CancellationToken cancellationToken)
+    {
+        return await _context.VWarehouseOccupancies
+            .Where(v => _context.Warehouses.Any(w => w.WarehouseId == v.WarehouseId && w.OwnerId == ownerId))
+            .ToListAsync(cancellationToken);
+    }
 }

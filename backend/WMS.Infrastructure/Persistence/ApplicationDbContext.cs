@@ -528,6 +528,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(255).HasColumnName("name");
             entity.Property(e => e.OccupancyRate).HasColumnName("occupancy_rate");
             entity.Property(e => e.OccupiedArea).HasColumnName("occupied_area");
+            entity.Property(e => e.ReservedArea).HasColumnName("reserved_area");
             entity.Property(e => e.TotalArea).HasColumnName("total_area");
             entity.Property(e => e.WarehouseId).ValueGeneratedOnAdd().HasColumnName("warehouse_id");
         });

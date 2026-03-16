@@ -48,6 +48,7 @@ import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
 import ReportsPage from "../pages/admin/ReportsPage";
 
 import EquipmentManagement from "../pages/EquipmentManagement";
+import OccupancyDashboard from "../pages/OccupancyDashboard";
 
 function AppRoutes() {
   return (
@@ -82,6 +83,7 @@ function AppRoutes() {
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
               <Route path="/equipment-management" element={<EquipmentManagement />} />
+              <Route path="/occupancy-dashboard" element={<OccupancyDashboard />} />
               <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
               <Route path="/settings" element={<ProfilePage />} />
             </Route>
