@@ -47,6 +47,17 @@ import AuditSessionsPage from "../pages/admin/AuditSessionsPage";
 import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
 import ReportsPage from "../pages/admin/ReportsPage";
 
+// Owner audit pages
+import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
+import OwnerAuditSessionDetailPage from "../pages/OwnerAuditSessionDetailPage";
+
+// Renter audit pages
+import RenterAuditSessionsPage from "../pages/RenterAuditSessionsPage";
+import RenterAuditSessionDetailPage from "../pages/RenterAuditSessionDetailPage";
+
+// Staff audit pages
+import StaffAuditSessionsPage from "../pages/StaffAuditSessionsPage";
+import StaffAuditSessionDetailPage from "../pages/StaffAuditSessionDetailPage";
 import EquipmentManagement from "../pages/EquipmentManagement";
 import OccupancyDashboard from "../pages/OccupancyDashboard";
 
@@ -79,6 +90,8 @@ function AppRoutes() {
               <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
+              <Route path="/owner-audit-sessions" element={<OwnerAuditSessionsPage />} />
+              <Route path="/owner-audit-sessions/:id" element={<OwnerAuditSessionDetailPage />} />
               <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
@@ -97,6 +110,8 @@ function AppRoutes() {
               <Route path="/outbound-requests" element={<OutboundRequestsList />} />
               <Route path="/confirm-movement" element={<ConfirmMovement />} />
               <Route path="/transaction-history" element={<TransactionHistory />} />
+              <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
+              <Route path="/staff-audit-sessions/:id" element={<StaffAuditSessionDetailPage />} />
             </Route>
           </Route>
 
@@ -107,6 +122,9 @@ function AppRoutes() {
               <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
               <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
               <Route path="/my-rental-requests" element={<MyRentalRequests />} />
+              <Route path="/transaction-history" element={<TransactionHistory />} />
+              <Route path="/renter-audit-sessions" element={<RenterAuditSessionsPage />} />
+              <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
             </Route>
           </Route>
 

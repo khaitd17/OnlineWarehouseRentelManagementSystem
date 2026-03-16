@@ -34,7 +34,6 @@ const REC_ICONS = {
   PAYMENT: <CreditCard size={16} />,
   CONTRACT: <FileText size={16} />,
   REVENUE: <DollarSign size={16} />,
-  OCCUPANCY: <Package size={16} />,
 };
 
 export default function ReportsPage() {
@@ -157,7 +156,7 @@ export default function ReportsPage() {
                 <StatCard icon={<CheckCircle size={20} />} value={report.approvedWarehouses} label="Đã duyệt" color="green" />
                 <StatCard icon={<Clock size={20} />} value={report.pendingWarehouses} label="Chờ duyệt" color="orange" />
                 <StatCard icon={<Building size={20} />} value={report.newWarehousesThisPeriod} label="Mới trong kỳ" color="purple" />
-                <StatCard icon={<TrendingUp size={20} />} value={report.averageOccupancyRate + "%"} label="Tỷ lệ lấp đầy TB" color="blue" />
+
               </div>
             </div>
           </div>

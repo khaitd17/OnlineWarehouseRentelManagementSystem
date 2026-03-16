@@ -28,6 +28,8 @@ const adminService = {
     getAuditResults: (id,params) => axiosClient.get(`/audit-sessions/${id}/results`,{ params }),
     exportAuditReport: (id) => axiosClient.get(`/audit-sessions/${id}/export`,{ responseType: "blob" }),
     closeAuditSession: (id,data) => axiosClient.put(`/audit-sessions/${id}/close`,data || {}),
+    approveAuditSession: (id,data) => axiosClient.put(`/audit-sessions/${id}/approve`,data),
+    rejectAuditSession: (id,data) => axiosClient.put(`/audit-sessions/${id}/reject`,data || {}),
 };
 
 export default adminService;

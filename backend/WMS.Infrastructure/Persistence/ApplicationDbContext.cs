@@ -97,7 +97,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.DiscrepancyReason).HasColumnName("discrepancy_reason");
             entity.Property(e => e.ExpectedQty).HasColumnName("expected_qty");
             entity.Property(e => e.ItemName).HasMaxLength(255).HasColumnName("item_name");
+            entity.Property(e => e.RecordedBy).HasColumnName("recorded_by");
             entity.HasOne(d => d.Audit).WithMany(p => p.AuditResults).HasForeignKey(d => d.AuditId).HasConstraintName("FK_audit_results_audit");
+            entity.HasOne(d => d.RecordedByNavigation).WithMany(p => p.RecordedAuditResults).HasForeignKey(d => d.RecordedBy).HasConstraintName("FK_audit_results_recorded_by");
         });
 
         modelBuilder.Entity<AuditSession>(entity =>
@@ -114,7 +116,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Notes).HasColumnName("notes");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("OPEN").HasColumnName("status");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.AssignedTo).HasColumnName("assigned_to");
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.AuditSessions).HasForeignKey(d => d.CreatedBy).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_audit_sessions_creator");
+            entity.HasOne(d => d.AssignedToNavigation).WithMany(p => p.AssignedAuditSessions).HasForeignKey(d => d.AssignedTo).HasConstraintName("FK_audit_sessions_assigned_to");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.AuditSessions).HasForeignKey(d => d.WarehouseId).HasConstraintName("FK_audit_sessions_warehouse");
         });
 

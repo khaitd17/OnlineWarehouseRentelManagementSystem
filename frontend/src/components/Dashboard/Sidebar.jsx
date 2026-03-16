@@ -125,6 +125,40 @@ const Sidebar = () => {
     navigate('/auth');
   };
 
+  const allMenus = {
+    OWNER: [
+      { icon: 'dashboard', label: 'Tổng quan', path: '/dashboard' },
+      { icon: 'warehouse', label: 'Kho của tôi', path: '/my-warehouses' },
+      { icon: 'add_circle', label: 'Tạo kho mới', path: '/post-warehouse' },
+      { icon: 'inventory_2', label: 'Yêu cầu nhập/xuất', path: '/owner-inventory-requests', section: 'YÊU CẦU' },
+      { icon: 'group', label: 'Quản lý nhân viên', path: '/list-staff', section: 'QUẢN LÝ' },
+      { icon: 'person_add', label: 'Tạo nhân viên', path: '/create-staff' },
+      { icon: 'fact_check', label: 'Kiểm kê kho', path: '/owner-audit-sessions' },
+      { icon: 'bar_chart', label: 'Phân tích doanh thu', path: '/analytics', section: 'BÁO CÁO' },
+      { icon: 'settings', label: 'Cài đặt', path: '/settings', isBottom: true },
+    ],
+    RENTER: [
+      { icon: 'dashboard', label: 'Bảng điều khiển', path: '/renter-dashboard' },
+      { icon: 'move_to_inbox', label: 'Yêu cầu nhập kho', path: '/renter-inbound-requests' },
+      { icon: 'outbox', label: 'Yêu cầu xuất kho', path: '/renter-outbound-requests' },
+      { icon: 'add_circle', label: 'Tạo yêu cầu nhập', path: '/create-inbound' },
+      { icon: 'upload', label: 'Tạo yêu cầu xuất', path: '/create-outbound' },
+      { icon: 'fact_check', label: 'Kiểm kê kho', path: '/renter-audit-sessions' },
+      { icon: 'bar_chart', label: 'Báo cáo', path: '/transaction-history' },
+      { icon: 'settings', label: 'Cài đặt', path: '/settings', isBottom: true },
+    ],
+    STAFF: [
+      { icon: 'dashboard', label: 'Bảng điều khiển', path: '/staff-dashboard' },
+      { icon: 'move_to_inbox', label: 'Yêu cầu nhập kho', path: '/inbound-requests' },
+      { icon: 'outbox', label: 'Yêu cầu xuất kho', path: '/outbound-requests' },
+      { icon: 'swap_horiz', label: 'Xác nhận di chuyển', path: '/confirm-movement' },
+      { icon: 'fact_check', label: 'Kiểm kê kho', path: '/staff-audit-sessions' },
+      { icon: 'history', label: 'Lịch sử giao dịch', path: '/transaction-history' },
+      { icon: 'settings', label: 'Cài đặt', path: '/settings', isBottom: true },
+    ],
+  };
+
+  allMenus['MANAGER'] = allMenus['STAFF'];
   /* Chọn menu theo ưu tiên: ADMIN > warehouseRole > systemRole > STAFF */
   let effectiveRole;
   if (systemRole === 'ADMIN') {

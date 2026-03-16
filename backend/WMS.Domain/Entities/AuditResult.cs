@@ -21,5 +21,9 @@ public partial class AuditResult
 
     public DateTime? CreatedAt { get; set; }
 
+    public int? RecordedBy { get; set; }
+
     public virtual AuditSession Audit { get; set; } = null!;
+
+    public virtual User? RecordedByNavigation { get; set; }
 }

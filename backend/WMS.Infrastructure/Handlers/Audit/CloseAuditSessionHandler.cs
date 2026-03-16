@@ -18,10 +18,15 @@ public class CloseAuditSessionHandler : IRequestHandler<CloseAuditSessionCommand
     public async Task<ApiResponse<bool>> Handle(CloseAuditSessionCommand request, CancellationToken cancellationToken)
     {
         var session = await _db.AuditSessions
+            .Include(s => s.Warehouse)
             .FirstOrDefaultAsync(s => s.AuditId == request.AuditId, cancellationToken);
 
         if (session == null)
             return ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê.");
+
+        // Kiểm tra quyền sở hữu kho
+        if (session.Warehouse.OwnerId != request.UserId)
+            return ApiResponse<bool>.ErrorResponse("Bạn không có quyền đóng phiên kiểm kê này. Chỉ chủ kho mới có thể thực hiện.");
 
         if (session.Status == "COMPLETED")
             return ApiResponse<bool>.ErrorResponse("Phiên kiểm kê đã được đóng trước đó.");

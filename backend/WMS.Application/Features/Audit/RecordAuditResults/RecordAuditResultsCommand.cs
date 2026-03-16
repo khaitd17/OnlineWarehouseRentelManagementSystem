@@ -6,7 +6,8 @@ namespace WMS.Application.Features.Audit.RecordAuditResults;
 public record RecordAuditResultsCommand(
     int AuditId,
     List<AuditResultInput> Items,
-    bool CompleteSession
+    bool CompleteSession,
+    int UserId
 ) : IRequest<ApiResponse<bool>>;
 
 public record AuditResultInput(
