@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -7,6 +7,7 @@ using WMS.Application.Features.Warehouses.GetAllWarehouses;
 using WMS.Application.Features.Warehouses.GetOwnerWarehouses;
 using WMS.Application.Features.Warehouses.GetWarehouseDetail;
 using WMS.Application.Features.Warehouses.UpdateWarehouse;
+using WMS.Application.Features.Warehouses.GetOccupancyStats;
 
 namespace WMS.API.Controllers;
 
@@ -136,6 +137,20 @@ public class WarehouseController : ControllerBase
         var result = await _mediator.Send(
             new GetOwnerWarehousesQuery(int.Parse(userId))
         );
+
+        return Ok(result);
+    }
+
+    [HttpGet("occupancy-stats")]
+    public async Task<IActionResult> GetOccupancyStats()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _mediator.Send(new GetOccupancyStatsQuery(int.Parse(userId)));
 
         return Ok(result);
     }

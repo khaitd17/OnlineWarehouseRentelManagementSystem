@@ -2,10 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const WAREHOUSES = [
-  { name: 'Kho Quận 7 - TP.HCM',       city: 'TP. Hồ Chí Minh', pct: 92, rev: '$45,200', status: 'Hoạt động',  statusColor: 'bg-emerald-100 text-emerald-700' },
-  { name: 'Kho Sóng Thần - Bình Dương', city: 'Bình Dương',       pct: 78, rev: '$38,150', status: 'Hoạt động',  statusColor: 'bg-emerald-100 text-emerald-700' },
-  { name: 'Kho Cảng Hải Phòng',         city: 'Hải Phòng',         pct: 45, rev: '$22,400', status: 'Bảo trì',   statusColor: 'bg-amber-100 text-amber-700'   },
-  { name: 'Kho Hòa Lạc - Hà Nội',       city: 'Hà Nội',           pct: 88, rev: '$41,800', status: 'Hoạt động',  statusColor: 'bg-emerald-100 text-emerald-700' },
+  { name: 'Kho Quận 7 - TP.HCM', city: 'TP. Hồ Chí Minh', pct: 92, rev: '$45,200', status: 'Hoạt động', statusColor: 'bg-emerald-100 text-emerald-700' },
+  { name: 'Kho Sóng Thần - Bình Dương', city: 'Bình Dương', pct: 78, rev: '$38,150', status: 'Hoạt động', statusColor: 'bg-emerald-100 text-emerald-700' },
+  { name: 'Kho Cảng Hải Phòng', city: 'Hải Phòng', pct: 45, rev: '$22,400', status: 'Bảo trì', statusColor: 'bg-amber-100 text-amber-700' },
+  { name: 'Kho Hòa Lạc - Hà Nội', city: 'Hà Nội', pct: 88, rev: '$41,800', status: 'Hoạt động', statusColor: 'bg-emerald-100 text-emerald-700' },
 ];
 
 const ACTIVITIES = [

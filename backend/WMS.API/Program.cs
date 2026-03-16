@@ -80,6 +80,10 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IInventoryRequestRepository, WM
 builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseInventoryRepository, WMS.Infrastructure.Repositories.WarehouseInventoryRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IInventoryTransactionRepository, WMS.Infrastructure.Repositories.InventoryTransactionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalContractRepository, WMS.Infrastructure.Repositories.RentalContractRepository>();
+builder.Services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalAreaRepository, WMS.Infrastructure.Repositories.RentalAreaRepository>();
+builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -138,6 +142,12 @@ var app = builder.Build();
 //         context.SaveChanges();
 //     }
 // }
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
+    DatabaseSeeder.Seed(context);
+}
 
 // ==========================================
 // 3. Configure the HTTP request pipeline
@@ -153,8 +163,18 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
-// Cho phép public access file tĩnh (cho hình ảnh, avatar)
+// Cho phép public access file tĩnh (cho hình ảnh, avatar trong wwwroot)
 app.UseStaticFiles();
+
+// Mapping thêm thư mục uploads ở ngoài wwwroot (nơi lưu ảnh kho)
+var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "uploads");
+if (!Directory.Exists(uploadsPath)) Directory.CreateDirectory(uploadsPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 // Middleware order is important
 app.UseAuthentication();

@@ -1,4 +1,4 @@
-﻿using WMS.Domain.Entities;
+using WMS.Domain.Entities;
 
 namespace WMS.Domain.Interfaces;
 
@@ -13,4 +13,5 @@ public interface IWarehouseRepository
     Task<List<Warehouse>> GetApprovedWarehousesAsync(int limit, CancellationToken cancellationToken);
     Task UpdateAsync(Warehouse warehouse, CancellationToken cancellationToken);
     Task<bool> ExistsAsync(int warehouseId, CancellationToken cancellationToken);
+    Task<List<VWarehouseOccupancy>> GetOccupancyStatsByOwnerAsync(int ownerId, CancellationToken cancellationToken);
 }

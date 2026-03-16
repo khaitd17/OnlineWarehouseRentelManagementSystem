@@ -40,3 +40,8 @@ export const uploadWarehouseDocument = async (warehouseId, file, documentType) =
 export const submitWarehouse = async (warehouseId) => {
   await axiosClient.patch(`/Warehouse/${warehouseId}/submit`, {});
 };
+
+export const getOccupancyStats = async () => {
+  const response = await axiosClient.get("/Warehouse/occupancy-stats");
+  return response.data;
+};

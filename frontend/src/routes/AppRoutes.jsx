@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "../layouts/MainLayout";
 import AdminLayout from "../layouts/AdminLayout";
 import DashboardLayout from "../layouts/DashboardLayout";
@@ -12,6 +12,7 @@ import Dashboard from "../pages/Dashboard";
 import ProfilePage from "../pages/ProfilePage";
 import CreateStaff from "../pages/CreateStaff";
 import ListStaff from "../pages/ListStaff";
+import TaskSchedulingPage from "../pages/TaskSchedulingPage";
 import ForgotPage from "../pages/ForgotPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import ProtectedRoute from "./ProtectedRoute";
@@ -57,6 +58,8 @@ import RenterAuditSessionDetailPage from "../pages/RenterAuditSessionDetailPage"
 // Staff audit pages
 import StaffAuditSessionsPage from "../pages/StaffAuditSessionsPage";
 import StaffAuditSessionDetailPage from "../pages/StaffAuditSessionDetailPage";
+import EquipmentManagement from "../pages/EquipmentManagement";
+import OccupancyDashboard from "../pages/OccupancyDashboard";
 
 function AppRoutes() {
   return (
@@ -76,8 +79,8 @@ function AppRoutes() {
             <Route path="/profile" element={<ProfilePage />} />
           </Route>
 
-          {/* Role-Based Routes cho OWNER */}
-          <Route element={<RoleBasedRoute allowedRoles={['OWNER']} />}>
+          {/* ── Dashboard & Warehouse Management ── mọi user đăng nhập đều vào được */}
+          <Route element={<ProtectedRoute />}>
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
@@ -85,18 +88,22 @@ function AppRoutes() {
               <Route path="/create-warehouse" element={<CreateWarehouse />} />
               <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />
               <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
-              <Route path="/create-staff" element={<CreateStaff />} />
-              <Route path="/list-staff" element={<ListStaff />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
               <Route path="/owner-audit-sessions" element={<OwnerAuditSessionsPage />} />
               <Route path="/owner-audit-sessions/:id" element={<OwnerAuditSessionDetailPage />} />
               <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
+              <Route path="/create-staff" element={<CreateStaff />} />
+              <Route path="/list-staff" element={<ListStaff />} />
+              <Route path="/equipment-management" element={<EquipmentManagement />} />
+              <Route path="/occupancy-dashboard" element={<OccupancyDashboard />} />
+              <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
+              <Route path="/settings" element={<ProfilePage />} />
             </Route>
           </Route>
 
           {/* Role-Based Routes cho STAFF/MANAGER */}
-          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER']} />}>
+          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'USER', 'OWNER']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/staff-dashboard" element={<StaffDashboard />} />
               <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
@@ -122,9 +129,8 @@ function AppRoutes() {
           </Route>
 
           {/* Routes cho Cả STAFF/MANAGER/OWNER/RENTER */}
-          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OWNER', 'RENTER']} />}>
+          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OWNER', 'RENTER', 'USER']} />}>
             <Route element={<DashboardLayout />}>
-              <Route path="/transaction-history" element={<TransactionHistory />} />
               <Route path="/create-inbound" element={<CreateInboundRequest />} />
               <Route path="/create-outbound" element={<CreateOutboundRequest />} />
             </Route>

@@ -26,6 +26,9 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             TotalArea = request.TotalArea,
             AvailableArea = request.TotalArea,
             OperatingHours = request.OperatingHours,
+            Is24HoursAccess = request.Is24HoursAccess,
+            OpenTime = request.OpenTime,
+            CloseTime = request.CloseTime,
             Status = "HIDDEN"
         };
 

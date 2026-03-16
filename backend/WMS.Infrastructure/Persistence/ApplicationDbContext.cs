@@ -34,6 +34,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<WarehouseRole> WarehouseRoles { get; set; }
 
+    public virtual DbSet<Zone> Zones { get; set; }
+
     public virtual DbSet<Skill> Skills { get; set; }
 
     public virtual DbSet<TaskType> TaskTypes { get; set; }
@@ -62,6 +64,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<InventoryTransaction> InventoryTransactions { get; set; }
 
+    public virtual DbSet<RentalArea> RentalAreas { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -73,6 +77,12 @@ public class ApplicationDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        foreach (var relationship in modelBuilder.Model.GetEntityTypes()
+            .SelectMany(e => e.GetForeignKeys()))
+        {
+            relationship.DeleteBehavior = DeleteBehavior.NoAction;
+        }
 
         modelBuilder.Entity<AuditResult>(entity =>
         {
@@ -155,6 +165,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IotDeviceId).HasMaxLength(100).HasColumnName("iot_device_id");
             entity.Property(e => e.LastMaintenanceDate).HasColumnName("last_maintenance_date");
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Type).HasMaxLength(50).HasColumnName("type");
+            entity.Property(e => e.Location).HasMaxLength(255).HasColumnName("location");
+            entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.NextMaintenanceDate).HasColumnName("next_maintenance_date");
             entity.Property(e => e.PurchaseDate).HasColumnName("purchase_date");
             entity.Property(e => e.Specifications).HasColumnName("specifications");
@@ -236,11 +249,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Notes).HasColumnName("notes");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.HasOne(d => d.InvReq).WithMany().HasForeignKey(d => d.InvReqId)
-                .HasConstraintName("FK_inv_transactions_request");
+                .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_inv_transactions_request");
             entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_inv_transactions_warehouse");
             entity.HasOne(d => d.PerformedByNavigation).WithMany().HasForeignKey(d => d.PerformedBy)
-                .HasConstraintName("FK_inv_transactions_performer");
+                .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_inv_transactions_performer");
         });
 
         modelBuilder.Entity<Payment>(entity =>
@@ -335,6 +348,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.TaskTypeId).HasColumnName("task_type_id");
             entity.Property(e => e.Status).HasMaxLength(30).HasColumnName("status");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.ScheduledAt).HasColumnName("scheduled_at").IsRequired(false);
+            entity.Property(e => e.Note).HasColumnName("note").IsRequired(false);
+            entity.Property(e => e.IsAllZone).HasColumnName("is_all_zone").HasDefaultValue(false);
             entity.HasOne(e => e.Warehouse).WithMany(p => p.Tasks).HasForeignKey(e => e.WarehouseId);
             entity.HasOne(e => e.TaskType).WithMany(t => t.Tasks).HasForeignKey(e => e.TaskTypeId);
         });
@@ -348,6 +364,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
             entity.Property(e => e.WarehouseRoleId).HasColumnName("warehouse_role_id");
             entity.Property(e => e.IsActive).HasColumnName("is_active");
+            entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
+            entity.Property(e => e.IsAllZone).HasColumnName("is_all_zone").HasDefaultValue(false);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(getdate())");
             entity.HasIndex(e => new { e.UserId, e.WarehouseId }).IsUnique();
             entity.HasOne(e => e.User).WithMany(u => u.WarehouseMemberships).HasForeignKey(e => e.UserId);
@@ -360,7 +378,26 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("warehouse_roles");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("role_id");
-            entity.Property(e => e.Name).HasMaxLength(50).HasColumnName("name");
+            entity.Property(e => e.Code).HasMaxLength(50).HasColumnName("code");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+        });
+
+        modelBuilder.Entity<Zone>(entity =>
+        {
+            entity.ToTable("zones");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("zone_id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.Code).HasMaxLength(50).HasColumnName("code");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            
+            entity.HasOne(e => e.Warehouse)
+                  .WithMany(w => w.Zones)
+                  .HasForeignKey(e => e.WarehouseId)
+                  .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         modelBuilder.Entity<Skill>(entity =>
@@ -379,6 +416,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Id).HasColumnName("task_type_id");
             entity.Property(e => e.Code).HasMaxLength(50).HasColumnName("code");
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Description).HasColumnName("description").IsRequired(false);
+            entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
+            entity.Property(e => e.SkillId).HasColumnName("skill_id").IsRequired(false);
+            entity.HasOne(e => e.Skill).WithMany().HasForeignKey(e => e.SkillId).IsRequired(false);
         });
 
         modelBuilder.Entity<TaskAssignment>(entity =>
@@ -403,14 +444,25 @@ public class ApplicationDbContext : DbContext
                 j => j.HasOne<WarehouseMembership>().WithMany().HasForeignKey("membership_id"),
                 j => { j.HasKey("membership_id", "skill_id"); });
 
-        modelBuilder.Entity<TaskType>()
-            .HasMany(t => t.RequiredSkills)
-            .WithMany(s => s.TaskTypes)
+        modelBuilder.Entity<WarehouseMembership>()
+            .HasMany(m => m.Zones)
+            .WithMany(z => z.Memberships)
             .UsingEntity<Dictionary<string, object>>(
-                "task_type_skills",
-                j => j.HasOne<Skill>().WithMany().HasForeignKey("skill_id"),
-                j => j.HasOne<TaskType>().WithMany().HasForeignKey("task_type_id"),
-                j => { j.HasKey("task_type_id", "skill_id"); });
+                "warehouse_membership_zones",
+                j => j.HasOne<Zone>().WithMany().HasForeignKey("zone_id"),
+                j => j.HasOne<WarehouseMembership>().WithMany().HasForeignKey("membership_id"),
+                j => { j.HasKey("membership_id", "zone_id"); });
+
+
+
+        modelBuilder.Entity<WarehouseTask>()
+            .HasMany(t => t.Zones)
+            .WithMany()
+            .UsingEntity<Dictionary<string, object>>(
+                "task_zones",
+                j => j.HasOne<Zone>().WithMany().HasForeignKey("zone_id"),
+                j => j.HasOne<WarehouseTask>().WithMany().HasForeignKey("task_id"),
+                j => { j.HasKey("task_id", "zone_id"); });
 
         modelBuilder.Entity<User>(entity =>
         {
@@ -480,6 +532,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(255).HasColumnName("name");
             entity.Property(e => e.OccupancyRate).HasColumnName("occupancy_rate");
             entity.Property(e => e.OccupiedArea).HasColumnName("occupied_area");
+            entity.Property(e => e.ReservedArea).HasColumnName("reserved_area");
             entity.Property(e => e.TotalArea).HasColumnName("total_area");
             entity.Property(e => e.WarehouseId).ValueGeneratedOnAdd().HasColumnName("warehouse_id");
         });
@@ -503,10 +556,14 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Lng).HasColumnName("lng");
             entity.Property(e => e.Name).HasMaxLength(255).HasColumnName("name");
             entity.Property(e => e.OperatingHours).HasMaxLength(100).HasColumnName("operating_hours");
+            entity.Property(e => e.Is24HoursAccess).HasColumnName("is_24_hours_access").HasDefaultValue(false);
+            entity.Property(e => e.OpenTime).HasColumnName("open_time");
+            entity.Property(e => e.CloseTime).HasColumnName("close_time");
             entity.Property(e => e.OwnerId).HasColumnName("owner_id");
             entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.TotalArea).HasColumnName("total_area");
+            entity.Property(e => e.HasZone).HasColumnName("has_zone").HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.WarehouseApprovedByNavigations).HasForeignKey(d => d.ApprovedBy).HasConstraintName("FK_warehouses_approver");
             entity.HasOne(d => d.Owner).WithMany(p => p.WarehouseOwners).HasForeignKey(d => d.OwnerId).HasConstraintName("FK_warehouses_owner");
@@ -561,6 +618,24 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsUsed).HasDefaultValue(false).HasColumnName("is_used");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).HasConstraintName("FK_password_reset_tokens_user");
+        });
+
+        modelBuilder.Entity<RentalArea>(entity =>
+        {
+            entity.ToTable("rental_areas");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("rental_area_id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Size).HasColumnName("size");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+
+            entity.HasOne(e => e.Warehouse)
+                  .WithMany(w => w.RentalAreas)
+                  .HasForeignKey(e => e.WarehouseId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_rental_areas_warehouse");
         });
     }
 }

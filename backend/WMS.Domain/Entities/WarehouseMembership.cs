@@ -15,6 +15,12 @@ public class WarehouseMembership
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>true = phụ trách tất cả bộ phận (skill), false = chỉ các skill được liệt kê</summary>
+    public bool IsAllSkill { get; set; } = false;
+
+    /// <summary>true = phụ trách tất cả khu vực (zone), false = chỉ các zone được liệt kê</summary>
+    public bool IsAllZone { get; set; } = false;
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public User User { get; set; } = null!;
@@ -24,6 +30,8 @@ public class WarehouseMembership
     public WarehouseRole Role { get; set; } = null!;
 
     public ICollection<Skill> Skills { get; set; } = new List<Skill>();
+
+    public ICollection<Zone> Zones { get; set; } = new List<Zone>();
 
     public ICollection<TaskAssignment> TaskAssignments { get; set; } = new List<TaskAssignment>();
 }

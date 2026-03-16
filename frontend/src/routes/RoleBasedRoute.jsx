@@ -10,7 +10,7 @@ function RoleBasedRoute({ allowedRoles }) {
   }
 
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
-    // Không có quyền -> đá về dashboard (hoặc trang chủ / unauthorized)
+    // Không có quyền -> đá về dashboard phù hợp
     if (userRole === "RENTER") {
         return <Navigate to="/renter-dashboard" />;
     } else if (userRole === "STAFF" || userRole === "MANAGER") {
