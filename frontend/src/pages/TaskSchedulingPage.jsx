@@ -111,7 +111,7 @@ function SetTimeModal({ taskTitle, targetDate, onClose, onConfirm }) {
   );
 }
 
-function AssignModal({ task, allStaff, onClose, onSave }) {
+function AssignModal({ task, allStaff, loading, onClose, onSave }) {
   const [sel, setSel] = useState(new Set(task.assignedStaff.map(s => s.membershipId)));
   const toggle = id => setSel(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   return (
@@ -121,7 +121,15 @@ function AssignModal({ task, allStaff, onClose, onSave }) {
       </div>
       <div style={{ fontSize: 11, color: C.sub, marginBottom: 14 }}>{task.title}</div>
       <div style={{ maxHeight: 280, overflowY: "auto" }}>
-        {allStaff.map(s => (
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "20px 0", color: C.sub, fontSize: 11 }}>
+            Đang tải danh sách nhân viên...
+          </div>
+        ) : allStaff.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "20px 0", color: C.subLight, fontSize: 11 }}>
+            Không có nhân viên phù hợp với task này.
+          </div>
+        ) : allStaff.map(s => (
           <label key={s.membershipId} style={{
             display: "flex", alignItems: "center", gap: 10,
             padding: "7px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer"
@@ -137,7 +145,7 @@ function AssignModal({ task, allStaff, onClose, onSave }) {
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <button onClick={onClose} style={btnStyle("ghost")}>Hủy</button>
-        <button onClick={() => onSave([...sel])} style={btnStyle("primary")}>✓ Xác nhận</button>
+        <button onClick={() => onSave([...sel])} style={btnStyle("primary")} disabled={loading}>✓ Xác nhận</button>
       </div>
     </Modal>
   );
@@ -489,9 +497,10 @@ export default function TaskSchedulingPage() {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [scheduledTasks, setScheduled] = useState([]);
   const [unscheduledTasks, setUnscheduled] = useState([]);
-  const [allStaff, setAllStaff] = useState([]);
+  const [allStaff] = useState([]);
   const [loading, setLoading] = useState(true);
   const [assignModal, setAssignModal] = useState(null);
+  const [assignLoading, setAssignLoading] = useState(false);
   const [assignStaffList, setAssignStaffList] = useState([]);
   const [timeModal, setTimeModal] = useState(null);
   const [createModal, setCreateModal] = useState(false);
@@ -551,15 +560,21 @@ export default function TaskSchedulingPage() {
 
   const handleAssignOpen = async (task) => {
     setAssignModal(task);
+    setAssignLoading(true);
+    setAssignStaffList([]);
     try {
       const staff = await getEligibleStaff(task.id);
+      console.log("[EligibleStaff] taskId:", task.id, "result:", staff);
       setAssignStaffList(staff.map(s => ({
         membershipId: s.membershipId,
         fullName: s.fullName,
         roleName: s.roleCode,
       })));
     } catch (e) {
+      console.error("[EligibleStaff] Error:", e?.response?.data || e?.message || e);
       setAssignStaffList([]);
+    } finally {
+      setAssignLoading(false);
     }
   };
 
@@ -664,7 +679,7 @@ export default function TaskSchedulingPage() {
       )}
 
       {assignModal && (
-        <AssignModal task={assignModal} allStaff={assignStaffList}
+        <AssignModal task={assignModal} allStaff={assignStaffList} loading={assignLoading}
           onClose={() => setAssignModal(null)} onSave={handleAssignSave} />
       )}
       {timeModal && (

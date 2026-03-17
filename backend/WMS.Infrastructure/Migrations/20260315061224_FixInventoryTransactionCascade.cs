@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,118 +11,85 @@ namespace WMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_warehouse_media_warehouses_WarehouseId1",
-                table: "warehouse_media");
+            // These objects may not exist if the DB was created fresh from InitFull
+            // Use IF EXISTS guards to make this migration idempotent
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_warehouse_media_warehouses_WarehouseId1')
+                BEGIN
+                    ALTER TABLE [warehouse_media] DROP CONSTRAINT [FK_warehouse_media_warehouses_WarehouseId1];
+                END
+            ");
 
-            migrationBuilder.DropIndex(
-                name: "IX_warehouse_media_WarehouseId1",
-                table: "warehouse_media");
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT 1 FROM sys.indexes
+                           WHERE name = 'IX_warehouse_media_WarehouseId1'
+                             AND object_id = OBJECT_ID('warehouse_media'))
+                BEGIN
+                    DROP INDEX [IX_warehouse_media_WarehouseId1] ON [warehouse_media];
+                END
+            ");
 
-            migrationBuilder.DropColumn(
-                name: "WarehouseId1",
-                table: "warehouse_media");
+            migrationBuilder.Sql(@"
+                IF COL_LENGTH('warehouse_media', 'WarehouseId1') IS NOT NULL
+                BEGIN
+                    ALTER TABLE [warehouse_media] DROP COLUMN [WarehouseId1];
+                END
+            ");
 
-            migrationBuilder.CreateTable(
-                name: "inventory_transactions",
-                columns: table => new
-                {
-                    transaction_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    inv_req_id = table.Column<int>(type: "int", nullable: false),
-                    type = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    warehouse_id = table.Column<int>(type: "int", nullable: false),
-                    item_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    quantity = table.Column<int>(type: "int", nullable: false),
-                    unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "cái"),
-                    performed_by = table.Column<int>(type: "int", nullable: false),
-                    notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_inventory_transactions", x => x.transaction_id);
-                    table.ForeignKey(
-                        name: "FK_inv_transactions_performer",
-                        column: x => x.performed_by,
-                        principalTable: "users",
-                        principalColumn: "user_id");
-                    table.ForeignKey(
-                        name: "FK_inv_transactions_request",
-                        column: x => x.inv_req_id,
-                        principalTable: "inventory_requests",
-                        principalColumn: "inv_req_id");
-                    table.ForeignKey(
-                        name: "FK_inv_transactions_warehouse",
-                        column: x => x.warehouse_id,
-                        principalTable: "warehouses",
-                        principalColumn: "warehouse_id",
-                        onDelete: ReferentialAction.Cascade);
-                });
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'inventory_transactions')
+                BEGIN
+                    CREATE TABLE [inventory_transactions] (
+                        [transaction_id]  INT            NOT NULL IDENTITY(1,1),
+                        [inv_req_id]      INT            NOT NULL,
+                        [type]            NVARCHAR(20)   NOT NULL,
+                        [warehouse_id]    INT            NOT NULL,
+                        [item_name]       NVARCHAR(200)  NOT NULL,
+                        [quantity]        INT            NOT NULL,
+                        [unit]            NVARCHAR(50)   NOT NULL DEFAULT N'cái',
+                        [performed_by]    INT            NOT NULL,
+                        [notes]           NVARCHAR(MAX)  NULL,
+                        [created_at]      DATETIME2      NOT NULL DEFAULT (getdate()),
+                        CONSTRAINT [PK_inventory_transactions] PRIMARY KEY ([transaction_id]),
+                        CONSTRAINT [FK_inv_transactions_performer]
+                            FOREIGN KEY ([performed_by]) REFERENCES [users]([user_id]),
+                        CONSTRAINT [FK_inv_transactions_request]
+                            FOREIGN KEY ([inv_req_id]) REFERENCES [inventory_requests]([inv_req_id]),
+                        CONSTRAINT [FK_inv_transactions_warehouse]
+                            FOREIGN KEY ([warehouse_id]) REFERENCES [warehouses]([warehouse_id]) ON DELETE CASCADE
+                    );
+                    CREATE INDEX [idx_inv_transactions_created]   ON [inventory_transactions] ([created_at]);
+                    CREATE INDEX [idx_inv_transactions_type]      ON [inventory_transactions] ([type]);
+                    CREATE INDEX [idx_inv_transactions_warehouse] ON [inventory_transactions] ([warehouse_id]);
+                    CREATE INDEX [IX_inventory_transactions_inv_req_id]    ON [inventory_transactions] ([inv_req_id]);
+                    CREATE INDEX [IX_inventory_transactions_performed_by]  ON [inventory_transactions] ([performed_by]);
+                END
+            ");
 
-            migrationBuilder.CreateTable(
-                name: "warehouse_inventory",
-                columns: table => new
-                {
-                    inventory_id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    warehouse_id = table.Column<int>(type: "int", nullable: false),
-                    item_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    quantity = table.Column<int>(type: "int", nullable: false),
-                    unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "cái"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_warehouse_inventory", x => x.inventory_id);
-                    table.ForeignKey(
-                        name: "FK_warehouse_inventory_wh",
-                        column: x => x.warehouse_id,
-                        principalTable: "warehouses",
-                        principalColumn: "warehouse_id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateIndex(
-                name: "idx_inv_transactions_created",
-                table: "inventory_transactions",
-                column: "created_at");
-
-            migrationBuilder.CreateIndex(
-                name: "idx_inv_transactions_type",
-                table: "inventory_transactions",
-                column: "type");
-
-            migrationBuilder.CreateIndex(
-                name: "idx_inv_transactions_warehouse",
-                table: "inventory_transactions",
-                column: "warehouse_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_inventory_transactions_inv_req_id",
-                table: "inventory_transactions",
-                column: "inv_req_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_inventory_transactions_performed_by",
-                table: "inventory_transactions",
-                column: "performed_by");
-
-            migrationBuilder.CreateIndex(
-                name: "UQ_warehouse_inventory_item",
-                table: "warehouse_inventory",
-                columns: new[] { "warehouse_id", "item_name" },
-                unique: true);
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'warehouse_inventory')
+                BEGIN
+                    CREATE TABLE [warehouse_inventory] (
+                        [inventory_id]  INT            NOT NULL IDENTITY(1,1),
+                        [warehouse_id]  INT            NOT NULL,
+                        [item_name]     NVARCHAR(200)  NOT NULL,
+                        [quantity]      INT            NOT NULL,
+                        [unit]          NVARCHAR(50)   NOT NULL DEFAULT N'cái',
+                        [updated_at]    DATETIME2      NOT NULL DEFAULT (getdate()),
+                        CONSTRAINT [PK_warehouse_inventory] PRIMARY KEY ([inventory_id]),
+                        CONSTRAINT [FK_warehouse_inventory_wh]
+                            FOREIGN KEY ([warehouse_id]) REFERENCES [warehouses]([warehouse_id]) ON DELETE CASCADE,
+                        CONSTRAINT [UQ_warehouse_inventory_item] UNIQUE ([warehouse_id], [item_name])
+                    );
+                END
+            ");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "inventory_transactions");
-
-            migrationBuilder.DropTable(
-                name: "warehouse_inventory");
+            migrationBuilder.DropTable(name: "inventory_transactions");
+            migrationBuilder.DropTable(name: "warehouse_inventory");
 
             migrationBuilder.AddColumn<int>(
                 name: "WarehouseId1",

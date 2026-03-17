@@ -216,6 +216,9 @@ namespace WMS.Infrastructure.Persistence
             var skOutbound  = context.Skills.FirstOrDefault(s => s.Code == "OUTBOUND");
             var skInventory = context.Skills.FirstOrDefault(s => s.Code == "INVENTORY");
             var skForklift  = context.Skills.FirstOrDefault(s => s.Code == "FORKLIFT");
+            var skPicking   = context.Skills.FirstOrDefault(s => s.Code == "PICKING");
+            var skPacking   = context.Skills.FirstOrDefault(s => s.Code == "PACKING");
+            var skPutaway   = context.Skills.FirstOrDefault(s => s.Code == "PUTAWAY");
 
             var ttInbound  = context.TaskTypes.First(t => t.Code == "INBOUND");
             var ttOutbound = context.TaskTypes.First(t => t.Code == "OUTBOUND");
@@ -246,7 +249,8 @@ namespace WMS.Infrastructure.Persistence
             }
             context.SaveChanges();
 
-            // Assign user@owrms.com — truy vấn role bằng Code
+            // Truy vấn roles và skills
+            var ownerWhRole    = context.WarehouseRoles.First(r => r.Code == "OWNER");
             var operatorWhRole = context.WarehouseRoles.First(r => r.Code == "OPERATOR");
             var staffWhRole    = context.WarehouseRoles.First(r => r.Code == "STAFF");
             var managerWhRole  = context.WarehouseRoles.First(r => r.Code == "MANAGER");
@@ -255,8 +259,7 @@ namespace WMS.Infrastructure.Persistence
             var zoneAEntity    = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-A");
             var zoneBEntity    = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-B");
 
-            // ownerUser (owner@owrms.com) → OPERATOR membership cho warehouse 1
-            // Đây là người có quyền điều phối toàn bộ kho (system role = USER, không phải ADMIN)
+            // ownerUser (owner@owrms.com) → OWNER membership cho warehouse 1 (chỉ là chủ kho, không quản lý vận hành)
             var ownerMembership1 = context.WarehouseMemberships
                 .FirstOrDefault(m => m.UserId == ownerUser.UserId && m.WarehouseId == warehouse.WarehouseId);
             if (ownerMembership1 == null)
@@ -265,7 +268,7 @@ namespace WMS.Infrastructure.Persistence
                 {
                     UserId          = ownerUser.UserId,
                     WarehouseId     = warehouse.WarehouseId,
-                    WarehouseRoleId = operatorWhRole.Id,
+                    WarehouseRoleId = ownerWhRole.Id,
                     IsActive        = true,
                     IsAllSkill      = true,
                     IsAllZone       = true,
@@ -275,7 +278,7 @@ namespace WMS.Infrastructure.Persistence
                 context.SaveChanges();
             }
 
-            // ownerUser (owner@owrms.com) → OPERATOR membership cho warehouse 2
+            // ownerUser (owner@owrms.com) → OWNER membership cho warehouse 2
             var ownerMembership2 = context.WarehouseMemberships
                 .FirstOrDefault(m => m.UserId == ownerUser.UserId && m.WarehouseId == warehouse2.WarehouseId);
             if (ownerMembership2 == null)
@@ -284,13 +287,69 @@ namespace WMS.Infrastructure.Persistence
                 {
                     UserId          = ownerUser.UserId,
                     WarehouseId     = warehouse2.WarehouseId,
-                    WarehouseRoleId = operatorWhRole.Id,
+                    WarehouseRoleId = ownerWhRole.Id,
                     IsActive        = true,
                     IsAllSkill      = true,
                     IsAllZone       = true,
                     CreatedAt       = DateTime.UtcNow
                 };
                 context.WarehouseMemberships.Add(ownerMembership2);
+                context.SaveChanges();
+            }
+
+            // operator1@owrms.com — OPERATOR riêng biệt (không phải chủ kho)
+            var operatorUser = context.Users.FirstOrDefault(u => u.Email == "operator1@owrms.com");
+            if (operatorUser == null)
+            {
+                operatorUser = new User
+                {
+                    Email        = "operator1@owrms.com",
+                    FullName     = "Operator 1",
+                    PasswordHash = defaultPasswordHash,
+                    RoleId       = userRoleId,
+                    Status       = "ACTIVE",
+                    Phone        = "0912345678",
+                    CreatedAt    = DateTime.UtcNow
+                };
+                context.Users.Add(operatorUser);
+                context.SaveChanges();
+            }
+
+            // operator1 → OPERATOR membership cho warehouse 1
+            var operatorMembership1 = context.WarehouseMemberships
+                .FirstOrDefault(m => m.UserId == operatorUser.UserId && m.WarehouseId == warehouse.WarehouseId);
+            if (operatorMembership1 == null)
+            {
+                operatorMembership1 = new WarehouseMembership
+                {
+                    UserId          = operatorUser.UserId,
+                    WarehouseId     = warehouse.WarehouseId,
+                    WarehouseRoleId = operatorWhRole.Id,
+                    IsActive        = true,
+                    IsAllSkill      = true,
+                    IsAllZone       = true,
+                    CreatedAt       = DateTime.UtcNow
+                };
+                context.WarehouseMemberships.Add(operatorMembership1);
+                context.SaveChanges();
+            }
+
+            // operator1 → OPERATOR membership cho warehouse 2
+            var operatorMembership2 = context.WarehouseMemberships
+                .FirstOrDefault(m => m.UserId == operatorUser.UserId && m.WarehouseId == warehouse2.WarehouseId);
+            if (operatorMembership2 == null)
+            {
+                operatorMembership2 = new WarehouseMembership
+                {
+                    UserId          = operatorUser.UserId,
+                    WarehouseId     = warehouse2.WarehouseId,
+                    WarehouseRoleId = operatorWhRole.Id,
+                    IsActive        = true,
+                    IsAllSkill      = true,
+                    IsAllZone       = true,
+                    CreatedAt       = DateTime.UtcNow
+                };
+                context.WarehouseMemberships.Add(operatorMembership2);
                 context.SaveChanges();
             }
 
@@ -355,16 +414,30 @@ namespace WMS.Infrastructure.Persistence
                 .FirstOrDefault(m => m.UserId == managerUser.UserId && m.WarehouseId == warehouse.WarehouseId);
             if (managerMembership == null)
             {
+                var zoneCEntity = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-C");
+
                 managerMembership = new WarehouseMembership
                 {
                     UserId          = managerUser.UserId,
                     WarehouseId     = warehouse.WarehouseId,
                     WarehouseRoleId = managerWhRole.Id,
                     IsActive        = true,
-                    IsAllSkill      = true,
-                    IsAllZone       = true,
+                    IsAllSkill      = false,
+                    IsAllZone       = false,
                     CreatedAt       = DateTime.UtcNow
                 };
+                // Thêm skills cụ thể cho manager1
+                if (skInbound   != null) managerMembership.Skills.Add(skInbound);
+                if (skOutbound  != null) managerMembership.Skills.Add(skOutbound);
+                if (skInventory != null) managerMembership.Skills.Add(skInventory);
+                if (skForklift  != null) managerMembership.Skills.Add(skForklift);
+                if (skPicking   != null) managerMembership.Skills.Add(skPicking);
+                if (skPacking   != null) managerMembership.Skills.Add(skPacking);
+                if (skPutaway   != null) managerMembership.Skills.Add(skPutaway);
+                // Thêm tất cả zones trong kho 1 cho manager1
+                managerMembership.Zones.Add(zoneAEntity);
+                managerMembership.Zones.Add(zoneBEntity);
+                managerMembership.Zones.Add(zoneCEntity);
                 context.WarehouseMemberships.Add(managerMembership);
                 context.SaveChanges();
             }
@@ -402,6 +475,84 @@ namespace WMS.Infrastructure.Persistence
                 t4.Zones.Add(zA);
                 t5.Zones.Add(zB);
                 context.SaveChanges();
+            }
+            // ─── 30 nhân viên STAFF cho Kho Hà Nội ─────────────────────────────────────
+            var allSkills = context.Skills.ToList();
+            var skillMap  = allSkills.ToDictionary(s => s.Code, s => s);
+
+            var thirtyStaff = new[]
+            {
+                ("Nguyễn Thị Hương",   "staff01@owrms.com", "0901000001", new[]{"INBOUND","OUTBOUND"}),
+                ("Trần Văn Minh",      "staff02@owrms.com", "0901000002", new[]{"PICKING","PACKING"}),
+                ("Lê Thị Lan",         "staff03@owrms.com", "0901000003", new[]{"INBOUND","FORKLIFT"}),
+                ("Phạm Đức Thắng",     "staff04@owrms.com", "0901000004", new[]{"OUTBOUND","INVENTORY"}),
+                ("Hoàng Thị Thu",      "staff05@owrms.com", "0901000005", new[]{"PACKING","INVENTORY"}),
+                ("Vũ Minh Tuấn",       "staff06@owrms.com", "0901000006", new[]{"FORKLIFT","INBOUND"}),
+                ("Đặng Thị Nga",       "staff07@owrms.com", "0901000007", new[]{"PICKING","OUTBOUND"}),
+                ("Bùi Văn Hải",        "staff08@owrms.com", "0901000008", new[]{"INBOUND","PACKING"}),
+                ("Dương Thị Bích",     "staff09@owrms.com", "0901000009", new[]{"INVENTORY","FORKLIFT"}),
+                ("Ngô Văn Khánh",      "staff10@owrms.com", "0901000010", new[]{"OUTBOUND","PICKING"}),
+                ("Trịnh Thị Mai",      "staff11@owrms.com", "0901000011", new[]{"INBOUND","INVENTORY"}),
+                ("Đinh Văn Hùng",      "staff12@owrms.com", "0901000012", new[]{"FORKLIFT","PACKING"}),
+                ("Lý Thị Quỳnh",       "staff13@owrms.com", "0901000013", new[]{"PICKING","INBOUND"}),
+                ("Tăng Văn Phúc",      "staff14@owrms.com", "0901000014", new[]{"OUTBOUND","FORKLIFT"}),
+                ("Cao Thị Hà",         "staff15@owrms.com", "0901000015", new[]{"INVENTORY","PACKING"}),
+                ("Phan Văn Đạt",       "staff16@owrms.com", "0901000016", new[]{"INBOUND","PICKING"}),
+                ("Mai Thị Liên",       "staff17@owrms.com", "0901000017", new[]{"FORKLIFT","OUTBOUND"}),
+                ("Lưu Văn Toàn",       "staff18@owrms.com", "0901000018", new[]{"PACKING","INVENTORY"}),
+                ("Đỗ Thị Phượng",      "staff19@owrms.com", "0901000019", new[]{"OUTBOUND","INBOUND"}),
+                ("Hồ Văn Long",        "staff20@owrms.com", "0901000020", new[]{"PICKING","FORKLIFT"}),
+                ("Từ Thị Nhung",       "staff21@owrms.com", "0901000021", new[]{"INBOUND","PACKING"}),
+                ("Trương Văn Bình",    "staff22@owrms.com", "0901000022", new[]{"INVENTORY","OUTBOUND"}),
+                ("Lâm Thị Kim",        "staff23@owrms.com", "0901000023", new[]{"FORKLIFT","PICKING"}),
+                ("Kiều Văn Sơn",       "staff24@owrms.com", "0901000024", new[]{"PACKING","INBOUND"}),
+                ("Tô Thị Diệu",        "staff25@owrms.com", "0901000025", new[]{"OUTBOUND","INVENTORY"}),
+                ("Ông Văn Thành",      "staff26@owrms.com", "0901000026", new[]{"INBOUND","FORKLIFT","PICKING"}),
+                ("Mạc Thị Hồng",       "staff27@owrms.com", "0901000027", new[]{"PACKING","OUTBOUND"}),
+                ("Ninh Văn Cường",     "staff28@owrms.com", "0901000028", new[]{"INVENTORY","INBOUND"}),
+                ("Châu Thị Xuân",      "staff29@owrms.com", "0901000029", new[]{"PICKING","PACKING","FORKLIFT"}),
+                ("Quách Văn Nam",      "staff30@owrms.com", "0901000030", new[]{"OUTBOUND","INBOUND","INVENTORY"}),
+            };
+
+            foreach (var (fullName, email, phone, skillCodes) in thirtyStaff)
+            {
+                var u = context.Users.FirstOrDefault(x => x.Email == email);
+                if (u == null)
+                {
+                    u = new User
+                    {
+                        Email        = email,
+                        FullName     = fullName,
+                        PasswordHash = defaultPasswordHash,
+                        RoleId       = userRoleId,
+                        Status       = "ACTIVE",
+                        Phone        = phone,
+                        CreatedAt    = DateTime.UtcNow
+                    };
+                    context.Users.Add(u);
+                    context.SaveChanges();
+                }
+
+                var mem = context.WarehouseMemberships
+                    .FirstOrDefault(m => m.UserId == u.UserId && m.WarehouseId == warehouse.WarehouseId);
+                if (mem == null)
+                {
+                    mem = new WarehouseMembership
+                    {
+                        UserId          = u.UserId,
+                        WarehouseId     = warehouse.WarehouseId,
+                        WarehouseRoleId = staffWhRole.Id,
+                        IsActive        = true,
+                        IsAllSkill      = false,
+                        IsAllZone       = true,
+                        CreatedAt       = DateTime.UtcNow
+                    };
+                    foreach (var code in skillCodes)
+                        if (skillMap.TryGetValue(code, out var sk))
+                            mem.Skills.Add(sk);
+                    context.WarehouseMemberships.Add(mem);
+                    context.SaveChanges();
+                }
             }
         }
     }

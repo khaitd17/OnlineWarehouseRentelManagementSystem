@@ -13,6 +13,8 @@ import ProfilePage from "../pages/ProfilePage";
 import CreateStaff from "../pages/CreateStaff";
 import ListStaff from "../pages/ListStaff";
 import TaskSchedulingPage from "../pages/TaskSchedulingPage";
+import ShiftSchedulingPage from "../pages/ShiftSchedulingPage";
+import MySchedulePage from "../pages/MySchedulePage";
 import ForgotPage from "../pages/ForgotPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
 import ProtectedRoute from "./ProtectedRoute";
@@ -80,6 +82,8 @@ function AppRoutes() {
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
               <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
+              <Route path="/shift-scheduling" element={<ShiftSchedulingPage />} />
+              <Route path="/my-schedule" element={<MySchedulePage />} />
             </Route>
           </Route>
 

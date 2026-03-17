@@ -66,6 +66,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<RentalArea> RentalAreas { get; set; }
 
+    public virtual DbSet<StaffShift> StaffShifts { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -625,6 +627,26 @@ public class ApplicationDbContext : DbContext
                   .HasForeignKey(e => e.WarehouseId)
                   .OnDelete(DeleteBehavior.Cascade)
                   .HasConstraintName("FK_rental_areas_warehouse");
+        });
+
+        modelBuilder.Entity<StaffShift>(entity =>
+        {
+            entity.ToTable("staff_shifts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.MembershipId).HasColumnName("membership_id");
+            entity.Property(e => e.ShiftDate).HasColumnName("shift_date");
+            entity.Property(e => e.TimeIn1).HasMaxLength(5).HasColumnName("time_in1").IsRequired(false);
+            entity.Property(e => e.TimeOut1).HasMaxLength(5).HasColumnName("time_out1").IsRequired(false);
+            entity.Property(e => e.TimeIn2).HasMaxLength(5).HasColumnName("time_in2").IsRequired(false);
+            entity.Property(e => e.TimeOut2).HasMaxLength(5).HasColumnName("time_out2").IsRequired(false);
+            entity.Property(e => e.ShiftType).HasMaxLength(10).HasColumnName("shift_type").IsRequired(false);
+            entity.HasIndex(e => new { e.MembershipId, e.ShiftDate }).IsUnique().HasDatabaseName("UQ_staff_shifts_membership_date");
+            entity.HasOne(e => e.Membership)
+                  .WithMany(m => m.StaffShifts)
+                  .HasForeignKey(e => e.MembershipId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_staff_shifts_membership");
         });
     }
 }

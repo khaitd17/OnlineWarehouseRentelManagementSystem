@@ -6,6 +6,7 @@ const authService = {
     if (response.data.token) {
       localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(response.data));
+      console.log("[Login] Response:", response.data);
 
       // Automatically fetch warehouse context after login
       try {

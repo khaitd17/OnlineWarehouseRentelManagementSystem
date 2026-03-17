@@ -83,6 +83,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalContractRepository, WMS.
 builder.Services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalAreaRepository, WMS.Infrastructure.Repositories.RentalAreaRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();

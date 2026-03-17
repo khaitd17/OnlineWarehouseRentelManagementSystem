@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import staffService from "../services/staffService";
-import { getMyWarehouses } from "../services/warehouseService";
+import axiosClient from "../services/axiosClient";
 
 /* ─── Light Palette ─────────────────────────────────────────────────────── */
 const C = {
@@ -298,13 +298,15 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
               ⚙️ Phân quyền
             </button>
           )}
-          <button onClick={handleToggle} disabled={busy}
-            style={{ padding:"6px 12px", borderRadius:8, border:"none",
-              background: isActive ? C.redBg : C.greenBg,
-              color: isActive ? C.red : C.green,
-              cursor: busy ? "not-allowed" : "pointer", fontSize:11, fontWeight:700, opacity:busy?.6:1 }}>
-            {busy ? "..." : isActive ? "Deactivate" : "Activate"}
-          </button>
+          {staff.roleCode !== "OWNER" && (
+            <button onClick={handleToggle} disabled={busy}
+              style={{ padding:"6px 12px", borderRadius:8, border:"none",
+                background: isActive ? C.redBg : C.greenBg,
+                color: isActive ? C.red : C.green,
+                cursor: busy ? "not-allowed" : "pointer", fontSize:11, fontWeight:700, opacity:busy?.6:1 }}>
+              {busy ? "..." : isActive ? "Deactivate" : "Activate"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -336,9 +338,9 @@ export default function ListStaff() {
   const PAGE_SIZE = 20;
 
   useEffect(() => {
-    getMyWarehouses().then(d => {
-      setWarehouses(d || []);
-      if (!selectedWarehouse && d?.length > 0) setSelectedWarehouse(String(d[0].warehouseId));
+    axiosClient.get("/staff/my-warehouses").then(d => {
+      setWarehouses(d.data || []);
+      if (!selectedWarehouse && d.data?.length > 0) setSelectedWarehouse(String(d.data[0].warehouseId));
     }).catch(console.error);
   }, []);
 
@@ -363,7 +365,7 @@ export default function ListStaff() {
 
   useEffect(() => { fetchStaff(1); }, [selectedWarehouse]);
 
-  const warehouseName = warehouses.find(w => String(w.warehouseId) === String(selectedWarehouse))?.name;
+  const warehouseName = warehouses.find(w => String(w.warehouseId) === String(selectedWarehouse))?.warehouseName;
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg, fontFamily:"'Inter','Segoe UI',sans-serif", color:C.text }}>
@@ -403,7 +405,7 @@ export default function ListStaff() {
             style={{ padding:"9px 12px", borderRadius:10, border:`1px solid ${C.border}`,
               background:C.surface, color:C.text, fontSize:13, minWidth:200, boxShadow:C.shadow }}>
             <option value="">-- Chọn kho --</option>
-            {warehouses.map(w => <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>)}
+            {warehouses.map(w => <option key={w.warehouseId} value={w.warehouseId}>{w.warehouseName}</option>)}
           </select>
           <input style={{ padding:"9px 12px", borderRadius:10, border:`1px solid ${C.border}`,
             background:C.surface, color:C.text, fontSize:13, flex:1, minWidth:220, boxShadow:C.shadow }}
