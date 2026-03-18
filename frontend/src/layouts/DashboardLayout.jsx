@@ -110,6 +110,8 @@ const DashboardLayout = () => {
           notification.type === 'CONTRACT_SENT' ||
           notification.type === 'CONTRACT_SIGNED') {
         navigate(`/contracts/${notification.referenceId}`);
+      } else if (notification.type === 'RENTAL_REQUEST_RECEIVED') {
+        navigate(`/rental-request/${notification.referenceId}`);
       } else if (notification.type === 'CONTRACT_REJECTED') {
         navigate('/my-rental-requests');
       }
@@ -216,16 +218,19 @@ const DashboardLayout = () => {
                             flexShrink: 0,
                             backgroundColor: n.type === 'CONTRACT_APPROVED' || n.type === 'CONTRACT_SIGNED' ? '#dcfce7'
                               : n.type === 'CONTRACT_SENT' ? '#dbeafe'
+                              : n.type === 'RENTAL_REQUEST_RECEIVED' ? '#fef3c7'
                               : '#fee2e2'
                           }}>
                             <span className="material-symbols-outlined" style={{
                               fontSize: '18px',
                               color: n.type === 'CONTRACT_APPROVED' || n.type === 'CONTRACT_SIGNED' ? '#16a34a'
                                 : n.type === 'CONTRACT_SENT' ? '#2563eb'
+                                : n.type === 'RENTAL_REQUEST_RECEIVED' ? '#d97706'
                                 : '#dc2626'
                             }}>
                               {n.type === 'CONTRACT_APPROVED' || n.type === 'CONTRACT_SIGNED' ? 'check_circle'
                                 : n.type === 'CONTRACT_SENT' ? 'description'
+                                : n.type === 'RENTAL_REQUEST_RECEIVED' ? 'warehouse'
                                 : 'cancel'}
                             </span>
                           </div>
