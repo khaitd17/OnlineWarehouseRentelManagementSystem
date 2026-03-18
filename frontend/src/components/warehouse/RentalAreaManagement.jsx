@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import api from "../../api/api";
+import api from "../../services/axiosClient";
 
 const RentalAreaManagement = ({ warehouseId }) => {
   const [areas, setAreas] = useState([]);

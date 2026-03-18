@@ -32,3 +32,15 @@ build/
 # =========================
 .DS_Store
 Thumbs.db
+
+# =========================
+# Upload directories
+# =========================
+backend/WMS.API/uploads/
+backend/WMS.API/wwwroot/uploads/
+
+# =========================
+# Debug/build output
+# =========================
+build_output*.txt
+out*.txt
