@@ -27,6 +27,7 @@ const EditWarehouse = () => {
     lng: "",
     openTime: "",
     closeTime: "",
+    mainDoorDirection: "TOP",
     description: ""
   });
 
@@ -50,6 +51,7 @@ const EditWarehouse = () => {
       lng: res.data.lng || "",
       openTime,
       closeTime,
+      mainDoorDirection: res.data.mainDoorDirection || "TOP",
       description: res.data.description || ""
     });
   };
@@ -85,7 +87,8 @@ const EditWarehouse = () => {
       lat: formData.lat ? parseFloat(formData.lat) : null,
       lng: formData.lng ? parseFloat(formData.lng) : null,
       description: formData.description,
-      operatingHours: `${formData.openTime} - ${formData.closeTime}`
+      operatingHours: `${formData.openTime} - ${formData.closeTime}`,
+      mainDoorDirection: formData.mainDoorDirection
     };
 
     await api.put(`/Warehouse/${id}`, payload);
@@ -220,6 +223,37 @@ const EditWarehouse = () => {
           </div>
 
         </div>
+
+        {/* Hướng cửa chính */}
+        <div style={groupStyle}>
+          <label style={labelStyle}>Hướng cửa chính (Cổng kho)</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px", marginTop: "0.5rem" }}>
+            {[
+              { id: "TOP", label: "Phía Trên", icon: "arrow_upward" },
+              { id: "BOTTOM", label: "Phía Dưới", icon: "arrow_downward" },
+              { id: "LEFT", label: "Bên Trái", icon: "arrow_back" },
+              { id: "RIGHT", label: "Bên Phải", icon: "arrow_forward" },
+            ].map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setFormData({...formData, mainDoorDirection: opt.id})}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px",
+                  padding: "12px 8px", borderRadius: "12px", border: "1px solid",
+                  borderColor: formData.mainDoorDirection === opt.id ? "#0095c7" : "#e2e8f0",
+                  backgroundColor: formData.mainDoorDirection === opt.id ? "#f0f9ff" : "#fff",
+                  color: formData.mainDoorDirection === opt.id ? "#0095c7" : "#64748b",
+                  fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
+                }}
+              >
+                <span className="material-symbols-outlined">{opt.icon}</span>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
 
         <div style={groupStyle}>
           <label style={labelStyle}>Mô tả</label>

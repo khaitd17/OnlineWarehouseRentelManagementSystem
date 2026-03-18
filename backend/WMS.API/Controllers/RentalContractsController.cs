@@ -58,7 +58,7 @@ public class RentalContractsController : ControllerBase
     }
 
     /// <summary>
-    /// Get my rental contracts
+    /// Get my rental contracts (as renter)
     /// </summary>
     [HttpGet("my-contracts")]
     public async Task<IActionResult> GetMyRentalContracts()
@@ -76,4 +76,23 @@ public class RentalContractsController : ControllerBase
             return StatusCode(500, new { message = "An error occurred", error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Get rental contracts by warehouse ID (for owner)
+    /// </summary>
+    [HttpGet("warehouse/{warehouseId}")]
+    public async Task<IActionResult> GetContractsByWarehouse(int warehouseId)
+    {
+        try
+        {
+            var query = new GetMyRentalContractsQuery { WarehouseId = warehouseId };
+            var result = await _mediator.Send(query);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
 }
+

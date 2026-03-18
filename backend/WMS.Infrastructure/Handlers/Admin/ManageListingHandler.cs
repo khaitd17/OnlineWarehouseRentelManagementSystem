@@ -18,13 +18,13 @@ public class ManageListingHandler : IRequestHandler<ManageListingCommand, ApiRes
 
     public async Task<ApiResponse<bool>> Handle(ManageListingCommand request, CancellationToken cancellationToken)
     {
-        var validActions = new[] { "SHOW", "HIDE", "DELETE" };
+        var validActions = new[] { "SHOW", "HIDE", "DELETE", "REJECT" };
         var action = request.Action?.ToUpper();
         if (string.IsNullOrWhiteSpace(action) || !validActions.Contains(action))
         {
             return ApiResponse<bool>.ErrorResponse(
                 "Hành động không hợp lệ.",
-                new List<string> { "Hành động phải là SHOW, HIDE hoặc DELETE." });
+                new List<string> { "Hành động phải là SHOW, HIDE, REJECT hoặc DELETE." });
         }
 
         var warehouse = await _db.Warehouses.FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseId, cancellationToken);
@@ -35,9 +35,15 @@ public class ManageListingHandler : IRequestHandler<ManageListingCommand, ApiRes
 
         if (action == "SHOW")
         {
-            if (warehouse.Status != "HIDDEN")
-                return ApiResponse<bool>.ErrorResponse("Chỉ có thể hiển thị kho đang bị ẩn.");
+            if (warehouse.Status != "HIDDEN" && warehouse.Status != "PENDING" && warehouse.Status != "REJECTED")
+                return ApiResponse<bool>.ErrorResponse("Chỉ có thể phê duyệt kho đang chờ duyệt.");
             warehouse.Status = "APPROVED";
+        }
+        else if (action == "REJECT")
+        {
+            if (warehouse.Status != "PENDING" && warehouse.Status != "HIDDEN")
+                return ApiResponse<bool>.ErrorResponse("Chỉ có thể từ chối kho đang chờ duyệt.");
+            warehouse.Status = "REJECTED";
         }
         else if (action == "HIDE")
         {
@@ -55,7 +61,13 @@ public class ManageListingHandler : IRequestHandler<ManageListingCommand, ApiRes
         warehouse.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync(cancellationToken);
 
-        var actionText = action == "SHOW" ? "hiển thị" : (action == "HIDE" ? "ẩn" : "xóa");
+        var actionText = action switch
+        {
+            "SHOW" => "phê duyệt",
+            "REJECT" => "từ chối",
+            "HIDE" => "ẩn",
+            _ => "xóa"
+        };
         return ApiResponse<bool>.SuccessResponse(true, $"Kho đã được {actionText} thành công.");
     }
 }

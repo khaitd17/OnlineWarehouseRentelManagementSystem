@@ -4,8 +4,10 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 const DASHBOARD_PATHS = [
   // Owner paths
   '/dashboard', '/my-warehouses', '/post-warehouse', '/create-warehouse',
-  '/warehouse-edit', '/warehouse-new', '/create-staff', '/list-staff',
+  '/warehouse-edit', '/warehouse-new', '/owner-warehouse', '/create-staff', '/list-staff',
   '/pending-rental-requests', '/rental-request', '/owner-inventory-requests',
+  '/occupancy-dashboard', '/equipment-management', '/task-scheduling',
+  '/owner-audit-sessions', '/staff-audit-sessions', '/renter-audit-sessions',
   // Staff / Manager paths
   '/staff-dashboard', '/inbound-requests', '/outbound-requests',
   '/confirm-movement', '/create-inbound', '/create-outbound',
