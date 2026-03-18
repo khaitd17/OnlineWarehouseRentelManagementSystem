@@ -3,10 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using WMS.Application.Features.Shifts.GetShifts;
-using WMS.Application.Features.Shifts.GetMySchedule;
-using WMS.Application.Features.Shifts.GetStaffSchedule;
-using WMS.Application.Features.Shifts.SaveShifts;
 using WMS.Application.Features.Staff.CreateStaff;
 using WMS.Application.Features.Staff.ListStaff;
 using WMS.Application.Features.Staff.ReassignMembership;
@@ -223,9 +219,9 @@ public class StaffController : ControllerBase
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             return Unauthorized();
 
-        var allowed = new[] { "MANAGER", "OPERATOR" };
+        // Tra tat ca kho ma user co membership active (ca STAFF, MANAGER, OPERATOR)
         var list = await _db.WarehouseMemberships
-            .Where(m => m.UserId == userId && m.IsActive && allowed.Contains(m.Role.Code))
+            .Where(m => m.UserId == userId && m.IsActive)
             .Include(m => m.Role)
             .Include(m => m.Warehouse)
             .Select(m => new
@@ -240,12 +236,6 @@ public class StaffController : ControllerBase
         return Ok(list);
     }
 
-    // ── Shift scheduling endpoints ─────────────────────────────────────────────
-
-    /// <summary>
-    /// Lấy danh sách nhân viên theo phạm vi role của caller:
-    ///   OPERATOR → tất cả MANAGER + STAFF; MANAGER → STAFF chia sẻ skill/zone + bản thân.
-    /// </summary>
     [HttpGet("scoped-list")]
     public async Task<IActionResult> ScopedList([FromQuery] int warehouseId, CancellationToken ct)
     {
@@ -272,95 +262,6 @@ public class StaffController : ControllerBase
         }
     }
 
-    [HttpGet("my-schedule")]
-    public async Task<IActionResult> GetMySchedule(
-        [FromQuery] int warehouseId,
-        [FromQuery] string from,
-        [FromQuery] string to,
-        CancellationToken ct)
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var callerId))
-            return Unauthorized(new { message = "User ID not found in token." });
-
-        if (!DateOnly.TryParse(from, out var fromDate) || !DateOnly.TryParse(to, out var toDate))
-            return BadRequest(new { message = "from và to phải có dạng YYYY-MM-DD." });
-
-        try
-        {
-            var result = await _mediator.Send(
-                new GetMyScheduleQuery { CallerId = callerId, WarehouseId = warehouseId, From = fromDate, To = toDate }, ct);
-
-            if (result == null)
-                return NotFound(new { message = "Bạn không có membership trong kho này." });
-
-            return Ok(result);
-        }
-        catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
-    }
-
-    [HttpGet("schedule")]
-    public async Task<IActionResult> GetSchedule(
-        [FromQuery] int warehouseId,
-        [FromQuery] string from,
-        [FromQuery] string to,
-        CancellationToken ct)
-    {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var callerId))
-            return Unauthorized(new { message = "User ID not found in token." });
-
-        if (!DateOnly.TryParse(from, out var fromDate) || !DateOnly.TryParse(to, out var toDate))
-            return BadRequest(new { message = "from và to phải có dạng YYYY-MM-DD." });
-
-        try
-        {
-            var result = await _mediator.Send(
-                new GetStaffScheduleQuery { CallerId = callerId, WarehouseId = warehouseId, From = fromDate, To = toDate }, ct);
-            return Ok(result);
-        }
-        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { message = ex.Message }); }
-        catch (Exception ex) { return StatusCode(500, new { message = ex.Message }); }
-    }
-
-    [HttpGet("shifts")]
-    public async Task<IActionResult> GetShifts(
-        [FromQuery] int warehouseId,
-        [FromQuery] string from,
-        [FromQuery] string to,
-        CancellationToken ct)
-    {
-        if (!DateOnly.TryParse(from, out var fromDate) || !DateOnly.TryParse(to, out var toDate))
-            return BadRequest(new { message = "from và to phải có dạng YYYY-MM-DD." });
-
-        try
-        {
-            var query = new GetShiftsQuery { WarehouseId = warehouseId, From = fromDate, To = toDate };
-            var result = await _mediator.Send(query, ct);
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = ex.Message });
-        }
-    }
-
-    /// <summary>Lưu (upsert) danh sách shifts.</summary>
-    [HttpPost("shifts")]
-    public async Task<IActionResult> SaveShifts([FromBody] SaveShiftsRequest req, CancellationToken ct)
-    {
-        try
-        {
-            var command = new SaveShiftsCommand { Shifts = req.Shifts };
-            await _mediator.Send(command, ct);
-            return Ok(new { message = "Lưu lịch ca thành công." });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { message = ex.Message });
-        }
-    }
 }
 
 public record ToggleMembershipRequest(int MembershipId);
-public record SaveShiftsRequest(List<UpsertShiftDto> Shifts);

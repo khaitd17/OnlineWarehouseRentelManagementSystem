@@ -180,13 +180,14 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         // Tạo membership
         var membership = new WarehouseMembership
         {
-            UserId          = dto.UserId,
-            WarehouseId     = dto.WarehouseId,
-            WarehouseRoleId = role.Id,
-            IsActive        = true,
-            IsAllSkill      = dto.IsAllSkill,
-            IsAllZone       = dto.IsAllZone,
-            CreatedAt       = DateTime.UtcNow,
+            UserId            = dto.UserId,
+            WarehouseId       = dto.WarehouseId,
+            WarehouseRoleId   = role.Id,
+            IsActive          = true,
+            IsAllSkill        = dto.IsAllSkill,
+            IsAllZone         = dto.IsAllZone,
+            CreatedAt         = DateTime.UtcNow,
+            WarehouseShiftId  = dto.WarehouseShiftId,  // null = ca xoay
         };
 
         // Gán skills

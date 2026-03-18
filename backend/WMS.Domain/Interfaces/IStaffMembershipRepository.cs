@@ -85,6 +85,7 @@ public class CreateMembershipDto
     public bool IsAllZone { get; set; }
     public List<int> SkillIds { get; set; } = new();
     public List<int> ZoneIds { get; set; } = new();
+    public int? WarehouseShiftId { get; set; }  // null = ca xoay (rotating)
 }
 
 public class MembershipInfoDto

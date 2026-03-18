@@ -10,9 +10,9 @@ const MENU_BY_ROLE = {
     { icon: 'add_circle',     label: 'Tạo kho mới',        path: '/post-warehouse' },
     { icon: 'inventory_2',    label: 'Yêu cầu nhập/xuất',  path: '/owner-inventory-requests', section: 'YÊU CẦU' },
     { icon: 'pending_actions',label: 'Yêu cầu thuê kho',   path: '/pending-rental-requests' },
-    { icon: 'group',          label: 'Quản lý nhân viên',  path: '/list-staff',       section: 'NHÂN SỰ' },
-    { icon: 'person_add',     label: 'Thêm nhân viên',     path: '/create-staff' },
-    { icon: 'calendar_month', label: 'Lịch công việc',     path: '/task-scheduling',  section: 'VẬN HÀNH' },
+    { label: 'Quản lý nhân viên',  path: '/list-staff',       section: 'NHÂN SỰ' },
+    { label: 'Thêm nhân viên',     path: '/create-staff' },
+    { label: 'Lịch công việc',     path: '/task-scheduling',  section: 'VẬN HÀNH' },
     { icon: 'settings',       label: 'Cài đặt',            path: '/settings',         isBottom: true },
   ],
   OPERATOR: [
@@ -20,11 +20,11 @@ const MENU_BY_ROLE = {
     { icon: 'warehouse',      label: 'Kho của tôi',        path: '/my-warehouses' },
     { icon: 'inventory_2',    label: 'Yêu cầu nhập/xuất',  path: '/owner-inventory-requests', section: 'YÊU CẦU' },
     { icon: 'pending_actions',label: 'Yêu cầu thuê kho',   path: '/pending-rental-requests' },
-    { icon: 'group',          label: 'Quản lý nhân viên',  path: '/list-staff',       section: 'NHÂN SỰ' },
-    { icon: 'person_add',     label: 'Thêm nhân viên',     path: '/create-staff' },
-    { icon: 'manage_accounts',label: 'Tạo quản lý',        path: '/create-manager' },
-    { icon: 'calendar_month',   label: 'Lịch công việc',     path: '/task-scheduling',    section: 'VẬN HÀNH' },
-    { icon: 'schedule',          label: 'Lịch ca làm việc',   path: '/shift-scheduling' },
+    { label: 'Quản lý nhân viên',  path: '/list-staff',       section: 'NHÂN SỰ' },
+    { label: 'Thêm nhân viên',     path: '/create-staff' },
+    { label: 'Tạo quản lý',        path: '/create-manager' },
+    { label: 'Lịch công việc',     path: '/task-scheduling',  section: 'VẬN HÀNH' },
+    { label: 'Lịch ca làm việc',   path: '/shift-scheduling' },
     { icon: 'move_to_inbox',  label: 'Nhập kho',           path: '/inbound-requests', section: 'KHO' },
     { icon: 'outbox',         label: 'Xuất kho',           path: '/outbound-requests' },
     { icon: 'history',        label: 'Lịch sử giao dịch',  path: '/transaction-history' },
@@ -32,22 +32,23 @@ const MENU_BY_ROLE = {
   ],
   MANAGER: [
     { icon: 'dashboard',       label: 'Tổng quan',         path: '/dashboard' },
-    { icon: 'group',           label: 'Quản lý nhân viên', path: '/list-staff',       section: 'NHÂN SỰ' },
-    { icon: 'person_add',      label: 'Thêm nhân viên',    path: '/create-staff' },
-    { icon: 'calendar_month',  label: 'Lịch công việc',    path: '/task-scheduling',  section: 'VẬN HÀNH' },
-    { icon: 'schedule',         label: 'Lịch ca làm việc',  path: '/shift-scheduling' },
+    { label: 'Quản lý nhân viên', path: '/list-staff',       section: 'NHÂN SỰ' },
+    { label: 'Thêm nhân viên',    path: '/create-staff' },
+    { label: 'Lịch công việc',    path: '/task-scheduling',  section: 'VẬN HÀNH' },
+    { label: 'Lịch ca làm việc',  path: '/shift-scheduling' },
     { icon: 'move_to_inbox',   label: 'Nhập kho',          path: '/inbound-requests', section: 'KHO' },
     { icon: 'outbox',          label: 'Xuất kho',          path: '/outbound-requests' },
     { icon: 'history',         label: 'Lịch sử giao dịch', path: '/transaction-history' },
     { icon: 'settings',        label: 'Cài đặt',           path: '/settings',         isBottom: true },
   ],
   STAFF: [
-    { icon: 'dashboard',    label: 'Bảng điều khiển',     path: '/staff-dashboard' },
-    { icon: 'move_to_inbox',label: 'Yêu cầu nhập kho',   path: '/inbound-requests' },
-    { icon: 'outbox',       label: 'Yêu cầu xuất kho',   path: '/outbound-requests' },
-    { icon: 'swap_horiz',   label: 'Xác nhận di chuyển', path: '/confirm-movement' },
-    { icon: 'history',      label: 'Lịch sử giao dịch',  path: '/transaction-history' },
-    { icon: 'settings',     label: 'Cài đặt',             path: '/settings',         isBottom: true },
+    { icon: 'dashboard',    label: 'Bang dieu khien',    path: '/staff-dashboard' },
+    { label: 'Lich cua toi',  path: '/my-schedule', section: 'LICH LAM VIEC' },
+    { icon: 'move_to_inbox',label: 'Yeu cau nhap kho',  path: '/inbound-requests' },
+    { icon: 'outbox',       label: 'Yeu cau xuat kho',  path: '/outbound-requests' },
+    { icon: 'swap_horiz',   label: 'Xac nhan di chuyen',path: '/confirm-movement' },
+    { icon: 'history',      label: 'Lich su giao dich', path: '/transaction-history' },
+    { icon: 'settings',     label: 'Cai dat',           path: '/settings',         isBottom: true },
   ],
   RENTER: [
     { icon: 'dashboard',    label: 'Bảng điều khiển',    path: '/renter-dashboard' },
@@ -232,7 +233,7 @@ const NavLink = ({ item, isActive, accentColor, activeBg }) => (
         backgroundColor: accentColor, borderRadius: '0 3px 3px 0',
       }} />
     )}
-    <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>
+    {item.icon && <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{item.icon}</span>}
     <span>{item.label}</span>
   </Link>
 );

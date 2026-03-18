@@ -13,11 +13,14 @@ import {
 
 function normalize(t) {
   const at = t.scheduledAt ? new Date(t.scheduledAt) : null;
+  const pad = n => String(n).padStart(2, "0");
+  const localDate = at ? `${at.getFullYear()}-${pad(at.getMonth()+1)}-${pad(at.getDate())}` : null;
+  const localTime = at ? `${pad(at.getHours())}:${pad(at.getMinutes())}` : null;
   return {
     ...t,
     title: t.note || t.taskTypeName,
-    scheduledDate: at ? at.toISOString().split("T")[0] : null,
-    startTime: at ? at.toTimeString().slice(0, 5) : null,
+    scheduledDate: localDate,
+    startTime: localTime,
     assignedStaff: (t.assignments || []).map(a => ({
       membershipId: a.membershipId,
       fullName: a.userFullName,
@@ -92,7 +95,7 @@ function SetTimeModal({ taskTitle, targetDate, onClose, onConfirm }) {
   const [time, setTime] = useState("08:00");
   return (
     <Modal onClose={onClose}>
-      <div style={{ fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 4 }}>📅 Xác nhận lịch</div>
+      <div style={{ fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 4 }}>Xac nhan lich</div>
       <div style={{ fontSize: 11, color: C.sub, marginBottom: 16 }}>{taskTitle}</div>
       <div style={{ fontSize: 11, color: C.sub, marginBottom: 6 }}>
         Ngày: <strong style={{ color: C.text }}>{targetDate}</strong>
@@ -105,7 +108,7 @@ function SetTimeModal({ taskTitle, targetDate, onClose, onConfirm }) {
         }} />
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <button onClick={onClose} style={btnStyle("ghost")}>Hủy</button>
-        <button onClick={() => onConfirm(time)} style={btnStyle("primary")}>✓ Lên lịch</button>
+        <button onClick={() => onConfirm(time)} style={btnStyle("primary")}>Len lich</button>
       </div>
     </Modal>
   );
@@ -116,9 +119,9 @@ function AssignModal({ task, allStaff, loading, onClose, onSave }) {
   const toggle = id => setSel(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   return (
     <Modal onClose={onClose}>
-      <div style={{ fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 4 }}>
-        {task.assignedStaff.length > 0 ? "🔄 Reassign nhân viên" : "👤 Gán nhân viên"}
-      </div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: C.text, marginBottom: 4 }}>
+          {task.assignedStaff.length > 0 ? "Reassign nhan vien" : "Gan nhan vien"}
+        </div>
       <div style={{ fontSize: 11, color: C.sub, marginBottom: 14 }}>{task.title}</div>
       <div style={{ maxHeight: 280, overflowY: "auto" }}>
         {loading ? (
@@ -145,7 +148,7 @@ function AssignModal({ task, allStaff, loading, onClose, onSave }) {
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
         <button onClick={onClose} style={btnStyle("ghost")}>Hủy</button>
-        <button onClick={() => onSave([...sel])} style={btnStyle("primary")} disabled={loading}>✓ Xác nhận</button>
+        <button onClick={() => onSave([...sel])} style={btnStyle("primary")} disabled={loading}>Xac nhan</button>
       </div>
     </Modal>
   );
@@ -206,7 +209,7 @@ function CreateTaskModal({ warehouseId, taskTypes, zones, hasZone, onClose, onCr
   return (
     <Modal onClose={onClose}>
       <div style={{ width: 420 }}>
-        <div style={{ fontWeight: 800, fontSize: 15, color: C.text, marginBottom: 16 }}>➕ Tạo Task Mới</div>
+        <div style={{ fontWeight: 800, fontSize: 15, color: C.text, marginBottom: 16 }}>Tao Task Moi</div>
         {err && <div style={{ padding: "8px 12px", background: "#fff1f2", color: "#dc2626", borderRadius: 6, fontSize: 11, marginBottom: 12, border: "1px solid #fecaca" }}>{err}</div>}
         <form onSubmit={handleSubmit}>
           <div style={grp}>
@@ -244,7 +247,7 @@ function CreateTaskModal({ warehouseId, taskTypes, zones, hasZone, onClose, onCr
             </div>
           ) : (
             <div style={{ ...grp, padding: "8px 12px", background: "#f8fafc", borderRadius: 7, border: `1px solid ${C.border}` }}>
-              <span style={{ fontSize: 11, color: C.sub }}>📦 Kho không cài đặt zone — task sẽ áp dụng toàn bộ kho</span>
+              <span style={{ fontSize: 11, color: C.sub }}>Kho khong cai dat zone — task se ap dung toan bo kho</span>
             </div>
           )}
 
@@ -289,7 +292,7 @@ function TaskCell({ task, onAssign, onDragStart }) {
         padding: "5px 7px", marginBottom: 3, cursor: "grab", fontSize: 10
       }}>
       <div style={{ fontWeight: 700, color: C.text, lineHeight: 1.3, marginBottom: 2 }}>{task.title}</div>
-      {task.startTime && <div style={{ color: col.text, fontWeight: 600, marginBottom: 2 }}>🕐 {task.startTime}</div>}
+      {task.startTime && <div style={{ color: col.text, fontWeight: 600, marginBottom: 2 }}>{task.startTime}</div>}
       {hasStaff && (
         <div style={{ marginBottom: 4 }}>
           {task.assignedStaff.map(s => (
@@ -439,7 +442,7 @@ function UnscheduledPanel({ tasks }) {
   const toggle = name => setCollapsed(p => ({ ...p, [name]: !p[name] }));
 
   if (Object.keys(grouped).length === 0)
-    return <div style={{ textAlign: "center", padding: 24, color: C.subLight, fontSize: 11 }}>✅ Tất cả task đã được lên lịch</div>;
+    return <div style={{ textAlign: "center", padding: 24, color: C.subLight, fontSize: 11 }}>Tat ca task da duoc len lich</div>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, overflowY: "auto" }}>
@@ -473,7 +476,7 @@ function UnscheduledPanel({ tasks }) {
                   <div style={{
                     fontSize: 10, color: C.sub, overflow: "hidden",
                     whiteSpace: "nowrap", textOverflow: "ellipsis"
-                  }}>📝 {task.note}</div>
+                  }}>{task.note}</div>
                 )}
                 <span style={{
                   display: "inline-block", marginTop: 4, fontSize: 9, padding: "1px 6px",
@@ -597,7 +600,7 @@ export default function TaskSchedulingPage() {
         padding: "12px 20px", background: C.surface, borderBottom: `1px solid ${C.border}`,
         boxShadow: C.shadow
       }}>
-        <h2 style={{ fontWeight: 800, fontSize: 15, color: C.text, margin: 0 }}>📅 Task Scheduling</h2>
+        <h2 style={{ fontWeight: 800, fontSize: 15, color: C.text, margin: 0 }}>Task Scheduling</h2>
         {warehouses.length > 1 && (
           <select
             value={warehouseId ?? ""}
@@ -616,7 +619,7 @@ export default function TaskSchedulingPage() {
         {warehouses.length === 1 && (
           <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, padding: "4px 10px",
             background: "#eef2ff", borderRadius: 6 }}>
-            🏭 {warehouses[0].warehouseName}
+            {warehouses[0].warehouseName}
           </span>
         )}
         <button onClick={() => setWeekStart(d => addDays(d, -7))}

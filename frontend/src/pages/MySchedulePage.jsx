@@ -1,495 +1,405 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import axiosClient from '../services/axiosClient';
 import scheduleService from '../services/scheduleService';
-import authService from '../services/authService';
+import { getWeekTasks } from '../services/taskSchedulingService';
 
-/* ─── Helpers ──────────────────────────────────────────────────────────── */
-const DAYS_VI = ['CN', 'Th 2', 'Th 3', 'Th 4', 'Th 5', 'Th 6', 'Th 7'];
-const MONTHS_VI = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
-                   'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+/* ─── Helpers ─────────────────────────────────────────────── */
+const pad   = n => String(n).padStart(2,'0');
+const toKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const add   = (d,n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r; };
+const getMon= d => { const r=new Date(d); const dw=r.getDay(); r.setDate(r.getDate()-(dw===0?6:dw-1)); r.setHours(0,0,0,0); return r; };
+const fmtDate = d => `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
+const DAY_NAMES = ['CN','Th 2','Th 3','Th 4','Th 5','Th 6','Th 7'];
+const MONTH_NAMES = ['Thang 1','Thang 2','Thang 3','Thang 4','Thang 5','Thang 6',
+                     'Thang 7','Thang 8','Thang 9','Thang 10','Thang 11','Thang 12'];
 
-function toDateStr(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
-}
-
-function getWeekStart(d) {
-  const date = new Date(d);
-  const day = date.getDay(); // 0 = Sun
-  date.setDate(date.getDate() - day + 1); // Monday
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function addDays(d, n) {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
-
-/* ─── Sub-components ──────────────────────────────────────────────────── */
-const statusColors = {
-  Pending:     { bg: '#fef9c3', color: '#a16207' },
-  InProgress:  { bg: '#dbeafe', color: '#1d4ed8' },
-  Completed:   { bg: '#d1fae5', color: '#065f46' },
-  Cancelled:   { bg: '#fee2e2', color: '#b91c1c' },
+const SHIFT_TYPE_LABEL = { NC:'Nghi ca', NP:'Nghi phep', OFF:'Ngay off' };
+const STATUS_STYLE = {
+  Pending:    { bg:'#fef9c3', color:'#a16207' },
+  InProgress: { bg:'#dbeafe', color:'#1d4ed8' },
+  Completed:  { bg:'#d1fae5', color:'#065f46' },
+  Cancelled:  { bg:'#fee2e2', color:'#b91c1c' },
 };
-const statusLabel = { Pending: 'Chờ', InProgress: 'Đang làm', Completed: 'Xong', Cancelled: 'Huỷ' };
 
-function TaskChip({ task }) {
-  const s = statusColors[task.status] || { bg: '#f1f5f9', color: '#475569' };
-  return (
-    <div style={{
-      marginTop: 4, padding: '3px 8px', borderRadius: 6,
-      backgroundColor: s.bg, color: s.color,
-      fontSize: '0.7rem', fontWeight: 600,
-      display: 'flex', alignItems: 'center', gap: 4,
-      border: `1px solid ${s.color}22`,
-    }}>
-      <span className="material-symbols-outlined" style={{ fontSize: 13 }}>task_alt</span>
-      {task.taskTypeName}
-      {task.scheduledAt && (
-        <span style={{ opacity: 0.7 }}>
-          {task.scheduledAt.split('T')[1]}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function ShiftBlock({ timeIn, timeOut, idx }) {
-  if (!timeIn && !timeOut) return null;
-  const colors = ['#3b82f6', '#8b5cf6'];
-  return (
-    <div style={{
-      backgroundColor: colors[idx],
-      color: '#fff',
-      borderRadius: 6,
-      padding: '4px 8px',
-      fontSize: '0.75rem',
-      fontWeight: 600,
-      marginTop: idx === 1 ? 4 : 0,
-      display: 'flex', alignItems: 'center', gap: 4,
-    }}>
-      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
-      {timeIn || '--:--'} – {timeOut || '--:--'}
-    </div>
-  );
-}
-
-function ShiftTypeBadge({ type }) {
-  const map = {
-    OFF: { label: 'Ngày Off', bg: '#f1f5f9', color: '#64748b' },
-    NC:  { label: 'Nghỉ ca',  bg: '#fee2e2', color: '#b91c1c' },
-    CD:  { label: 'Cả ngày',  bg: '#fef9c3', color: '#a16207' },
-  };
-  const s = map[type];
-  if (!s) return null;
-  return (
-    <div style={{
-      padding: '4px 10px', borderRadius: 6,
-      backgroundColor: s.bg, color: s.color,
-      fontSize: '0.75rem', fontWeight: 700,
-      display: 'inline-block',
-    }}>
-      {s.label}
-    </div>
-  );
-}
-
-/* ─── Week View ──────────────────────────────────────────────────────────── */
-function WeekView({ shifts, weekStart }) {
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
-  const todayStr = toDateStr(new Date());
+/* ─── Week Table (simple list) ────────────────────────────── */
+function WeekTable({ monday, shifts }) {
+  const days = Array.from({ length:7 }, (_,i) => add(monday,i));
+  const todayKey = toKey(new Date());
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
-      {days.map((d, i) => {
-        const dateStr = toDateStr(d);
-        const slot = shifts?.[dateStr];
-        const isToday = dateStr === todayStr;
-
-        return (
-          <div key={i} style={{
-            backgroundColor: isToday ? '#eff6ff' : '#fff',
-            border: isToday ? '2px solid #3b82f6' : '1px solid #f1f5f9',
-            borderRadius: 12,
-            padding: 12,
-            minHeight: 160,
-          }}>
-            {/* Day header */}
-            <div style={{ textAlign: 'center', marginBottom: 10 }}>
-              <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>
-                {DAYS_VI[d.getDay()]}
-              </div>
-              <div style={{
-                fontSize: '1.1rem', fontWeight: 800,
-                color: isToday ? '#3b82f6' : '#111827',
-                lineHeight: 1.2,
-              }}>
-                {d.getDate()}
-              </div>
-              <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>
-                {String(d.getMonth() + 1).padStart(2, '0')}/{d.getFullYear().toString().slice(2)}
-              </div>
-            </div>
-
-            {!slot ? (
-              <div style={{ color: '#cbd5e1', fontSize: '0.7rem', textAlign: 'center', marginTop: 16 }}>
-                Không có ca
-              </div>
-            ) : slot.shiftType ? (
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <ShiftTypeBadge type={slot.shiftType} />
-              </div>
-            ) : (
-              <div>
-                <ShiftBlock timeIn={slot.timeIn1} timeOut={slot.timeOut1} idx={0} />
-                <ShiftBlock timeIn={slot.timeIn2} timeOut={slot.timeOut2} idx={1} />
-              </div>
-            )}
-
-            {/* Tasks */}
-            {slot?.tasks?.length > 0 && (
-              <div style={{ marginTop: 8 }}>
-                {slot.tasks.map((t, ti) => (
-                  <TaskChip key={ti} task={t} />
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── Month View ─────────────────────────────────────────────────────────── */
-function MonthView({ shifts, year, month }) {
-  // First day of month
-  const firstDay = new Date(year, month, 1);
-  const lastDay  = new Date(year, month + 1, 0);
-  const startOffset = (firstDay.getDay() + 6) % 7; // Monday = 0
-  const todayStr = toDateStr(new Date());
-
-  const cells = [];
-  // Empty cells before month start
-  for (let i = 0; i < startOffset; i++) cells.push(null);
-  for (let d = 1; d <= lastDay.getDate(); d++) cells.push(d);
-
-  const dayHeaders = ['Th 2','Th 3','Th 4','Th 5','Th 6','Th 7','CN'];
-
-  return (
-    <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
-        {dayHeaders.map(h => (
-          <div key={h} style={{ textAlign: 'center', fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700, padding: '4px 0' }}>
-            {h}
-          </div>
-        ))}
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
-        {cells.map((day, i) => {
-          if (!day) return <div key={`empty-${i}`} />;
-          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const slot = shifts?.[dateStr];
-          const isToday = dateStr === todayStr;
-          const hasShift = slot && (slot.timeIn1 || slot.shiftType);
-          const taskCount = slot?.tasks?.length || 0;
+    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.85rem' }}>
+      <thead>
+        <tr style={{ background:'#1e293b' }}>
+          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem', width:110 }}>Ngay</th>
+          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.78rem', width:150 }}>Ca lam</th>
+          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem' }}>Cong viec duoc giao</th>
+        </tr>
+      </thead>
+      <tbody>
+        {days.map((d, i) => {
+          const key  = toKey(d);
+          const slot = shifts?.[key];
+          const isToday   = key === todayKey;
+          const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+          const rowBg = isToday ? '#eff6ff' : i%2===0 ? '#fff' : '#f8fafc';
+          const stype = slot?.shiftType;
+          const hasTasks = slot?.tasks?.length > 0;
 
           return (
-            <div key={i} style={{
-              backgroundColor: isToday ? '#eff6ff' : '#fff',
-              border: isToday ? '2px solid #3b82f6' : '1px solid #f1f5f9',
-              borderRadius: 8,
-              padding: '6px 8px',
-              minHeight: 70,
-              cursor: 'default',
-            }}>
-              <div style={{
-                fontWeight: isToday ? 800 : 600,
-                color: isToday ? '#3b82f6' : '#374151',
-                fontSize: '0.8rem',
-                marginBottom: 4,
-              }}>{day}</div>
-              {hasShift && !slot.shiftType && (
+            <tr key={key} style={{ background: rowBg, borderBottom:'1px solid #e2e8f0' }}>
+              {/* Date */}
+              <td style={{ padding:'12px 14px', verticalAlign:'top' }}>
                 <div style={{
-                  fontSize: '0.65rem', color: '#fff',
-                  backgroundColor: '#3b82f6',
-                  borderRadius: 4, padding: '2px 5px',
-                  marginBottom: 2,
+                  fontWeight: isToday ? 800 : 600,
+                  color: isToday ? '#3b82f6' : isWeekend ? '#dc2626' : '#0f172a',
+                  fontSize:'0.82rem',
                 }}>
-                  {slot.timeIn1}–{slot.timeOut1}
+                  {DAY_NAMES[d.getDay()]}
                 </div>
-              )}
-              {slot?.shiftType && <ShiftTypeBadge type={slot.shiftType} />}
-              {taskCount > 0 && (
-                <div style={{
-                  fontSize: '0.65rem', color: '#fff',
-                  backgroundColor: '#8b5cf6',
-                  borderRadius: 4, padding: '2px 5px',
-                  display: 'inline-block', marginTop: 2,
-                }}>
-                  {taskCount} task
+                <div style={{ color:'#64748b', fontSize:'0.73rem', marginTop:2 }}>
+                  {d.getDate()}/{pad(d.getMonth()+1)}
+                  {isToday && (
+                    <span style={{ marginLeft:5, background:'#3b82f6', color:'#fff',
+                      fontSize:'0.62rem', padding:'1px 5px', borderRadius:4, fontWeight:700 }}>
+                      Hom nay
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
+              </td>
+
+              {/* Shift */}
+              <td style={{ padding:'12px 14px', textAlign:'center', verticalAlign:'top' }}>
+                {!slot ? (
+                  <span style={{ color:'#cbd5e1', fontSize:'0.75rem' }}>—</span>
+                ) : stype ? (
+                  <span style={{
+                    background: stype==='NC'?'#fee2e2':stype==='NP'?'#fef9c3':'#f1f5f9',
+                    color:      stype==='NC'?'#b91c1c':stype==='NP'?'#92400e':'#64748b',
+                    borderRadius:5, padding:'3px 9px', fontSize:'0.75rem', fontWeight:700,
+                  }}>{SHIFT_TYPE_LABEL[stype] || stype}</span>
+                ) : (
+                  <div>
+                    {slot.timeIn1 && (
+                      <div style={{ background:'#dbeafe', color:'#1d4ed8',
+                        borderRadius:5, padding:'3px 9px', fontSize:'0.75rem', fontWeight:600,
+                        display:'inline-block', marginBottom:3 }}>
+                        {slot.timeIn1} – {slot.timeOut1}
+                        {slot.timeOut1 < slot.timeIn1 && <span style={{ fontSize:'0.65rem', marginLeft:3 }}>+1</span>}
+                      </div>
+                    )}
+                    {slot.timeIn2 && (
+                      <div style={{ background:'#ede9fe', color:'#6d28d9',
+                        borderRadius:5, padding:'3px 9px', fontSize:'0.75rem', fontWeight:600,
+                        display:'inline-block' }}>
+                        {slot.timeIn2} – {slot.timeOut2}
+                      </div>
+                    )}
+                    {!slot.timeIn1 && !slot.timeIn2 && (
+                      <span style={{ color:'#94a3b8', fontSize:'0.75rem' }}>Co ca</span>
+                    )}
+                  </div>
+                )}
+              </td>
+
+              {/* Tasks */}
+              <td style={{ padding:'12px 14px', verticalAlign:'top' }}>
+                {!hasTasks ? (
+                  <span style={{ color:'#cbd5e1', fontSize:'0.75rem' }}>—</span>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                    {slot.tasks.map((t, ti) => {
+                      const ss = STATUS_STYLE[t.status] || { bg:'#f1f5f9', color:'#475569' };
+                      const time = t.scheduledAt ? (() => {
+                        const dt = new Date(t.scheduledAt);
+                        return `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+                      })() : null;
+                      return (
+                        <div key={ti} style={{
+                          display:'flex', alignItems:'center', gap:6,
+                          background: ss.bg, color: ss.color,
+                          borderRadius:5, padding:'3px 9px',
+                          fontSize:'0.75rem', fontWeight:600,
+                          border:`1px solid ${ss.color}30`, width:'fit-content',
+                        }}>
+                          <span>{t.taskTypeName || t.note || 'Task'}</span>
+                          {time && <span style={{ opacity:0.75 }}>{time}</span>}
+                          <span style={{ opacity:0.6, fontWeight:400, fontSize:'0.68rem' }}>[{t.status}]</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </td>
+            </tr>
           );
         })}
-      </div>
-    </div>
+      </tbody>
+    </table>
   );
 }
 
-/* ─── Main Page ──────────────────────────────────────────────────────────── */
-export default function MySchedulePage() {
-  const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState('week'); // 'week' | 'month'
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [schedule, setSchedule] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const ctx = authService.getWarehouseContext?.() || {};
-  const warehouseId = ctx?.warehouseId;
-  const warehouseName = ctx?.warehouseName || 'Kho';
-
-  const weekStart = getWeekStart(currentDate);
-  const weekEnd   = addDays(weekStart, 6);
-
-  // Compute from/to based on view
-  const from = viewMode === 'week'
-    ? toDateStr(weekStart)
-    : `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-01`;
-
-  const to = viewMode === 'week'
-    ? toDateStr(weekEnd)
-    : toDateStr(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0));
-
-  const fetchSchedule = useCallback(async () => {
-    if (!warehouseId) return;
-    setLoading(true);
-    setError('');
-    try {
-      const data = await scheduleService.getMySchedule(warehouseId, from, to);
-      setSchedule(data);
-    } catch (e) {
-      setError(e?.response?.data?.message || 'Không thể tải lịch.');
-    } finally {
-      setLoading(false);
-    }
-  }, [warehouseId, from, to]);
-
-  useEffect(() => { fetchSchedule(); }, [fetchSchedule]);
-
-  function prev() {
-    if (viewMode === 'week') {
-      setCurrentDate(d => addDays(d, -7));
-    } else {
-      setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
-    }
+/* ─── Month mini-table ─────────────────────────────────────── */
+function MonthTable({ year, month, shifts }) {
+  const lastDay   = new Date(year, month+1, 0);
+  const todayStr  = toKey(new Date());
+  const rows = [];
+  for (let d=1; d<=lastDay.getDate(); d++) {
+    const date = new Date(year, month, d);
+    const key  = `${year}-${pad(month+1)}-${pad(d)}`;
+    const slot = shifts?.[key];
+    const isToday   = key === todayStr;
+    const isWeekend = date.getDay()===0||date.getDay()===6;
+    const stype = slot?.shiftType;
+    const taskCount = slot?.tasks?.length || 0;
+    rows.push({ d, date, key, slot, isToday, isWeekend, stype, taskCount });
   }
-  function next() {
-    if (viewMode === 'week') {
-      setCurrentDate(d => addDays(d, 7));
-    } else {
-      setCurrentDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
-    }
-  }
-  function goToday() { setCurrentDate(new Date()); }
-
-  const periodLabel = viewMode === 'week'
-    ? `${weekStart.getDate()}/${weekStart.getMonth() + 1} – ${weekEnd.getDate()}/${weekEnd.getMonth() + 1}/${weekEnd.getFullYear()}`
-    : `${MONTHS_VI[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
-
-  const roleLabel = {
-    STAFF:    { text: 'Nhân viên',  bg: '#dbeafe', color: '#1d4ed8' },
-    MANAGER:  { text: 'Quản lý',    bg: '#d1fae5', color: '#065f46' },
-    OPERATOR: { text: 'Điều hành',  bg: '#ede9fe', color: '#6d28d9' },
-  };
-  const role = roleLabel[schedule?.roleCode] || { text: schedule?.roleCode || '', bg: '#f1f5f9', color: '#475569' };
-
-  const btnBase = {
-    padding: '8px 18px', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem',
-    cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: 6,
-  };
 
   return (
-    <div style={{ fontFamily: 'Inter, sans-serif', maxWidth: 1200, margin: '0 auto' }}>
-
-      {/* ── Page Header ── */}
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, color: '#111827' }}>
-            Lịch làm việc của tôi
-          </h1>
-          <p style={{ margin: '6px 0 0', fontSize: '0.875rem', color: '#64748b' }}>
-            {warehouseName} — {schedule?.fullName || '...'}
-            {schedule?.roleCode && (
-              <span style={{
-                marginLeft: 8, padding: '2px 10px', borderRadius: 6,
-                backgroundColor: role.bg, color: role.color,
-                fontSize: '0.75rem', fontWeight: 700,
-              }}>{role.text}</span>
-            )}
-          </p>
-        </div>
-
-        {/* View toggle */}
-        <div style={{ display: 'flex', gap: 8 }}>
-          {['week', 'month'].map(v => (
-            <button key={v} onClick={() => setViewMode(v)} style={{
-              ...btnBase,
-              backgroundColor: viewMode === v ? '#00b2d6' : '#f1f5f9',
-              color: viewMode === v ? '#fff' : '#64748b',
-            }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
-                {v === 'week' ? 'calendar_view_week' : 'calendar_month'}
-              </span>
-              {v === 'week' ? 'Tuần' : 'Tháng'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Navigation Bar ── */}
-      <div style={{
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        border: '1px solid #f1f5f9',
-        padding: '12px 20px',
-        marginBottom: 20,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-      }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={prev} style={{ ...btnBase, backgroundColor: '#f1f5f9', color: '#374151' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
-            Trước
-          </button>
-          <button onClick={next} style={{ ...btnBase, backgroundColor: '#f1f5f9', color: '#374151' }}>
-            Sau
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
-          </button>
-          <button onClick={goToday} style={{ ...btnBase, backgroundColor: '#eff6ff', color: '#3b82f6' }}>
-            Hôm nay
-          </button>
-        </div>
-        <div style={{ fontWeight: 700, color: '#111827', fontSize: '1rem' }}>{periodLabel}</div>
-        <button onClick={fetchSchedule} style={{ ...btnBase, backgroundColor: '#f0fdf4', color: '#16a34a' }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>refresh</span>
-          Làm mới
-        </button>
-      </div>
-
-      {/* ── Legend ── */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        {[
-          { color: '#3b82f6', label: 'Ca 1' },
-          { color: '#8b5cf6', label: 'Ca 2' },
-          { color: '#8b5cf6', label: 'Task được giao', icon: true },
-        ].map((l, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: '#64748b' }}>
-            <div style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: l.color }} />
-            {l.label}
-          </div>
+    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.83rem' }}>
+      <thead>
+        <tr style={{ background:'#1e293b' }}>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Ngay</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Thu</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Ca lam</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Task</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(({ d, date, key, slot, isToday, isWeekend, stype, taskCount }, i) => (
+          <tr key={key} style={{ background: isToday?'#eff6ff': i%2===0?'#fff':'#f8fafc', borderBottom:'1px solid #e2e8f0' }}>
+            <td style={{ padding:'8px 12px', fontWeight: isToday?800:600,
+              color: isToday?'#3b82f6': isWeekend?'#dc2626':'#0f172a', width:60 }}>
+              {d}/{pad(month+1)}
+              {isToday && <span style={{ marginLeft:4, fontSize:'0.62rem', background:'#3b82f6', color:'#fff',
+                padding:'1px 4px', borderRadius:3 }}>Hom nay</span>}
+            </td>
+            <td style={{ padding:'8px 12px', color: isWeekend?'#dc2626':'#64748b', width:60, fontSize:'0.75rem' }}>
+              {DAY_NAMES[date.getDay()]}
+            </td>
+            <td style={{ padding:'8px 12px', textAlign:'center' }}>
+              {!slot ? (
+                <span style={{ color:'#e2e8f0' }}>—</span>
+              ) : stype ? (
+                <span style={{
+                  background: stype==='NC'?'#fee2e2':stype==='NP'?'#fef9c3':'#f1f5f9',
+                  color:      stype==='NC'?'#b91c1c':stype==='NP'?'#92400e':'#64748b',
+                  borderRadius:4, padding:'1px 7px', fontSize:'0.72rem', fontWeight:700 }}>
+                  {SHIFT_TYPE_LABEL[stype]||stype}
+                </span>
+              ) : slot.timeIn1 ? (
+                <span style={{ background:'#dbeafe', color:'#1d4ed8',
+                  borderRadius:4, padding:'1px 7px', fontSize:'0.72rem', fontWeight:600 }}>
+                  {slot.timeIn1}–{slot.timeOut1}
+                </span>
+              ) : <span style={{ color:'#e2e8f0' }}>—</span>}
+            </td>
+            <td style={{ padding:'8px 12px', textAlign:'center' }}>
+              {taskCount>0
+                ? <span style={{ background:'#ede9fe', color:'#6d28d9',
+                    borderRadius:4, padding:'1px 7px', fontSize:'0.72rem', fontWeight:700 }}>
+                    {taskCount} task
+                  </span>
+                : <span style={{ color:'#e2e8f0' }}>—</span>}
+            </td>
+          </tr>
         ))}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: '#64748b' }}>
-          <div style={{ width: 10, height: 10, borderRadius: 3, backgroundColor: '#f59e0b' }} />
-          Nghỉ ca / Ngày off
+      </tbody>
+    </table>
+  );
+}
+
+/* ─── Main ─────────────────────────────────────────────────── */
+export default function MySchedulePage() {
+  const [viewMode,    setViewMode]    = useState('week');
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [schedule,    setSchedule]    = useState(null);
+  const [loading,     setLoading]     = useState(false);
+  const [loadingWh,   setLoadingWh]   = useState(true);
+  const [error,       setError]       = useState('');
+  const [warehouses,  setWarehouses]  = useState([]);
+  const [warehouseId, setWarehouseId] = useState(null);
+
+  /* Fetch warehouses once */
+  useEffect(() => {
+    setLoadingWh(true);
+    axiosClient.get('/staff/my-warehouses')
+      .then(r => {
+        const list = r.data || [];
+        setWarehouses(list);
+        if (list.length > 0) setWarehouseId(list[0].warehouseId);
+      })
+      .catch(console.error)
+      .finally(() => setLoadingWh(false));
+  }, []);
+
+  const monday = getMon(currentDate);
+  const monEnd = add(monday, 6);
+  const lastOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 0);
+
+  const from = viewMode === 'week'
+    ? toKey(monday)
+    : `${currentDate.getFullYear()}-${pad(currentDate.getMonth()+1)}-01`;
+  const to = viewMode === 'week' ? toKey(monEnd) : toKey(lastOfMonth);
+
+  const warehouseName = warehouses.find(w => w.warehouseId === warehouseId)?.warehouseName || '';
+
+  const fetchAll = useCallback(async () => {
+    if (!warehouseId) return;
+    setLoading(true); setError('');
+    try {
+      // API 1: ca lam viec
+      const shiftData = await scheduleService.getMySchedule(warehouseId, from, to);
+      // API 2: task duoc gan
+      let taskData = { scheduled: [], unscheduled: [] };
+      try { taskData = await getWeekTasks(warehouseId, viewMode==='week' ? new Date(from) : undefined); } catch {}
+
+      // Merge tasks vao slots theo ngay
+      const merged = { ...(shiftData?.shifts || {}) };
+      const allTasks = [...(taskData.scheduled||[]), ...(taskData.unscheduled||[])];
+      allTasks.forEach(t => {
+        if (!t.scheduledAt) return;
+        const d   = new Date(t.scheduledAt);
+        const key = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        if (!merged[key]) merged[key] = { timeIn1:null,timeOut1:null,timeIn2:null,timeOut2:null,shiftType:null,tasks:[] };
+        if (!(merged[key].tasks||[]).some(x => x.taskId===t.id)) {
+          merged[key] = { ...merged[key], tasks:[...(merged[key].tasks||[]), {
+            taskId:t.id, taskTypeName:t.taskTypeName, status:t.status, note:t.note, scheduledAt:t.scheduledAt,
+          }]};
+        }
+      });
+      setSchedule({ ...shiftData, shifts: merged });
+    } catch(e) {
+      setError(e?.response?.data?.message || 'Khong the tai lich.');
+    } finally { setLoading(false); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [warehouseId, from, to, viewMode]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const hasData = schedule && Object.keys(schedule.shifts||{}).length > 0;
+
+  const periodLabel = viewMode === 'week'
+    ? `${fmtDate(monday)} – ${fmtDate(monEnd)}`
+    : `${MONTH_NAMES[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+
+  /* Loading warehouses */
+  if (loadingWh) {
+    return (
+      <div style={{ padding:40, textAlign:'center', color:'#94a3b8', fontFamily:'Inter,sans-serif' }}>
+        Dang tai...
+      </div>
+    );
+  }
+
+  if (warehouses.length === 0) {
+    return (
+      <div style={{ padding:40, textAlign:'center', color:'#94a3b8', fontFamily:'Inter,sans-serif' }}>
+        Ban chua duoc them vao kho nao.
+      </div>
+    );
+  }
+
+  const btnStyle = (active) => ({
+    padding:'7px 16px', borderRadius:7, fontSize:'0.82rem', fontWeight:600,
+    cursor:'pointer', border:'none',
+    background: active ? '#3b82f6' : '#f1f5f9',
+    color: active ? '#fff' : '#374151',
+  });
+
+  return (
+    <div style={{ fontFamily:'Inter,sans-serif', maxWidth:1100, margin:'0 auto', color:'#0f172a' }}>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+
+      {/* Header */}
+      <div style={{ marginBottom:16, display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:10 }}>
+        <div>
+          <h2 style={{ margin:0, fontSize:'1.25rem', fontWeight:800 }}>Lich lam viec cua toi</h2>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5, flexWrap:'wrap' }}>
+            {schedule?.fullName && <span style={{ fontSize:'0.82rem', color:'#64748b' }}>{schedule.fullName}</span>}
+            {schedule?.roleCode && (
+              <span style={{ padding:'2px 8px', borderRadius:5, fontSize:'0.7rem', fontWeight:700,
+                background:'#dbeafe', color:'#1d4ed8' }}>{schedule.roleCode}</span>
+            )}
+            {warehouses.length > 1 ? (
+              <select value={warehouseId??''} onChange={e => setWarehouseId(Number(e.target.value))}
+                style={{ padding:'4px 9px', borderRadius:6, border:'1px solid #e2e8f0',
+                  fontSize:'0.8rem', color:'#374151', background:'#f8fafc', cursor:'pointer' }}>
+                {warehouses.map(w => (
+                  <option key={w.warehouseId} value={w.warehouseId}>{w.warehouseName}</option>
+                ))}
+              </select>
+            ) : (
+              <span style={{ fontSize:'0.8rem', color:'#94a3b8' }}>{warehouseName}</span>
+            )}
+          </div>
+        </div>
+        <div style={{ display:'flex', gap:6 }}>
+          <button style={btnStyle(viewMode==='week')}  onClick={() => setViewMode('week')}>Tuan</button>
+          <button style={btnStyle(viewMode==='month')} onClick={() => setViewMode('month')}>Thang</button>
         </div>
       </div>
 
-      {/* ── Content ── */}
-      {!warehouseId ? (
-        <div style={{
-          textAlign: 'center', padding: '60px 20px',
-          backgroundColor: '#fff', borderRadius: 16, border: '1px solid #f1f5f9',
-        }}>
-          <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#cbd5e1', display: 'block', marginBottom: 12 }}>
-            warehouse
-          </span>
-          <p style={{ color: '#64748b', marginBottom: 16 }}>Bạn chưa chọn kho làm việc.</p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{ ...btnBase, backgroundColor: '#00b2d6', color: '#fff' }}
-          >
-            Về Dashboard
-          </button>
+      {/* Nav */}
+      <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:9, padding:'9px 14px',
+        marginBottom:14, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
+        <div style={{ display:'flex', gap:6 }}>
+          <button style={btnStyle(false)} onClick={() => {
+            if (viewMode==='week') setCurrentDate(d => add(d,-7));
+            else setCurrentDate(d => new Date(d.getFullYear(), d.getMonth()-1, 1));
+          }}>Truoc</button>
+          <button style={btnStyle(false)} onClick={() => {
+            if (viewMode==='week') setCurrentDate(d => add(d,7));
+            else setCurrentDate(d => new Date(d.getFullYear(), d.getMonth()+1, 1));
+          }}>Sau</button>
+          <button style={btnStyle(false)} onClick={() => setCurrentDate(new Date())}>Hom nay</button>
         </div>
-      ) : loading ? (
-        <div style={{
-          textAlign: 'center', padding: '60px 20px',
-          backgroundColor: '#fff', borderRadius: 16, border: '1px solid #f1f5f9',
-        }}>
-          <div style={{ fontSize: '0.9rem', color: '#94a3b8' }}>Đang tải lịch...</div>
-        </div>
-      ) : error ? (
-        <div style={{
-          backgroundColor: '#fef2f2', border: '1px solid #fecaca',
-          borderRadius: 12, padding: 20, color: '#dc2626', fontSize: '0.875rem',
-        }}>
-          {error}
-        </div>
-      ) : (
-        <div style={{
-          backgroundColor: '#fff',
-          borderRadius: 16,
-          border: '1px solid #f1f5f9',
-          padding: 20,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-        }}>
-          {viewMode === 'week' ? (
-            <WeekView shifts={schedule?.shifts} weekStart={weekStart} />
-          ) : (
-            <MonthView
-              shifts={schedule?.shifts}
-              year={currentDate.getFullYear()}
-              month={currentDate.getMonth()}
-            />
-          )}
-        </div>
-      )}
+        <span style={{ fontWeight:700, fontSize:'0.93rem' }}>{periodLabel}</span>
+        <button style={btnStyle(false)} onClick={fetchAll}>Lam moi</button>
+      </div>
 
-      {/* ── Skills & Zones Info ── */}
-      {schedule && (
-        <div style={{ marginTop: 20, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {/* Table */}
+      <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:10,
+        overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.05)' }}>
+        {loading ? (
+          <div style={{ padding:60, textAlign:'center', color:'#94a3b8' }}>Dang tai lich...</div>
+        ) : error ? (
+          <div style={{ padding:20, color:'#dc2626', background:'#fef2f2', fontSize:'0.88rem' }}>{error}</div>
+        ) : (
+          viewMode === 'week'
+            ? <WeekTable monday={monday} shifts={schedule?.shifts} />
+            : <MonthTable year={currentDate.getFullYear()} month={currentDate.getMonth()} shifts={schedule?.shifts} />
+        )}
+
+        {/* No data notice */}
+        {!loading && !error && !hasData && viewMode === 'week' && (
+          <div style={{ padding:'14px 18px', background:'#fffbeb', borderTop:'1px solid #fde68a',
+            color:'#92400e', fontSize:'0.82rem', textAlign:'center' }}>
+            Chua co ca lam viec trong tuan nay. Lien he quan ly de duoc sap xep lich.
+          </div>
+        )}
+      </div>
+
+      {/* Skills & Zones */}
+      {schedule && (schedule.skills?.length > 0 || schedule.zones?.length > 0) && (
+        <div style={{ marginTop:14, display:'flex', gap:12, flexWrap:'wrap' }}>
           {schedule.skills?.length > 0 && (
-            <div style={{
-              backgroundColor: '#fff', borderRadius: 12, border: '1px solid #f1f5f9',
-              padding: '12px 16px', flex: 1, minWidth: 200,
-            }}>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, marginBottom: 8 }}>
-                KỸ NĂNG
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {schedule.skills.map((s, i) => (
-                  <span key={i} style={{
-                    backgroundColor: '#dbeafe', color: '#1d4ed8',
-                    padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600,
-                  }}>{s}</span>
+            <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:9,
+              padding:'10px 14px', flex:1, minWidth:140 }}>
+              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KY NANG</div>
+              <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                {schedule.skills.map((s,i) => (
+                  <span key={i} style={{ background:'#dbeafe', color:'#1d4ed8', padding:'2px 8px', borderRadius:4, fontSize:'0.72rem', fontWeight:600 }}>{s}</span>
                 ))}
               </div>
             </div>
           )}
           {schedule.zones?.length > 0 && (
-            <div style={{
-              backgroundColor: '#fff', borderRadius: 12, border: '1px solid #f1f5f9',
-              padding: '12px 16px', flex: 1, minWidth: 200,
-            }}>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, marginBottom: 8 }}>
-                KHU VỰC
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {schedule.zones.map((z, i) => (
-                  <span key={i} style={{
-                    backgroundColor: '#d1fae5', color: '#065f46',
-                    padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600,
-                  }}>{z}</span>
+            <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:9,
+              padding:'10px 14px', flex:1, minWidth:140 }}>
+              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KHU VUC</div>
+              <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                {schedule.zones.map((z,i) => (
+                  <span key={i} style={{ background:'#d1fae5', color:'#065f46', padding:'2px 8px', borderRadius:4, fontSize:'0.72rem', fontWeight:600 }}>{z}</span>
                 ))}
               </div>
             </div>

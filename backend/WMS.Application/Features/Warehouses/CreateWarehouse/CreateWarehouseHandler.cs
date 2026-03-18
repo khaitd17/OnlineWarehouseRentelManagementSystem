@@ -7,10 +7,14 @@ namespace WMS.Application.Features.Warehouses.CreateWarehouse;
 public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, int>
 {
     private readonly IWarehouseRepository _repository;
+    private readonly IStaffMembershipRepository _membershipRepository;
 
-    public CreateWarehouseHandler(IWarehouseRepository repository)
+    public CreateWarehouseHandler(
+        IWarehouseRepository repository,
+        IStaffMembershipRepository membershipRepository)
     {
         _repository = repository;
+        _membershipRepository = membershipRepository;
     }
 
     public async Task<int> Handle(CreateWarehouseCommand request, CancellationToken cancellationToken)
@@ -30,6 +34,19 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
         };
 
         var warehouseId = await _repository.CreateAsync(warehouse, cancellationToken);
+
+        // Tự động gán OPERATOR membership cho chủ kho vừa tạo.
+        // Khi chủ kho tạo kho, họ mặc định trở thành OPERATOR để vận hành kho.
+        await _membershipRepository.CreateMembershipAsync(new CreateMembershipDto
+        {
+            UserId      = request.OwnerId,
+            WarehouseId = warehouseId,
+            RoleCode    = "OPERATOR",
+            IsAllSkill  = true,
+            IsAllZone   = true,
+            SkillIds    = new List<int>(),
+            ZoneIds     = new List<int>(),
+        }, cancellationToken);
 
         return warehouseId;
     }

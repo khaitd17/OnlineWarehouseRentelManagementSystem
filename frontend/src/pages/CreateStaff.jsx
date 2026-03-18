@@ -1,15 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import staffService from "../services/staffService";
+import axiosClient from "../services/axiosClient";
 import { useNavigate } from "react-router-dom";
 
 function CreateStaff() {
   const navigate = useNavigate();
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [managedWarehouses, setManagedWarehouses] = useState([]); // kho mà user có quyền thêm NV
+  const [managedWarehouses, setManagedWarehouses] = useState([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
-  const [callerMembership, setCallerMembership] = useState(null); // membership + role của caller
-  const [warehouseOptions, setWarehouseOptions] = useState({ skills: [], zones: [] }); // danh sách skill/zone của kho
+  const [callerMembership, setCallerMembership] = useState(null);
+  const [warehouseOptions, setWarehouseOptions] = useState({ skills: [], zones: [] });
+  const [warehouseShifts, setWarehouseShifts] = useState([]);  // danh sach ca cua kho
 
   const [form, setForm] = useState({
     fullName: "",
@@ -20,6 +22,7 @@ function CreateStaff() {
     zoneIds: [],
     isAllSkill: false,
     isAllZone: false,
+    warehouseShiftId: null,  // null = ca xoay
   });
 
   const [loading, setLoading] = useState(false);
@@ -52,6 +55,7 @@ function CreateStaff() {
     setSelectedWarehouseId(warehouseId);
     setCallerMembership(null);
     setWarehouseOptions({ skills: [], zones: [] });
+    setWarehouseShifts([]);
     setForm(f => ({
       ...f,
       targetRoleCode: "STAFF",
@@ -59,20 +63,23 @@ function CreateStaff() {
       zoneIds: [],
       isAllSkill: false,
       isAllZone: false,
+      warehouseShiftId: null,
     }));
 
     if (!warehouseId) return;
 
     setLoadingWarehouseOptions(true);
     try {
-      const [membership, options] = await Promise.all([
+      const [membership, options, shiftsRes] = await Promise.all([
         staffService.getMyMembership(parseInt(warehouseId)),
         staffService.getWarehouseOptions(parseInt(warehouseId)),
+        axiosClient.get(`/schedule/warehouse-shifts?warehouseId=${warehouseId}`).then(r => r.data).catch(() => []),
       ]);
       setCallerMembership(membership);
       setWarehouseOptions(options);
+      setWarehouseShifts(shiftsRes || []);
     } catch (err) {
-      setError("Không thể tải thông tin kho: " + (err.response?.data?.message || err.message));
+      setError("Khong the tai thong tin kho: " + (err.response?.data?.message || err.message));
     } finally {
       setLoadingWarehouseOptions(false);
     }
@@ -119,15 +126,16 @@ function CreateStaff() {
     setLoading(true);
     try {
       const payload = {
-        fullName:       form.fullName.trim(),
-        email:          form.email.trim(),
-        phone:          form.phone.trim() || null,
-        warehouseId:    parseInt(selectedWarehouseId),
-        targetRoleCode: form.targetRoleCode,
-        skillIds:       form.isAllSkill ? [] : form.skillIds,
-        zoneIds:        form.isAllZone  ? [] : form.zoneIds,
-        isAllSkill:     form.isAllSkill,
-        isAllZone:      form.isAllZone,
+        fullName:         form.fullName.trim(),
+        email:            form.email.trim(),
+        phone:            form.phone.trim() || null,
+        warehouseId:      parseInt(selectedWarehouseId),
+        targetRoleCode:   form.targetRoleCode,
+        skillIds:         form.isAllSkill ? [] : form.skillIds,
+        zoneIds:          form.isAllZone  ? [] : form.zoneIds,
+        isAllSkill:       form.isAllSkill,
+        isAllZone:        form.isAllZone,
+        warehouseShiftId: form.warehouseShiftId || null,
       };
 
       const result = await staffService.createStaff(payload);
@@ -135,7 +143,7 @@ function CreateStaff() {
 
       // Reset form
       setForm({ fullName:"", email:"", phone:"", targetRoleCode:"STAFF",
-                skillIds:[], zoneIds:[], isAllSkill:false, isAllZone:false });
+                skillIds:[], zoneIds:[], isAllSkill:false, isAllZone:false, warehouseShiftId:null });
 
       setTimeout(() => navigate("/list-staff"), 2000);
     } catch (err) {
@@ -330,7 +338,32 @@ function CreateStaff() {
                 </div>
               </div>
 
-              {/* ── Zones ── */}
+              {/* Ca lam viec */}
+              <div style={styles.group}>
+                <label style={styles.label}>Ca lam viec</label>
+                {warehouseShifts.length === 0 ? (
+                  <div style={{ padding:"9px 12px", background:"#f9fafb", borderRadius:8,
+                    border:"1.5px solid #d1d5db", color:"#6b7280", fontSize:13 }}>
+                    Ca xoay (kho chua co ca co dinh)
+                  </div>
+                ) : (
+                  <select
+                    style={styles.select}
+                    value={form.warehouseShiftId ?? ""}
+                    onChange={e => setForm(f => ({ ...f, warehouseShiftId: e.target.value ? parseInt(e.target.value) : null }))}
+                  >
+                    <option value="">Ca xoay (khong co dinh)</option>
+                    {warehouseShifts.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} ({s.startTime} – {s.endTime})
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <div style={styles.note}>Ca co dinh se duoc gan vao membership va dung khi Generate Schedule.</div>
+              </div>
+
+              {/* Zones */}
               <div style={styles.group}>
                 <label style={styles.label}>Khu vực phụ trách (Zones)</label>
 

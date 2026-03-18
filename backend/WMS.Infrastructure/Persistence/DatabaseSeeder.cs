@@ -259,7 +259,32 @@ namespace WMS.Infrastructure.Persistence
             var zoneAEntity    = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-A");
             var zoneBEntity    = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-B");
 
-            // ownerUser (owner@owrms.com) → OWNER membership cho warehouse 1 (chỉ là chủ kho, không quản lý vận hành)
+            var shiftData = new[]
+            {
+                new { Name = "Ca sáng",  StartTime = "07:00", EndTime = "12:00" },
+                new { Name = "Ca chiều", StartTime = "13:00", EndTime = "17:00" },
+                new { Name = "Cả ngày",  StartTime = "07:00", EndTime = "17:00" },
+            };
+            foreach (var s in shiftData)
+            {
+                if (!context.WarehouseShifts.Any(x => x.Name == s.Name && x.WarehouseId == warehouse.WarehouseId))
+                {
+                    context.WarehouseShifts.Add(new WarehouseShift
+                    {
+                        Name        = s.Name,
+                        StartTime   = s.StartTime,
+                        EndTime     = s.EndTime,
+                        WarehouseId = warehouse.WarehouseId,
+                    });
+                }
+            }
+            context.SaveChanges();
+
+            var shiftSang  = context.WarehouseShifts.First(s => s.Name == "Ca sáng"  && s.WarehouseId == warehouse.WarehouseId);
+            var shiftNgay  = context.WarehouseShifts.First(s => s.Name == "Cả ngày" && s.WarehouseId == warehouse.WarehouseId);
+
+            // ownerUser (owner@owrms.com) → OPERATOR membership cho warehouse 1
+            // Phản ánh thiết kế: khi tạo kho, chủ kho tự động được gán OPERATOR để vận hành
             var ownerMembership1 = context.WarehouseMemberships
                 .FirstOrDefault(m => m.UserId == ownerUser.UserId && m.WarehouseId == warehouse.WarehouseId);
             if (ownerMembership1 == null)
@@ -268,7 +293,7 @@ namespace WMS.Infrastructure.Persistence
                 {
                     UserId          = ownerUser.UserId,
                     WarehouseId     = warehouse.WarehouseId,
-                    WarehouseRoleId = ownerWhRole.Id,
+                    WarehouseRoleId = operatorWhRole.Id,
                     IsActive        = true,
                     IsAllSkill      = true,
                     IsAllZone       = true,
@@ -278,7 +303,7 @@ namespace WMS.Infrastructure.Persistence
                 context.SaveChanges();
             }
 
-            // ownerUser (owner@owrms.com) → OWNER membership cho warehouse 2
+            // ownerUser (owner@owrms.com) → OPERATOR membership cho warehouse 2
             var ownerMembership2 = context.WarehouseMemberships
                 .FirstOrDefault(m => m.UserId == ownerUser.UserId && m.WarehouseId == warehouse2.WarehouseId);
             if (ownerMembership2 == null)
@@ -287,7 +312,7 @@ namespace WMS.Infrastructure.Persistence
                 {
                     UserId          = ownerUser.UserId,
                     WarehouseId     = warehouse2.WarehouseId,
-                    WarehouseRoleId = ownerWhRole.Id,
+                    WarehouseRoleId = operatorWhRole.Id,
                     IsActive        = true,
                     IsAllSkill      = true,
                     IsAllZone       = true,
@@ -360,11 +385,12 @@ namespace WMS.Infrastructure.Persistence
             {
                 membership = new WarehouseMembership
                 {
-                    UserId          = staffUser.UserId,
-                    WarehouseId     = warehouse.WarehouseId,
-                    WarehouseRoleId = staffWhRole.Id,
-                    IsActive        = true,
-                    CreatedAt       = DateTime.UtcNow
+                    UserId            = staffUser.UserId,
+                    WarehouseId       = warehouse.WarehouseId,
+                    WarehouseRoleId   = staffWhRole.Id,
+                    WarehouseShiftId  = shiftSang.Id,
+                    IsActive          = true,
+                    CreatedAt         = DateTime.UtcNow
                 };
                 membership.Skills.Add(inboundSkill);
                 membership.Skills.Add(forkliftSkill);
@@ -381,13 +407,14 @@ namespace WMS.Infrastructure.Persistence
             {
                 membership2 = new WarehouseMembership
                 {
-                    UserId          = staffUser.UserId,
-                    WarehouseId     = warehouse2.WarehouseId,
-                    WarehouseRoleId = managerWhRole.Id,
-                    IsActive        = true,
-                    IsAllSkill      = true,
-                    IsAllZone       = true,
-                    CreatedAt       = DateTime.UtcNow
+                    UserId            = staffUser.UserId,
+                    WarehouseId       = warehouse2.WarehouseId,
+                    WarehouseRoleId   = managerWhRole.Id,
+                    WarehouseShiftId  = shiftNgay.Id,
+                    IsActive          = true,
+                    IsAllSkill        = true,
+                    IsAllZone         = true,
+                    CreatedAt         = DateTime.UtcNow
                 };
                 context.WarehouseMemberships.Add(membership2);
                 context.SaveChanges();
@@ -418,13 +445,14 @@ namespace WMS.Infrastructure.Persistence
 
                 managerMembership = new WarehouseMembership
                 {
-                    UserId          = managerUser.UserId,
-                    WarehouseId     = warehouse.WarehouseId,
-                    WarehouseRoleId = managerWhRole.Id,
-                    IsActive        = true,
-                    IsAllSkill      = false,
-                    IsAllZone       = false,
-                    CreatedAt       = DateTime.UtcNow
+                    UserId            = managerUser.UserId,
+                    WarehouseId       = warehouse.WarehouseId,
+                    WarehouseRoleId   = managerWhRole.Id,
+                    WarehouseShiftId  = shiftNgay.Id,
+                    IsActive          = true,
+                    IsAllSkill        = false,
+                    IsAllZone         = false,
+                    CreatedAt         = DateTime.UtcNow
                 };
                 // Thêm skills cụ thể cho manager1
                 if (skInbound   != null) managerMembership.Skills.Add(skInbound);
@@ -539,13 +567,14 @@ namespace WMS.Infrastructure.Persistence
                 {
                     mem = new WarehouseMembership
                     {
-                        UserId          = u.UserId,
-                        WarehouseId     = warehouse.WarehouseId,
-                        WarehouseRoleId = staffWhRole.Id,
-                        IsActive        = true,
-                        IsAllSkill      = false,
-                        IsAllZone       = true,
-                        CreatedAt       = DateTime.UtcNow
+                        UserId           = u.UserId,
+                        WarehouseId      = warehouse.WarehouseId,
+                        WarehouseRoleId  = staffWhRole.Id,
+                        WarehouseShiftId = shiftSang.Id,
+                        IsActive         = true,
+                        IsAllSkill       = false,
+                        IsAllZone        = true,
+                        CreatedAt        = DateTime.UtcNow
                     };
                     foreach (var code in skillCodes)
                         if (skillMap.TryGetValue(code, out var sk))
@@ -553,6 +582,47 @@ namespace WMS.Infrastructure.Persistence
                     context.WarehouseMemberships.Add(mem);
                     context.SaveChanges();
                 }
+            }
+
+            // ─── Patch memberships cu chua co WarehouseShiftId ─────────────────────
+            // STAFF → Ca sang, MANAGER → Ca ngay (fallback: bat ky ca nao cua kho)
+            var nullShiftMembers = context.WarehouseMemberships
+                .Include(m => m.Role)
+                .Where(m => m.IsActive && m.WarehouseShiftId == null)
+                .ToList();
+
+            if (nullShiftMembers.Any())
+            {
+                // Build lookup: warehouseId → shift list (chi lay shift co WarehouseId)
+                var allShifts = context.WarehouseShifts
+                    .Where(s => s.WarehouseId != null)
+                    .ToList();
+                var shiftsByWh = allShifts
+                    .GroupBy(s => s.WarehouseId!.Value)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                foreach (var m in nullShiftMembers)
+                {
+                    var roleCode = m.Role?.Code;
+                    if (roleCode == null) continue;
+
+                    if (!shiftsByWh.TryGetValue(m.WarehouseId, out var shifts) || shifts.Count == 0)
+                        continue;  // kho nay chua co ca → bo qua (ca xoay)
+
+                    if (roleCode == "STAFF")
+                        m.WarehouseShiftId = shifts.FirstOrDefault(s =>
+                            s.Name.Contains("sáng") || s.Name.Contains("sang") ||
+                            s.Name.Contains("Sáng") || s.Name.Contains("Sang"))?.Id
+                            ?? shifts[0].Id;
+                    else if (roleCode == "MANAGER")
+                        m.WarehouseShiftId = shifts.FirstOrDefault(s =>
+                            s.Name.Contains("ngày") || s.Name.Contains("ngay") ||
+                            s.Name.Contains("Ngày") || s.Name.Contains("Ngay"))?.Id
+                            ?? shifts[0].Id;
+                    else
+                        m.WarehouseShiftId = shifts.First().Id;
+                }
+                context.SaveChanges();
             }
         }
     }

@@ -114,13 +114,14 @@ namespace WMS.Application.Features.Staff.CreateStaff
 
             var membershipDto = new CreateMembershipDto
             {
-                UserId      = staffUserId,
-                WarehouseId = request.WarehouseId,
-                RoleCode    = targetRole,
-                IsAllSkill  = request.IsAllSkill,
-                IsAllZone   = request.IsAllZone,
-                SkillIds    = request.SkillIds,
-                ZoneIds     = request.ZoneIds,
+                UserId           = staffUserId,
+                WarehouseId      = request.WarehouseId,
+                RoleCode         = targetRole,
+                IsAllSkill       = request.IsAllSkill,
+                IsAllZone        = request.IsAllZone,
+                SkillIds         = request.SkillIds,
+                ZoneIds          = request.ZoneIds,
+                WarehouseShiftId = request.WarehouseShiftId,  // null = ca xoay
             };
 
             await _membershipRepository.CreateMembershipAsync(membershipDto, cancellationToken);

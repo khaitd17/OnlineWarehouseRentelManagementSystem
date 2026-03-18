@@ -60,20 +60,44 @@ public class StaffShiftRepository : IStaffShiftRepository
             .Include(m => m.Zones)
             .AsQueryable();
 
-        if (caller != null && caller.Role.Code == "MANAGER")
+        if (caller == null)
+        {
+            // no membership → return empty
+            return new List<StaffScheduleDto>();
+        }
+
+        var callerRole = caller.Role.Code;
+
+        if (callerRole == "MANAGER")
         {
             var callerSkillIds = caller.Skills.Select(s => s.Id).ToList();
             var callerZoneIds  = caller.Zones.Select(z => z.Id).ToList();
             bool allSkill = caller.IsAllSkill;
             bool allZone  = caller.IsAllZone;
 
+            // Manager thấy those whose scope overlaps:
+            // - allSkill && allZone: thấy tất cả STAFF/MANAGER trong kho
+            // - allSkill: chỉ cần zone giao nhau
+            // - allZone: chỉ cần skill giao nhau
+            // - neither: phải có zone giao nhau HOẶC skill giao nhau
             q = q.Where(m =>
-                m.UserId == callerId ||
-                allSkill || allZone ||
-                m.Skills.Any(s => callerSkillIds.Contains(s.Id)) ||
-                m.Zones.Any(z => callerZoneIds.Contains(z.Id))
+                m.Role.Code == "OPERATOR" || // operators visible to manager
+                m.UserId == callerId      || // chính mình
+                (allSkill && allZone)     || // full access
+                (allSkill  && (m.IsAllZone || m.Zones.Any(z  => callerZoneIds.Contains(z.Id))))  ||
+                (allZone   && (m.IsAllSkill || m.Skills.Any(s => callerSkillIds.Contains(s.Id)))) ||
+                (!allSkill && !allZone && (
+                    m.Skills.Any(s => callerSkillIds.Contains(s.Id)) ||
+                    m.Zones.Any(z  => callerZoneIds.Contains(z.Id))
+                ))
             );
         }
+        else if (callerRole == "STAFF")
+        {
+            // STAFF chỉ thấy chính mình
+            q = q.Where(m => m.UserId == callerId);
+        }
+        // OPERATOR và OWNER thấy tất cả (q không filter thêm)
 
         var members = await q.OrderBy(m => m.User!.FullName).ToListAsync(ct);
         var memberIds = members.Select(m => m.Id).ToList();

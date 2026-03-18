@@ -168,9 +168,13 @@ public class TaskRepository : ITaskRepository
                 bool allZone  = caller.IsAllZone;
 
                 q = q.Where(m =>
-                    allSkill || allZone ||
-                    m.Skills.Any(s => callerSkillIds.Contains(s.Id)) ||
-                    m.Zones.Any(z => callerZoneIds.Contains(z.Id))
+                    (allSkill && allZone) ||
+                    (allSkill  && (m.IsAllZone  || m.Zones.Any(z  => callerZoneIds.Contains(z.Id))))  ||
+                    (allZone   && (m.IsAllSkill || m.Skills.Any(s => callerSkillIds.Contains(s.Id)))) ||
+                    (!allSkill && !allZone && (
+                        m.Skills.Any(s => callerSkillIds.Contains(s.Id)) ||
+                        m.Zones.Any(z  => callerZoneIds.Contains(z.Id))
+                    ))
                 );
             }
         }

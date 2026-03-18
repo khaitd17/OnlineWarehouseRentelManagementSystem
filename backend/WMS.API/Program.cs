@@ -145,8 +145,17 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
-    DatabaseSeeder.Seed(context);
+    context.Database.EnsureCreated();
+    try
+    {
+        DatabaseSeeder.Seed(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Seeder failed: {Message}", ex.Message);
+        // Khong throw de app van chay duoc
+    }
 }
 
 // ==========================================
