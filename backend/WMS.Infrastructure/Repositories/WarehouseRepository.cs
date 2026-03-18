@@ -83,6 +83,7 @@ public async Task<Warehouse?> GetByIdAsync(
         Is24HoursAccess = entity.Is24HoursAccess,
         OpenTime = entity.OpenTime,
         CloseTime = entity.CloseTime,
+        MainDoorDirection = entity.MainDoorDirection,
         Status = entity.Status ?? "UNKNOWN",
         CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
         WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
@@ -131,6 +132,7 @@ public async Task<Warehouse?> GetByIdAsync(
             Is24HoursAccess = entity.Is24HoursAccess,
             OpenTime = entity.OpenTime,
             CloseTime = entity.CloseTime,
+            MainDoorDirection = entity.MainDoorDirection,
             Status = entity.Status ?? "UNKNOWN",
             CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
             WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
@@ -161,6 +163,8 @@ public async Task<Warehouse?> GetByIdAsync(
         entity.Is24HoursAccess = warehouse.Is24HoursAccess;
         entity.OpenTime = warehouse.OpenTime;
         entity.CloseTime = warehouse.CloseTime;
+        entity.MainDoorDirection = warehouse.MainDoorDirection;
+        entity.Status = warehouse.Status ?? entity.Status;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
