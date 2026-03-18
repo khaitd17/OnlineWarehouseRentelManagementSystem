@@ -19,11 +19,13 @@ import ProtectedRoute from "./ProtectedRoute";
 import CreateWarehouse from "../pages/CreateWarehouse";
 import WarehouseDetail from "../pages/WarehouseDetail";
 import OwnerWarehouseList from "../pages/OwnerWarehouseList";
-import OwnerWarehouseDetailPage from "../pages/OwnerWarehouseDetailPage";
 import EditWarehouse from "../pages/EditWarehouse";
 import MyRentalRequests from "../pages/MyRentalRequests";
 import PendingRentalRequests from "../pages/PendingRentalRequests";
 import RentalRequestDetail from "../pages/RentalRequestDetail";
+import MyContracts from "../pages/MyContracts";
+import ContractDetail from "../pages/ContractDetail";
+import WarehouseContracts from "../pages/WarehouseContracts";
 import RoleBasedRoute from "./RoleBasedRoute";
 
 // Import New Pages for Requests
@@ -48,19 +50,7 @@ import AuditSessionsPage from "../pages/admin/AuditSessionsPage";
 import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
 import ReportsPage from "../pages/admin/ReportsPage";
 
-// Owner audit pages
-import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
-import OwnerAuditSessionDetailPage from "../pages/OwnerAuditSessionDetailPage";
-
-// Renter audit pages
-import RenterAuditSessionsPage from "../pages/RenterAuditSessionsPage";
-import RenterAuditSessionDetailPage from "../pages/RenterAuditSessionDetailPage";
-
-// Staff audit pages
-import StaffAuditSessionsPage from "../pages/StaffAuditSessionsPage";
-import StaffAuditSessionDetailPage from "../pages/StaffAuditSessionDetailPage";
 import EquipmentManagement from "../pages/EquipmentManagement";
-import OccupancyDashboard from "../pages/OccupancyDashboard";
 
 function AppRoutes() {
   return (
@@ -89,16 +79,16 @@ function AppRoutes() {
               <Route path="/create-warehouse" element={<CreateWarehouse />} />
               <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />
               <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
-              <Route path="/owner-warehouse/:id" element={<OwnerWarehouseDetailPage />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
-              <Route path="/owner-audit-sessions" element={<OwnerAuditSessionsPage />} />
-              <Route path="/owner-audit-sessions/:id" element={<OwnerAuditSessionDetailPage />} />
+              <Route path="/my-rental-requests" element={<MyRentalRequests />} />
+              <Route path="/my-contracts" element={<MyContracts />} />
+              <Route path="/contracts/:id" element={<ContractDetail />} />
+              <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
               <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
               <Route path="/equipment-management" element={<EquipmentManagement />} />
-              <Route path="/occupancy-dashboard" element={<OccupancyDashboard />} />
               <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
               <Route path="/settings" element={<ProfilePage />} />
             </Route>
@@ -112,8 +102,6 @@ function AppRoutes() {
               <Route path="/outbound-requests" element={<OutboundRequestsList />} />
               <Route path="/confirm-movement" element={<ConfirmMovement />} />
               <Route path="/transaction-history" element={<TransactionHistory />} />
-              <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
-              <Route path="/staff-audit-sessions/:id" element={<StaffAuditSessionDetailPage />} />
             </Route>
           </Route>
 
@@ -123,10 +111,6 @@ function AppRoutes() {
               <Route path="/renter-dashboard" element={<RenterDashboard />} />
               <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
               <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
-              <Route path="/my-rental-requests" element={<MyRentalRequests />} />
-              <Route path="/transaction-history" element={<TransactionHistory />} />
-              <Route path="/renter-audit-sessions" element={<RenterAuditSessionsPage />} />
-              <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
             </Route>
           </Route>
 

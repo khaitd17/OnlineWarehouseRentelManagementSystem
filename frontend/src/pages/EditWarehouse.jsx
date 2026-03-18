@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import api from "../api/api";
+import api from "../services/axiosClient";
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
 import RentalAreaManagement from "../components/warehouse/RentalAreaManagement";
 

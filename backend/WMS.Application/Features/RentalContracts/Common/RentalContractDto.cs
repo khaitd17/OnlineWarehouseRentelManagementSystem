@@ -7,8 +7,11 @@ public class RentalContractDto
     public string ContractNumber { get; set; } = null!;
     public int RenterId { get; set; }
     public string RenterName { get; set; } = null!;
+    public string RenterEmail { get; set; } = null!;
+    public string? OwnerName { get; set; }
     public int WarehouseId { get; set; }
     public string WarehouseName { get; set; } = null!;
+    public string WarehouseAddress { get; set; } = null!;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public decimal MonthlyPayment { get; set; }
@@ -16,5 +19,12 @@ public class RentalContractDto
     public decimal? DepositAmount { get; set; }
     public string Status { get; set; } = null!;
     public string? Terms { get; set; }
+    public string? ContractFileUrl { get; set; }
+    public string? SignedFileUrl { get; set; }
+    public string? ContractImageUrl { get; set; }
+    public DateTime? SignedAt { get; set; }
+    public string? OwnerSignedFileUrl { get; set; }
+    public DateTime? OwnerSignedAt { get; set; }
+    public string? OwnerSignatureBase64 { get; set; }
     public DateTime CreatedAt { get; set; }
 }

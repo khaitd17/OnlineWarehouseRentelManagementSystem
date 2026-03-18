@@ -138,11 +138,17 @@ public class RentalRequestsController : ControllerBase
     {
         try
         {
+            Console.WriteLine($"[CONTROLLER] ApproveRentalRequest called - ID: {id}");
+            Console.WriteLine($"[CONTROLLER] Command: RequestId={command.RequestId}, MonthlyPayment={command.MonthlyPayment}, StartDate={command.StartDate}, DurationMonths={command.DurationMonths}");
+
             if (id != command.RequestId)
                 return BadRequest(new { message = "Request ID mismatch" });
 
             command.ReviewerId = GetUserId();
+            Console.WriteLine($"[CONTROLLER] ReviewerId set to: {command.ReviewerId}");
+
             var contractId = await _mediator.Send(command);
+            Console.WriteLine($"[CONTROLLER] Contract created successfully - ContractId: {contractId}");
 
             return Ok(new
             {
@@ -152,15 +158,31 @@ public class RentalRequestsController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
+            Console.WriteLine($"[CONTROLLER ERROR] UnauthorizedAccessException: {ex.Message}");
             return Forbid(ex.Message);
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(new { message = ex.Message });
+            Console.WriteLine($"[CONTROLLER ERROR] InvalidOperationException: {ex.Message}");
+            Console.WriteLine($"[CONTROLLER ERROR] StackTrace: {ex.StackTrace}");
+            return BadRequest(new { message = ex.Message, stackTrace = ex.StackTrace, type = ex.GetType().Name });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            Console.WriteLine($"[CONTROLLER ERROR] Exception: {ex.GetType().Name}");
+            Console.WriteLine($"[CONTROLLER ERROR] Message: {ex.Message}");
+            Console.WriteLine($"[CONTROLLER ERROR] StackTrace: {ex.StackTrace}");
+            if (ex.InnerException != null)
+            {
+                Console.WriteLine($"[CONTROLLER ERROR] InnerException: {ex.InnerException.Message}");
+            }
+            return StatusCode(500, new {
+                message = "An error occurred",
+                error = ex.Message,
+                stackTrace = ex.StackTrace,
+                type = ex.GetType().Name,
+                innerException = ex.InnerException?.Message
+            });
         }
     }
 

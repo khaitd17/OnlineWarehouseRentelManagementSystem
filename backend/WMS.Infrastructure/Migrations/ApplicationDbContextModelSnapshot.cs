@@ -173,6 +173,19 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("decimal(15, 2)")
                         .HasColumnName("monthly_payment");
 
+                    b.Property<string>("OwnerSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("owner_signature_base64");
+
+                    b.Property<DateTime?>("OwnerSignedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("owner_signed_at");
+
+                    b.Property<string>("OwnerSignedFileUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("owner_signed_file_url");
+
                     b.Property<int>("RenterId")
                         .HasColumnType("int")
                         .HasColumnName("renter_id");
@@ -181,15 +194,24 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("request_id");
 
+                    b.Property<DateTime?>("SignedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("signed_at");
+
+                    b.Property<string>("SignedFileUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("signed_file_url");
+
                     b.Property<DateOnly>("StartDate")
                         .HasColumnType("date")
                         .HasColumnName("start_date");
 
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("ACTIVE")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasDefaultValue("PENDING_OWNER_SIGNATURE")
                         .HasColumnName("status");
 
                     b.Property<DateTime?>("TerminatedAt")
@@ -199,6 +221,10 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<string>("TerminationReason")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("termination_reason");
+
+                    b.Property<string>("Terms")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("terms");
 
                     b.Property<decimal>("TotalValue")
                         .HasColumnType("decimal(15, 2)")
@@ -237,6 +263,105 @@ namespace WMS.Infrastructure.Migrations
                         });
 
                     b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ContractLog", b =>
+                {
+                    b.Property<int>("LogId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("log_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("LogId"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("action");
+
+                    b.Property<int>("ContractId")
+                        .HasColumnType("int")
+                        .HasColumnName("contract_id");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("details");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("ip_address");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("LogId")
+                        .HasName("PK_contract_logs");
+
+                    b.HasIndex(new[] { "ContractId" }, "idx_cl_contract");
+
+                    b.ToTable("contract_logs", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ContractVerification", b =>
+                {
+                    b.Property<int>("VerificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("verification_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VerificationId"));
+
+                    b.Property<int>("ContractId")
+                        .HasColumnType("int")
+                        .HasColumnName("contract_id");
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsVerified")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_verified");
+
+                    b.Property<string>("OtpCode")
+                        .IsRequired()
+                        .HasMaxLength(6)
+                        .HasColumnType("nvarchar(6)")
+                        .HasColumnName("otp_code");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("verified_at");
+
+                    b.HasKey("VerificationId")
+                        .HasName("PK_contract_verifications");
+
+                    b.HasIndex(new[] { "ContractId" }, "idx_cv_contract");
+
+                    b.HasIndex(new[] { "UserId" }, "idx_cv_user");
+
+                    b.ToTable("contract_verifications", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.Equipment", b =>
@@ -520,6 +645,69 @@ namespace WMS.Infrastructure.Migrations
                     b.HasIndex(new[] { "WarehouseId" }, "idx_inv_transactions_warehouse");
 
                     b.ToTable("inventory_transactions", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.Notification", b =>
+                {
+                    b.Property<int>("NotificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("notification_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("NotificationId"));
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_read");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("message");
+
+                    b.Property<int?>("ReferenceId")
+                        .HasColumnType("int")
+                        .HasColumnName("reference_id");
+
+                    b.Property<string>("ReferenceType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("reference_type");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("title");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("type");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("NotificationId")
+                        .HasName("PK_notifications");
+
+                    b.HasIndex(new[] { "CreatedAt" }, "idx_notifications_created_at");
+
+                    b.HasIndex(new[] { "IsRead" }, "idx_notifications_is_read");
+
+                    b.HasIndex(new[] { "UserId" }, "idx_notifications_user");
+
+                    b.ToTable("notifications", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.PasswordResetToken", b =>
@@ -1946,6 +2134,18 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("PerformedByNavigation");
 
                     b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_notifications_user");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.PasswordResetToken", b =>

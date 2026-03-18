@@ -30,6 +30,9 @@ public class GetPendingRequestsHandler : IRequestHandler<GetPendingRequestsQuery
         {
             var warehouse = await _warehouseRepository.GetByIdAsync(r.WarehouseId, cancellationToken);
             var renter = await _userRepository.GetByIdAsync(r.RenterId, cancellationToken);
+            var owner = warehouse != null
+                ? await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken)
+                : null;
             result.Add(new RentalRequestDto
             {
                 RequestId = r.RequestId,
@@ -49,7 +52,10 @@ public class GetPendingRequestsHandler : IRequestHandler<GetPendingRequestsQuery
                 ReviewedByName = null,
                 ReviewedAt = r.ReviewedAt,
                 RejectionReason = r.RejectionReason,
-                ContractImageUrl = r.ContractImageUrl
+                ContractImageUrl = r.ContractImageUrl,
+                OwnerName = owner?.FullName ?? "",
+                OwnerEmail = owner?.Email ?? "",
+                OwnerPhone = owner?.Phone ?? ""
             });
         }
         return result;

@@ -50,8 +50,10 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
                 ContractNumber = contract.ContractNumber,
                 RenterId = contract.RenterId,
                 RenterName = renter?.FullName ?? "Unknown",
+                RenterEmail = renter?.Email ?? "",
                 WarehouseId = contract.WarehouseId,
                 WarehouseName = warehouse?.Name ?? "Unknown",
+                WarehouseAddress = warehouse?.Address ?? "",
                 StartDate = contract.StartDate,
                 EndDate = contract.EndDate,
                 MonthlyPayment = contract.MonthlyPayment,
@@ -59,6 +61,9 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
                 DepositAmount = contract.DepositAmount,
                 Status = contract.Status,
                 Terms = contract.Terms,
+                ContractFileUrl = contract.ContractFileUrl,
+                SignedFileUrl = contract.SignedFileUrl,
+                SignedAt = contract.SignedAt,
                 CreatedAt = contract.CreatedAt
             });
         }
