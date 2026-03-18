@@ -104,8 +104,15 @@ const DashboardLayout = () => {
     }
     setShowNotifications(false);
 
-    if (notification.type === 'CONTRACT_APPROVED' && notification.referenceId) {
-      navigate(`/contracts/${notification.referenceId}`);
+    // Navigate based on notification type
+    if (notification.referenceId) {
+      if (notification.type === 'CONTRACT_APPROVED' ||
+          notification.type === 'CONTRACT_SENT' ||
+          notification.type === 'CONTRACT_SIGNED') {
+        navigate(`/contracts/${notification.referenceId}`);
+      } else if (notification.type === 'CONTRACT_REJECTED') {
+        navigate('/my-rental-requests');
+      }
     } else if (notification.type === 'CONTRACT_REJECTED') {
       navigate('/my-rental-requests');
     }
@@ -207,13 +214,19 @@ const DashboardLayout = () => {
                             width: '36px', height: '36px', borderRadius: '50%',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0,
-                            backgroundColor: n.type === 'CONTRACT_APPROVED' ? '#dcfce7' : '#fee2e2'
+                            backgroundColor: n.type === 'CONTRACT_APPROVED' || n.type === 'CONTRACT_SIGNED' ? '#dcfce7'
+                              : n.type === 'CONTRACT_SENT' ? '#dbeafe'
+                              : '#fee2e2'
                           }}>
                             <span className="material-symbols-outlined" style={{
                               fontSize: '18px',
-                              color: n.type === 'CONTRACT_APPROVED' ? '#16a34a' : '#dc2626'
+                              color: n.type === 'CONTRACT_APPROVED' || n.type === 'CONTRACT_SIGNED' ? '#16a34a'
+                                : n.type === 'CONTRACT_SENT' ? '#2563eb'
+                                : '#dc2626'
                             }}>
-                              {n.type === 'CONTRACT_APPROVED' ? 'check_circle' : 'cancel'}
+                              {n.type === 'CONTRACT_APPROVED' || n.type === 'CONTRACT_SIGNED' ? 'check_circle'
+                                : n.type === 'CONTRACT_SENT' ? 'description'
+                                : 'cancel'}
                             </span>
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>

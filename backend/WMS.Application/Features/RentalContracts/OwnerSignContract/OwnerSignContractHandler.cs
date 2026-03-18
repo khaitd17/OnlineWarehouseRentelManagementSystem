@@ -62,11 +62,12 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
             MonthlyPayment = contract.MonthlyPayment,
             TotalValue = contract.TotalValue,
             DepositAmount = contract.DepositAmount,
-            Terms = contract.Terms
+            Terms = contract.Terms,
+            OwnerSignatureBase64 = request.SignatureBase64  // Chữ ký chủ kho
         };
 
         // Generate PDF with owner signature embedded
-        var ownerSignedFileUrl = await _pdfService.GenerateContractPdfAsync(pdfData, request.SignatureBase64);
+        var ownerSignedFileUrl = await _pdfService.GenerateContractPdfAsync(pdfData);
 
         // Update contract domain
         contract.OwnerSign(ownerSignedFileUrl, request.SignatureBase64);

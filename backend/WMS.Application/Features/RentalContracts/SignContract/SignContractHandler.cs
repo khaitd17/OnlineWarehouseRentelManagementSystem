@@ -76,11 +76,13 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
             MonthlyPayment = contract.MonthlyPayment,
             TotalValue = contract.TotalValue,
             DepositAmount = contract.DepositAmount,
-            Terms = contract.Terms
+            Terms = contract.Terms,
+            OwnerSignatureBase64 = contract.OwnerSignatureBase64,  // Chữ ký chủ kho đã ký trước đó
+            RenterSignatureBase64 = request.SignatureBase64         // Chữ ký người thuê
         };
 
-        // Tạo PDF với chữ ký nhúng trực tiếp (single-pass, không cần mở lại PDF)
-        var signedFileUrl = await _pdfService.GenerateContractPdfAsync(pdfData, request.SignatureBase64);
+        // Tạo PDF với CẢ HAI chữ ký (owner + renter)
+        var signedFileUrl = await _pdfService.GenerateContractPdfAsync(pdfData);
 
         // Update contract domain
         contract.SetContractFileUrl(signedFileUrl);

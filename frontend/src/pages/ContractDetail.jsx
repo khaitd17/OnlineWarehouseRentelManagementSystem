@@ -198,7 +198,7 @@ const ContractDetail = () => {
       )}
 
       {/* PDF Links */}
-      {(contract.contractFileUrl || contract.signedFileUrl) && (
+      {(contract.contractFileUrl || contract.ownerSignedFileUrl || contract.signedFileUrl) && (
         <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
           boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginTop: "1rem" }}>
           <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
@@ -206,16 +206,25 @@ const ContractDetail = () => {
             Tài liệu hợp đồng
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
-            {contract.contractFileUrl && (
-              <a href={`http://localhost:5276${contract.contractFileUrl}`} target="_blank" rel="noopener noreferrer"
-                style={{ color: "#0095c7", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
-                📄 Hợp đồng gốc (PDF)
-              </a>
-            )}
+            {/* Hợp đồng đã ký đầy đủ (cả owner + renter) */}
             {contract.signedFileUrl && (
               <a href={`http://localhost:5276${contract.signedFileUrl}`} target="_blank" rel="noopener noreferrer"
                 style={{ color: "#16a34a", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
-                ✅ Hợp đồng đã ký ({formatDate(contract.signedAt)})
+                ✅ Hợp đồng đã ký đầy đủ ({formatDate(contract.signedAt)})
+              </a>
+            )}
+            {/* Hợp đồng đã ký bởi chủ kho (chờ người thuê ký) */}
+            {!contract.signedFileUrl && contract.ownerSignedFileUrl && (
+              <a href={`http://localhost:5276${contract.ownerSignedFileUrl}`} target="_blank" rel="noopener noreferrer"
+                style={{ color: "#0095c7", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
+                📝 Hợp đồng đã ký bởi chủ kho ({formatDate(contract.ownerSignedAt)})
+              </a>
+            )}
+            {/* Hợp đồng gốc (chưa ký) */}
+            {!contract.signedFileUrl && !contract.ownerSignedFileUrl && contract.contractFileUrl && (
+              <a href={`http://localhost:5276${contract.contractFileUrl}`} target="_blank" rel="noopener noreferrer"
+                style={{ color: "#64748b", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
+                📄 Hợp đồng gốc (chưa ký)
               </a>
             )}
           </div>

@@ -15,6 +15,8 @@ public class ContractPdfData
     public decimal TotalValue { get; set; }
     public decimal? DepositAmount { get; set; }
     public string? Terms { get; set; }
+    public string? OwnerSignatureBase64 { get; set; }  // Chữ ký chủ kho
+    public string? RenterSignatureBase64 { get; set; } // Chữ ký người thuê
 }
 
 public interface IPdfService

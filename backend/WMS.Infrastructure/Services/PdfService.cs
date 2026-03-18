@@ -157,21 +157,67 @@ public class PdfService : IPdfService
             // ===== Ô KÝ TÊN - Cố định ở bottom page =====
             var pageNum = pdf.GetNumberOfPages();
 
-            // ===== Chữ ký Bên B (Người thuê - Renter) hoặc Owner =====
-            if (signatureBase64 != null)
+            string? tempOwnerImgPath = null;
+
+            try
             {
-                if (signatureBase64.Contains(','))
-                    signatureBase64 = signatureBase64[(signatureBase64.IndexOf(',') + 1)..];
+                // ===== Chữ ký Bên A (Chủ kho - Owner) =====
+                if (data.OwnerSignatureBase64 != null)
+                {
+                    Console.WriteLine($"[PDF] Rendering owner signature at position ({BenASignatureX}, {BenBSignatureY})");
+                    var ownerSig = data.OwnerSignatureBase64;
+                    if (ownerSig.Contains(','))
+                        ownerSig = ownerSig[(ownerSig.IndexOf(',') + 1)..];
 
-                var sigBytes = Convert.FromBase64String(signatureBase64);
-                tempRenterImgPath = Path.Combine(contractsDir, $"tmp_sig_{Guid.NewGuid():N}.png");
-                File.WriteAllBytes(tempRenterImgPath, sigBytes);
+                    var ownerSigBytes = Convert.FromBase64String(ownerSig);
+                    Console.WriteLine($"[PDF] Owner signature decoded: {ownerSigBytes.Length} bytes");
 
-                var sigImg = new Image(ImageDataFactory.Create(tempRenterImgPath));
-                sigImg.SetFixedPosition(pageNum, BenBSignatureX, BenBSignatureY);
-                sigImg.SetWidth(SignatureImageWidth);
-                sigImg.SetHeight(SignatureImageHeight);
-                document.Add(sigImg);
+                    tempOwnerImgPath = Path.Combine(contractsDir, $"tmp_owner_{Guid.NewGuid():N}.png");
+                    File.WriteAllBytes(tempOwnerImgPath, ownerSigBytes);
+
+                    var ownerSigImg = new Image(ImageDataFactory.Create(tempOwnerImgPath));
+                    ownerSigImg.SetFixedPosition(pageNum, BenASignatureX, BenBSignatureY);
+                    ownerSigImg.SetWidth(SignatureImageWidth);
+                    ownerSigImg.SetHeight(SignatureImageHeight);
+                    document.Add(ownerSigImg);
+                    Console.WriteLine($"[PDF] Owner signature added to PDF successfully");
+                }
+                else
+                {
+                    Console.WriteLine($"[PDF] No owner signature provided (OwnerSignatureBase64 is null)");
+                }
+
+                // ===== Chữ ký Bên B (Người thuê - Renter) =====
+                var renterSig = data.RenterSignatureBase64 ?? signatureBase64;
+                if (renterSig != null)
+                {
+                    Console.WriteLine($"[PDF] Rendering renter signature at position ({BenBSignatureX}, {BenBSignatureY})");
+                    if (renterSig.Contains(','))
+                        renterSig = renterSig[(renterSig.IndexOf(',') + 1)..];
+
+                    var sigBytes = Convert.FromBase64String(renterSig);
+                    Console.WriteLine($"[PDF] Renter signature decoded: {sigBytes.Length} bytes");
+
+                    tempRenterImgPath = Path.Combine(contractsDir, $"tmp_renter_{Guid.NewGuid():N}.png");
+                    File.WriteAllBytes(tempRenterImgPath, sigBytes);
+
+                    var sigImg = new Image(ImageDataFactory.Create(tempRenterImgPath));
+                    sigImg.SetFixedPosition(pageNum, BenBSignatureX, BenBSignatureY);
+                    sigImg.SetWidth(SignatureImageWidth);
+                    sigImg.SetHeight(SignatureImageHeight);
+                    document.Add(sigImg);
+                    Console.WriteLine($"[PDF] Renter signature added to PDF successfully");
+                }
+                else
+                {
+                    Console.WriteLine($"[PDF] No renter signature provided");
+                }
+            }
+            finally
+            {
+                // Cleanup owner temp file
+                if (tempOwnerImgPath != null && File.Exists(tempOwnerImgPath))
+                    File.Delete(tempOwnerImgPath);
             }
 
             // Separator line

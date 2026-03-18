@@ -152,6 +152,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.OwnerSignedAt).HasColumnName("owner_signed_at");
             entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
             entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
+            entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
             entity.Property(e => e.TotalValue).HasColumnType("decimal(15, 2)").HasColumnName("total_value");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
