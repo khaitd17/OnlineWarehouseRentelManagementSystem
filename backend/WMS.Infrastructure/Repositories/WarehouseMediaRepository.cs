@@ -47,4 +47,16 @@ public class WarehouseMediaRepository : IWarehouseMediaRepository
             .Select(x => x.MediaUrl)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<bool> DeleteMediaAsync(int mediaId, CancellationToken cancellationToken)
+    {
+        var media = await _context.WarehouseMedia
+            .FirstOrDefaultAsync(m => m.MediaId == mediaId, cancellationToken);
+        
+        if (media == null) return false;
+
+        _context.WarehouseMedia.Remove(media);
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
 }

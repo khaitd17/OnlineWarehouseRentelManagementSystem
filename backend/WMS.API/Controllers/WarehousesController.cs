@@ -9,6 +9,7 @@ using WMS.Application.Features.Warehouses.GetWarehouseDetail;
 using WMS.Application.Features.Warehouses.UpdateWarehouse;
 using WMS.Application.Features.Warehouses.GetOccupancyStats;
 using WMS.Application.Features.Warehouses.DeleteWarehouse;
+using WMS.Application.Features.Warehouses.DeleteWarehouseMedia;
 
 namespace WMS.API.Controllers;
 
@@ -182,5 +183,19 @@ public class WarehouseController : ControllerBase
         var result = await _mediator.Send(new GetOccupancyStatsQuery(int.Parse(userId)));
 
         return Ok(result);
+    }
+
+    [HttpDelete("media/{mediaId}")]
+    public async Task<IActionResult> DeleteMedia(int mediaId)
+    {
+        var result = await _mediator.Send(new DeleteWarehouseMediaCommand
+        {
+            MediaId = mediaId
+        });
+
+        if (!result)
+            return NotFound();
+
+        return Ok(new { message = "Media deleted successfully" });
     }
 }

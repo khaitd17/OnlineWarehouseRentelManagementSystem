@@ -14,4 +14,8 @@ public interface IWarehouseMediaRepository
     Task<List<string>> GetByWarehouseIdAsync(
         int warehouseId,
         CancellationToken cancellationToken);
+
+    Task<bool> DeleteMediaAsync(
+        int mediaId,
+        CancellationToken cancellationToken);
 }

@@ -19,6 +19,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import CreateWarehouse from "../pages/CreateWarehouse";
 import WarehouseDetail from "../pages/WarehouseDetail";
 import OwnerWarehouseList from "../pages/OwnerWarehouseList";
+import OwnerWarehouseDetailPage from "../pages/OwnerWarehouseDetailPage";
 import EditWarehouse from "../pages/EditWarehouse";
 import MyRentalRequests from "../pages/MyRentalRequests";
 import PendingRentalRequests from "../pages/PendingRentalRequests";
@@ -26,6 +27,7 @@ import RentalRequestDetail from "../pages/RentalRequestDetail";
 import MyContracts from "../pages/MyContracts";
 import ContractDetail from "../pages/ContractDetail";
 import WarehouseContracts from "../pages/WarehouseContracts";
+import OccupancyDashboard from "../pages/OccupancyDashboard";
 import RoleBasedRoute from "./RoleBasedRoute";
 
 // Import New Pages for Requests
@@ -75,6 +77,7 @@ function AppRoutes() {
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
+              <Route path="/owner-warehouse/:id" element={<OwnerWarehouseDetailPage />} />
               <Route path="/post-warehouse" element={<PostWarehousePage />} />
               <Route path="/create-warehouse" element={<CreateWarehouse />} />
               <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />
@@ -89,6 +92,7 @@ function AppRoutes() {
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
               <Route path="/equipment-management" element={<EquipmentManagement />} />
+              <Route path="/occupancy-dashboard" element={<OccupancyDashboard />} />
               <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
               <Route path="/settings" element={<ProfilePage />} />
             </Route>
