@@ -13,6 +13,9 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
     private readonly IPdfService _pdfService;
     private readonly INotificationRepository _notificationRepo;
     private readonly INotificationSender _notificationSender;
+    private readonly IWarehouseRepository _warehouseRepo;
+    private readonly IUserRepository _userRepo;
+    private readonly IRentalRequestRepository _rentalRequestRepo;
 
     public SignContractHandler(
         IRentalContractRepository contractRepo,
@@ -20,7 +23,10 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         IContractLogRepository logRepo,
         IPdfService pdfService,
         INotificationRepository notificationRepo,
-        INotificationSender notificationSender)
+        INotificationSender notificationSender,
+        IWarehouseRepository warehouseRepo,
+        IUserRepository userRepo,
+        IRentalRequestRepository rentalRequestRepo)
     {
         _contractRepo = contractRepo;
         _verificationRepo = verificationRepo;
@@ -28,6 +34,9 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         _pdfService = pdfService;
         _notificationRepo = notificationRepo;
         _notificationSender = notificationSender;
+        _warehouseRepo = warehouseRepo;
+        _userRepo = userRepo;
+        _rentalRequestRepo = rentalRequestRepo;
     }
 
     public async Task<SignContractResult> Handle(SignContractCommand request, CancellationToken cancellationToken)
@@ -48,13 +57,33 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         if (!verification.IsVerified)
             throw new InvalidOperationException("OTP not verified. Please verify OTP first.");
 
-        if (string.IsNullOrWhiteSpace(contract.ContractFileUrl))
-            throw new InvalidOperationException("Contract PDF not found");
+        // Tạo PDF đã ký trong một bước duy nhất (tránh lỗi khi mở lại PDF)
+        var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, cancellationToken);
+        var renter = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
+        var owner = warehouse != null ? await _userRepo.GetByIdAsync(warehouse.OwnerId, cancellationToken) : null;
 
-        // Embed signature into PDF
-        var signedFileUrl = await _pdfService.EmbedSignatureInPdfAsync(contract.ContractFileUrl, request.SignatureBase64);
+        var pdfData = new ContractPdfData
+        {
+            ContractId = contract.ContractId,
+            ContractNumber = contract.ContractNumber,
+            RenterName = renter?.FullName ?? "Unknown",
+            RenterEmail = renter?.Email ?? "",
+            OwnerName = owner?.FullName ?? "Unknown",
+            WarehouseName = warehouse?.Name ?? "",
+            WarehouseAddress = warehouse?.Address ?? "",
+            StartDate = contract.StartDate,
+            EndDate = contract.EndDate,
+            MonthlyPayment = contract.MonthlyPayment,
+            TotalValue = contract.TotalValue,
+            DepositAmount = contract.DepositAmount,
+            Terms = contract.Terms
+        };
+
+        // Tạo PDF với chữ ký nhúng trực tiếp (single-pass, không cần mở lại PDF)
+        var signedFileUrl = await _pdfService.GenerateContractPdfAsync(pdfData, request.SignatureBase64);
 
         // Update contract domain
+        contract.SetContractFileUrl(signedFileUrl);
         contract.Sign(signedFileUrl);
         await _contractRepo.UpdateAsync(contract);
 

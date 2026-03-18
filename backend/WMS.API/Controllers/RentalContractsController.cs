@@ -9,6 +9,7 @@ using WMS.Application.Features.RentalContracts.SendContractOtp;
 using WMS.Application.Features.RentalContracts.VerifyContractOtp;
 using WMS.Application.Features.RentalContracts.SignContract;
 using WMS.Application.Features.RentalContracts.GetContractLogs;
+using WMS.Application.Features.RentalContracts.OwnerSignContract;
 
 namespace WMS.API.Controllers;
 
@@ -159,6 +160,34 @@ public class RentalContractsController : ControllerBase
         }
     }
 
+    [HttpPost("{id}/owner-sign")]
+    public async Task<IActionResult> OwnerSignContract(int id, [FromBody] SignContractRequest body)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _mediator.Send(new OwnerSignContractCommand
+            {
+                ContractId = id,
+                OwnerId = userId,
+                SignatureBase64 = body.SignatureBase64
+            });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message, detail = ex.ToString() });
+        }
+    }
+
     [HttpPost("{id}/sign")]
     public async Task<IActionResult> SignContract(int id, [FromBody] SignContractRequest body)
     {
@@ -186,7 +215,7 @@ public class RentalContractsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message, detail = ex.ToString() });
         }
     }
 

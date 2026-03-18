@@ -19,6 +19,8 @@ public class ContractPdfData
 
 public interface IPdfService
 {
-    Task<string> GenerateContractPdfAsync(ContractPdfData data);
+    Task<string> GenerateContractPdfAsync(ContractPdfData data, string? signatureBase64 = null);
     Task<string> EmbedSignatureInPdfAsync(string pdfRelativeUrl, string signatureBase64);
+    Task<string> CreateSignedDocumentFromImageAsync(string imageRelativeUrl, string signatureBase64);
+    bool PdfFileExists(string pdfRelativeUrl);
 }

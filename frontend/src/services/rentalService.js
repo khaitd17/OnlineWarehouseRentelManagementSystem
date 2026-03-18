@@ -58,6 +58,11 @@ const rentalService = {
   },
 
   // ── Contract Signing APIs ──────────────────────────────────────────
+  ownerSignContract: async (contractId, signatureBase64) => {
+    const response = await axiosClient.post(`/rental-contracts/${contractId}/owner-sign`, { signatureBase64 });
+    return response.data;
+  },
+
   sendContractOtp: async (contractId) => {
     const response = await axiosClient.post(`/rental-contracts/${contractId}/send-otp`);
     return response.data;
@@ -76,6 +81,15 @@ const rentalService = {
   getContractLogs: async (contractId) => {
     const response = await axiosClient.get(`/rental-contracts/${contractId}/logs`);
     return response.data;
+  },
+
+  uploadContractFile: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await axiosClient.post("/upload/contract", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data; // { url: "/uploads/contracts/..." }
   },
 };
 

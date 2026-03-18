@@ -100,6 +100,9 @@ public class RentalContractRepository : IRentalContractRepository
         dbContract.SignedFileUrl = contract.SignedFileUrl;
         dbContract.SignedAt = contract.SignedAt;
         dbContract.Terms = contract.Terms;
+        dbContract.OwnerSignedFileUrl = contract.OwnerSignedFileUrl;
+        dbContract.OwnerSignedAt = contract.OwnerSignedAt;
+        dbContract.OwnerSignatureBase64 = contract.OwnerSignatureBase64;
 
         await _context.SaveChangesAsync();
     }

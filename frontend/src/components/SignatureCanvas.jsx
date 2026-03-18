@@ -98,7 +98,15 @@ const SignatureCanvas = forwardRef((props, ref) => {
     },
     toBase64: () => {
       const canvas = canvasRef.current;
-      return canvas.toDataURL("image/png").split(",")[1];
+      // Tạo canvas tạm với nền trắng để iText7 xử lý được (tránh lỗi Unknown PdfException với transparent PNG)
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempCtx = tempCanvas.getContext("2d");
+      tempCtx.fillStyle = "#ffffff";
+      tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.drawImage(canvas, 0, 0);
+      return tempCanvas.toDataURL("image/png").split(",")[1];
     },
     isEmpty: () => {
       const canvas = canvasRef.current;

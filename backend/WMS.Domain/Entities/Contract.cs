@@ -39,6 +39,12 @@ public partial class Contract
 
     public DateTime? UpdatedAt { get; set; }
 
+    public string? OwnerSignedFileUrl { get; set; }
+
+    public DateTime? OwnerSignedAt { get; set; }
+
+    public string? OwnerSignatureBase64 { get; set; }
+
     public DateTime? TerminatedAt { get; set; }
 
     public string? TerminationReason { get; set; }

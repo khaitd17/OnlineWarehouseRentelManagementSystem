@@ -10,15 +10,18 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
     private readonly IRentalContractRepository _contractRepo;
     private readonly IUserRepository _userRepo;
     private readonly IWarehouseRepository _warehouseRepo;
+    private readonly IRentalRequestRepository _rentalRequestRepo;
 
     public GetRentalContractByIdHandler(
         IRentalContractRepository contractRepo,
         IUserRepository userRepo,
-        IWarehouseRepository warehouseRepo)
+        IWarehouseRepository warehouseRepo,
+        IRentalRequestRepository rentalRequestRepo)
     {
         _contractRepo = contractRepo;
         _userRepo = userRepo;
         _warehouseRepo = warehouseRepo;
+        _rentalRequestRepo = rentalRequestRepo;
     }
 
     public async Task<RentalContractDto?> Handle(
@@ -37,6 +40,10 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
             throw new UnauthorizedAccessException("Access denied");
 
         var renter = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
+        var owner = warehouse != null
+            ? await _userRepo.GetByIdAsync(warehouse.OwnerId, cancellationToken)
+            : null;
+        var rentalRequest = await _rentalRequestRepo.GetByIdAsync(contract.RentalRequestId);
 
         return new RentalContractDto
         {
@@ -46,6 +53,7 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
             RenterId = contract.RenterId,
             RenterName = renter?.FullName ?? "Unknown",
             RenterEmail = renter?.Email ?? "",
+            OwnerName = owner?.FullName ?? "",
             WarehouseId = contract.WarehouseId,
             WarehouseName = warehouse?.Name ?? "Unknown",
             WarehouseAddress = warehouse?.Address ?? "",
@@ -58,7 +66,11 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
             Terms = contract.Terms,
             ContractFileUrl = contract.ContractFileUrl,
             SignedFileUrl = contract.SignedFileUrl,
+            ContractImageUrl = rentalRequest?.ContractImageUrl,
             SignedAt = contract.SignedAt,
+            OwnerSignedFileUrl = contract.OwnerSignedFileUrl,
+            OwnerSignedAt = contract.OwnerSignedAt,
+            OwnerSignatureBase64 = contract.OwnerSignatureBase64,
             CreatedAt = contract.CreatedAt
         };
     }

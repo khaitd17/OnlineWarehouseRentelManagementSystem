@@ -58,7 +58,9 @@ const ContractSigningModal = ({ contract, onClose, onSignSuccess }) => {
       onSignSuccess?.();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to sign contract");
+      const msg = err.response?.data?.message || "Failed to sign contract";
+      const detail = err.response?.data?.error;
+      setError(detail ? `${msg}: ${detail}` : msg);
     } finally {
       setLoading(false);
     }

@@ -23,7 +23,18 @@ public class ApproveRentalRequestValidator : AbstractValidator<ApproveRentalRequ
             .WithMessage("Deposit amount must be non-negative");
 
         RuleFor(x => x.Terms)
-            .MaximumLength(2000).When(x => x.Terms != null)
-            .WithMessage("Terms must not exceed 2000 characters");
+            .MaximumLength(5000).When(x => x.Terms != null)
+            .WithMessage("Terms must not exceed 5000 characters");
+
+        RuleFor(x => x.StartDate)
+            .GreaterThanOrEqualTo(DateTime.UtcNow.AddDays(-1).Date).When(x => x.StartDate.HasValue)
+            .WithMessage("Start date must not be in the past");
+
+        RuleFor(x => x.DurationMonths)
+            .InclusiveBetween(1, 120).When(x => x.DurationMonths.HasValue)
+            .WithMessage("Duration must be between 1 and 120 months");
+
+        // Note: OwnerSignatureBase64 is no longer required at approval time
+        // Owner will sign the contract after it's created via /owner-sign endpoint
     }
 }

@@ -107,14 +107,21 @@ const ContractDetail = () => {
         </div>
       </div>
 
+      {/* Bên cho thuê (Bên A) */}
+      {contract.ownerName && (
+        <Section title="Bên cho thuê (Bên A)">
+          <InfoRow label="Họ tên" value={contract.ownerName} />
+        </Section>
+      )}
+
       {/* Thông tin kho */}
       <Section title="Thông tin kho">
         <InfoRow label="Tên kho" value={contract.warehouseName} />
         <InfoRow label="Địa chỉ" value={contract.warehouseAddress} />
       </Section>
 
-      {/* Thông tin người thuê */}
-      <Section title="Thông tin người thuê">
+      {/* Bên thuê (Bên B) */}
+      <Section title="Bên thuê (Bên B)">
         <InfoRow label="Họ tên" value={contract.renterName} />
         <InfoRow label="Email" value={contract.renterEmail} />
       </Section>
@@ -148,11 +155,45 @@ const ContractDetail = () => {
         </div>
       )}
 
+      {/* Ảnh / tài liệu đính kèm từ chủ kho */}
+      {contract.contractImageUrl && (
+        <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginTop: "1rem" }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
+            paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9" }}>
+            📎 Tài liệu đính kèm từ chủ kho
+          </h2>
+          {/\.(jpg|jpeg|png|gif|webp)$/i.test(contract.contractImageUrl) ? (
+            <div>
+              <img
+                src={`http://localhost:5276${contract.contractImageUrl}`}
+                alt="Tài liệu hợp đồng"
+                style={{ maxWidth: "100%", maxHeight: "400px", borderRadius: "10px",
+                  objectFit: "contain", border: "1px solid #e2e8f0" }}
+              />
+              <div style={{ marginTop: "0.8rem" }}>
+                <a href={`http://localhost:5276${contract.contractImageUrl}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ color: "#0095c7", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
+                  🔗 Xem ảnh gốc
+                </a>
+              </div>
+            </div>
+          ) : (
+            <a href={`http://localhost:5276${contract.contractImageUrl}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ color: "#0095c7", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
+              📄 Xem tài liệu đính kèm
+            </a>
+          )}
+        </div>
+      )}
+
       {/* Thông báo DRAFT */}
       {contract.status === "DRAFT" && (
         <div style={{ marginTop: "1rem", padding: "1rem 1.5rem", backgroundColor: "#fefce8",
           borderRadius: "12px", border: "1px solid #fde047", color: "#854d0e", fontSize: "0.9rem" }}>
-          <strong>Hợp đồng đang chờ ký.</strong> Vui lòng ký kết hợp đồng để kích hoạt.
+          <strong>Hợp đồng đang chờ ký.</strong> Nhấn nút bên dưới để bắt đầu quy trình ký hợp đồng.
         </div>
       )}
 
@@ -166,23 +207,23 @@ const ContractDetail = () => {
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
             {contract.contractFileUrl && (
-              <a href={contract.contractFileUrl} target="_blank" rel="noopener noreferrer"
+              <a href={`http://localhost:5276${contract.contractFileUrl}`} target="_blank" rel="noopener noreferrer"
                 style={{ color: "#0095c7", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
-                📄 Hợp đồng gốc
+                📄 Hợp đồng gốc (PDF)
               </a>
             )}
             {contract.signedFileUrl && (
-              <a href={contract.signedFileUrl} target="_blank" rel="noopener noreferrer"
+              <a href={`http://localhost:5276${contract.signedFileUrl}`} target="_blank" rel="noopener noreferrer"
                 style={{ color: "#16a34a", textDecoration: "none", fontWeight: 600, fontSize: "0.9rem" }}>
-                ✓ Hợp đồng đã ký ({formatDate(contract.signedAt)})
+                ✅ Hợp đồng đã ký ({formatDate(contract.signedAt)})
               </a>
             )}
           </div>
         </div>
       )}
 
-      {/* Signing Button - Only for PENDING_SIGNATURE status */}
-      {contract.status === "PENDING_SIGNATURE" && (
+      {/* Signing Button - For DRAFT and PENDING_SIGNATURE status */}
+      {(contract.status === "DRAFT" || contract.status === "PENDING_SIGNATURE") && (
         <button
           onClick={() => setShowSigningModal(true)}
           style={{
@@ -201,7 +242,7 @@ const ContractDetail = () => {
           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0077a3"}
           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#0095c7"}
         >
-          ✍️ Ký hợp đồng
+          ✍️ {contract.status === "DRAFT" ? "Bắt đầu ký hợp đồng" : "Ký hợp đồng"}
         </button>
       )}
 
