@@ -65,8 +65,14 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("item_name");
 
+                    b.Property<int?>("RecordedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("recorded_by");
+
                     b.HasKey("ResultId")
                         .HasName("PK__audit_re__AFB3C316E98B7AC0");
+
+                    b.HasIndex("RecordedBy");
 
                     b.HasIndex(new[] { "AuditId" }, "idx_audit_results_audit");
 
@@ -81,6 +87,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("audit_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AuditId"));
+
+                    b.Property<int?>("AssignedTo")
+                        .HasColumnType("int")
+                        .HasColumnName("assigned_to");
 
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2")
@@ -113,6 +123,8 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasKey("AuditId")
                         .HasName("PK__audit_se__5AF33E337F6DAD00");
+
+                    b.HasIndex("AssignedTo");
 
                     b.HasIndex("CreatedBy");
 
@@ -911,11 +923,20 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
 
+                    b.Property<double?>("Length")
+                        .HasColumnType("float");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("name");
+
+                    b.Property<double?>("PositionX")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("PositionY")
+                        .HasColumnType("float");
 
                     b.Property<double>("Size")
                         .HasColumnType("float")
@@ -924,6 +945,9 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<int>("WarehouseId")
                         .HasColumnType("int")
                         .HasColumnName("warehouse_id");
+
+                    b.Property<double?>("Width")
+                        .HasColumnType("float");
 
                     b.HasKey("Id");
 
@@ -1413,6 +1437,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("float")
                         .HasColumnName("occupied_area");
 
+                    b.Property<double>("ReservedArea")
+                        .HasColumnType("float")
+                        .HasColumnName("reserved_area");
+
                     b.Property<double>("TotalArea")
                         .HasColumnType("float")
                         .HasColumnName("total_area");
@@ -1483,9 +1511,15 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("float")
                         .HasColumnName("lat");
 
+                    b.Property<double?>("Length")
+                        .HasColumnType("float");
+
                     b.Property<double?>("Lng")
                         .HasColumnType("float")
                         .HasColumnName("lng");
+
+                    b.Property<string>("MainDoorDirection")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1526,6 +1560,9 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("(getdate())");
+
+                    b.Property<double?>("Width")
+                        .HasColumnType("float");
 
                     b.HasKey("WarehouseId")
                         .HasName("PK__warehous__734FE6BFFBD35973");
@@ -1953,11 +1990,24 @@ namespace WMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_audit_results_audit");
 
+                    b.HasOne("WMS.Domain.Entities.User", "RecordedByNavigation")
+                        .WithMany("RecordedAuditResults")
+                        .HasForeignKey("RecordedBy")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_audit_results_recorded_by");
+
                     b.Navigation("Audit");
+
+                    b.Navigation("RecordedByNavigation");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.AuditSession", b =>
                 {
+                    b.HasOne("WMS.Domain.Entities.User", "AssignedToNavigation")
+                        .WithMany("AssignedAuditSessions")
+                        .HasForeignKey("AssignedTo")
+                        .HasConstraintName("FK_audit_sessions_assigned_to");
+
                     b.HasOne("WMS.Domain.Entities.User", "CreatedByNavigation")
                         .WithMany("AuditSessions")
                         .HasForeignKey("CreatedBy")
@@ -1970,6 +2020,8 @@ namespace WMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired()
                         .HasConstraintName("FK_audit_sessions_warehouse");
+
+                    b.Navigation("AssignedToNavigation");
 
                     b.Navigation("CreatedByNavigation");
 
@@ -2425,6 +2477,8 @@ namespace WMS.Infrastructure.Migrations
 
             modelBuilder.Entity("WMS.Domain.Entities.User", b =>
                 {
+                    b.Navigation("AssignedAuditSessions");
+
                     b.Navigation("AuditSessions");
 
                     b.Navigation("Contracts");
@@ -2434,6 +2488,8 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("InventoryRequestRenters");
 
                     b.Navigation("Ratings");
+
+                    b.Navigation("RecordedAuditResults");
 
                     b.Navigation("RentalRequestRenters");
 

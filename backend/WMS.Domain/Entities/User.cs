@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace WMS.Domain.Entities;
@@ -50,4 +50,8 @@ public partial class User
     public virtual ICollection<Warehouse> WarehouseOwners { get; set; } = new List<Warehouse>();
     
     public ICollection<WarehouseMembership> WarehouseMemberships { get; set; } = new List<WarehouseMembership>();
+
+    public virtual ICollection<AuditSession> AssignedAuditSessions { get; set; } = new List<AuditSession>();
+
+    public virtual ICollection<AuditResult> RecordedAuditResults { get; set; } = new List<AuditResult>();
 }

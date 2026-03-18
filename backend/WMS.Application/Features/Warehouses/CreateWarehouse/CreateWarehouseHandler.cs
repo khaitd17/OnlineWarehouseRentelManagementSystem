@@ -24,11 +24,14 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             Lng = request.Lng,
             Description = request.Description,
             TotalArea = request.TotalArea,
+            Width = request.Width,
+            Length = request.Length,
             AvailableArea = request.TotalArea,
             OperatingHours = request.OperatingHours,
             Is24HoursAccess = request.Is24HoursAccess,
             OpenTime = request.OpenTime,
             CloseTime = request.CloseTime,
+            MainDoorDirection = request.MainDoorDirection,
             Status = "HIDDEN"
         };
 

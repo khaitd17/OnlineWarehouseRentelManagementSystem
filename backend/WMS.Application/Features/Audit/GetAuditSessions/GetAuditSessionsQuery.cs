@@ -12,6 +12,9 @@ public class GetAuditSessionsQuery : IRequest<ApiResponse<PagedResult<AuditSessi
     public string? Search { get; set; }
     public int? WarehouseId { get; set; }
     public string? Status { get; set; }
+    // Role-based filtering
+    public int? UserId { get; set; }
+    public string? UserRole { get; set; }
 }
 
 public record AuditSessionDto(
@@ -24,5 +27,7 @@ public record AuditSessionDto(
     DateTime? CreatedAt,
     DateTime? CompletedAt,
     string? Notes,
-    int TotalResults
+    int TotalResults,
+    int? AssignedTo,
+    string? AssignedToName
 );

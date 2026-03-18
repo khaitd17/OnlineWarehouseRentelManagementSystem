@@ -18,18 +18,30 @@ const CreateWarehouse = () => {
     address: "",
     lat: "",
     lng: "",
+    width: "",
+    length: "",
     totalArea: "",
     is24HoursAccess: false,
     openTime: "08:00",
     closeTime: "18:00",
+    mainDoorDirection: "TOP",
     description: ""
   });
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value
+    setFormData((prev) => {
+      const nextData = { ...prev, [name]: type === "checkbox" ? checked : value };
+      if (name === "width" || name === "length") {
+        const w = parseFloat(nextData.width) || 0;
+        const l = parseFloat(nextData.length) || 0;
+        if (w > 0 && l > 0) {
+          nextData.totalArea = w * l;
+        } else {
+          nextData.totalArea = "";
+        }
+      }
+      return nextData;
     });
   };
 
@@ -57,10 +69,13 @@ const CreateWarehouse = () => {
 
         description: formData.description,
         totalArea: parseFloat(formData.totalArea),
+        width: formData.width ? parseFloat(formData.width) : null,
+        length: formData.length ? parseFloat(formData.length) : null,
         is24HoursAccess: formData.is24HoursAccess,
         openTime: formData.is24HoursAccess ? null : formData.openTime,
         closeTime: formData.is24HoursAccess ? null : formData.closeTime,
-        operatingHours: formData.is24HoursAccess ? "24/7" : `${formData.openTime} - ${formData.closeTime}`
+        operatingHours: formData.is24HoursAccess ? "24/7" : `${formData.openTime} - ${formData.closeTime}`,
+        mainDoorDirection: formData.mainDoorDirection
       };
 
       const id = await createWarehouse(payload);

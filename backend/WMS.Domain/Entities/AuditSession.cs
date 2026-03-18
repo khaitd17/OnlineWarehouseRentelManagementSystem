@@ -19,9 +19,13 @@ public partial class AuditSession
 
     public string? Notes { get; set; }
 
+    public int? AssignedTo { get; set; }
+
     public virtual ICollection<AuditResult> AuditResults { get; set; } = new List<AuditResult>();
 
     public virtual User CreatedByNavigation { get; set; } = null!;
+
+    public virtual User? AssignedToNavigation { get; set; }
 
     public virtual Warehouse Warehouse { get; set; } = null!;
 }

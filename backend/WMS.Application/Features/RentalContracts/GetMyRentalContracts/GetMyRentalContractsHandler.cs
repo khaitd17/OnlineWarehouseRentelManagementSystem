@@ -25,14 +25,23 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
         GetMyRentalContractsQuery request,
         CancellationToken cancellationToken)
     {
-        var contracts = await _contractRepo.GetByRenterIdAsync(request.UserId);
+        IEnumerable<WMS.Domain.Entities.RentalContract> contracts;
 
-        var renter = await _userRepo.GetByIdAsync(request.UserId, cancellationToken);
+        // if WarehouseId is provided, get contracts by warehouse (owner view)
+        if (request.WarehouseId.HasValue)
+        {
+            contracts = await _contractRepo.GetByWarehouseIdAsync(request.WarehouseId.Value);
+        }
+        else
+        {
+            contracts = await _contractRepo.GetByRenterIdAsync(request.UserId);
+        }
 
         var result = new List<RentalContractDto>();
         foreach (var contract in contracts)
         {
             var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, cancellationToken);
+            var renter = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
 
             result.Add(new RentalContractDto
             {

@@ -18,6 +18,11 @@ public class WarehouseDetailDto
 
     public double TotalArea { get; set; }
 
+    public double? Width { get; set; }
+
+    public double? Length { get; set; }
+    public string? MainDoorDirection { get; set; }
+
     public double AvailableArea { get; set; }
 
     public string? OperatingHours { get; set; }

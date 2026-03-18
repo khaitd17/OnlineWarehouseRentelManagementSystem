@@ -21,7 +21,9 @@ public class GetAuditSessionDetailHandler : IRequestHandler<GetAuditSessionDetai
         var session = await _db.AuditSessions
             .Include(a => a.Warehouse)
             .Include(a => a.CreatedByNavigation)
+            .Include(a => a.AssignedToNavigation)
             .Include(a => a.AuditResults)
+                .ThenInclude(r => r.RecordedByNavigation)
             .FirstOrDefaultAsync(a => a.AuditId == request.AuditId, cancellationToken);
 
         if (session == null)
@@ -31,7 +33,9 @@ public class GetAuditSessionDetailHandler : IRequestHandler<GetAuditSessionDetai
             .OrderBy(r => r.ResultId)
             .Select(r => new AuditResultItemDto(
                 r.ResultId, r.ItemName, r.ExpectedQty, r.ActualQty,
-                r.Discrepancy, r.DiscrepancyReason, r.CreatedAt))
+                r.Discrepancy, r.DiscrepancyReason, r.CreatedAt,
+                r.RecordedBy,
+                r.RecordedByNavigation?.FullName))
             .ToList();
 
         var summary = new AuditSummaryDto(
@@ -47,6 +51,8 @@ public class GetAuditSessionDetailHandler : IRequestHandler<GetAuditSessionDetai
             session.Warehouse.Address, session.CreatedBy,
             session.CreatedByNavigation.FullName, session.Status,
             session.CreatedAt, session.CompletedAt, session.Notes,
+            session.AssignedTo,
+            session.AssignedToNavigation?.FullName,
             results, summary);
 
         return ApiResponse<AuditSessionDetailDto>.SuccessResponse(dto, "Lấy chi tiết phiên kiểm kê thành công.");

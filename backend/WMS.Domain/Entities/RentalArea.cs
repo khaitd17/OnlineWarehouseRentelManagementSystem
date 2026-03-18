@@ -17,5 +17,12 @@ public partial class RentalArea
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    public double? PositionX { get; set; }
+
+    public double? PositionY { get; set; }
+
+    public double? Width { get; set; }
+
+    public double? Length { get; set; }
     public virtual Warehouse Warehouse { get; set; } = null!;
 }

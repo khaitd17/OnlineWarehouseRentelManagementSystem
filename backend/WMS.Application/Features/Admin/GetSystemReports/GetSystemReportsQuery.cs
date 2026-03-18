@@ -28,8 +28,6 @@ public record SystemReportDto(
     decimal OverduePayments,
     decimal CollectionRate,
     double RevenueGrowthRate,
-    // Occupancy
-    double AverageOccupancyRate,
     // Period stats
     int NewUsersThisPeriod,
     int NewWarehousesThisPeriod,

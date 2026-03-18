@@ -21,8 +21,28 @@ public class GetAuditSessionsHandler : IRequestHandler<GetAuditSessionsQuery, Ap
         var query = _db.AuditSessions
             .Include(a => a.Warehouse)
             .Include(a => a.CreatedByNavigation)
+            .Include(a => a.AssignedToNavigation)
             .Include(a => a.AuditResults)
             .AsQueryable();
+
+        // Role-based filtering
+        var role = request.UserRole?.ToUpper() ?? "";
+        if (role == "STAFF" && request.UserId.HasValue)
+        {
+            // STAFF chỉ thấy phiên được giao
+            query = query.Where(a => a.AssignedTo == request.UserId.Value);
+        }
+        else if (role == "RENTER" && request.UserId.HasValue)
+        {
+            // RENTER chỉ thấy phiên mình tạo
+            query = query.Where(a => a.CreatedBy == request.UserId.Value);
+        }
+        else if (role == "OWNER" && request.UserId.HasValue)
+        {
+            // OWNER thấy phiên của kho mình sở hữu
+            query = query.Where(a => a.Warehouse.OwnerId == request.UserId.Value);
+        }
+        // ADMIN thấy tất cả
 
         if (!string.IsNullOrWhiteSpace(request.Search))
         {
@@ -58,7 +78,9 @@ public class GetAuditSessionsHandler : IRequestHandler<GetAuditSessionsQuery, Ap
                 a.AuditId, a.WarehouseId, a.Warehouse.Name,
                 a.CreatedBy, a.CreatedByNavigation.FullName,
                 a.Status, a.CreatedAt, a.CompletedAt, a.Notes,
-                a.AuditResults.Count))
+                a.AuditResults.Count,
+                a.AssignedTo,
+                a.AssignedToNavigation != null ? a.AssignedToNavigation.FullName : null))
             .ToListAsync(cancellationToken);
 
         return ApiResponse<PagedResult<AuditSessionDto>>.SuccessResponse(

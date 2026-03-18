@@ -72,19 +72,6 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
             ? Math.Round((double)((currentPeriodRevenue - previousPeriodRevenue) / previousPeriodRevenue * 100), 2)
             : (currentPeriodRevenue > 0 ? 100.0 : 0.0);
 
-        // ── Occupancy ──
-        var warehousesWithArea = await _db.Warehouses
-            .Where(w => w.Status == "APPROVED" && w.TotalArea > 0)
-            .Select(w => new { w.TotalArea, w.AvailableArea })
-            .ToListAsync(cancellationToken);
-
-        double avgOccupancy = 0;
-        if (warehousesWithArea.Count > 0)
-        {
-            avgOccupancy = Math.Round(warehousesWithArea
-                .Average(w => (w.TotalArea - w.AvailableArea) / w.TotalArea * 100), 2);
-        }
-
         // ── Period Stats ──
         var newUsers = await _db.Users
             .CountAsync(u => u.CreatedAt >= fromDate && u.CreatedAt <= toDate, cancellationToken);
@@ -124,11 +111,11 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
         // ── Smart Alerts ──
         var alerts = GenerateAlerts(
             overduePayments, pendingPayments, expiringContracts,
-            pendingWarehouses, collectionRate, avgOccupancy);
+            pendingWarehouses, collectionRate);
 
         // ── Recommendations ──
         var recommendations = GenerateRecommendations(
-            overduePayments, pendingPayments, avgOccupancy,
+            overduePayments, pendingPayments,
             revenueGrowthRate, expiringContracts, collectionRate,
             activeContracts);
 
@@ -138,7 +125,7 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
             totalContracts, activeContracts, expiringContracts,
             totalRevenue, pendingPayments, overduePayments,
             collectionRate, revenueGrowthRate,
-            avgOccupancy, newUsers, newWarehouses,
+            newUsers, newWarehouses,
             monthlyRevenue, topWarehouses, alerts, recommendations);
 
         return ApiResponse<SystemReportDto>.SuccessResponse(report, "Lấy báo cáo hệ thống thành công.");
@@ -146,7 +133,7 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
 
     private static List<AlertDto> GenerateAlerts(
         decimal overduePayments, decimal pendingPayments, int expiringContracts,
-        int pendingWarehouses, decimal collectionRate, double avgOccupancy)
+        int pendingWarehouses, decimal collectionRate)
     {
         var alerts = new List<AlertDto>();
 
@@ -173,13 +160,6 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
                 "trending-down"));
         }
 
-        if (avgOccupancy > 90)
-        {
-            alerts.Add(new AlertDto("WARNING", "Công suất kho gần đầy",
-                $"Tỷ lệ lấp đầy trung bình đạt {avgOccupancy}%, cần mở rộng thêm kho.",
-                "package"));
-        }
-
         // INFO alerts
         if (pendingWarehouses > 0)
         {
@@ -199,7 +179,7 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
     }
 
     private static List<RecommendationDto> GenerateRecommendations(
-        decimal overduePayments, decimal pendingPayments, double avgOccupancy,
+        decimal overduePayments, decimal pendingPayments,
         double revenueGrowthRate, int expiringContracts, decimal collectionRate,
         int activeContracts = 0)
     {
@@ -233,20 +213,6 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
             recommendations.Add(new RecommendationDto("REVENUE", "Phân tích nguyên nhân sụt giảm",
                 $"Doanh thu giảm {Math.Abs(revenueGrowthRate)}% so với kỳ trước. Cần phân tích nguyên nhân và đưa ra giải pháp.",
                 "HIGH"));
-        }
-
-        // Occupancy-related
-        if (avgOccupancy < 50 && activeContracts > 0)
-        {
-            recommendations.Add(new RecommendationDto("OCCUPANCY", "Tăng cường tìm khách thuê",
-                $"Tỷ lệ lấp đầy chỉ {avgOccupancy}%. Nên chạy chiến dịch marketing hoặc giảm giá để thu hút khách thuê mới.",
-                "MEDIUM"));
-        }
-        else if (avgOccupancy > 90)
-        {
-            recommendations.Add(new RecommendationDto("OCCUPANCY", "Mở rộng hệ thống kho",
-                "Hệ thống kho gần đầy. Nên xem xét phê duyệt thêm kho mới hoặc mở rộng diện tích kho hiện tại.",
-                "MEDIUM"));
         }
 
         // Collection rate
