@@ -113,15 +113,47 @@ const Step1WarehouseInfo = ({
 
       </div>
 
+      {/* Kích thước */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+        <div style={{ ...groupStyle, marginBottom: 0 }}>
+          <label style={labelStyle}>Chiều rộng (m)</label>
+          <input
+            name="width"
+            type="number"
+            min="1"
+            step="0.1"
+            value={formData.width || ""}
+            placeholder="Ví dụ: 20"
+            onChange={handleChange}
+            required
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ ...groupStyle, marginBottom: 0 }}>
+          <label style={labelStyle}>Chiều dài (m)</label>
+          <input
+            name="length"
+            type="number"
+            min="1"
+            step="0.1"
+            value={formData.length || ""}
+            placeholder="Ví dụ: 50"
+            onChange={handleChange}
+            required
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
       {/* Diện tích */}
       <div style={groupStyle}>
-        <label style={labelStyle}>Tổng diện tích (m²)</label>
+        <label style={labelStyle}>Tổng diện tích mặt sàn (m²)</label>
         <input
           name="totalArea"
-          placeholder="Nhập tổng diện tích"
-          onChange={handleChange}
-          required
-          style={inputStyle}
+          value={formData.totalArea || ""}
+          placeholder="Tự động tính bằng Chiều rộng x Chiều dài"
+          readOnly
+          style={{ ...inputStyle, backgroundColor: "#e2e8f0", color: "#475569", cursor: "not-allowed", fontWeight: 700 }}
         />
       </div>
 
@@ -186,6 +218,37 @@ const Step1WarehouseInfo = ({
           </div>
         </div>
       )}
+
+      {/* Hướng cửa chính */}
+      <div style={groupStyle}>
+        <label style={labelStyle}>Hướng cửa chính (Cổng kho)</label>
+        <p style={{ margin: "0 0 10px 0", fontSize: "0.85rem", color: "#64748b" }}>Chọn hướng lối vào chính của kho để hiển thị trên sơ đồ bản đồ.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px" }}>
+          {[
+            { id: "TOP", label: "Phía Trên", icon: "arrow_upward" },
+            { id: "BOTTOM", label: "Phía Dưới", icon: "arrow_downward" },
+            { id: "LEFT", label: "Bên Trái", icon: "arrow_back" },
+            { id: "RIGHT", label: "Bên Phải", icon: "arrow_forward" },
+          ].map(opt => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => handleChange({ target: { name: 'mainDoorDirection', value: opt.id } })}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px",
+                padding: "12px 8px", borderRadius: "12px", border: "1px solid",
+                borderColor: formData.mainDoorDirection === opt.id ? "#00b2d6" : "#e2e8f0",
+                backgroundColor: formData.mainDoorDirection === opt.id ? "#f0f9ff" : "#fff",
+                color: formData.mainDoorDirection === opt.id ? "#00b2d6" : "#64748b",
+                fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
+              }}
+            >
+              <span className="material-symbols-outlined">{opt.icon}</span>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Mô tả */}
       <div style={groupStyle}>

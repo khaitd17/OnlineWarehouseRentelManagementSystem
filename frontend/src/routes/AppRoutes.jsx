@@ -19,6 +19,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import CreateWarehouse from "../pages/CreateWarehouse";
 import WarehouseDetail from "../pages/WarehouseDetail";
 import OwnerWarehouseList from "../pages/OwnerWarehouseList";
+import OwnerWarehouseDetailPage from "../pages/OwnerWarehouseDetailPage";
 import EditWarehouse from "../pages/EditWarehouse";
 import MyRentalRequests from "../pages/MyRentalRequests";
 import PendingRentalRequests from "../pages/PendingRentalRequests";
@@ -88,6 +89,7 @@ function AppRoutes() {
               <Route path="/create-warehouse" element={<CreateWarehouse />} />
               <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />
               <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
+              <Route path="/owner-warehouse/:id" element={<OwnerWarehouseDetailPage />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
               <Route path="/owner-audit-sessions" element={<OwnerAuditSessionsPage />} />
