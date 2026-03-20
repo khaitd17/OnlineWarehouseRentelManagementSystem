@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
@@ -13,13 +13,36 @@ const FIELD = ({ label, children }) => (
 const inputCls =
   'w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-primary focus:ring-2 transition-all';
 
+// ── Helper: icon theo extension ──────────────────────────────────────────────
+const getFileIcon = (filename) => {
+  const ext = filename.split('.').pop().toLowerCase();
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return { icon: 'image', color: '#7c3aed' };
+  if (ext === 'pdf') return { icon: 'picture_as_pdf', color: '#dc2626' };
+  if (['xls', 'xlsx'].includes(ext)) return { icon: 'table_chart', color: '#16a34a' };
+  if (['doc', 'docx'].includes(ext)) return { icon: 'description', color: '#2563eb' };
+  return { icon: 'attach_file', color: '#64748b' };
+};
+
+const formatBytes = (bytes) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 const CreateInboundRequest = () => {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
 
   const [warehouses, setWarehouses] = useState([]);
   const [loadingWH, setLoadingWH] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Document upload state
+  const [docFiles, setDocFiles] = useState([]); // { file, name, size, previewUrl? }
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const [uploadedUrls, setUploadedUrls] = useState([]); // URLs sau khi upload
+  const [dragOver, setDragOver] = useState(false);
 
   const [form, setForm] = useState({
     warehouseId: '',
@@ -37,21 +60,77 @@ const CreateInboundRequest = () => {
     axiosClient.get('/rental-contracts/my-contracts')
       .then(res => {
         const contracts = Array.isArray(res.data) ? res.data : [];
-        // Lấy các kho duy nhất từ hợp đồng đang hoạt động
         const seen = new Set();
-        const whs = contracts
-          .reduce((acc, c) => {
-            if (c.warehouseId && !seen.has(c.warehouseId)) {
-              seen.add(c.warehouseId);
-              acc.push({ warehouseId: c.warehouseId, name: c.warehouseName || `Kho #${c.warehouseId}` });
-            }
-            return acc;
-          }, []);
+        const whs = contracts.reduce((acc, c) => {
+          if (c.warehouseId && !seen.has(c.warehouseId)) {
+            seen.add(c.warehouseId);
+            acc.push({ warehouseId: c.warehouseId, name: c.warehouseName || `Kho #${c.warehouseId}` });
+          }
+          return acc;
+        }, []);
         setWarehouses(whs);
       })
       .catch(() => setWarehouses([]))
       .finally(() => setLoadingWH(false));
   }, []);
+
+  // ── File handling ──────────────────────────────────────────────────────────
+  const ALLOWED_TYPES = [
+    'application/pdf',
+    'image/jpeg', 'image/png',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ];
+
+  const addFiles = (fileList) => {
+    const incoming = Array.from(fileList);
+    const valid = incoming.filter(f => {
+      if (!ALLOWED_TYPES.includes(f.type) && !f.name.match(/\.(pdf|jpg|jpeg|png|xls|xlsx|doc|docx)$/i)) return false;
+      if (f.size > 10 * 1024 * 1024) return false;
+      return true;
+    });
+    if (valid.length !== incoming.length) {
+      setError('Một số file không hợp lệ (chỉ PDF, ảnh, Excel, Word) hoặc vượt 10MB và đã bị bỏ qua.');
+    }
+    setDocFiles(prev => {
+      const combined = [...prev, ...valid.map(f => ({ file: f, name: f.name, size: f.size }))];
+      return combined.slice(0, 10); // max 10
+    });
+    setUploadedUrls([]); // reset uploaded URLs khi có file mới
+  };
+
+  const removeFile = (idx) => {
+    setDocFiles(prev => prev.filter((_, i) => i !== idx));
+    setUploadedUrls([]);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    addFiles(e.dataTransfer.files);
+  };
+
+  // Upload files rồi trả về URLs
+  const uploadDocuments = async () => {
+    if (docFiles.length === 0) return [];
+    setUploadingDocs(true);
+    try {
+      const formData = new FormData();
+      docFiles.forEach(({ file }) => formData.append('files', file));
+      const res = await axiosClient.post('/upload/inventory-documents', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const urls = res.data?.urls || [];
+      setUploadedUrls(urls);
+      return urls;
+    } catch (err) {
+      throw new Error(err?.response?.data?.message || 'Upload chứng từ thất bại.');
+    } finally {
+      setUploadingDocs(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,10 +140,17 @@ const CreateInboundRequest = () => {
 
     setSubmitting(true);
     try {
+      // Upload chứng từ trước (nếu có)
+      let documentUrls = uploadedUrls;
+      if (docFiles.length > 0 && uploadedUrls.length === 0) {
+        documentUrls = await uploadDocuments();
+      }
+
       await inventoryService.createInventoryRequest({
         warehouseId: Number(form.warehouseId),
         type: 'INBOUND',
         notes: form.notes || null,
+        documentUrls: documentUrls.length > 0 ? documentUrls : null,
         items: [{
           itemName: form.itemName.trim(),
           quantity: Number(form.qty),
@@ -74,7 +160,7 @@ const CreateInboundRequest = () => {
       });
       navigate('/renter-inbound-requests', { state: { created: true } });
     } catch (err) {
-      setError(err?.response?.data?.message || 'Tạo yêu cầu thất bại. Vui lòng thử lại.');
+      setError(err?.message || err?.response?.data?.message || 'Tạo yêu cầu thất bại. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
     }
@@ -217,6 +303,114 @@ const CreateInboundRequest = () => {
               </FIELD>
             </div>
           </div>
+
+          {/* ── Document Upload Section ─────────────────────────────────────── */}
+          <div className="mt-8">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="material-symbols-outlined text-[20px]" style={{ color: '#00b2d6' }}>folder_open</span>
+              <span className="text-sm font-semibold text-slate-700">Chứng từ đính kèm</span>
+              <span className="text-xs text-slate-400 font-normal">(Không bắt buộc)</span>
+            </div>
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+              Upload invoice, packing list, hoặc các tài liệu liên quan đến lô hàng.
+              Chấp nhận: PDF, JPG, PNG, Excel, Word — Tối đa 10 file, mỗi file ≤ 10MB.
+            </p>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                border: `2px dashed ${dragOver ? '#00b2d6' : '#cbd5e1'}`,
+                backgroundColor: dragOver ? '#e0f7fa' : '#f8fafc',
+                borderRadius: '12px',
+                padding: '28px 20px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <span className="material-symbols-outlined text-[40px] mb-2 block" style={{ color: dragOver ? '#00b2d6' : '#94a3b8' }}>
+                cloud_upload
+              </span>
+              <p className="text-sm font-semibold text-slate-600">
+                Kéo thả file vào đây hoặc <span style={{ color: '#00b2d6' }}>nhấn để chọn file</span>
+              </p>
+              <p className="text-xs text-slate-400 mt-1">PDF, ảnh, Excel, Word · Tối đa 10 file</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx"
+                className="hidden"
+                onChange={(e) => addFiles(e.target.files)}
+              />
+            </div>
+
+            {/* File list */}
+            {docFiles.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {docFiles.map((f, idx) => {
+                  const { icon, color } = getFileIcon(f.name);
+                  const isUploaded = uploadedUrls.length > 0;
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 rounded-lg px-4 py-3"
+                      style={{
+                        backgroundColor: isUploaded ? '#f0fdf4' : '#f8fafc',
+                        border: `1px solid ${isUploaded ? '#bbf7d0' : '#e2e8f0'}`,
+                      }}
+                    >
+                      <span className="material-symbols-outlined text-[22px]" style={{ color }}>
+                        {icon}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-slate-700 truncate">{f.name}</p>
+                        <p className="text-xs text-slate-400">{formatBytes(f.size)}</p>
+                      </div>
+                      {isUploaded ? (
+                        <span className="material-symbols-outlined text-[18px]" style={{ color: '#16a34a' }}>
+                          check_circle
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
+                          className="text-slate-400 hover:text-red-500 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Upload button (tuỳ chọn - upload sẽ tự động khi submit) */}
+                {uploadedUrls.length === 0 && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <div className="h-px flex-1" style={{ backgroundColor: '#e2e8f0' }} />
+                    <span className="text-xs text-slate-400">Chứng từ sẽ tự động upload khi bạn tạo yêu cầu</span>
+                    <div className="h-px flex-1" style={{ backgroundColor: '#e2e8f0' }} />
+                  </div>
+                )}
+
+                {uploadedUrls.length > 0 && (
+                  <div
+                    className="flex items-center gap-2 rounded-lg px-4 py-2.5 mt-2"
+                    style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}
+                  >
+                    <span className="material-symbols-outlined text-[16px]" style={{ color: '#16a34a' }}>check_circle</span>
+                    <span className="text-xs font-medium" style={{ color: '#15803d' }}>
+                      Đã upload {uploadedUrls.length} chứng từ thành công
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Divider + Actions */}
@@ -231,12 +425,18 @@ const CreateInboundRequest = () => {
           </button>
           <button
             type="submit"
-            disabled={submitting || loadingWH}
+            disabled={submitting || loadingWH || uploadingDocs}
             className="px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all shadow-sm hover:opacity-90 flex items-center gap-2 disabled:opacity-60"
             style={{ backgroundColor: '#00b2d6' }}
           >
-            {submitting && <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>}
-            {submitting ? 'Đang tạo...' : 'Tạo yêu cầu nhập kho'}
+            {(submitting || uploadingDocs) && (
+              <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
+            )}
+            {uploadingDocs
+              ? 'Đang upload chứng từ...'
+              : submitting
+                ? 'Đang tạo...'
+                : 'Tạo yêu cầu nhập kho'}
           </button>
         </div>
       </form>

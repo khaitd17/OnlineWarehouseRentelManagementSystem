@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import authService from '../services/authService';
 
 const AuthPage = () => {
@@ -16,6 +17,42 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Google Login handler
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setGoogleLoading(true);
+      setError('');
+      try {
+        // Lấy thông tin user từ Google
+        const googleRes = await fetch(
+          'https://www.googleapis.com/oauth2/v3/userinfo',
+          { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } }
+        );
+        const googleUser = await googleRes.json();
+
+        // Gửi lên backend endpoint đặc biệt cho Google Login
+        const result = await authService.googleLogin({
+          email: googleUser.email,
+          fullName: googleUser.name,
+          googleId: googleUser.sub,
+          avatarUrl: googleUser.picture,
+        });
+
+        window.dispatchEvent(new Event('authChange'));
+        const user = authService.getCurrentUser();
+        const role = (user?.role || user?.roleName || '').toUpperCase();
+        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
+        else navigate('/');
+      } catch (err) {
+        setError('Đăng nhập Google thất bại. Vui lòng thử lại.');
+      } finally {
+        setGoogleLoading(false);
+      }
+    },
+    onError: () => setError('Đăng nhập Google bị hủy hoặc thất bại.'),
+  });
 
   useEffect(() => {
     if (location.state?.mode === 'login') setIsLogin(true);
@@ -72,10 +109,10 @@ const AuthPage = () => {
     <div style={{ 
       minHeight: '100vh', 
       display: 'flex', 
-      alignItems: 'center', 
+      alignItems: 'flex-start',
       justifyContent: 'center', 
       backgroundColor: '#f3f4f6',
-      padding: '20px'
+      padding: '40px 20px 60px',
     }}>
       <div style={{
         backgroundColor: '#fff',
@@ -197,23 +234,31 @@ const AuthPage = () => {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <button style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            backgroundColor: '#fff',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            padding: '12px',
-            fontSize: '0.95rem',
-            fontWeight: 600,
-            color: '#374151',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s'
-          }}>
+          <button
+            type="button"
+            onClick={() => handleGoogleLogin()}
+            disabled={googleLoading}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              backgroundColor: googleLoading ? '#f9fafb' : '#fff',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              padding: '12px',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              color: '#374151',
+              cursor: googleLoading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            }}
+            onMouseEnter={e => { if (!googleLoading) e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+            onMouseLeave={e => { if (!googleLoading) e.currentTarget.style.backgroundColor = '#fff'; }}
+          >
             <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="20" height="20" alt="Google" />
-            Continue with Google
+            {googleLoading ? 'Đang xử lý...' : 'Đăng nhập với Google'}
           </button>
         </div>
 

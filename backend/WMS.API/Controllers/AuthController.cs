@@ -1,3 +1,4 @@
+using BCrypt.Net;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -129,6 +130,66 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    /// <summary>Đăng nhập / đăng ký bằng Google OAuth</summary>
+    [HttpPost("google-login")]
+    public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Email))
+            return BadRequest(new { message = "Email không hợp lệ từ Google." });
+
+        // Tìm user theo email
+        var user = await _db.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Email == req.Email);
+
+        if (user == null)
+        {
+            // Tự tạo tài khoản mới (role USER mặc định)
+            var userRole = await _db.Roles.FirstOrDefaultAsync(r => r.RoleName == "USER");
+            if (userRole == null) return StatusCode(500, new { message = "Không tìm thấy role USER." });
+
+            user = new WMS.Domain.Entities.User
+            {
+                Email        = req.Email,
+                FullName     = req.FullName ?? req.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()), // random pass
+                RoleId       = userRole.RoleId,
+                Status       = "ACTIVE",
+                AvatarUrl    = req.AvatarUrl,
+                CreatedAt    = DateTime.UtcNow
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
+        }
+        else if (user.Status == "SUSPENDED" || user.Status == "DELETED")
+        {
+            return Unauthorized(new { message = "Tài khoản của bạn đã bị khóa." });
+        }
+        else if (!string.IsNullOrEmpty(req.AvatarUrl) && user.AvatarUrl != req.AvatarUrl)
+        {
+            // Cập nhật avatar mới nhất từ Google
+            user.AvatarUrl = req.AvatarUrl;
+            await _db.SaveChangesAsync();
+        }
+
+        // Lấy IJwtService từ DI
+        var jwtService = HttpContext.RequestServices
+            .GetRequiredService<WMS.Application.Interfaces.IJwtService>();
+
+        var roleName = user.Role?.RoleName ?? "USER";
+        var token = jwtService.GenerateToken(user.UserId, user.Email, roleName);
+
+        return Ok(new
+        {
+            userId   = user.UserId,
+            fullName = user.FullName,
+            email    = user.Email,
+            role     = roleName,
+            token    = token,
+            avatarUrl = user.AvatarUrl
+        });
+    }
 }
 
 // ---- Request DTOs ----
@@ -136,4 +197,5 @@ public record RegisterRequest(string FullName, string Email, string Password, st
 public record LoginRequest(string Email, string Password);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NewPassword);
+public record GoogleLoginRequest(string Email, string? FullName, string? GoogleId, string? AvatarUrl);
 

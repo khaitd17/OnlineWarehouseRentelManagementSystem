@@ -57,33 +57,29 @@ const MainLayout = () => {
       {/* Navbar */}
       <nav style={{ 
         backgroundColor: '#fff', 
-        padding: '1rem 2rem', 
+        padding: '0.6rem 2.5rem', 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+        boxShadow: '0 2px 16px rgba(0,0,0,0.08)',
         position: 'sticky',
         top: 0,
-        zIndex: 1000
+        zIndex: 1000,
+        minHeight: '80px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-            <div style={{
-              width: '36px',
-              height: '36px',
-              backgroundColor: '#00b2d6',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              flexShrink: 0,
-            }}>
-              <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
-                <path d="M12 3L4 9v12h16V9l-8-6zm0 2.5l5 3.75V19h-3v-5h-4v5H7v-9.75l5-3.75z"/>
-              </svg>
-            </div>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#00b2d6', letterSpacing: '0.5px' }}>OWRMS</span>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <img
+              src="/owrms-logo.png"
+              alt="OWRMS"
+              style={{
+                height: '90px',
+                width: '90px',
+                objectFit: 'contain',
+                flexShrink: 0,
+                filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.08))',
+              }}
+            />
           </Link>
           <div style={{ display: 'flex', gap: '1.5rem' }}>
             <Link to="/" style={{ textDecoration: 'none', color: '#555', fontWeight: 500, fontSize: '0.95rem' }}>Trang chủ</Link>

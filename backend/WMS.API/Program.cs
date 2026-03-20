@@ -170,8 +170,17 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
-    DatabaseSeeder.Seed(context);
+    try
+    {
+        // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
+        DatabaseSeeder.Seed(context);
+    }
+    catch (Exception ex)
+    {
+        // Log lỗi seeder nhưng không crash app — backend vẫn khởi động bình thường
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi (có thể data đã tồn tại hoặc SQL Server chưa sẵn sàng). Backend vẫn tiếp tục chạy.");
+    }
 }
 
 // ==========================================
