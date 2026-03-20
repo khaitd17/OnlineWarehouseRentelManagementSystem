@@ -219,35 +219,24 @@ const Step1WarehouseInfo = ({
         </div>
       )}
 
-      {/* Hướng cửa chính */}
+
+
+      {/* Tình trạng pháp lý */}
       <div style={groupStyle}>
-        <label style={labelStyle}>Hướng cửa chính (Cổng kho)</label>
-        <p style={{ margin: "0 0 10px 0", fontSize: "0.85rem", color: "#64748b" }}>Chọn hướng lối vào chính của kho để hiển thị trên sơ đồ bản đồ.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px" }}>
-          {[
-            { id: "TOP", label: "Phía Trên", icon: "arrow_upward" },
-            { id: "BOTTOM", label: "Phía Dưới", icon: "arrow_downward" },
-            { id: "LEFT", label: "Bên Trái", icon: "arrow_back" },
-            { id: "RIGHT", label: "Bên Phải", icon: "arrow_forward" },
-          ].map(opt => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => handleChange({ target: { name: 'mainDoorDirection', value: opt.id } })}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px",
-                padding: "12px 8px", borderRadius: "12px", border: "1px solid",
-                borderColor: formData.mainDoorDirection === opt.id ? "#00b2d6" : "#e2e8f0",
-                backgroundColor: formData.mainDoorDirection === opt.id ? "#f0f9ff" : "#fff",
-                color: formData.mainDoorDirection === opt.id ? "#00b2d6" : "#64748b",
-                fontSize: "0.8rem", fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
-              }}
-            >
-              <span className="material-symbols-outlined">{opt.icon}</span>
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <label style={labelStyle}>Tình trạng giấy tờ pháp lý</label>
+        <select
+          name="mainDoorDirection"
+          value={formData.mainDoorDirection}
+          onChange={handleChange}
+          required
+          style={inputStyle}
+        >
+          <option value="">-- Chọn tình trạng --</option>
+          <option value="Đã có sổ đỏ/sổ hồng">Đã có sổ đỏ/sổ hồng</option>
+          <option value="Hợp đồng thuê/ủy quyền">Hợp đồng thuê/ủy quyền</option>
+          <option value="Giấy phép kinh doanh">Giấy phép kinh doanh</option>
+          <option value="Đang chờ cấp">Đang chờ cấp</option>
+        </select>
       </div>
 
       {/* Mô tả */}

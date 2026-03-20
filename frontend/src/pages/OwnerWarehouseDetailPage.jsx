@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import api from "../api/api";
+import api from "../services/axiosClient";
 import RentalAreaManagement from "../components/warehouse/RentalAreaManagement";
 
 // ─── Status helpers ────────────────────────────────────────────────────────
@@ -160,6 +160,24 @@ const OwnerWarehouseDetailPage = () => {
                   </p>
                   <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                     {getStatusBadge(warehouse.status)}
+                    {warehouse.mainDoorDirection && (
+                      <span style={{ 
+                        padding: "4px 14px", 
+                        background: "rgba(255,255,255,0.2)", 
+                        color: "#fff", 
+                        borderRadius: "20px", 
+                        fontSize: "0.82rem", 
+                        fontWeight: 700,
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: 6,
+                        backdropFilter: "blur(4px)"
+                      }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>fact_check</span>
+                        {warehouse.mainDoorDirection}
+                      </span>
+                    )}
                     <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.875rem" }}>
                       #{`WHS-${String(warehouse.warehouseId || id).padStart(4,"0")}`}
                     </span>
@@ -421,6 +439,7 @@ const OwnerWarehouseDetailPage = () => {
                     { label: "Chiều dài",          value: warehouse.length ? `${warehouse.length} m` : "—" },
                     { label: "Chiều rộng",         value: warehouse.width  ? `${warehouse.width} m`  : "—" },
                     { label: "Giờ hoạt động",     value: warehouse.is24HoursAccess ? "24/7" : (warehouse.operatingHours || "—") },
+                    { label: "Pháp lý",           value: warehouse.mainDoorDirection || "—" },
                     { label: "Trạng thái",         value: STATUS_BADGE[warehouse.status?.toUpperCase()]?.label || warehouse.status },
                   ].map(f => (
                     <div key={f.label} style={{ padding: "12px", background: "#f8fafc", borderRadius: 10 }}>
