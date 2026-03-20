@@ -42,8 +42,11 @@ const WarehouseDetailsPage = () => {
     "https://images.unsplash.com/photo-1624927637280-f033784c1279?auto=format&fit=crop&q=80&w=600"
   ];
 
-  const getImageUrl = (url) =>
-    url ? `http://localhost:5276${url.startsWith('/') ? url : '/' + url}` : null;
+  const getImageUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `http://localhost:5276${url.startsWith('/') ? url : '/' + url}`;
+  };
 
   const rawImages = warehouseData?.images || warehouseData?.Images || warehouseData?.warehouseMedia || warehouseData?.WarehouseMedia || [];
 

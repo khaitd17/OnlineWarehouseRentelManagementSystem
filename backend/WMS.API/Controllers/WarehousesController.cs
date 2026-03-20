@@ -53,6 +53,30 @@ public class WarehouseController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("approved/search")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SearchWarehouses(
+        [FromQuery] string? province,
+        [FromQuery] string? warehouseType,
+        [FromQuery] double? minArea,
+        [FromQuery] double? maxArea,
+        [FromQuery] string? sortBy = "newest",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12)
+    {
+        var result = await _mediator.Send(new SearchWarehousesQuery
+        {
+            Province      = province,
+            WarehouseType = warehouseType,
+            MinArea       = minArea,
+            MaxArea       = maxArea,
+            SortBy        = sortBy,
+            Page          = page,
+            PageSize      = pageSize
+        });
+        return Ok(result);
+    }
+
     [HttpGet("{id}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetDetail(int id)

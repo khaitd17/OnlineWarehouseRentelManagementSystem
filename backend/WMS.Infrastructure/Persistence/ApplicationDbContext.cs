@@ -218,6 +218,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ConfirmedBy).HasColumnName("confirmed_by");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.DocumentUrls).HasColumnName("document_urls");
             entity.Property(e => e.RenterId).HasColumnName("renter_id");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.Type).HasMaxLength(20).HasColumnName("type");
@@ -568,14 +569,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Lng).HasColumnName("lng");
             entity.Property(e => e.Name).HasMaxLength(255).HasColumnName("name");
             entity.Property(e => e.OperatingHours).HasMaxLength(100).HasColumnName("operating_hours");
-            entity.Property(e => e.Is24HoursAccess).HasColumnName("is_24_hours_access").HasDefaultValue(false);
-            entity.Property(e => e.OpenTime).HasColumnName("open_time");
-            entity.Property(e => e.CloseTime).HasColumnName("close_time");
             entity.Property(e => e.OwnerId).HasColumnName("owner_id");
             entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.TotalArea).HasColumnName("total_area");
-            entity.Property(e => e.HasZone).HasColumnName("has_zone").HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.WarehouseApprovedByNavigations).HasForeignKey(d => d.ApprovedBy).HasConstraintName("FK_warehouses_approver");
             entity.HasOne(d => d.Owner).WithMany(p => p.WarehouseOwners).HasForeignKey(d => d.OwnerId).HasConstraintName("FK_warehouses_owner");

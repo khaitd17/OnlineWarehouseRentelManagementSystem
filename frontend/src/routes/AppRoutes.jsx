@@ -42,6 +42,7 @@ import TransactionHistory from "../pages/Requests/TransactionHistory";
 import RenterInboundList from "../pages/Requests/RenterInboundList";
 import RenterOutboundList from "../pages/Requests/RenterOutboundList";
 import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
+import StaffInventoryRequests from "../pages/Requests/StaffInventoryRequests";
 
 // Admin pages
 import AdminDashboard from "../pages/admin/AdminDashboard";
@@ -102,6 +103,7 @@ function AppRoutes() {
           <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'USER', 'OWNER']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/staff-dashboard" element={<StaffDashboard />} />
+              <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
               <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
               <Route path="/outbound-requests" element={<OutboundRequestsList />} />
               <Route path="/confirm-movement" element={<ConfirmMovement />} />

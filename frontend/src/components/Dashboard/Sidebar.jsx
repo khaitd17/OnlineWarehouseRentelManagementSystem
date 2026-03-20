@@ -165,11 +165,11 @@ const MENU_BY_ROLE = {
   STAFF: [
     { icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" },
     {
-      icon: "move_to_inbox",
-      label: "Yêu cầu nhập kho",
-      path: "/inbound-requests",
+      icon: "inventory_2",
+      label: "Yêu cầu nhập/xuất",
+      path: "/staff-inventory-requests",
+      section: "KHO",
     },
-    { icon: "outbox", label: "Yêu cầu xuất kho", path: "/outbound-requests" },
     {
       icon: "swap_horiz",
       label: "Xác nhận di chuyển",
@@ -339,11 +339,11 @@ const Sidebar = () => {
     STAFF: [
       { icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" },
       {
-        icon: "move_to_inbox",
-        label: "Yêu cầu nhập kho",
-        path: "/inbound-requests",
+        icon: "inventory_2",
+        label: "Yêu cầu nhập/xuất",
+        path: "/staff-inventory-requests",
+        section: "KHO",
       },
-      { icon: "outbox", label: "Yêu cầu xuất kho", path: "/outbound-requests" },
       {
         icon: "swap_horiz",
         label: "Xác nhận di chuyển",
@@ -397,45 +397,27 @@ const Sidebar = () => {
       {/* Logo */}
       <Link
         to="/"
+        title="Về trang chủ"
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "12px",
-          padding: "20px 16px",
+          justifyContent: "center",
+          padding: "14px 16px",
           borderBottom: "1px solid #f1f5f9",
           textDecoration: "none",
-          cursor: "pointer",
         }}
-        title="Về trang chủ"
       >
-        <div
+        <img
+          src="/owrms-logo.png"
+          alt="OWRMS"
           style={{
-            width: "36px",
-            height: "36px",
-            backgroundColor: accentColor,
-            borderRadius: "10px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
+            height: "116px",
+            width: "116px",
+            objectFit: "contain",
             flexShrink: 0,
+            filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.08))",
           }}
-        >
-          <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
-            <path d="M12 3L4 9v12h16V9l-8-6zm0 2.5l5 3.75V19h-3v-5h-4v5H7v-9.75l5-3.75z" />
-          </svg>
-        </div>
-        <h1
-          style={{
-            fontSize: "1.25rem",
-            fontWeight: 800,
-            margin: 0,
-            color: accentColor,
-            letterSpacing: "0.5px",
-          }}
-        >
-          OWRMS
-        </h1>
+        />
       </Link>
 
       {/* Nav */}

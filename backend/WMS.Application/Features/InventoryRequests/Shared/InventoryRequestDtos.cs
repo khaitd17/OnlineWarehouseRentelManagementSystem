@@ -23,6 +23,7 @@ public record InventoryRequestDto
     public int WarehouseId { get; init; }
     public string WarehouseName { get; init; } = "";
     public string? Notes { get; init; }
+    public List<string>? DocumentUrls { get; init; }
     public DateTime? CreatedAt { get; init; }
     public DateTime? ConfirmedAt { get; init; }
     public string? ConfirmedByName { get; init; }
@@ -52,6 +53,9 @@ public static class InventoryRequestMapper
         WarehouseId     = r.WarehouseId,
         WarehouseName   = r.Warehouse?.Name  ?? "",
         Notes           = r.Notes,
+        DocumentUrls    = string.IsNullOrEmpty(r.DocumentUrls)
+            ? null
+            : System.Text.Json.JsonSerializer.Deserialize<List<string>>(r.DocumentUrls),
         CreatedAt       = r.CreatedAt,
         ConfirmedAt     = r.ConfirmedAt,
         ConfirmedByName = r.ConfirmedByNavigation?.FullName,
