@@ -237,7 +237,8 @@ namespace WMS.Infrastructure.Persistence
                 new WarehouseRole { Code = "OWNER",    Name = "Chủ kho" },
                 new WarehouseRole { Code = "MANAGER",  Name = "Quản lý kho" },
                 new WarehouseRole { Code = "OPERATOR", Name = "Điều phối viên" },
-                new WarehouseRole { Code = "STAFF",    Name = "Nhân viên" }
+                new WarehouseRole { Code = "STAFF",    Name = "Nhân viên" },
+                new WarehouseRole { Code = "RENTER",   Name = "Người thuê kho" }
             };
 
             foreach (var wr in whRoles)
@@ -254,6 +255,7 @@ namespace WMS.Infrastructure.Persistence
             var operatorWhRole = context.WarehouseRoles.First(r => r.Code == "OPERATOR");
             var staffWhRole    = context.WarehouseRoles.First(r => r.Code == "STAFF");
             var managerWhRole  = context.WarehouseRoles.First(r => r.Code == "MANAGER");
+            var renterWhRole   = context.WarehouseRoles.First(r => r.Code == "RENTER");
             var inboundSkill   = context.Skills.First(s => s.Code == "INBOUND");
             var forkliftSkill  = context.Skills.First(s => s.Code == "FORKLIFT");
             var zoneAEntity    = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-A");
@@ -648,6 +650,65 @@ namespace WMS.Infrastructure.Persistence
                         Status       = "ACTIVE",
                         Phone        = phone,
                         CreatedAt    = DateTime.UtcNow
+                    });
+                }
+            }
+            context.SaveChanges();
+
+            // ─── Tài khoản RENTER (người thuê kho) ──────────────────────────────────
+            var renterData = new[]
+            {
+                ("Nguyễn Văn Renter",  "renter1@owrms.com", "0922000001"),
+                ("Trần Thị Renter",    "renter2@owrms.com", "0922000002"),
+                ("Lê Minh Renter",     "renter3@owrms.com", "0922000003"),
+            };
+
+            foreach (var (fullName, email, phone) in renterData)
+            {
+                var renterUser = context.Users.FirstOrDefault(u => u.Email == email);
+                if (renterUser == null)
+                {
+                    renterUser = new User
+                    {
+                        Email        = email,
+                        FullName     = fullName,
+                        PasswordHash = defaultPasswordHash,
+                        RoleId       = userRoleId,
+                        Status       = "ACTIVE",
+                        Phone        = phone,
+                        CreatedAt    = DateTime.UtcNow
+                    };
+                    context.Users.Add(renterUser);
+                    context.SaveChanges();
+                }
+
+                // Thêm membership RENTER cho warehouse 1
+                if (!context.WarehouseMemberships.Any(m => m.UserId == renterUser.UserId && m.WarehouseId == warehouse.WarehouseId))
+                {
+                    context.WarehouseMemberships.Add(new WarehouseMembership
+                    {
+                        UserId          = renterUser.UserId,
+                        WarehouseId     = warehouse.WarehouseId,
+                        WarehouseRoleId = renterWhRole.Id,
+                        IsActive        = true,
+                        IsAllSkill      = false,
+                        IsAllZone       = false,
+                        CreatedAt       = DateTime.UtcNow
+                    });
+                }
+
+                // Thêm membership RENTER cho warehouse 2
+                if (!context.WarehouseMemberships.Any(m => m.UserId == renterUser.UserId && m.WarehouseId == warehouse2.WarehouseId))
+                {
+                    context.WarehouseMemberships.Add(new WarehouseMembership
+                    {
+                        UserId          = renterUser.UserId,
+                        WarehouseId     = warehouse2.WarehouseId,
+                        WarehouseRoleId = renterWhRole.Id,
+                        IsActive        = true,
+                        IsAllSkill      = false,
+                        IsAllZone       = false,
+                        CreatedAt       = DateTime.UtcNow
                     });
                 }
             }
