@@ -88,6 +88,7 @@ builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.Infrastructure.Repositories.NotificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
+builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -180,6 +181,16 @@ using (var scope = app.Services.CreateScope())
         // Log lỗi seeder nhưng không crash app — backend vẫn khởi động bình thường
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi (có thể data đã tồn tại hoặc SQL Server chưa sẵn sàng). Backend vẫn tiếp tục chạy.");
+    }
+    context.Database.EnsureCreated();
+    try
+    {
+        DatabaseSeeder.Seed(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Seeder failed: {Message}", ex.Message);
     }
 }
 
