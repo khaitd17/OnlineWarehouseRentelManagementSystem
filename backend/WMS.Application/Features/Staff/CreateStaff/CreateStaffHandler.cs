@@ -1,6 +1,7 @@
 using MediatR;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
+using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Staff.CreateStaff
 {
@@ -25,7 +26,6 @@ namespace WMS.Application.Features.Staff.CreateStaff
 
         public async Task<int> Handle(CreateStaffCommand request, CancellationToken cancellationToken)
         {
-            // ─── 1. Lấy membership của caller (người đang thao tác) ────────────────
             var callerMembership = await _membershipRepository.GetCallerMembershipAsync(
                 request.CallerId, request.WarehouseId, cancellationToken);
 
@@ -33,24 +33,41 @@ namespace WMS.Application.Features.Staff.CreateStaff
                 throw new UnauthorizedAccessException(
                     "Bạn không có quyền truy cập vào kho này hoặc membership không hợp lệ.");
 
-            var callerRole = callerMembership.RoleCode; // OPERATOR | MANAGER | STAFF | OWNER
+            var callerRole = callerMembership.RoleCode;
 
-            // ─── 2. Kiểm tra quyền tạo nhân viên ──────────────────────────────────
-            // Chỉ OPERATOR và MANAGER mới được tạo
             if (callerRole != "OPERATOR" && callerRole != "MANAGER")
                 throw new UnauthorizedAccessException(
                     $"Role '{callerRole}' không có quyền tạo nhân viên.");
 
-            // MANAGER chỉ được tạo STAFF
             var targetRole = request.TargetRoleCode.ToUpper();
             if (callerRole == "MANAGER" && targetRole != "STAFF")
                 throw new UnauthorizedAccessException(
                     "Manager chỉ được phép tạo nhân viên có role STAFF.");
 
-            // ─── 3. Kiểm tra vượt quyền về skill và zone (chỉ với MANAGER) ─────────
+            if (targetRole == "MANAGER")
+            {
+                var existingManagers = await _membershipRepository.GetActiveManagersInWarehouseAsync(
+                    request.WarehouseId, cancellationToken);
+
+                foreach (var mgr in existingManagers)
+                {
+                    bool skillsOverlap = request.IsAllSkill
+                        || mgr.IsAllSkill
+                        || request.SkillIds.Intersect(mgr.SkillIds).Any();
+
+                    bool zonesOverlap = request.IsAllZone
+                        || mgr.IsAllZone
+                        || request.ZoneIds.Intersect(mgr.ZoneIds).Any();
+
+                    if (skillsOverlap && zonesOverlap)
+                        throw new InvalidOperationException(
+                            $"Phạm vi quản lý bị trùng với manager '{mgr.FullName}'. " +
+                            "Vui lòng chọn skill hoặc zone không trùng với manager hiện tại.");
+                }
+            }
+
             if (callerRole == "MANAGER")
             {
-                // Nếu MANAGER không có IsAllSkill → kiểm tra skill subset
                 if (!callerMembership.IsAllSkill && request.SkillIds.Any())
                 {
                     var invalidSkills = request.SkillIds.Except(callerMembership.SkillIds).ToList();
@@ -59,7 +76,6 @@ namespace WMS.Application.Features.Staff.CreateStaff
                             $"Manager không có quyền gán skill có id: {string.Join(", ", invalidSkills)}.");
                 }
 
-                // Nếu MANAGER không có IsAllZone → kiểm tra zone subset
                 if (!callerMembership.IsAllZone && request.ZoneIds.Any())
                 {
                     var invalidZones = request.ZoneIds.Except(callerMembership.ZoneIds).ToList();
@@ -68,13 +84,11 @@ namespace WMS.Application.Features.Staff.CreateStaff
                             $"Manager không có quyền gán zone có id: {string.Join(", ", invalidZones)}.");
                 }
 
-                // MANAGER không được set IsAllSkill/IsAllZone
                 if (request.IsAllSkill || request.IsAllZone)
                     throw new UnauthorizedAccessException(
                         "Manager không được phép gán toàn bộ skill/zone. Chỉ Operator mới có quyền này.");
             }
 
-            // ─── 4. Tạo / lấy user theo email ─────────────────────────────────────
             var existingUserId = await _userRepository.IsExistEmail(request.Email, cancellationToken);
             int staffUserId;
 
@@ -83,6 +97,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
                 // Email chưa tồn tại → tạo user mới
                 // var rawPassword = _passwordGenerator.Generate();
                 var rawPassword = "123456";
+                var rawPassword = _passwordGenerator.Generate();
                 var passwordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
 
                 var dto = new CreateUserDto(
@@ -90,34 +105,26 @@ namespace WMS.Application.Features.Staff.CreateStaff
                     Email: request.Email,
                     PasswordHash: passwordHash,
                     Phone: request.Phone,
-                    RoleName: "USER"   // role hệ thống luôn là USER
+                    RoleName: "USER"
                 );
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);
-
-                // Gửi email thông tin đăng nhập (tạm comment để test)
-                // await _emailService.SendInfo(
-                //     request.Email,
-                //     request.FullName,
-                //     "Thông tin tài khoản đăng nhập",
-                //     $"Email: {request.Email}, Mật khẩu: {rawPassword}"
-                // );
             }
             else
             {
                 staffUserId = existingUserId.Value;
             }
 
-            // ─── 5. Tạo WarehouseMembership ──────────────────────────────────────
             var membershipDto = new CreateMembershipDto
             {
-                UserId      = staffUserId,
-                WarehouseId = request.WarehouseId,
-                RoleCode    = targetRole,
-                IsAllSkill  = request.IsAllSkill,
-                IsAllZone   = request.IsAllZone,
-                SkillIds    = request.SkillIds,
-                ZoneIds     = request.ZoneIds,
+                UserId           = staffUserId,
+                WarehouseId      = request.WarehouseId,
+                RoleCode         = targetRole,
+                IsAllSkill       = request.IsAllSkill,
+                IsAllZone        = request.IsAllZone,
+                SkillIds         = request.SkillIds,
+                ZoneIds          = request.ZoneIds,
+                WarehouseShiftId = request.WarehouseShiftId,  // null = ca xoay
             };
 
             await _membershipRepository.CreateMembershipAsync(membershipDto, cancellationToken);
@@ -126,3 +133,4 @@ namespace WMS.Application.Features.Staff.CreateStaff
         }
     }
 }
+

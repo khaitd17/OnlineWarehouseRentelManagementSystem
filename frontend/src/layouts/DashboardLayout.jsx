@@ -135,7 +135,7 @@ const DashboardLayout = () => {
   return (
     <div className="font-display" style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc' }}>
       <Sidebar />
-      <div style={{ flex: 1, marginLeft: '240px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, marginLeft: '240px', display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         {/* Topbar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20 shadow-sm">
           <div className="flex items-center gap-4 flex-1 max-w-xl">

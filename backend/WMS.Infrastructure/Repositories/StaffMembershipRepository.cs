@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using WMS.Application.Features.Staff.ListStaff;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
+using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
 namespace WMS.Infrastructure.Repositories;
@@ -15,22 +15,60 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         _db = db;
     }
 
-    // ── GetByWarehouseAsync ────────────────────────────────────────────────
+    // ── GetByWarehouseAsync (with optional scope filter) ──────────────────────
     public async Task<StaffMembershipPagedResult> GetByWarehouseAsync(
         int warehouseId,
         string? search,
         int page,
         int pageSize,
+        int? callerId = null,
         CancellationToken ct = default)
     {
-        var query = _db.WarehouseMemberships
-            .Where(m => m.WarehouseId == warehouseId)
-            .Include(m => m.User)
-            .Include(m => m.Role)
-            .Include(m => m.Skills)
-            .Include(m => m.Zones)
-            .AsQueryable();
+        // Bước 1: nếu có callerId, lấy thông tin caller để biết scope
+        CallerMembershipDto? caller = null;
+        if (callerId.HasValue)
+            caller = await GetCallerMembershipAsync(callerId.Value, warehouseId, ct);
 
+        // Bước 2: base query — tất cả non-OWNER active memberships trong kho
+        var query = _db.WarehouseMemberships
+            .Where(m => m.WarehouseId == warehouseId && m.Role.Code != "OWNER");
+
+        // Bước 3: áp scope filter hoàn toàn qua EF → SQL (không in-memory)
+        if (caller != null)
+        {
+            if (caller.RoleCode == "MANAGER")
+            {
+                var callerSkillIds = caller.SkillIds; // List<int> — captured in closure
+                var callerZoneIds  = caller.ZoneIds;
+                bool allSkill      = caller.IsAllSkill;
+                bool allZone       = caller.IsAllZone;
+                int  callerUserId  = callerId!.Value;
+
+                query = query.Where(m =>
+                    // Bản thân caller
+                    m.UserId == callerUserId ||
+                    // STAFF chia sẻ skill/zone (EF dịch .Any() → SQL EXISTS)
+                    (m.Role.Code == "STAFF" && (
+                        allSkill || allZone ||
+                        m.Skills.Any(s => callerSkillIds.Contains(s.Id)) ||
+                        m.Zones.Any(z  => callerZoneIds.Contains(z.Id))
+                    ))
+                );
+            }
+            else if (caller.RoleCode == "OPERATOR")
+            {
+                // OPERATOR thấy MANAGER + STAFF (không thấy OWNER đã loại ở bước 2)
+                // → không cần filter thêm, giữ nguyên query
+            }
+            else
+            {
+                // STAFF (hoặc role khác) chỉ thấy chính mình
+                int callerUserId = callerId!.Value;
+                query = query.Where(m => m.UserId == callerUserId);
+            }
+        }
+
+        // Bước 4: search filter
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.Trim().ToLower();
@@ -39,9 +77,17 @@ public class StaffMembershipRepository : IStaffMembershipRepository
                 m.User.Email.ToLower().Contains(s));
         }
 
-        var total = await query.CountAsync(ct);
+        // Bước 5: count + paginate — hoàn toàn ở DB, không in-memory
+        var total = await query
+            .Include(m => m.User)   // cần cho search và sort
+            .Include(m => m.Role)
+            .CountAsync(ct);
 
         var items = await query
+            .Include(m => m.User)
+            .Include(m => m.Role)
+            .Include(m => m.Skills)
+            .Include(m => m.Zones)
             .OrderBy(m => m.Role.Code)
             .ThenBy(m => m.User.FullName)
             .Skip((page - 1) * pageSize)
@@ -61,8 +107,8 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             RoleName           = m.Role.Name,
             IsAllSkill         = m.IsAllSkill,
             IsAllZone          = m.IsAllZone,
-            Skills             = m.Skills.Select(s => new SkillDto { Id = s.Id, Code = s.Code, Name = s.Name }).ToList(),
-            Zones              = m.Zones.Select(z => new ZoneDto  { Id = z.Id, Code = z.Code, Name = z.Name }).ToList()
+            Skills = m.Skills.Select(s => new SkillDto { Id = s.Id, Code = s.Code, Name = s.Name }).ToList(),
+            Zones  = m.Zones.Select(z  => new ZoneDto  { Id = z.Id, Code = z.Code, Name = z.Name }).ToList(),
         }).ToList();
 
         return new StaffMembershipPagedResult
@@ -72,9 +118,10 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             PageSize    = pageSize,
             Total       = total,
             TotalPages  = (int)Math.Ceiling((double)total / pageSize),
-            Items       = dtos
+            Items       = dtos,
         };
     }
+
 
     // ── SetActiveAsync ────────────────────────────────────────────────────
     public async Task SetActiveAsync(int membershipId, bool isActive, CancellationToken ct = default)
@@ -133,13 +180,14 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         // Tạo membership
         var membership = new WarehouseMembership
         {
-            UserId          = dto.UserId,
-            WarehouseId     = dto.WarehouseId,
-            WarehouseRoleId = role.Id,
-            IsActive        = true,
-            IsAllSkill      = dto.IsAllSkill,
-            IsAllZone       = dto.IsAllZone,
-            CreatedAt       = DateTime.UtcNow,
+            UserId            = dto.UserId,
+            WarehouseId       = dto.WarehouseId,
+            WarehouseRoleId   = role.Id,
+            IsActive          = true,
+            IsAllSkill        = dto.IsAllSkill,
+            IsAllZone         = dto.IsAllZone,
+            CreatedAt         = DateTime.UtcNow,
+            WarehouseShiftId  = dto.WarehouseShiftId,  // null = ca xoay
         };
 
         // Gán skills
@@ -254,5 +302,28 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         }
 
         await _db.SaveChangesAsync(ct);
+    }
+
+    // ── GetActiveManagersInWarehouseAsync ──────────────────────────────────────
+    public async Task<List<ManagerScopeDto>> GetActiveManagersInWarehouseAsync(
+        int warehouseId,
+        CancellationToken ct = default)
+    {
+        return await _db.WarehouseMemberships
+            .Where(m => m.WarehouseId == warehouseId && m.IsActive && m.Role.Code == "MANAGER")
+            .Include(m => m.User)
+            .Include(m => m.Role)
+            .Include(m => m.Skills)
+            .Include(m => m.Zones)
+            .Select(m => new ManagerScopeDto
+            {
+                MembershipId = m.Id,
+                FullName     = m.User!.FullName ?? m.User.Email ?? "",
+                IsAllSkill   = m.IsAllSkill,
+                IsAllZone    = m.IsAllZone,
+                SkillIds     = m.Skills.Select(s => s.Id).ToList(),
+                ZoneIds      = m.Zones.Select(z => z.Id).ToList(),
+            })
+            .ToListAsync(ct);
     }
 }

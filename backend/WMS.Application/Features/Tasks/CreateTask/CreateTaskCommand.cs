@@ -13,12 +13,4 @@ public class CreateTaskCommand : IRequest<int>
     public DateTime? ScheduledAt { get; set; }
 }
 
-public class CreateTaskDto
-{
-    public int WarehouseId { get; set; }
-    public int TaskTypeId { get; set; }
-    public bool IsAllZone { get; set; }
-    public List<int> ZoneIds { get; set; } = new();
-    public string? Note { get; set; }
-    public DateTime? ScheduledAt { get; set; }
-}
+// CreateTaskDto moved to WMS.Domain/Interfaces/DomainContracts.cs

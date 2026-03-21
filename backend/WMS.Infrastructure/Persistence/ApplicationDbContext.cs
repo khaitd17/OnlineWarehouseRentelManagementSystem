@@ -72,12 +72,16 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<ContractLog> ContractLogs { get; set; }
 
+    public virtual DbSet<StaffShift> StaffShifts { get; set; }
+
+    public virtual DbSet<WarehouseShift> WarehouseShifts { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Server=localhost;Database=OWRMS;uid=sa;pwd=sa;Trusted_Connection=True;TrustServerCertificate=True;");
-        }
+        // if (!optionsBuilder.IsConfigured)
+        // {
+        //     optionsBuilder.UseSqlServer("Server=localhost;Database=OWRMS;uid=sa;pwd=sa;Trusted_Connection=True;TrustServerCertificate=True;");
+        // }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -379,12 +383,16 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsActive).HasColumnName("is_active");
             entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
             entity.Property(e => e.IsAllZone).HasColumnName("is_all_zone").HasDefaultValue(false);
+            entity.Property(e => e.WarehouseShiftId).HasColumnName("warehouse_shift_id").IsRequired(false);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(getdate())");
             entity.HasIndex(e => new { e.UserId, e.WarehouseId }).IsUnique();
             entity.HasOne(e => e.User).WithMany(u => u.WarehouseMemberships).HasForeignKey(e => e.UserId);
             entity.HasOne(e => e.Warehouse).WithMany(w => w.WarehouseMemberships).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(e => e.Role).WithMany(r => r.Memberships).HasForeignKey(e => e.WarehouseRoleId);
+            entity.HasOne(e => e.WarehouseShift).WithMany().HasForeignKey(e => e.WarehouseShiftId).IsRequired(false);
         });
+
+
 
         modelBuilder.Entity<WarehouseRole>(entity =>
         {
@@ -694,6 +702,39 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IpAddress).HasMaxLength(50).HasColumnName("ip_address");
             entity.Property(e => e.Details).HasColumnName("details");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<StaffShift>(entity =>
+        {
+            entity.ToTable("staff_shifts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.MembershipId).HasColumnName("membership_id");
+            entity.Property(e => e.ShiftDate).HasColumnName("shift_date");
+            entity.Property(e => e.TimeIn1).HasMaxLength(5).HasColumnName("time_in1").IsRequired(false);
+            entity.Property(e => e.TimeOut1).HasMaxLength(5).HasColumnName("time_out1").IsRequired(false);
+            entity.Property(e => e.TimeIn2).HasMaxLength(5).HasColumnName("time_in2").IsRequired(false);
+            entity.Property(e => e.TimeOut2).HasMaxLength(5).HasColumnName("time_out2").IsRequired(false);
+            entity.Property(e => e.ShiftType).HasMaxLength(10).HasColumnName("shift_type").IsRequired(false);
+            entity.HasIndex(e => new { e.MembershipId, e.ShiftDate }).IsUnique().HasDatabaseName("UQ_staff_shifts_membership_date");
+            entity.HasOne(e => e.Membership)
+                  .WithMany(m => m.StaffShifts)
+                  .HasForeignKey(e => e.MembershipId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_staff_shifts_membership");
+        });
+
+        modelBuilder.Entity<WarehouseShift>(entity =>
+        {
+            entity.ToTable("warehouse_shifts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.StartTime).HasMaxLength(5).HasColumnName("start_time");
+            entity.Property(e => e.EndTime).HasMaxLength(5).HasColumnName("end_time");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id").IsRequired(false);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId)
+                  .IsRequired(false).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

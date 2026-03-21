@@ -1113,6 +1113,57 @@ namespace WMS.Infrastructure.Migrations
                     b.ToTable("skills", (string)null);
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.StaffShift", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("MembershipId")
+                        .HasColumnType("int")
+                        .HasColumnName("membership_id");
+
+                    b.Property<DateOnly>("ShiftDate")
+                        .HasColumnType("date")
+                        .HasColumnName("shift_date");
+
+                    b.Property<string>("ShiftType")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
+                        .HasColumnName("shift_type");
+
+                    b.Property<string>("TimeIn1")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasColumnName("time_in1");
+
+                    b.Property<string>("TimeIn2")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasColumnName("time_in2");
+
+                    b.Property<string>("TimeOut1")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasColumnName("time_out1");
+
+                    b.Property<string>("TimeOut2")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)")
+                        .HasColumnName("time_out2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MembershipId", "ShiftDate")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_staff_shifts_membership_date");
+
+                    b.ToTable("staff_shifts", (string)null);
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.TaskAssignment", b =>
                 {
                     b.Property<int>("Id")
@@ -2214,6 +2265,18 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.StaffShift", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.WarehouseMembership", "Membership")
+                        .WithMany("StaffShifts")
+                        .HasForeignKey("MembershipId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_staff_shifts_membership");
+
+                    b.Navigation("Membership");
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.TaskAssignment", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.WarehouseMembership", "Membership")
@@ -2508,6 +2571,8 @@ namespace WMS.Infrastructure.Migrations
 
             modelBuilder.Entity("WMS.Domain.Entities.WarehouseMembership", b =>
                 {
+                    b.Navigation("StaffShifts");
+
                     b.Navigation("TaskAssignments");
                 });
 

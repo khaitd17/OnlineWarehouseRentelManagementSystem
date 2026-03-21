@@ -1,6 +1,7 @@
 using MediatR;
 using System.Security;
 using WMS.Application.Interfaces;
+using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Staff.ReassignMembership;
 

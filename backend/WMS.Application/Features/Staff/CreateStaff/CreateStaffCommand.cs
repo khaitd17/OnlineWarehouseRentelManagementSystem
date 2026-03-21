@@ -25,5 +25,8 @@ namespace WMS.Application.Features.Staff.CreateStaff
         // Chỉ OPERATOR được set true — phụ trách tất cả skill/zone
         public bool IsAllSkill { get; set; } = false;
         public bool IsAllZone { get; set; } = false;
+
+        // Ca lam viec (null = ca xoay)
+        public int? WarehouseShiftId { get; set; }
     }
 }
