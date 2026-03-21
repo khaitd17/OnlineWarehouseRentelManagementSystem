@@ -11,6 +11,7 @@ using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Repositories;
 using WMS.Infrastructure.Services;
+using WMS.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -83,12 +84,21 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalContractRepository, WMS.
 builder.Services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalAreaRepository, WMS.Infrastructure.Repositories.RentalAreaRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
+builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.Infrastructure.Repositories.NotificationRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
+builder.Services.AddScoped<IPdfService, PdfService>();
+
+// SignalR
+builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationSender, WMS.API.Hubs.SignalRNotificationSender>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -107,15 +117,31 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "A_VERY_SECRET_DEVELOPMENT_KEY_THAT_IS_LONG_ENOUGH"))
     };
+
+    // Allow SignalR to receive token from query string
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/notifications"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
 });
 builder.Services.AddAuthorization();
@@ -145,6 +171,17 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
+    {
+        // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
+        DatabaseSeeder.Seed(context);
+    }
+    catch (Exception ex)
+    {
+        // Log lỗi seeder nhưng không crash app — backend vẫn khởi động bình thường
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi (có thể data đã tồn tại hoặc SQL Server chưa sẵn sàng). Backend vẫn tiếp tục chạy.");
+    }
     context.Database.EnsureCreated();
     try
     {
@@ -172,13 +209,25 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowFrontend");
 
-// Cho phép public access file tĩnh (cho hình ảnh, avatar)
+// Cho phép public access file tĩnh (cho hình ảnh, avatar trong wwwroot)
 app.UseStaticFiles();
+
+// Mapping thêm thư mục uploads ở ngoài wwwroot (nơi lưu ảnh kho)
+var uploadsPath = Path.Combine(app.Environment.ContentRootPath, "uploads");
+if (!Directory.Exists(uploadsPath)) Directory.CreateDirectory(uploadsPath);
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+    RequestPath = "/uploads"
+});
 
 // Middleware order is important
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

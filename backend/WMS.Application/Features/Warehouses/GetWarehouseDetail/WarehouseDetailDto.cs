@@ -18,14 +18,27 @@ public class WarehouseDetailDto
 
     public double TotalArea { get; set; }
 
+    public double? Width { get; set; }
+
+    public double? Length { get; set; }
+    public string? MainDoorDirection { get; set; }
+
     public double AvailableArea { get; set; }
 
     public string? OperatingHours { get; set; }
+
+    public bool Is24HoursAccess { get; set; }
+
+    public TimeSpan? OpenTime { get; set; }
+
+    public TimeSpan? CloseTime { get; set; }
 
     public string? Status { get; set; }
 
     public DateTime? CreatedAt { get; set; }
     public List<WarehouseImageDto> Images { get; set; } = new();
+
+    public string? DocumentStatus { get; set; }
 
     public string? OwnerName { get; set; }
     public string? OwnerPhone { get; set; }

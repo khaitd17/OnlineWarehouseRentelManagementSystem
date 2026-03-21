@@ -18,15 +18,18 @@ public class ConfirmInventoryRequestHandler
     private readonly IInventoryRequestRepository _repo;
     private readonly IWarehouseInventoryRepository _invRepo;
     private readonly IInventoryTransactionRepository _txRepo;
+    private readonly IWarehouseRepository _warehouseRepo;
 
     public ConfirmInventoryRequestHandler(
         IInventoryRequestRepository repo,
         IWarehouseInventoryRepository invRepo,
-        IInventoryTransactionRepository txRepo)
+        IInventoryTransactionRepository txRepo,
+        IWarehouseRepository warehouseRepo)
     {
         _repo    = repo;
         _invRepo = invRepo;
         _txRepo  = txRepo;
+        _warehouseRepo = warehouseRepo;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -35,6 +38,15 @@ public class ConfirmInventoryRequestHandler
         // 1. Load request
         var req = await _repo.GetByIdAsync(cmd.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Request {cmd.Id} not found.");
+
+        // Check accessibility
+        var warehouse = await _warehouseRepo.GetByIdAsync(req.WarehouseId, cancellationToken);
+        if (warehouse != null && !warehouse.IsCurrentlyAccessible())
+        {
+            var timeStr = warehouse.Is24HoursAccess ? "24/7" : $"{warehouse.OpenTime} - {warehouse.CloseTime}";
+            throw new InvalidOperationException(
+                $"Không thể thực hiện giao dịch: Kho hiện đang đóng cửa. Giờ hoạt động: {timeStr}.");
+        }
 
         // 2. Validate status
         if (req.Status != "PENDING")

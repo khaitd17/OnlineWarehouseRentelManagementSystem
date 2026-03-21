@@ -50,12 +50,12 @@ namespace WMS.Infrastructure.Persistence
             }
 
             // Seed normal user (used as warehouse staff in memberships)
-            var staffUser = context.Users.FirstOrDefault(u => u.Email == "user@owrms.com");
+            var staffUser = context.Users.FirstOrDefault(u => u.Email == "trandinhkhai09072003@gmail.com");
             if (staffUser == null)
             {
                 staffUser = new User
                 {
-                    Email        = "user@owrms.com",
+                    Email        = "trandinhkhai09072003@gmail.com",
                     FullName     = "Nguyễn Văn A",
                     PasswordHash = defaultPasswordHash,
                     RoleId       = userRoleId,

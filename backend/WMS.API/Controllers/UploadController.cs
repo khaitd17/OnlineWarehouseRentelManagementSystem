@@ -25,39 +25,28 @@ public class UploadController : ControllerBase
             if (file == null || file.Length == 0)
                 return BadRequest(new { message = "No file uploaded" });
 
-            // Validate file type (only images)
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (!allowedExtensions.Contains(extension))
                 return BadRequest(new { message = "Only image files (JPG, PNG) and PDF are allowed" });
 
-            // Validate file size (max 5MB)
             if (file.Length > 5 * 1024 * 1024)
                 return BadRequest(new { message = "File size must not exceed 5MB" });
 
-            // Create uploads directory if not exists
-            var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "contracts");
+            var uploadsFolder = Path.Combine(_environment.WebRootPath ?? _environment.ContentRootPath, "uploads", "contracts");
             if (!Directory.Exists(uploadsFolder))
                 Directory.CreateDirectory(uploadsFolder);
 
-            // Generate unique filename
             var uniqueFileName = $"{Guid.NewGuid()}{extension}";
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-            // Save file
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await file.CopyToAsync(stream);
             }
 
-            // Return relative URL
             var fileUrl = $"/uploads/contracts/{uniqueFileName}";
-
-            return Ok(new
-            {
-                message = "File uploaded successfully",
-                url = fileUrl
-            });
+            return Ok(new { message = "File uploaded successfully", url = fileUrl });
         }
         catch (Exception ex)
         {
@@ -65,4 +54,60 @@ public class UploadController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while uploading the file", error = ex.Message });
         }
     }
+
+    // ── POST /api/Upload/inventory-documents ──────────────────────────────────
+    /// <summary>Upload chứng từ nhập/xuất kho (invoice, packing list, v.v.)</summary>
+    [HttpPost("inventory-documents")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadInventoryDocuments([FromForm] IFormFileCollection files)
+    {
+        try
+        {
+            if (files == null || files.Count == 0)
+                return BadRequest(new { message = "Chưa có file nào được tải lên." });
+
+            if (files.Count > 10)
+                return BadRequest(new { message = "Tối đa 10 file được phép upload mỗi lần." });
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf", ".xlsx", ".xls", ".doc", ".docx" };
+
+            var uploadFolder = Path.Combine(_environment.ContentRootPath, "uploads", "inventory-docs");
+            if (!Directory.Exists(uploadFolder))
+                Directory.CreateDirectory(uploadFolder);
+
+            var urls = new List<string>();
+
+            foreach (var file in files)
+            {
+                if (file.Length == 0) continue;
+
+                var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                if (!allowedExtensions.Contains(extension))
+                    return BadRequest(new { message = $"File '{file.FileName}' không hợp lệ. Chỉ chấp nhận: PDF, ảnh (JPG/PNG), Excel, Word." });
+
+                if (file.Length > 10 * 1024 * 1024)
+                    return BadRequest(new { message = $"File '{file.FileName}' vượt giới hạn 10MB." });
+
+                var uniqueName = $"{Guid.NewGuid()}{extension}";
+                var filePath = Path.Combine(uploadFolder, uniqueName);
+
+                using var stream = new FileStream(filePath, FileMode.Create);
+                await file.CopyToAsync(stream);
+
+                urls.Add($"/uploads/inventory-docs/{uniqueName}");
+            }
+
+            return Ok(new
+            {
+                message = $"Đã upload thành công {urls.Count} file.",
+                urls
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading inventory documents");
+            return StatusCode(500, new { message = "Lỗi khi upload chứng từ.", error = ex.Message });
+        }
+    }
 }
+

@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -7,6 +7,9 @@ using WMS.Application.Features.Warehouses.GetAllWarehouses;
 using WMS.Application.Features.Warehouses.GetOwnerWarehouses;
 using WMS.Application.Features.Warehouses.GetWarehouseDetail;
 using WMS.Application.Features.Warehouses.UpdateWarehouse;
+using WMS.Application.Features.Warehouses.GetOccupancyStats;
+using WMS.Application.Features.Warehouses.DeleteWarehouse;
+using WMS.Application.Features.Warehouses.DeleteWarehouseMedia;
 
 namespace WMS.API.Controllers;
 
@@ -47,6 +50,30 @@ public class WarehouseController : ControllerBase
     public async Task<IActionResult> GetApprovedWarehouses([FromQuery] int limit = 6)
     {
         var result = await _mediator.Send(new GetApprovedWarehousesQuery { Limit = limit });
+        return Ok(result);
+    }
+
+    [HttpGet("approved/search")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SearchWarehouses(
+        [FromQuery] string? province,
+        [FromQuery] string? warehouseType,
+        [FromQuery] double? minArea,
+        [FromQuery] double? maxArea,
+        [FromQuery] string? sortBy = "newest",
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 12)
+    {
+        var result = await _mediator.Send(new SearchWarehousesQuery
+        {
+            Province      = province,
+            WarehouseType = warehouseType,
+            MinArea       = minArea,
+            MaxArea       = maxArea,
+            SortBy        = sortBy,
+            Page          = page,
+            PageSize      = pageSize
+        });
         return Ok(result);
     }
 
@@ -138,5 +165,61 @@ public class WarehouseController : ControllerBase
         );
 
         return Ok(result);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteWarehouse(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        try
+        {
+            await _mediator.Send(new DeleteWarehouseCommand
+            {
+                WarehouseId = id,
+                CallerId = int.Parse(userId)
+            });
+            return Ok(new { message = "Xóa kho thành công" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
+    [HttpGet("occupancy-stats")]
+    public async Task<IActionResult> GetOccupancyStats()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var result = await _mediator.Send(new GetOccupancyStatsQuery(int.Parse(userId)));
+
+        return Ok(result);
+    }
+
+    [HttpDelete("media/{mediaId}")]
+    public async Task<IActionResult> DeleteMedia(int mediaId)
+    {
+        var result = await _mediator.Send(new DeleteWarehouseMediaCommand
+        {
+            MediaId = mediaId
+        });
+
+        if (!result)
+            return NotFound();
+
+        return Ok(new { message = "Media deleted successfully" });
     }
 }

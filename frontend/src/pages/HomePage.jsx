@@ -177,7 +177,13 @@ const HomePage = () => {
             }} onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-6px)'; e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(0,0,0,0.1)'; }} onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.04)'; }}>
               <div style={{ position: 'relative' }}>
                 <img 
-                  src={w.imageUrl ? `http://localhost:5276${w.imageUrl}` : 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800'} 
+                  src={
+                    !w.imageUrl
+                      ? 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800'
+                      : w.imageUrl.startsWith('http')
+                        ? w.imageUrl
+                        : `http://localhost:5276${w.imageUrl}`
+                  } 
                   alt={w.name} 
                   style={{ width: '100%', height: '240px', objectFit: 'cover' }} 
                 />

@@ -22,12 +22,31 @@ public partial class Warehouse
 
     public double TotalArea { get; set; }
 
+    [NotMapped]
+    public double? Width { get; set; }
+
+    [NotMapped]
+    public double? Length { get; set; }
+
+    [NotMapped]
+    public string? MainDoorDirection { get; set; }
+
     public double AvailableArea { get; set; }
 
     public string? OperatingHours { get; set; }
+    
+    [NotMapped]
+    public bool Is24HoursAccess { get; set; } = false;
+
+    [NotMapped]
+    public TimeSpan? OpenTime { get; set; }
+
+    [NotMapped]
+    public TimeSpan? CloseTime { get; set; }
 
     public string? Status { get; set; }
 
+    [NotMapped]
     public bool HasZone { get; set; } = false;
 
     public DateTime? CreatedAt { get; set; }
@@ -39,6 +58,23 @@ public partial class Warehouse
     public int? ApprovedBy { get; set; }
 
     public string? RejectionReason { get; set; }
+
+    public bool IsCurrentlyAccessible()
+    {
+        if (Is24HoursAccess) return true;
+        if (!OpenTime.HasValue || !CloseTime.HasValue) return true; // Default to true if not set? Or false? User said require input.
+
+        var now = DateTime.Now.TimeOfDay;
+        if (OpenTime < CloseTime)
+        {
+            return now >= OpenTime && now <= CloseTime;
+        }
+        else 
+        {
+            // Case where it closes after midnight (e.g. 22:00 - 04:00)
+            return now >= OpenTime || now <= CloseTime;
+        }
+    }
 
     public virtual User? ApprovedByNavigation { get; set; }
 

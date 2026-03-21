@@ -21,10 +21,15 @@ import ProtectedRoute from "./ProtectedRoute";
 import CreateWarehouse from "../pages/CreateWarehouse";
 import WarehouseDetail from "../pages/WarehouseDetail";
 import OwnerWarehouseList from "../pages/OwnerWarehouseList";
+import OwnerWarehouseDetailPage from "../pages/OwnerWarehouseDetailPage";
 import EditWarehouse from "../pages/EditWarehouse";
 import MyRentalRequests from "../pages/MyRentalRequests";
 import PendingRentalRequests from "../pages/PendingRentalRequests";
 import RentalRequestDetail from "../pages/RentalRequestDetail";
+import MyContracts from "../pages/MyContracts";
+import ContractDetail from "../pages/ContractDetail";
+import WarehouseContracts from "../pages/WarehouseContracts";
+import OccupancyDashboard from "../pages/OccupancyDashboard";
 import RoleBasedRoute from "./RoleBasedRoute";
 
 // Import New Pages for Requests
@@ -39,6 +44,7 @@ import TransactionHistory from "../pages/Requests/TransactionHistory";
 import RenterInboundList from "../pages/Requests/RenterInboundList";
 import RenterOutboundList from "../pages/Requests/RenterOutboundList";
 import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
+import StaffInventoryRequests from "../pages/Requests/StaffInventoryRequests";
 
 // Admin pages
 import AdminDashboard from "../pages/admin/AdminDashboard";
@@ -48,6 +54,8 @@ import WarehouseDetailPage from "../pages/admin/WarehouseDetailPage";
 import AuditSessionsPage from "../pages/admin/AuditSessionsPage";
 import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
 import ReportsPage from "../pages/admin/ReportsPage";
+
+import EquipmentManagement from "../pages/EquipmentManagement";
 
 function AppRoutes() {
   return (
@@ -72,16 +80,24 @@ function AppRoutes() {
             <Route element={<DashboardLayout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
+              <Route path="/owner-warehouse/:id" element={<OwnerWarehouseDetailPage />} />
               <Route path="/post-warehouse" element={<PostWarehousePage />} />
               <Route path="/create-warehouse" element={<CreateWarehouse />} />
               <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />
               <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
               <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
               <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
+              <Route path="/my-rental-requests" element={<MyRentalRequests />} />
+              <Route path="/my-contracts" element={<MyContracts />} />
+              <Route path="/contracts/:id" element={<ContractDetail />} />
+              <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
               <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />
+              <Route path="/equipment-management" element={<EquipmentManagement />} />
+              <Route path="/occupancy-dashboard" element={<OccupancyDashboard />} />
               <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
+              <Route path="/settings" element={<ProfilePage />} />
               <Route path="/shift-scheduling" element={<ShiftSchedulingPage />} />
               <Route path="/my-schedule" element={<MySchedulePage />} />
             </Route>
@@ -91,6 +107,7 @@ function AppRoutes() {
           <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'USER', 'OWNER']} />}>
             <Route element={<DashboardLayout />}>
               <Route path="/staff-dashboard" element={<StaffDashboard />} />
+              <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
               <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
               <Route path="/outbound-requests" element={<OutboundRequestsList />} />
               <Route path="/confirm-movement" element={<ConfirmMovement />} />
@@ -104,7 +121,6 @@ function AppRoutes() {
               <Route path="/renter-dashboard" element={<RenterDashboard />} />
               <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
               <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
-              <Route path="/my-rental-requests" element={<MyRentalRequests />} />
             </Route>
           </Route>
 

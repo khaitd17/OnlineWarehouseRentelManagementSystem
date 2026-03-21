@@ -25,14 +25,23 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
         GetMyRentalContractsQuery request,
         CancellationToken cancellationToken)
     {
-        var contracts = await _contractRepo.GetByRenterIdAsync(request.UserId);
+        IEnumerable<WMS.Domain.Entities.RentalContract> contracts;
 
-        var renter = await _userRepo.GetByIdAsync(request.UserId, cancellationToken);
+        // if WarehouseId is provided, get contracts by warehouse (owner view)
+        if (request.WarehouseId.HasValue)
+        {
+            contracts = await _contractRepo.GetByWarehouseIdAsync(request.WarehouseId.Value);
+        }
+        else
+        {
+            contracts = await _contractRepo.GetByRenterIdAsync(request.UserId);
+        }
 
         var result = new List<RentalContractDto>();
         foreach (var contract in contracts)
         {
             var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, cancellationToken);
+            var renter = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
 
             result.Add(new RentalContractDto
             {
@@ -41,8 +50,10 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
                 ContractNumber = contract.ContractNumber,
                 RenterId = contract.RenterId,
                 RenterName = renter?.FullName ?? "Unknown",
+                RenterEmail = renter?.Email ?? "",
                 WarehouseId = contract.WarehouseId,
                 WarehouseName = warehouse?.Name ?? "Unknown",
+                WarehouseAddress = warehouse?.Address ?? "",
                 StartDate = contract.StartDate,
                 EndDate = contract.EndDate,
                 MonthlyPayment = contract.MonthlyPayment,
@@ -50,6 +61,9 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
                 DepositAmount = contract.DepositAmount,
                 Status = contract.Status,
                 Terms = contract.Terms,
+                ContractFileUrl = contract.ContractFileUrl,
+                SignedFileUrl = contract.SignedFileUrl,
+                SignedAt = contract.SignedAt,
                 CreatedAt = contract.CreatedAt
             });
         }

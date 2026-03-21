@@ -15,6 +15,25 @@ export const getFeaturedWarehouses = async (limit = 6) => {
   return response.data;
 };
 
+export const searchWarehouses = async ({
+  province = '',
+  warehouseType = '',
+  minArea,
+  maxArea,
+  sortBy = 'newest',
+  page = 1,
+  pageSize = 12
+} = {}) => {
+  const params = { sortBy, page, pageSize };
+  if (province)       params.province      = province;
+  if (warehouseType)  params.warehouseType = warehouseType;
+  if (minArea != null) params.minArea      = minArea;
+  if (maxArea != null) params.maxArea      = maxArea;
+
+  const response = await axiosClient.get("/Warehouse/approved/search", { params });
+  return response.data; // { total, page, pageSize, items }
+};
+
 export const createWarehouse = async (data) => {
   const response = await axiosClient.post("/Warehouse/create", data);
   return response.data.warehouseId;
@@ -39,4 +58,9 @@ export const uploadWarehouseDocument = async (warehouseId, file, documentType) =
 
 export const submitWarehouse = async (warehouseId) => {
   await axiosClient.patch(`/Warehouse/${warehouseId}/submit`, {});
+};
+
+export const getOccupancyStats = async () => {
+  const response = await axiosClient.get("/Warehouse/occupancy-stats");
+  return response.data;
 };

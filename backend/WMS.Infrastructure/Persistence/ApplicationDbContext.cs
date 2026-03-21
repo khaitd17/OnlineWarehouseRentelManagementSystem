@@ -66,6 +66,12 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<RentalArea> RentalAreas { get; set; }
 
+    public virtual DbSet<Notification> Notifications { get; set; }
+
+    public virtual DbSet<ContractVerification> ContractVerifications { get; set; }
+
+    public virtual DbSet<ContractLog> ContractLogs { get; set; }
+
     public virtual DbSet<StaffShift> StaffShifts { get; set; }
 
     public virtual DbSet<WarehouseShift> WarehouseShifts { get; set; }
@@ -101,7 +107,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.DiscrepancyReason).HasColumnName("discrepancy_reason");
             entity.Property(e => e.ExpectedQty).HasColumnName("expected_qty");
             entity.Property(e => e.ItemName).HasMaxLength(255).HasColumnName("item_name");
+            entity.Property(e => e.RecordedBy).HasColumnName("recorded_by");
             entity.HasOne(d => d.Audit).WithMany(p => p.AuditResults).HasForeignKey(d => d.AuditId).HasConstraintName("FK_audit_results_audit");
+            entity.HasOne(d => d.RecordedByNavigation).WithMany(p => p.RecordedAuditResults).HasForeignKey(d => d.RecordedBy).HasConstraintName("FK_audit_results_recorded_by");
         });
 
         modelBuilder.Entity<AuditSession>(entity =>
@@ -118,7 +126,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Notes).HasColumnName("notes");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("OPEN").HasColumnName("status");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.AssignedTo).HasColumnName("assigned_to");
             entity.HasOne(d => d.CreatedByNavigation).WithMany(p => p.AuditSessions).HasForeignKey(d => d.CreatedBy).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_audit_sessions_creator");
+            entity.HasOne(d => d.AssignedToNavigation).WithMany(p => p.AssignedAuditSessions).HasForeignKey(d => d.AssignedTo).HasConstraintName("FK_audit_sessions_assigned_to");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.AuditSessions).HasForeignKey(d => d.WarehouseId).HasConstraintName("FK_audit_sessions_warehouse");
         });
 
@@ -135,6 +145,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ContractId).HasColumnName("contract_id");
             entity.Property(e => e.ContractNumber).HasMaxLength(100).HasColumnName("contract_number");
             entity.Property(e => e.ContractUrl).HasColumnName("contract_url");
+            entity.Property(e => e.SignedFileUrl).HasMaxLength(500).HasColumnName("signed_file_url");
+            entity.Property(e => e.SignedAt).HasColumnName("signed_at");
+            entity.Property(e => e.Terms).HasColumnName("terms");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.DepositAmount).HasColumnType("decimal(15, 2)").HasColumnName("deposit_amount");
             entity.Property(e => e.EndDate).HasColumnName("end_date");
@@ -142,7 +155,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RenterId).HasColumnName("renter_id");
             entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
-            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("ACTIVE").HasColumnName("status");
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("PENDING_OWNER_SIGNATURE").HasColumnName("status");
+            entity.Property(e => e.OwnerSignedFileUrl).HasMaxLength(500).HasColumnName("owner_signed_file_url");
+            entity.Property(e => e.OwnerSignedAt).HasColumnName("owner_signed_at");
+            entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
             entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
             entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
             entity.Property(e => e.TotalValue).HasColumnType("decimal(15, 2)").HasColumnName("total_value");
@@ -165,6 +181,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IotDeviceId).HasMaxLength(100).HasColumnName("iot_device_id");
             entity.Property(e => e.LastMaintenanceDate).HasColumnName("last_maintenance_date");
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Type).HasMaxLength(50).HasColumnName("type");
+            entity.Property(e => e.Location).HasMaxLength(255).HasColumnName("location");
+            entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.NextMaintenanceDate).HasColumnName("next_maintenance_date");
             entity.Property(e => e.PurchaseDate).HasColumnName("purchase_date");
             entity.Property(e => e.Specifications).HasColumnName("specifications");
@@ -203,6 +222,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ConfirmedBy).HasColumnName("confirmed_by");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.DocumentUrls).HasColumnName("document_urls");
             entity.Property(e => e.RenterId).HasColumnName("renter_id");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.Type).HasMaxLength(20).HasColumnName("type");
@@ -533,6 +553,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(255).HasColumnName("name");
             entity.Property(e => e.OccupancyRate).HasColumnName("occupancy_rate");
             entity.Property(e => e.OccupiedArea).HasColumnName("occupied_area");
+            entity.Property(e => e.ReservedArea).HasColumnName("reserved_area");
             entity.Property(e => e.TotalArea).HasColumnName("total_area");
             entity.Property(e => e.WarehouseId).ValueGeneratedOnAdd().HasColumnName("warehouse_id");
         });
@@ -560,7 +581,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.TotalArea).HasColumnName("total_area");
-            entity.Property(e => e.HasZone).HasColumnName("has_zone").HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.WarehouseApprovedByNavigations).HasForeignKey(d => d.ApprovedBy).HasConstraintName("FK_warehouses_approver");
             entity.HasOne(d => d.Owner).WithMany(p => p.WarehouseOwners).HasForeignKey(d => d.OwnerId).HasConstraintName("FK_warehouses_owner");
@@ -617,6 +637,25 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).HasConstraintName("FK_password_reset_tokens_user");
         });
 
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.NotificationId).HasName("PK_notifications");
+            entity.ToTable("notifications");
+            entity.HasIndex(e => e.UserId, "idx_notifications_user");
+            entity.HasIndex(e => e.IsRead, "idx_notifications_is_read");
+            entity.HasIndex(e => e.CreatedAt, "idx_notifications_created_at");
+            entity.Property(e => e.NotificationId).HasColumnName("notification_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Title).HasMaxLength(255).HasColumnName("title");
+            entity.Property(e => e.Message).HasColumnName("message");
+            entity.Property(e => e.Type).HasMaxLength(50).HasColumnName("type");
+            entity.Property(e => e.ReferenceId).HasColumnName("reference_id");
+            entity.Property(e => e.ReferenceType).HasMaxLength(50).HasColumnName("reference_type");
+            entity.Property(e => e.IsRead).HasDefaultValue(false).HasColumnName("is_read");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).HasConstraintName("FK_notifications_user");
+        });
+
         modelBuilder.Entity<RentalArea>(entity =>
         {
             entity.ToTable("rental_areas");
@@ -633,6 +672,36 @@ public class ApplicationDbContext : DbContext
                   .HasForeignKey(e => e.WarehouseId)
                   .OnDelete(DeleteBehavior.Cascade)
                   .HasConstraintName("FK_rental_areas_warehouse");
+        });
+
+        modelBuilder.Entity<ContractVerification>(entity =>
+        {
+            entity.HasKey(e => e.VerificationId).HasName("PK_contract_verifications");
+            entity.ToTable("contract_verifications");
+            entity.HasIndex(e => e.ContractId, "idx_cv_contract");
+            entity.HasIndex(e => e.UserId, "idx_cv_user");
+            entity.Property(e => e.VerificationId).HasColumnName("verification_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.OtpCode).HasMaxLength(6).HasColumnName("otp_code");
+            entity.Property(e => e.IsVerified).HasDefaultValue(false).HasColumnName("is_verified");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<ContractLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PK_contract_logs");
+            entity.ToTable("contract_logs");
+            entity.HasIndex(e => e.ContractId, "idx_cl_contract");
+            entity.Property(e => e.LogId).HasColumnName("log_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Action).HasMaxLength(50).HasColumnName("action");
+            entity.Property(e => e.IpAddress).HasMaxLength(50).HasColumnName("ip_address");
+            entity.Property(e => e.Details).HasColumnName("details");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
         });
 
         modelBuilder.Entity<StaffShift>(entity =>

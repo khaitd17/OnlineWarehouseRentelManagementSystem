@@ -8,7 +8,7 @@ export async function getMyWarehouses() {
 }
 
 export async function getWarehouseZones(warehouseId) {
-  const res = await axiosClient.get(`/staff/warehouse-options/${warehouseId}`);
+  const res = await axiosClient.get(`/staff/warehouse-options?warehouseId=${warehouseId}`);
   return res.data.zones || [];
 }
 

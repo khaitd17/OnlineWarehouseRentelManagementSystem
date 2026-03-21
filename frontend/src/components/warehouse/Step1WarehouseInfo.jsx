@@ -113,47 +113,130 @@ const Step1WarehouseInfo = ({
 
       </div>
 
+      {/* Kích thước */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+        <div style={{ ...groupStyle, marginBottom: 0 }}>
+          <label style={labelStyle}>Chiều rộng (m)</label>
+          <input
+            name="width"
+            type="number"
+            min="1"
+            step="0.1"
+            value={formData.width || ""}
+            placeholder="Ví dụ: 20"
+            onChange={handleChange}
+            required
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ ...groupStyle, marginBottom: 0 }}>
+          <label style={labelStyle}>Chiều dài (m)</label>
+          <input
+            name="length"
+            type="number"
+            min="1"
+            step="0.1"
+            value={formData.length || ""}
+            placeholder="Ví dụ: 50"
+            onChange={handleChange}
+            required
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
       {/* Diện tích */}
       <div style={groupStyle}>
-        <label style={labelStyle}>Tổng diện tích (m²)</label>
+        <label style={labelStyle}>Tổng diện tích mặt sàn (m²)</label>
         <input
           name="totalArea"
-          placeholder="Nhập tổng diện tích"
-          onChange={handleChange}
-          required
-          style={inputStyle}
+          value={formData.totalArea || ""}
+          placeholder="Tự động tính bằng Chiều rộng x Chiều dài"
+          readOnly
+          style={{ ...inputStyle, backgroundColor: "#e2e8f0", color: "#475569", cursor: "not-allowed", fontWeight: 700 }}
         />
       </div>
 
-      {/* Giờ hoạt động */}
+      {/* 24/7 Access Toggle */}
       <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "1rem"
-      }}>
-
-        <div style={groupStyle}>
-          <label style={labelStyle}>Giờ mở cửa</label>
-          <input
-            type="time"
-            name="openTime"
-            onChange={handleChange}
-            required
-            style={inputStyle}
-          />
+        ...groupStyle,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: "12px",
+        padding: "16px",
+        backgroundColor: formData.is24HoursAccess ? "#f0f9ff" : "#f8fafc",
+        borderRadius: "16px",
+        border: "1px solid",
+        borderColor: formData.is24HoursAccess ? "#00b2d6" : "#e2e8f0",
+        cursor: "pointer",
+        transition: "all 0.2s"
+      }} onClick={() => handleChange({ target: { name: 'is24HoursAccess', type: 'checkbox', checked: !formData.is24HoursAccess } })}>
+        <input
+          type="checkbox"
+          name="is24HoursAccess"
+          checked={formData.is24HoursAccess}
+          onChange={handleChange}
+          style={{ width: "20px", height: "20px", cursor: "pointer" }}
+          onClick={(e) => e.stopPropagation()}
+        />
+        <div>
+          <div style={{ fontWeight: 700, color: "#1e293b", fontSize: "1rem" }}>Cho phép truy cập 24/7</div>
+          <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Kho tự quản hoạt động không giới hạn thời gian</div>
         </div>
+      </div>
 
-        <div style={groupStyle}>
-          <label style={labelStyle}>Giờ đóng cửa</label>
-          <input
-            type="time"
-            name="closeTime"
-            onChange={handleChange}
-            required
-            style={inputStyle}
-          />
+      {/* Giờ hoạt động (Chỉ hiện khi KHÔNG phải 24/7) */}
+      {!formData.is24HoursAccess && (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "1rem",
+          animation: "fadeIn 0.3s ease-out"
+        }}>
+          <div style={groupStyle}>
+            <label style={labelStyle}>Giờ mở cửa</label>
+            <input
+              type="time"
+              name="openTime"
+              value={formData.openTime}
+              onChange={handleChange}
+              required={!formData.is24HoursAccess}
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={groupStyle}>
+            <label style={labelStyle}>Giờ đóng cửa</label>
+            <input
+              type="time"
+              name="closeTime"
+              value={formData.closeTime}
+              onChange={handleChange}
+              required={!formData.is24HoursAccess}
+              style={inputStyle}
+            />
+          </div>
         </div>
+      )}
 
+
+
+      {/* Tình trạng pháp lý */}
+      <div style={groupStyle}>
+        <label style={labelStyle}>Tình trạng giấy tờ pháp lý</label>
+        <select
+          name="mainDoorDirection"
+          value={formData.mainDoorDirection}
+          onChange={handleChange}
+          required
+          style={inputStyle}
+        >
+          <option value="">-- Chọn tình trạng --</option>
+          <option value="Đã có sổ đỏ/sổ hồng">Đã có sổ đỏ/sổ hồng</option>
+          <option value="Hợp đồng thuê/ủy quyền">Hợp đồng thuê/ủy quyền</option>
+          <option value="Giấy phép kinh doanh">Giấy phép kinh doanh</option>
+          <option value="Đang chờ cấp">Đang chờ cấp</option>
+        </select>
       </div>
 
       {/* Mô tả */}
@@ -175,18 +258,27 @@ const Step1WarehouseInfo = ({
       <button
         type="submit"
         style={{
-          marginTop: "1rem",
-          padding: "0.9rem",
-          borderRadius: "12px",
+          marginTop: "1.5rem",
+          padding: "16px",
+          borderRadius: "16px",
           border: "none",
-          backgroundColor: "#0095c7",
+          backgroundColor: "#00b2d6",
           color: "#fff",
-          fontWeight: 700,
+          fontWeight: 800,
           cursor: "pointer",
-          fontSize: "1rem"
+          fontSize: "1.1rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "10px",
+          boxShadow: "0 8px 25px rgba(0, 178, 214, 0.25)",
+          transition: "all 0.3s ease"
         }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
+        onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
       >
-        Tiếp tục
+        <span>Tiếp tục bước tiếp theo</span>
+        <span className="material-symbols-outlined">arrow_forward</span>
       </button>
 
     </form>
@@ -196,19 +288,25 @@ const Step1WarehouseInfo = ({
 const groupStyle = {
   display: "flex",
   flexDirection: "column",
-  gap: "0.5rem"
+  gap: "0.6rem",
+  marginBottom: "1rem"
 };
 
 const labelStyle = {
-  fontSize: "0.9rem",
-  fontWeight: 600,
-  color: "#64748b"
+  fontSize: "0.95rem",
+  fontWeight: 700,
+  color: "#334155"
 };
 
 const inputStyle = {
-  padding: "0.8rem",
-  borderRadius: "10px",
-  border: "1px solid #e2e8f0"
+  padding: "14px 16px",
+  borderRadius: "14px",
+  border: "1px solid #e2e8f0",
+  fontSize: "1rem",
+  color: "#1e293b",
+  outline: "none",
+  transition: "all 0.2s ease",
+  backgroundColor: "#f8fafc"
 };
 
 export default Step1WarehouseInfo;

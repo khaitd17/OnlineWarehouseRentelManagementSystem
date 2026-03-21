@@ -39,6 +39,27 @@ const authService = {
     return response.data;
   },
 
+  googleLogin: async ({ email, fullName, googleId, avatarUrl }) => {
+    const response = await axiosClient.post("/auth/google-login", {
+      email,
+      fullName,
+      googleId,
+      avatarUrl,
+    });
+    if (response.data.token) {
+      localStorage.setItem("token", response.data.token);
+      localStorage.setItem("user", JSON.stringify(response.data));
+
+      try {
+        const ctxResponse = await axiosClient.get("/auth/warehouse-context");
+        localStorage.setItem("warehouseContext", JSON.stringify(ctxResponse.data));
+      } catch (err) {
+        console.warn("[WarehouseContext] Failed:", err);
+      }
+    }
+    return response.data;
+  },
+
   logout: () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");

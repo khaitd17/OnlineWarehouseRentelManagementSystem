@@ -18,16 +18,30 @@ const CreateWarehouse = () => {
     address: "",
     lat: "",
     lng: "",
+    width: "",
+    length: "",
     totalArea: "",
-    openTime: "",
-    closeTime: "",
+    is24HoursAccess: false,
+    openTime: "08:00",
+    closeTime: "18:00",
+    mainDoorDirection: "",
     description: ""
   });
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => {
+      const nextData = { ...prev, [name]: type === "checkbox" ? checked : value };
+      if (name === "width" || name === "length") {
+        const w = parseFloat(nextData.width) || 0;
+        const l = parseFloat(nextData.length) || 0;
+        if (w > 0 && l > 0) {
+          nextData.totalArea = w * l;
+        } else {
+          nextData.totalArea = "";
+        }
+      }
+      return nextData;
     });
   };
 
@@ -55,7 +69,13 @@ const CreateWarehouse = () => {
 
         description: formData.description,
         totalArea: parseFloat(formData.totalArea),
-        operatingHours: `${formData.openTime} - ${formData.closeTime}`
+        width: formData.width ? parseFloat(formData.width) : null,
+        length: formData.length ? parseFloat(formData.length) : null,
+        is24HoursAccess: formData.is24HoursAccess,
+        openTime: formData.is24HoursAccess ? null : formData.openTime,
+        closeTime: formData.is24HoursAccess ? null : formData.closeTime,
+        operatingHours: formData.is24HoursAccess ? "24/7" : `${formData.openTime} - ${formData.closeTime}`,
+        mainDoorDirection: formData.mainDoorDirection
       };
 
       const id = await createWarehouse(payload);
@@ -74,52 +94,105 @@ const CreateWarehouse = () => {
   };
 
   return (
-
-    <div style={{ maxWidth: "900px", margin: "40px auto", padding: "0 20px" }}>
-
-      <div style={{ textAlign: "center", marginBottom: "30px" }}>
-        <h1>Tạo kho mới</h1>
+    <div style={{ 
+      maxWidth: "1000px", 
+      margin: "60px auto", 
+      padding: "0 20px",
+      fontFamily: "'Inter', sans-serif" 
+    }}>
+      <div style={{ textAlign: "center", marginBottom: "50px" }}>
+        <h1 style={{ 
+          fontSize: "2.5rem", 
+          fontWeight: 900, 
+          color: "#1e293b", 
+          marginBottom: "12px",
+          letterSpacing: "-0.5px"
+        }}>
+          Đưa kho của bạn lên hệ thống
+        </h1>
+        <p style={{ color: "#64748b", fontSize: "1.1rem" }}>
+          Hoàn thành 3 bước đơn giản để bắt đầu tiếp cận khách hàng tiềm năng.
+        </p>
       </div>
 
       <StepIndicator step={step} />
 
-      {step === 1 && (
+      <div style={{ transition: "all 0.4s ease-in-out" }}>
+        {step === 1 && (
+          <Step1WarehouseInfo
+            formData={formData}
+            handleChange={handleChange}
+            handleSubmit={handleSubmit}
+            setLatLng={setLatLng}
+          />
+        )}
 
-        <Step1WarehouseInfo
-          formData={formData}
-          handleChange={handleChange}
-          handleSubmit={handleSubmit}
-          setLatLng={setLatLng}
-        />
+        {step === 2 && (
+          <Step2UploadImages
+            warehouseId={warehouseId}
+            next={() => setStep(3)}
+          />
+        )}
 
-      )}
+        {step === 3 && (
+          <Step3UploadDocuments
+            warehouseId={warehouseId}
+            finish={() => setStep(4)}
+          />
+        )}
 
-      {step === 2 && (
-
-        <Step2UploadImages
-          warehouseId={warehouseId}
-          next={() => setStep(3)}
-        />
-
-      )}
-
-      {step === 3 && (
-
-        <Step3UploadDocuments
-          warehouseId={warehouseId}
-          finish={() => setStep(4)}
-        />
-
-      )}
-
-      {step === 4 && (
-        <div style={{ textAlign: "center", marginTop: "40px" }}>
-          <h2>Tạo Kho Thành Công</h2>
-        </div>
-      )}
-
+        {step === 4 && (
+          <div style={{ 
+            textAlign: "center", 
+            marginTop: "40px",
+            background: "#fff",
+            padding: "60px",
+            borderRadius: "32px",
+            boxShadow: "0 20px 50px rgba(0,0,0,0.05)",
+            border: "1px solid #f0fdf4"
+          }}>
+            <div style={{ 
+              width: "80px", 
+              height: "80px", 
+              backgroundColor: "#f0fdf4", 
+              color: "#10b981", 
+              borderRadius: "50%", 
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              margin: "0 auto 24px" 
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "48px" }}>verified</span>
+            </div>
+            <h2 style={{ fontSize: "2rem", fontWeight: 800, color: "#1e293b", marginBottom: "16px" }}>
+              Tạo kho thành công!
+            </h2>
+            <p style={{ color: "#64748b", fontSize: "1.05rem", maxWidth: "500px", margin: "0 auto 32px", lineHeight: 1.6 }}>
+              Hồ sơ của bạn đã được gửi đi. Đội ngũ quản trị viên sẽ kiểm tra và phê duyệt kho của bạn trong vòng 24h làm việc.
+            </p>
+            <button
+              onClick={() => window.location.href = "/dashboard"}
+              style={{
+                padding: "16px 40px",
+                background: "#00b2d6",
+                color: "#fff",
+                border: "none",
+                borderRadius: "16px",
+                cursor: "pointer",
+                fontWeight: 700,
+                fontSize: "1.1rem",
+                boxShadow: "0 8px 25px rgba(0, 178, 214, 0.3)",
+                transition: "all 0.3s ease"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
+              onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
+            >
+              Về trang quản lý
+            </button>
+          </div>
+        )}
+      </div>
     </div>
-
   );
 };
 

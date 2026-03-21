@@ -18,6 +18,9 @@ public class CancelRentalRequestHandler : IRequestHandler<CancelRentalRequestCom
         if (rentalRequest == null)
             throw new InvalidOperationException("Rental request not found");
 
+        if (rentalRequest.RenterId != request.RenterId)
+            throw new UnauthorizedAccessException("Only the renter can cancel this request");
+
         rentalRequest.Cancel();
         await _repository.UpdateAsync(rentalRequest);
 

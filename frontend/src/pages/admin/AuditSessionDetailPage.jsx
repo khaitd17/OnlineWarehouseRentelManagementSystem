@@ -13,6 +13,9 @@ export default function AuditSessionDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const showToast = useToast();
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = (user.role || user.roleName || "").toUpperCase();
+  const isOwner = userRole === "OWNER";
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState({ items: [], totalCount: 0, page: 1, pageSize: 10, totalPages: 0 });
@@ -130,7 +133,7 @@ export default function AuditSessionDetailPage() {
           <p>{session.warehouseName} — {session.warehouseAddress}</p>
         </div>
         <div className="admin-btn-group">
-          {session.status === "OPEN" && (
+          {isOwner && session.status === "OPEN" && (
             <>
               <button className="admin-btn admin-btn-primary" onClick={() => setRecordModal({ open: true, items: [{ itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }], completeSession: false, loading: false })}>+ Ghi nhận kết quả</button>
               <button className="admin-btn admin-btn-danger" onClick={() => setCloseModal({ open: true, notes: "", loading: false })}>🔒 Đóng phiên kiểm kê</button>
