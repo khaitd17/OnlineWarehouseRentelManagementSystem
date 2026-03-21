@@ -5,10 +5,17 @@ import ContractSigningModal from "../components/ContractSigningModal";
 
 const statusConfig = {
   DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
+  PENDING_OWNER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ chủ kho ký" },
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
+  SIGNED:     { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
+  PENDING_PAYMENT: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ thanh toán" },
   ACTIVE:     { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
+  COMPLETED:  { bg: "#e0e7ff", color: "#6366f1", label: "Đã hoàn thành" },
+  CLOSED:     { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
   EXPIRED:    { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
+  CANCELLED:  { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
+  OVERDUE:    { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
 };
 
 const formatDate = (dateStr) => {
@@ -253,6 +260,42 @@ const ContractDetail = () => {
         >
           ✍️ {contract.status === "DRAFT" ? "Bắt đầu ký hợp đồng" : "Ký hợp đồng"}
         </button>
+      )}
+
+      {/* Payment Button - For PENDING_PAYMENT or SIGNED status */}
+      {(contract.status === "PENDING_PAYMENT" || contract.status === "SIGNED") && (
+        <div style={{ marginTop: "1rem" }}>
+          <div style={{
+            padding: "1rem 1.5rem",
+            backgroundColor: "#fef3c7",
+            borderRadius: "12px",
+            border: "1px solid #fde047",
+            color: "#854d0e",
+            fontSize: "0.9rem",
+            marginBottom: "1rem"
+          }}>
+            <strong>⏰ Hợp đồng đã ký thành công!</strong> Vui lòng thanh toán trong vòng 5 phút để kích hoạt hợp đồng.
+          </div>
+          <button
+            onClick={() => navigate(`/contracts/${id}/payment`)}
+            style={{
+              width: "100%",
+              padding: "1rem",
+              backgroundColor: "#16a34a",
+              color: "#fff",
+              border: "none",
+              borderRadius: "12px",
+              fontWeight: 700,
+              fontSize: "1rem",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#15803d"}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#16a34a"}
+          >
+            💳 Thanh toán ngay
+          </button>
+        </div>
       )}
 
       {/* Signing Modal */}

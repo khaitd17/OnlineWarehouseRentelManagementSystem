@@ -86,7 +86,8 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
 
         // Update contract domain
         contract.SetContractFileUrl(signedFileUrl);
-        contract.Sign(signedFileUrl);
+        contract.Sign(signedFileUrl);  // SIGNED
+        contract.MarkPendingPayment(5/60);  // SIGNED → PENDING_PAYMENT (5 minutes expiry for testing)
         await _contractRepo.UpdateAsync(contract);
 
         // Log
@@ -99,18 +100,34 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
             Details = "Contract signed electronically"
         });
 
-        // Send notification to renter
+        // Send notification to renter about pending payment
         var notification = new Notification
         {
             UserId = contract.RenterId,
-            Title = "Hop dong da duoc ky thanh cong",
-            Message = $"Hop dong {contract.ContractNumber} da duoc ky thanh cong va chuyen sang trang thai ACTIVE.",
+            Title = "Hop dong da duoc ky - Vui long thanh toan",
+            Message = $"Hop dong {contract.ContractNumber} da duoc ky thanh cong. Vui long thanh toan trong vong 24 giờ de kich hoat hop dong.",
             Type = "CONTRACT_SIGNED",
             ReferenceId = contract.ContractId,
             ReferenceType = "CONTRACT"
         };
         await _notificationRepo.AddAsync(notification);
         await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+
+        // Send notification to owner
+        if (warehouse != null && owner != null)
+        {
+            var ownerNotification = new Notification
+            {
+                UserId = warehouse.OwnerId,
+                Title = "Hop dong da duoc ky - Cho thanh toan",
+                Message = $"Hop dong {contract.ContractNumber} da duoc ky boi nguoi thue. Dang cho thanh toan.",
+                Type = "CONTRACT_SIGNED",
+                ReferenceId = contract.ContractId,
+                ReferenceType = "CONTRACT"
+            };
+            await _notificationRepo.AddAsync(ownerNotification);
+            await _notificationSender.SendToUserAsync(warehouse.OwnerId, ownerNotification);
+        }
 
         return new SignContractResult
         {
