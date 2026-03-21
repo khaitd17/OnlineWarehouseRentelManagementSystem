@@ -624,6 +624,34 @@ namespace WMS.Infrastructure.Persistence
                 }
                 context.SaveChanges();
             }
+
+            // ─── Tài khoản USER thường, không gắn với kho nào ───────────────────────
+            var plainUsers = new[]
+            {
+                ("Nguyễn Thành Đạt",  "user1@owrms.com", "0911111001"),
+                ("Trần Thị Mỹ Linh",  "user2@owrms.com", "0911111002"),
+                ("Lê Văn Phong",       "user3@owrms.com", "0911111003"),
+                ("Phạm Ngọc Hân",      "user4@owrms.com", "0911111004"),
+                ("Hoàng Minh Quân",    "user5@owrms.com", "0911111005"),
+            };
+
+            foreach (var (fullName, email, phone) in plainUsers)
+            {
+                if (!context.Users.Any(u => u.Email == email))
+                {
+                    context.Users.Add(new User
+                    {
+                        Email        = email,
+                        FullName     = fullName,
+                        PasswordHash = defaultPasswordHash,
+                        RoleId       = userRoleId,
+                        Status       = "ACTIVE",
+                        Phone        = phone,
+                        CreatedAt    = DateTime.UtcNow
+                    });
+                }
+            }
+            context.SaveChanges();
         }
     }
 }

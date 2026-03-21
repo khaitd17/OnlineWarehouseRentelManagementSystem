@@ -12,7 +12,7 @@ const AuthPage = () => {
     email: '',
     password: '',
     phone: '',
-    roleName: 'RENTER'
+    roleName: 'USER'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -33,7 +33,7 @@ const AuthPage = () => {
         const googleUser = await googleRes.json();
 
         // Gửi lên backend endpoint đặc biệt cho Google Login
-        const result = await authService.googleLogin({
+        await authService.googleLogin({
           email: googleUser.email,
           fullName: googleUser.name,
           googleId: googleUser.sub,
@@ -41,10 +41,17 @@ const AuthPage = () => {
         });
 
         window.dispatchEvent(new Event('authChange'));
-        const user = authService.getCurrentUser();
-        const role = (user?.role || user?.roleName || '').toUpperCase();
-        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
-        else navigate('/');
+        const ctx = authService.getWarehouseContext();
+        const warehouseRoles = (ctx?.warehouses || []).map(w => (w.role || '').toUpperCase());
+        if (warehouseRoles.some(r => r === 'STAFF' || r === 'MANAGER')) navigate('/staff-dashboard');
+        else if (warehouseRoles.some(r => r === 'RENTER')) navigate('/renter-dashboard');
+        else if (warehouseRoles.some(r => r === 'OWNER' || r === 'OPERATOR')) navigate('/dashboard');
+        else {
+          const user = authService.getCurrentUser();
+          const sysRole = (user?.role || user?.roleName || '').toUpperCase();
+          if (sysRole === 'ADMIN') navigate('/admin');
+          else navigate('/');
+        }
       } catch (err) {
         setError('Đăng nhập Google thất bại. Vui lòng thử lại.');
       } finally {
@@ -70,15 +77,30 @@ const AuthPage = () => {
     setError('');
 
     try {
+      const redirectAfterAuth = () => {
+        const ctx = authService.getWarehouseContext();
+        const warehouses = ctx?.warehouses || [];
+        // Check warehouse roles first
+        const warehouseRoles = warehouses.map(w => (w.role || '').toUpperCase());
+        if (warehouseRoles.some(r => r === 'STAFF' || r === 'MANAGER')) {
+          navigate('/staff-dashboard');
+        } else if (warehouseRoles.some(r => r === 'RENTER')) {
+          navigate('/renter-dashboard');
+        } else if (warehouseRoles.some(r => r === 'OWNER' || r === 'OPERATOR')) {
+          navigate('/dashboard');
+        } else {
+          // Fall back to system role
+          const user = authService.getCurrentUser();
+          const sysRole = (user?.role || user?.roleName || '').toUpperCase();
+          if (sysRole === 'ADMIN') navigate('/admin');
+          else navigate('/');
+        }
+      };
+
       if (isLogin) {
         await authService.login(formData.email, formData.password);
-        alert('Đăng nhập thành công!');
         window.dispatchEvent(new Event('authChange'));
-        
-        const user = authService.getCurrentUser();
-        const role = (user?.role || user?.roleName || '').toUpperCase();
-        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
-        else navigate('/');
+        redirectAfterAuth();
       } else {
         await authService.register({
           fullName: formData.fullName,
@@ -90,13 +112,8 @@ const AuthPage = () => {
         
         // Auto login after registration
         await authService.login(formData.email, formData.password);
-        alert('Đăng ký và Đăng nhập thành công!');
         window.dispatchEvent(new Event('authChange'));
-        
-        const user = authService.getCurrentUser();
-        const role = (user?.role || user?.roleName || '').toUpperCase();
-        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
-        else navigate('/');
+        redirectAfterAuth();
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
@@ -164,19 +181,6 @@ const AuthPage = () => {
           
           {!isLogin && (
             <>
-              {/* Role Selection */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '4px' }}>
-                <label style={{ flex: '1 1 80px', minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: formData.roleName === 'RENTER' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'RENTER' ? '#0095c7' : '#d1d5db' }}>
-                  <input type="radio" name="roleName" value="RENTER" checked={formData.roleName === 'RENTER'} onChange={handleInputChange} style={{ display: 'none' }} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: formData.roleName === 'RENTER' ? '#0095c7' : '#4b5563', textAlign: 'center' }}>Khách thuê</span>
-                </label>
-                <label style={{ flex: '1 1 80px', minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: formData.roleName === 'OWNER' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'OWNER' ? '#0095c7' : '#d1d5db' }}>
-                  <input type="radio" name="roleName" value="OWNER" checked={formData.roleName === 'OWNER'} onChange={handleInputChange} style={{ display: 'none' }} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: formData.roleName === 'OWNER' ? '#0095c7' : '#4b5563', textAlign: 'center' }}>Chủ kho</span>
-                </label>
-
-              </div>
-
               <InputWrapper icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>}>
                 <input name="fullName" type="text" placeholder="Họ và tên" required value={formData.fullName} onChange={handleInputChange} style={{ border: 'none', outline: 'none', width: '100%', padding: '0 12px', fontSize: '1rem', color: '#111827' }} />
               </InputWrapper>

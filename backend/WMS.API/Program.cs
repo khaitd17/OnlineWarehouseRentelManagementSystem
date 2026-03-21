@@ -191,7 +191,6 @@ using (var scope = app.Services.CreateScope())
     {
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Seeder failed: {Message}", ex.Message);
-        // Khong throw de app van chay duoc
     }
 }
 

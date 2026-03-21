@@ -75,11 +75,6 @@ public class StaffShiftRepository : IStaffShiftRepository
             bool allSkill = caller.IsAllSkill;
             bool allZone  = caller.IsAllZone;
 
-            // Manager thấy those whose scope overlaps:
-            // - allSkill && allZone: thấy tất cả STAFF/MANAGER trong kho
-            // - allSkill: chỉ cần zone giao nhau
-            // - allZone: chỉ cần skill giao nhau
-            // - neither: phải có zone giao nhau HOẶC skill giao nhau
             q = q.Where(m =>
                 m.Role.Code == "OPERATOR" || // operators visible to manager
                 m.UserId == callerId      || // chính mình

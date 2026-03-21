@@ -78,10 +78,10 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Server=localhost;Database=OWRMS;uid=sa;pwd=sa;Trusted_Connection=True;TrustServerCertificate=True;");
-        }
+        // if (!optionsBuilder.IsConfigured)
+        // {
+        //     optionsBuilder.UseSqlServer("Server=localhost;Database=OWRMS;uid=sa;pwd=sa;Trusted_Connection=True;TrustServerCertificate=True;");
+        // }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

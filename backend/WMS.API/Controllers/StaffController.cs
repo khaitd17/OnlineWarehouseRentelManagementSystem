@@ -219,7 +219,6 @@ public class StaffController : ControllerBase
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             return Unauthorized();
 
-        // Tra tat ca kho ma user co membership active (ca STAFF, MANAGER, OPERATOR)
         var list = await _db.WarehouseMemberships
             .Where(m => m.UserId == userId && m.IsActive)
             .Include(m => m.Role)
