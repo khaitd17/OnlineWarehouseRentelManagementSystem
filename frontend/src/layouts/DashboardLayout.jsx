@@ -49,19 +49,21 @@ const DashboardLayout = () => {
 
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const res = await notificationService.getUnreadCount();
-      setUnreadCount(res.data.count);
+      const count = await notificationService.getUnreadCountFromAPI();
+      setUnreadCount(count);
     } catch (err) {
-      // silently fail
+      // silently fail - fallback to localStorage
+      const localCount = notificationService.getUnreadCount();
+      setUnreadCount(localCount);
     }
   }, []);
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const res = await notificationService.getNotifications();
-      setNotifications(res.data);
+      const data = await notificationService.getNotifications();
+      setNotifications(data.data || data || []);
     } catch (err) {
-      // silently fail
+      setNotifications([]);
     }
   }, []);
 
@@ -91,7 +93,7 @@ const DashboardLayout = () => {
   const handleNotificationClick = async (notification) => {
     if (!notification.isRead) {
       try {
-        await notificationService.markAsRead(notification.notificationId);
+        await notificationService.markNotificationAsRead(notification.notificationId);
         setNotifications(prev =>
           prev.map(n =>
             n.notificationId === notification.notificationId ? { ...n, isRead: true } : n

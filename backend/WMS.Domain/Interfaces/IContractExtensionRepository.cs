@@ -12,5 +12,10 @@ namespace WMS.Domain.Interfaces
         Task UpdateAsync(ContractExtension contractExtension);
         Task DeleteAsync(int extensionId);
         Task<bool> HasPendingExtensionAsync(int originalContractId);
+
+        // New methods for contract extension management
+        Task<List<ContractExtension>> GetByRequesterIdAsync(int requesterId);
+        Task<List<ContractExtension>> GetPendingByWarehouseIdsAsync(List<int> warehouseIds);
+        Task<ContractExtension?> GetPendingByContractIdAsync(int contractId);
     }
 }

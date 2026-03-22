@@ -74,8 +74,19 @@ public class ContractExtension
         UpdatedAt = DateTime.UtcNow;
     }
 
+    // Cancel extension (by requester)
+    public void Cancel()
+    {
+        if (Status != ContractExtensionStatus.Pending)
+            throw new InvalidOperationException($"Cannot cancel extension with status {Status}");
+
+        Status = ContractExtensionStatus.Cancelled;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     // Check status
     public bool IsPending => Status == ContractExtensionStatus.Pending;
     public bool IsApproved => Status == ContractExtensionStatus.Approved;
     public bool IsRejected => Status == ContractExtensionStatus.Rejected;
+    public bool IsCancelled => Status == ContractExtensionStatus.Cancelled;
 }

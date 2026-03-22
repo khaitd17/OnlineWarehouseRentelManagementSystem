@@ -25,7 +25,11 @@ import PendingRentalRequests from "../pages/PendingRentalRequests";
 import RentalRequestDetail from "../pages/RentalRequestDetail";
 import MyContracts from "../pages/MyContracts";
 import ContractDetail from "../pages/ContractDetail";
+import ContractPayment from "../pages/ContractPayment";
+import PaymentResult from "../pages/PaymentResult";
 import WarehouseContracts from "../pages/WarehouseContracts";
+import PendingExtensionsPage from "../pages/PendingExtensionsPage";
+import PendingReturnsPage from "../pages/PendingReturnsPage";
 import RoleBasedRoute from "./RoleBasedRoute";
 
 // Import New Pages for Requests
@@ -84,7 +88,11 @@ function AppRoutes() {
               <Route path="/my-rental-requests" element={<MyRentalRequests />} />
               <Route path="/my-contracts" element={<MyContracts />} />
               <Route path="/contracts/:id" element={<ContractDetail />} />
+              <Route path="/contracts/:id/payment" element={<ContractPayment />} />
+              <Route path="/payment-result" element={<PaymentResult />} />
               <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
+              <Route path="/pending-extensions" element={<PendingExtensionsPage />} />
+              <Route path="/pending-returns" element={<PendingReturnsPage />} />
               <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
               <Route path="/create-staff" element={<CreateStaff />} />
               <Route path="/list-staff" element={<ListStaff />} />

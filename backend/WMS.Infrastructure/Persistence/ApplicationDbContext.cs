@@ -72,6 +72,17 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<ContractLog> ContractLogs { get; set; }
 
+    // NEW: Rental flow entities
+    public virtual DbSet<RentalContract> RentalContracts { get; set; }
+
+    public virtual DbSet<RentalPayment> RentalPayments { get; set; }
+
+    public virtual DbSet<WarehouseReturn> WarehouseReturns { get; set; }
+
+    public virtual DbSet<ReturnImage> ReturnImages { get; set; }
+
+    public virtual DbSet<ContractExtension> ContractExtensions { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)
@@ -697,6 +708,145 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IpAddress).HasMaxLength(50).HasColumnName("ip_address");
             entity.Property(e => e.Details).HasColumnName("details");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+        });
+
+        // NEW: RentalContract configuration
+        modelBuilder.Entity<RentalContract>(entity =>
+        {
+            entity.HasKey(e => e.ContractId).HasName("PK_rental_contracts");
+            entity.ToTable("rental_contracts");
+            entity.HasIndex(e => e.ContractNumber, "idx_rc_contract_number").IsUnique();
+            entity.HasIndex(e => e.RenterId, "idx_rc_renter");
+            entity.HasIndex(e => e.WarehouseId, "idx_rc_warehouse");
+            entity.HasIndex(e => e.Status, "idx_rc_status");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.RentalRequestId).HasColumnName("rental_request_id");
+            entity.Property(e => e.ContractNumber).HasMaxLength(50).HasColumnName("contract_number");
+            entity.Property(e => e.RenterId).HasColumnName("renter_id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.StartDate).HasColumnName("start_date");
+            entity.Property(e => e.EndDate).HasColumnName("end_date");
+            entity.Property(e => e.MonthlyPayment).HasColumnType("decimal(18,2)").HasColumnName("monthly_payment");
+            entity.Property(e => e.TotalValue).HasColumnType("decimal(18,2)").HasColumnName("total_value");
+            entity.Property(e => e.DepositAmount).HasColumnType("decimal(18,2)").HasColumnName("deposit_amount");
+            entity.Property(e => e.Status).HasMaxLength(50).HasColumnName("status");
+            entity.Property(e => e.Terms).HasColumnName("terms");
+            entity.Property(e => e.ContractFileUrl).HasColumnName("contract_file_url");
+            entity.Property(e => e.SignedFileUrl).HasColumnName("signed_file_url");
+            entity.Property(e => e.SignedAt).HasColumnName("signed_at");
+            entity.Property(e => e.OwnerSignedFileUrl).HasColumnName("owner_signed_file_url");
+            entity.Property(e => e.OwnerSignedAt).HasColumnName("owner_signed_at");
+            entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
+            entity.Property(e => e.CancellationReason).HasColumnName("cancellation_reason");
+            entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
+            entity.Property(e => e.OtpAttempts).HasDefaultValue(0).HasColumnName("otp_attempts");
+            entity.Property(e => e.IsSigningLocked).HasDefaultValue(false).HasColumnName("is_signing_locked");
+            entity.Property(e => e.SigningLockedUntil).HasColumnName("signing_locked_until");
+            entity.Property(e => e.PendingSignatureExpiry).HasColumnName("pending_signature_expiry");
+            entity.Property(e => e.PendingPaymentExpiry).HasColumnName("pending_payment_expiry");
+            entity.Property(e => e.ParentContractId).HasColumnName("parent_contract_id");
+            entity.Property(e => e.EarlyTerminationFee).HasColumnType("decimal(18,2)").HasColumnName("early_termination_fee");
+            entity.Property(e => e.DamageCompensation).HasColumnType("decimal(18,2)").HasColumnName("damage_compensation");
+            entity.Property(e => e.ReturnedAt).HasColumnName("returned_at");
+            entity.Property(e => e.ReturnNotes).HasColumnName("return_notes");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.RentalRequest).WithMany().HasForeignKey(d => d.RentalRequestId).HasConstraintName("FK_rental_contracts_request");
+            entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId).HasConstraintName("FK_rental_contracts_warehouse");
+            entity.HasOne(d => d.ParentContract).WithMany().HasForeignKey(d => d.ParentContractId).HasConstraintName("FK_rental_contracts_parent");
+        });
+
+        // NEW: RentalPayment configuration
+        modelBuilder.Entity<RentalPayment>(entity =>
+        {
+            entity.HasKey(e => e.PaymentId).HasName("PK_rental_payments");
+            entity.ToTable("rental_payments");
+            entity.HasIndex(e => e.ContractId, "idx_rp_contract");
+            entity.HasIndex(e => e.PaymentCode, "idx_rp_payment_code").IsUnique();
+            entity.HasIndex(e => e.Status, "idx_rp_status");
+            entity.Property(e => e.PaymentId).HasColumnName("payment_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18,2)").HasColumnName("amount");
+            entity.Property(e => e.PaymentType).HasMaxLength(20).HasColumnName("payment_type");
+            entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
+            entity.Property(e => e.PaymentCode).HasMaxLength(20).HasColumnName("payment_code");
+            entity.Property(e => e.SepayTransactionId).HasColumnName("sepay_transaction_id");
+            entity.Property(e => e.SepayReferenceCode).HasMaxLength(100).HasColumnName("sepay_reference_code");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.ExpiredAt).HasColumnName("expired_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Contract).WithMany(p => p.Payments).HasForeignKey(d => d.ContractId).HasConstraintName("FK_rental_payments_contract");
+        });
+
+        // NEW: WarehouseReturn configuration
+        modelBuilder.Entity<WarehouseReturn>(entity =>
+        {
+            entity.HasKey(e => e.ReturnId).HasName("PK_warehouse_returns");
+            entity.ToTable("warehouse_returns");
+            entity.HasIndex(e => e.ContractId, "idx_wr_contract");
+            entity.HasIndex(e => e.Status, "idx_wr_status");
+            entity.Property(e => e.ReturnId).HasColumnName("return_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.InspectorId).HasColumnName("inspector_id");
+            entity.Property(e => e.InspectionDate).HasColumnName("inspection_date");
+            entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
+            entity.Property(e => e.IsClean).HasDefaultValue(false).HasColumnName("is_clean");
+            entity.Property(e => e.IsEquipmentIntact).HasDefaultValue(false).HasColumnName("is_equipment_intact");
+            entity.Property(e => e.IsNoOutstandingDebt).HasDefaultValue(false).HasColumnName("is_no_outstanding_debt");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.DamageFee).HasColumnType("decimal(18,2)").HasColumnName("damage_fee");
+            entity.Property(e => e.PenaltyFee).HasColumnType("decimal(18,2)").HasColumnName("penalty_fee");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Contract).WithMany(p => p.Returns).HasForeignKey(d => d.ContractId).HasConstraintName("FK_warehouse_returns_contract");
+            entity.HasOne(d => d.Inspector).WithMany().HasForeignKey(d => d.InspectorId).HasConstraintName("FK_warehouse_returns_inspector");
+        });
+
+        // NEW: ReturnImage configuration
+        modelBuilder.Entity<ReturnImage>(entity =>
+        {
+            entity.HasKey(e => e.ImageId).HasName("PK_return_images");
+            entity.ToTable("return_images");
+            entity.HasIndex(e => e.ReturnId, "idx_ri_return");
+            entity.Property(e => e.ImageId).HasColumnName("image_id");
+            entity.Property(e => e.ReturnId).HasColumnName("return_id");
+            entity.Property(e => e.ImageUrl).HasColumnName("image_url");
+            entity.Property(e => e.Description).HasMaxLength(500).HasColumnName("description");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+
+            entity.HasOne(d => d.Return).WithMany(p => p.Images).HasForeignKey(d => d.ReturnId).HasConstraintName("FK_return_images_return");
+        });
+
+        // NEW: ContractExtension configuration
+        modelBuilder.Entity<ContractExtension>(entity =>
+        {
+            entity.HasKey(e => e.ExtensionId).HasName("PK_contract_extensions");
+            entity.ToTable("contract_extensions");
+            entity.HasIndex(e => e.OriginalContractId, "idx_ce_original_contract");
+            entity.HasIndex(e => e.Status, "idx_ce_status");
+            entity.Property(e => e.ExtensionId).HasColumnName("extension_id");
+            entity.Property(e => e.OriginalContractId).HasColumnName("original_contract_id");
+            entity.Property(e => e.NewContractId).HasColumnName("new_contract_id");
+            entity.Property(e => e.RequesterId).HasColumnName("requester_id");
+            entity.Property(e => e.DurationMonths).HasColumnName("duration_months");
+            entity.Property(e => e.ProposedMonthlyPayment).HasColumnType("decimal(18,2)").HasColumnName("proposed_monthly_payment");
+            entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+            entity.Property(e => e.RequestedAt).HasColumnName("requested_at");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.OriginalContract).WithMany().HasForeignKey(d => d.OriginalContractId).HasConstraintName("FK_contract_extensions_original");
+            entity.HasOne(d => d.NewContract).WithMany().HasForeignKey(d => d.NewContractId).HasConstraintName("FK_contract_extensions_new");
+            entity.HasOne(d => d.Requester).WithMany().HasForeignKey(d => d.RequesterId).HasConstraintName("FK_contract_extensions_requester");
+            entity.HasOne(d => d.Reviewer).WithMany().HasForeignKey(d => d.ReviewedBy).HasConstraintName("FK_contract_extensions_reviewer");
         });
     }
 }

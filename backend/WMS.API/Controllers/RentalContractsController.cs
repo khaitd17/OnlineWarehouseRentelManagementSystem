@@ -10,6 +10,7 @@ using WMS.Application.Features.RentalContracts.VerifyContractOtp;
 using WMS.Application.Features.RentalContracts.SignContract;
 using WMS.Application.Features.RentalContracts.GetContractLogs;
 using WMS.Application.Features.RentalContracts.OwnerSignContract;
+using WMS.Domain.Interfaces;
 
 namespace WMS.API.Controllers;
 
@@ -19,10 +20,14 @@ namespace WMS.API.Controllers;
 public class RentalContractsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IRentalContractRepository _contractRepo;
+    private readonly IWebHostEnvironment _env;
 
-    public RentalContractsController(IMediator mediator)
+    public RentalContractsController(IMediator mediator, IRentalContractRepository contractRepo, IWebHostEnvironment env)
     {
         _mediator = mediator;
+        _contractRepo = contractRepo;
+        _env = env;
     }
 
     private int GetUserId()
@@ -239,6 +244,140 @@ public class RentalContractsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get contract signing history
+    /// </summary>
+    [HttpGet("{id}/signing-history")]
+    public async Task<IActionResult> GetSigningHistory(int id)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var contract = await _contractRepo.GetByIdAsync(id);
+
+            if (contract == null)
+                return NotFound(new { message = "Contract not found" });
+
+            // Build signing history from contract data
+            var history = new List<object>();
+
+            // Contract created
+            history.Add(new
+            {
+                action = "Tạo hợp đồng",
+                timestamp = contract.CreatedAt,
+                completed = true,
+                userName = "Hệ thống"
+            });
+
+            // Owner signed
+            if (contract.OwnerSignedAt.HasValue)
+            {
+                history.Add(new
+                {
+                    action = "Chủ kho ký hợp đồng",
+                    timestamp = contract.OwnerSignedAt,
+                    completed = true,
+                    userName = "Chủ kho",
+                    signatureUrl = contract.OwnerSignatureBase64 != null
+                        ? $"data:image/png;base64,{contract.OwnerSignatureBase64}"
+                        : null
+                });
+            }
+
+            // Renter signed
+            if (contract.SignedAt.HasValue)
+            {
+                history.Add(new
+                {
+                    action = "Người thuê ký hợp đồng",
+                    timestamp = contract.SignedAt,
+                    completed = true,
+                    userName = "Người thuê",
+                    signatureUrl = contract.SignedFileUrl
+                });
+            }
+
+            return Ok(history);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get contract audit logs (status changes, actions)
+    /// </summary>
+    [HttpGet("{id}/audit-logs")]
+    public async Task<IActionResult> GetAuditLogs(int id)
+    {
+        try
+        {
+            var userId = GetUserId();
+
+            // Use the same logs query but format differently
+            var result = await _mediator.Send(new GetContractLogsQuery
+            {
+                ContractId = id,
+                UserId = userId
+            });
+
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Download contract PDF
+    /// </summary>
+    [HttpGet("{id}/download-pdf")]
+    public async Task<IActionResult> DownloadContractPdf(int id)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var contract = await _contractRepo.GetByIdAsync(id);
+
+            if (contract == null)
+                return NotFound(new { message = "Contract not found" });
+
+            // Determine which PDF to return
+            string? pdfUrl = contract.SignedFileUrl
+                ?? contract.OwnerSignedFileUrl
+                ?? contract.ContractFileUrl;
+
+            if (string.IsNullOrEmpty(pdfUrl))
+            {
+                return NotFound(new { message = "No PDF available for this contract" });
+            }
+
+            // Get physical path
+            var filePath = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, pdfUrl.TrimStart('/'));
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound(new { message = "PDF file not found" });
+            }
+
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+            var fileName = $"HopDong_{contract.ContractNumber}.pdf";
+
+            return File(fileBytes, "application/pdf", fileName);
         }
         catch (Exception ex)
         {

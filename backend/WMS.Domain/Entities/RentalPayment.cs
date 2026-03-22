@@ -1,0 +1,120 @@
+using WMS.Domain.Enums;
+
+namespace WMS.Domain.Entities;
+
+public class RentalPayment
+{
+    private RentalPayment() { } // For EF Core
+
+    public int PaymentId { get; private set; }
+    public int ContractId { get; private set; }
+    public decimal Amount { get; private set; }
+    public string PaymentType { get; private set; } = "DEPOSIT";
+    public string Status { get; private set; } = "PENDING";
+    public string PaymentCode { get; private set; } = null!; // Unique code: WMS{PaymentId}
+    public int? SepayTransactionId { get; private set; }
+    public string? SepayReferenceCode { get; private set; }
+    public DateTime? PaidAt { get; private set; }
+    public DateTime? ExpiredAt { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
+
+    // Navigation properties
+    public RentalContract? Contract { get; set; }
+
+    // Factory method
+    public static RentalPayment Create(
+        int contractId,
+        decimal amount,
+        string paymentType,
+        int expiryHours = 48)
+    {
+        // Generate temporary payment code until we have PaymentId
+        var tempCode = $"WMS{DateTime.UtcNow:yyyyMMddHHmmssfff}";
+
+        var payment = new RentalPayment
+        {
+            ContractId = contractId,
+            Amount = amount,
+            PaymentType = paymentType,
+            Status = PaymentStatus.Pending,
+            PaymentCode = tempCode,
+            ExpiredAt = DateTime.UtcNow.AddHours(expiryHours),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        return payment;
+    }
+
+    // Set payment code after insert (need PaymentId)
+    public void SetPaymentCode()
+    {
+        PaymentCode = $"WMS{PaymentId:D6}";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetPaymentCode(string code)
+    {
+        PaymentCode = code;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Mark as processing
+    public void MarkProcessing()
+    {
+        if (Status != PaymentStatus.Pending)
+            throw new InvalidOperationException($"Cannot mark processing for payment with status {Status}");
+
+        Status = PaymentStatus.Processing;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Complete payment from SePay webhook
+    public void CompleteFromSepay(int sepayTransactionId, string referenceCode)
+    {
+        if (Status == PaymentStatus.Completed)
+            return; // Idempotent
+
+        Status = PaymentStatus.Completed;
+        SepayTransactionId = sepayTransactionId;
+        SepayReferenceCode = referenceCode;
+        PaidAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Mark as failed
+    public void MarkFailed()
+    {
+        Status = PaymentStatus.Failed;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Mark as cancelled
+    public void MarkCancelled()
+    {
+        if (Status == PaymentStatus.Completed)
+            throw new InvalidOperationException("Cannot cancel completed payment");
+
+        Status = PaymentStatus.Cancelled;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Mark as expired
+    public void MarkExpired()
+    {
+        if (Status != PaymentStatus.Pending)
+            throw new InvalidOperationException($"Cannot expire payment with status {Status}");
+
+        Status = PaymentStatus.Expired;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Check if payment is expired
+    public bool IsExpired => ExpiredAt.HasValue && DateTime.UtcNow > ExpiredAt.Value && Status == PaymentStatus.Pending;
+
+    // Check if payment is completed
+    public bool IsCompleted => Status == PaymentStatus.Completed;
+
+    // Check if payment is pending
+    public bool IsPending => Status == PaymentStatus.Pending;
+}

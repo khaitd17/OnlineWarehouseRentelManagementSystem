@@ -14,6 +14,27 @@ const MENU_BY_ROLE = {
     },
     { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
     {
+      icon: "description",
+      label: "Quản lý hợp đồng",
+      path: "/my-contracts",
+      section: "HỢP ĐỒNG",
+    },
+    {
+      icon: "pending_actions",
+      label: "Yêu cầu thuê kho",
+      path: "/pending-rental-requests",
+    },
+    {
+      icon: "event_repeat",
+      label: "Yêu cầu gia hạn",
+      path: "/pending-extensions",
+    },
+    {
+      icon: "assignment_return",
+      label: "Trả kho chờ duyệt",
+      path: "/pending-returns",
+    },
+    {
       icon: "inventory_2",
       label: "Yêu cầu nhập/xuất",
       path: "/owner-inventory-requests",
@@ -23,11 +44,6 @@ const MENU_BY_ROLE = {
       icon: "fact_check",
       label: "Kiểm kê kho",
       path: "/owner-audit-sessions",
-    },
-    {
-      icon: "pending_actions",
-      label: "Yêu cầu thuê kho",
-      path: "/pending-rental-requests",
     },
     {
       icon: "group",
@@ -59,15 +75,31 @@ const MENU_BY_ROLE = {
     },
     { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
     {
-      icon: "inventory_2",
-      label: "Yêu cầu nhập/xuất",
-      path: "/owner-inventory-requests",
-      section: "YÊU CẦU",
+      icon: "description",
+      label: "Quản lý hợp đồng",
+      path: "/my-contracts",
+      section: "HỢP ĐỒNG",
     },
     {
       icon: "pending_actions",
       label: "Yêu cầu thuê kho",
       path: "/pending-rental-requests",
+    },
+    {
+      icon: "event_repeat",
+      label: "Yêu cầu gia hạn",
+      path: "/pending-extensions",
+    },
+    {
+      icon: "assignment_return",
+      label: "Trả kho chờ duyệt",
+      path: "/pending-returns",
+    },
+    {
+      icon: "inventory_2",
+      label: "Yêu cầu nhập/xuất",
+      path: "/owner-inventory-requests",
+      section: "YÊU CẦU",
     },
     {
       icon: "group",
@@ -99,15 +131,31 @@ const MENU_BY_ROLE = {
     },
     { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
     {
-      icon: "inventory_2",
-      label: "Yêu cầu nhập/xuất",
-      path: "/owner-inventory-requests",
-      section: "YÊU CẦU",
+      icon: "description",
+      label: "Quản lý hợp đồng",
+      path: "/my-contracts",
+      section: "HỢP ĐỒNG",
     },
     {
       icon: "pending_actions",
       label: "Yêu cầu thuê kho",
       path: "/pending-rental-requests",
+    },
+    {
+      icon: "event_repeat",
+      label: "Yêu cầu gia hạn",
+      path: "/pending-extensions",
+    },
+    {
+      icon: "assignment_return",
+      label: "Trả kho chờ duyệt",
+      path: "/pending-returns",
+    },
+    {
+      icon: "inventory_2",
+      label: "Yêu cầu nhập/xuất",
+      path: "/owner-inventory-requests",
+      section: "YÊU CẦU",
     },
     {
       icon: "group",
@@ -196,9 +244,21 @@ const MENU_BY_ROLE = {
   RENTER: [
     { icon: "dashboard", label: "Bảng điều khiển", path: "/renter-dashboard" },
     {
+      icon: "receipt_long",
+      label: "Yêu cầu thuê kho",
+      path: "/my-rental-requests",
+      section: "HỢP ĐỒNG",
+    },
+    {
+      icon: "description",
+      label: "Hợp đồng của tôi",
+      path: "/my-contracts",
+    },
+    {
       icon: "move_to_inbox",
       label: "Yêu cầu nhập kho",
       path: "/renter-inbound-requests",
+      section: "QUẢN LÝ KHO",
     },
     {
       icon: "outbox",
@@ -283,6 +343,27 @@ const Sidebar = () => {
       { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
       { icon: "add_circle", label: "Tạo kho mới", path: "/post-warehouse" },
       {
+        icon: "description",
+        label: "Quản lý hợp đồng",
+        path: "/my-contracts",
+        section: "HỢP ĐỒNG",
+      },
+      {
+        icon: "pending_actions",
+        label: "Yêu cầu thuê kho",
+        path: "/pending-rental-requests",
+      },
+      {
+        icon: "event_repeat",
+        label: "Yêu cầu gia hạn",
+        path: "/pending-extensions",
+      },
+      {
+        icon: "assignment_return",
+        label: "Trả kho chờ duyệt",
+        path: "/pending-returns",
+      },
+      {
         icon: "inventory_2",
         label: "Yêu cầu nhập/xuất",
         path: "/owner-inventory-requests",
@@ -315,9 +396,21 @@ const Sidebar = () => {
         path: "/renter-dashboard",
       },
       {
+        icon: "receipt_long",
+        label: "Yêu cầu thuê kho",
+        path: "/my-rental-requests",
+        section: "HỢP ĐỒNG",
+      },
+      {
+        icon: "description",
+        label: "Hợp đồng của tôi",
+        path: "/my-contracts",
+      },
+      {
         icon: "move_to_inbox",
         label: "Yêu cầu nhập kho",
         path: "/renter-inbound-requests",
+        section: "QUẢN LÝ KHO",
       },
       {
         icon: "outbox",
