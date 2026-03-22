@@ -7,9 +7,19 @@ const StaffDashboard = () => {
       <div className="space-y-8">
         {/* Welcome & Stats */}
         <section>
-          <div className="mb-6">
-            <h3 className="text-2xl font-black text-slate-900">Tổng quan Kho hàng</h3>
-            <p className="text-slate-500 text-sm mt-1">Trạng thái thời gian thực của các hoạt động logistics.</p>
+          <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <h3 className="text-2xl font-black text-slate-900">Tổng quan Kho hàng</h3>
+              <p className="text-slate-500 text-sm mt-1">Trạng thái thời gian thực của các hoạt động logistics.</p>
+            </div>
+            <Link
+              to="/my-schedule"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white"
+              style={{ background: 'linear-gradient(135deg, #00b2d6 0%, #0284c7 100%)', boxShadow: '0 4px 12px rgba(0,178,214,0.35)', textDecoration: 'none' }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>calendar_month</span>
+              Lịch của tôi
+            </Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">

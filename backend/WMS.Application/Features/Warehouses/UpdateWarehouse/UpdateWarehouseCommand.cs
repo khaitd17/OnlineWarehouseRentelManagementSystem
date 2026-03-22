@@ -26,4 +26,5 @@ public class UpdateWarehouseCommand : IRequest
 
     public TimeSpan? CloseTime { get; set; }
     public string? MainDoorDirection { get; set; }
+    public string? Status { get; set; }
 }

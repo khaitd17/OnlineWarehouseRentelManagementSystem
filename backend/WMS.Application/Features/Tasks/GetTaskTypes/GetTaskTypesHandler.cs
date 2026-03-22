@@ -1,5 +1,6 @@
 using MediatR;
 using WMS.Application.Interfaces;
+using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Tasks.GetTaskTypes;
 

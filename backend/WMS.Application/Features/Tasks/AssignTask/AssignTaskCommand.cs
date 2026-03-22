@@ -4,12 +4,14 @@ namespace WMS.Application.Features.Tasks.AssignTask;
 
 public class AssignStaffCommand : IRequest<Unit>
 {
+    public int CallerId { get; set; }
     public int TaskId { get; set; }
     public List<int> MembershipIds { get; set; } = new();
 }
 
 public class GetEligibleStaffQuery : IRequest<List<EligibleStaffResult>>
 {
+    public int CallerId { get; set; }
     public int TaskId { get; set; }
 }
 

@@ -24,7 +24,7 @@ const CreateWarehouse = () => {
     is24HoursAccess: false,
     openTime: "08:00",
     closeTime: "18:00",
-    mainDoorDirection: "TOP",
+    mainDoorDirection: "",
     description: ""
   });
 

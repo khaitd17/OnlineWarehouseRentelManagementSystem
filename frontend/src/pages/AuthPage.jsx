@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import authService from '../services/authService';
 
 const AuthPage = () => {
@@ -11,11 +12,54 @@ const AuthPage = () => {
     email: '',
     password: '',
     phone: '',
-    roleName: 'RENTER'
+    roleName: 'USER'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Google Login handler
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setGoogleLoading(true);
+      setError('');
+      try {
+        // Lấy thông tin user từ Google
+        const googleRes = await fetch(
+          'https://www.googleapis.com/oauth2/v3/userinfo',
+          { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } }
+        );
+        const googleUser = await googleRes.json();
+
+        // Gửi lên backend endpoint đặc biệt cho Google Login
+        await authService.googleLogin({
+          email: googleUser.email,
+          fullName: googleUser.name,
+          googleId: googleUser.sub,
+          avatarUrl: googleUser.picture,
+        });
+
+        window.dispatchEvent(new Event('authChange'));
+        const ctx = authService.getWarehouseContext();
+        const warehouseRoles = (ctx?.warehouses || []).map(w => (w.role || '').toUpperCase());
+        if (warehouseRoles.some(r => r === 'STAFF' || r === 'MANAGER')) navigate('/staff-dashboard');
+        else if (warehouseRoles.some(r => r === 'RENTER')) navigate('/renter-dashboard');
+        else if (warehouseRoles.some(r => r === 'OWNER' || r === 'OPERATOR')) navigate('/dashboard');
+        else {
+          const user = authService.getCurrentUser();
+          const sysRole = (user?.role || user?.roleName || '').toUpperCase();
+          if (sysRole === 'ADMIN') navigate('/admin');
+          else navigate('/');
+        }
+      } catch (err) {
+        setError('Đăng nhập Google thất bại. Vui lòng thử lại.');
+      } finally {
+        setGoogleLoading(false);
+      }
+    },
+    onError: () => setError('Đăng nhập Google bị hủy hoặc thất bại.'),
+  });
 
   useEffect(() => {
     if (location.state?.mode === 'login') setIsLogin(true);
@@ -33,15 +77,30 @@ const AuthPage = () => {
     setError('');
 
     try {
+      const redirectAfterAuth = () => {
+        const ctx = authService.getWarehouseContext();
+        const warehouses = ctx?.warehouses || [];
+        // Check warehouse roles first
+        const warehouseRoles = warehouses.map(w => (w.role || '').toUpperCase());
+        if (warehouseRoles.some(r => r === 'STAFF' || r === 'MANAGER')) {
+          navigate('/staff-dashboard');
+        } else if (warehouseRoles.some(r => r === 'RENTER')) {
+          navigate('/renter-dashboard');
+        } else if (warehouseRoles.some(r => r === 'OWNER' || r === 'OPERATOR')) {
+          navigate('/dashboard');
+        } else {
+          // Fall back to system role
+          const user = authService.getCurrentUser();
+          const sysRole = (user?.role || user?.roleName || '').toUpperCase();
+          if (sysRole === 'ADMIN') navigate('/admin');
+          else navigate('/');
+        }
+      };
+
       if (isLogin) {
         await authService.login(formData.email, formData.password);
-        alert('Đăng nhập thành công!');
         window.dispatchEvent(new Event('authChange'));
-        
-        const user = authService.getCurrentUser();
-        const role = (user?.role || user?.roleName || '').toUpperCase();
-        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
-        else navigate('/');
+        redirectAfterAuth();
       } else {
         await authService.register({
           fullName: formData.fullName,
@@ -53,13 +112,8 @@ const AuthPage = () => {
         
         // Auto login after registration
         await authService.login(formData.email, formData.password);
-        alert('Đăng ký và Đăng nhập thành công!');
         window.dispatchEvent(new Event('authChange'));
-        
-        const user = authService.getCurrentUser();
-        const role = (user?.role || user?.roleName || '').toUpperCase();
-        if (role === 'STAFF' || role === 'MANAGER') navigate('/staff-dashboard');
-        else navigate('/');
+        redirectAfterAuth();
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.');
@@ -72,10 +126,10 @@ const AuthPage = () => {
     <div style={{ 
       minHeight: '100vh', 
       display: 'flex', 
-      alignItems: 'center', 
+      alignItems: 'flex-start',
       justifyContent: 'center', 
       backgroundColor: '#f3f4f6',
-      padding: '20px'
+      padding: '40px 20px 60px',
     }}>
       <div style={{
         backgroundColor: '#fff',
@@ -127,19 +181,6 @@ const AuthPage = () => {
           
           {!isLogin && (
             <>
-              {/* Role Selection */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '4px' }}>
-                <label style={{ flex: '1 1 80px', minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: formData.roleName === 'RENTER' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'RENTER' ? '#0095c7' : '#d1d5db' }}>
-                  <input type="radio" name="roleName" value="RENTER" checked={formData.roleName === 'RENTER'} onChange={handleInputChange} style={{ display: 'none' }} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: formData.roleName === 'RENTER' ? '#0095c7' : '#4b5563', textAlign: 'center' }}>Khách thuê</span>
-                </label>
-                <label style={{ flex: '1 1 80px', minWidth: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', border: '1px solid #d1d5db', borderRadius: '8px', cursor: 'pointer', backgroundColor: formData.roleName === 'OWNER' ? '#e0f2fe' : '#fff', borderColor: formData.roleName === 'OWNER' ? '#0095c7' : '#d1d5db' }}>
-                  <input type="radio" name="roleName" value="OWNER" checked={formData.roleName === 'OWNER'} onChange={handleInputChange} style={{ display: 'none' }} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: formData.roleName === 'OWNER' ? '#0095c7' : '#4b5563', textAlign: 'center' }}>Chủ kho</span>
-                </label>
-
-              </div>
-
               <InputWrapper icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>}>
                 <input name="fullName" type="text" placeholder="Họ và tên" required value={formData.fullName} onChange={handleInputChange} style={{ border: 'none', outline: 'none', width: '100%', padding: '0 12px', fontSize: '1rem', color: '#111827' }} />
               </InputWrapper>
@@ -197,23 +238,31 @@ const AuthPage = () => {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <button style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            backgroundColor: '#fff',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            padding: '12px',
-            fontSize: '0.95rem',
-            fontWeight: 600,
-            color: '#374151',
-            cursor: 'pointer',
-            transition: 'background-color 0.2s'
-          }}>
+          <button
+            type="button"
+            onClick={() => handleGoogleLogin()}
+            disabled={googleLoading}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              backgroundColor: googleLoading ? '#f9fafb' : '#fff',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              padding: '12px',
+              fontSize: '0.95rem',
+              fontWeight: 600,
+              color: '#374151',
+              cursor: googleLoading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            }}
+            onMouseEnter={e => { if (!googleLoading) e.currentTarget.style.backgroundColor = '#f9fafb'; }}
+            onMouseLeave={e => { if (!googleLoading) e.currentTarget.style.backgroundColor = '#fff'; }}
+          >
             <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" width="20" height="20" alt="Google" />
-            Continue with Google
+            {googleLoading ? 'Đang xử lý...' : 'Đăng nhập với Google'}
           </button>
         </div>
 

@@ -38,7 +38,9 @@ public class UpdateWarehouseHandler : IRequestHandler<UpdateWarehouseCommand>
             OperatingHours = request.OperatingHours,
             Is24HoursAccess = request.Is24HoursAccess,
             OpenTime = request.OpenTime,
-            CloseTime = request.CloseTime
+            CloseTime = request.CloseTime,
+            MainDoorDirection = request.MainDoorDirection,
+            Status = request.Status
         };
 
         await _repository.UpdateAsync(warehouse, cancellationToken);
