@@ -94,6 +94,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
 
             if (existingUserId == null)
             {
+                // Email chưa tồn tại → tạo user mới
                 var rawPassword = _passwordGenerator.Generate();
                 var passwordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
 
