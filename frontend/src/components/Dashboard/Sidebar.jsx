@@ -53,8 +53,6 @@ const MENU_BY_ROLE = {
   STAFF: [
     { icon: "dashboard",               label: "Bảng điều khiển",     path: "/staff-dashboard" },
     { icon: "inventory_2",             label: "Yêu cầu nhập/xuất",   path: "/staff-inventory-requests", section: "KHO" },
-    { icon: "move_to_inbox",           label: "Nhập kho",            path: "/inbound-requests" },
-    { icon: "outbox",                  label: "Xuất kho",            path: "/outbound-requests" },
     { icon: "swap_horiz",              label: "Xác nhận di chuyển",  path: "/confirm-movement" },
     { icon: "fact_check",              label: "Kiểm kê kho",         path: "/staff-audit-sessions" },
     { icon: "history",                 label: "Lịch sử giao dịch",   path: "/transaction-history" },
