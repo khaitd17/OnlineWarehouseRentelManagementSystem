@@ -195,6 +195,19 @@ public class AuditSessionsController : ControllerBase
         return Ok(new { success = true, data = staff });
     }
 
+    /// <summary>Lấy danh sách hàng hóa trong kho (dùng cho form ghi nhận kiểm kê)</summary>
+    [HttpGet("warehouse/{warehouseId}/inventory")]
+    public async Task<IActionResult> GetWarehouseInventory(int warehouseId)
+    {
+        var items = await _db.WarehouseInventories
+            .Where(wi => wi.WarehouseId == warehouseId && wi.Quantity > 0)
+            .Select(wi => new { wi.ItemName, wi.Quantity, wi.Unit })
+            .OrderBy(wi => wi.ItemName)
+            .ToListAsync();
+
+        return Ok(new { success = true, data = items });
+    }
+
     // ==============================
     // HELPERS
     // ==============================

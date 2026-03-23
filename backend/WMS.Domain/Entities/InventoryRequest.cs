@@ -25,6 +25,8 @@ public partial class InventoryRequest
 
     public string? Notes { get; set; }
 
+    public string? DocumentUrls { get; set; }
+
     public virtual User? ConfirmedByNavigation { get; set; }
 
     public virtual ICollection<InventoryItem> InventoryItems { get; set; } = new List<InventoryItem>();

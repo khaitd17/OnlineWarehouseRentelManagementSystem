@@ -18,6 +18,10 @@ public class CreateWarehouseCommand : IRequest<int>
 
     public double TotalArea { get; set; }
 
+    public double? Width { get; set; }
+    
+    public double? Length { get; set; }
+
     public string? OperatingHours { get; set; }
 
     public bool Is24HoursAccess { get; set; }
@@ -25,4 +29,5 @@ public class CreateWarehouseCommand : IRequest<int>
     public TimeSpan? OpenTime { get; set; }
 
     public TimeSpan? CloseTime { get; set; }
+    public string? MainDoorDirection { get; set; }
 }

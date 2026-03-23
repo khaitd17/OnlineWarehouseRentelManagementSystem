@@ -26,6 +26,8 @@ public class WarehouseRepository : IWarehouseRepository
             Lng = warehouse.Lng,
             Description = warehouse.Description,
             TotalArea = warehouse.TotalArea,
+            Width = warehouse.Width,
+            Length = warehouse.Length,
             AvailableArea = warehouse.AvailableArea,
             OperatingHours = warehouse.OperatingHours,
             Is24HoursAccess = warehouse.Is24HoursAccess,
@@ -74,11 +76,14 @@ public async Task<Warehouse?> GetByIdAsync(
         Lng = entity.Lng,
         Description = entity.Description,
         TotalArea = entity.TotalArea,
+        Width = entity.Width,
+        Length = entity.Length,
         AvailableArea = entity.AvailableArea,
         OperatingHours = entity.OperatingHours,
         Is24HoursAccess = entity.Is24HoursAccess,
         OpenTime = entity.OpenTime,
         CloseTime = entity.CloseTime,
+        MainDoorDirection = entity.MainDoorDirection,
         Status = entity.Status ?? "UNKNOWN",
         CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
         WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
@@ -107,7 +112,7 @@ public async Task<Warehouse?> GetByIdAsync(
     {
         var warehouses = await _context.Warehouses
             .Include(w => w.WarehouseMedia)
-            .Where(w => w.OwnerId == ownerId)
+            .Where(w => w.OwnerId == ownerId && w.Status != "DELETED")
             .ToListAsync(cancellationToken);
 
         return warehouses.Select(entity => new Warehouse
@@ -120,11 +125,14 @@ public async Task<Warehouse?> GetByIdAsync(
             Lng = entity.Lng,
             Description = entity.Description,
             TotalArea = entity.TotalArea,
+            Width = entity.Width,
+            Length = entity.Length,
             AvailableArea = entity.AvailableArea,
             OperatingHours = entity.OperatingHours,
             Is24HoursAccess = entity.Is24HoursAccess,
             OpenTime = entity.OpenTime,
             CloseTime = entity.CloseTime,
+            MainDoorDirection = entity.MainDoorDirection,
             Status = entity.Status ?? "UNKNOWN",
             CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
             WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
@@ -155,6 +163,8 @@ public async Task<Warehouse?> GetByIdAsync(
         entity.Is24HoursAccess = warehouse.Is24HoursAccess;
         entity.OpenTime = warehouse.OpenTime;
         entity.CloseTime = warehouse.CloseTime;
+        entity.MainDoorDirection = warehouse.MainDoorDirection;
+        entity.Status = warehouse.Status ?? entity.Status;
         entity.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -165,6 +175,18 @@ public async Task<Warehouse?> GetByIdAsync(
     {
         return await _context.Warehouses
             .AnyAsync(x => x.WarehouseId == warehouseId, cancellationToken);
+    }
+
+    public async Task DeleteAsync(int warehouseId, CancellationToken cancellationToken)
+    {
+        var entity = await _context.Warehouses
+            .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId, cancellationToken);
+            
+        if (entity != null)
+        {
+            entity.Status = "DELETED";
+            await _context.SaveChangesAsync(cancellationToken);
+        }
     }
 
     public async Task<List<Warehouse>> GetApprovedWarehousesAsync(

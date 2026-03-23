@@ -16,6 +16,8 @@ export default function StaffAuditSessionDetailPage() {
 
   const defaultRecordModal = { open: false, items: [{ itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }], completeSession: false, loading: false };
   const [recordModal, setRecordModal] = useState(defaultRecordModal);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
 
   const showToast = (msg, type = "success") => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
 
@@ -44,10 +46,40 @@ export default function StaffAuditSessionDetailPage() {
 
   useEffect(() => { fetchResults(); }, [fetchResults]);
 
+  // Fetch warehouse inventory when modal opens
+  const fetchInventory = async (warehouseId) => {
+    setInventoryLoading(true);
+    try {
+      const res = await adminService.getWarehouseInventory(warehouseId);
+      if (res.data.success) setInventoryItems(res.data.data || []);
+      else setInventoryItems([]);
+    } catch { setInventoryItems([]); }
+    setInventoryLoading(false);
+  };
+
+  const openRecordModal = () => {
+    setRecordModal({ ...defaultRecordModal, open: true });
+    if (session?.warehouseId) fetchInventory(session.warehouseId);
+  };
+
   // Record results
   const addItem = () => setRecordModal(p => ({ ...p, items: [...p.items, { itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }] }));
   const removeItem = (idx) => setRecordModal(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
-  const updateItem = (idx, field, value) => setRecordModal(p => ({ ...p, items: p.items.map((item, i) => i === idx ? { ...item, [field]: value } : item) }));
+
+  const updateItem = (idx, field, value) => {
+    setRecordModal(p => ({
+      ...p,
+      items: p.items.map((item, i) => {
+        if (i !== idx) return item;
+        if (field === "itemName") {
+          // Auto-fill expectedQty when selecting a product
+          const selected = inventoryItems.find(inv => inv.itemName === value);
+          return { ...item, itemName: value, expectedQty: selected ? selected.quantity : "" };
+        }
+        return { ...item, [field]: value };
+      })
+    }));
+  };
 
   const handleRecord = async () => {
     let hasError = false;
@@ -96,6 +128,9 @@ export default function StaffAuditSessionDetailPage() {
 
   const canRecord = session.status === "APPROVED" || session.status === "IN_PROGRESS";
 
+  // Get already-recorded item names to filter them out of the dropdown
+  const recordedItemNames = new Set(recordModal.items.map(i => i.itemName).filter(Boolean));
+
   return (
     <div style={{ fontFamily: "Inter, sans-serif" }}>
       {toast && (
@@ -114,7 +149,7 @@ export default function StaffAuditSessionDetailPage() {
         </div>
         <div className="flex gap-2">
           {canRecord && (
-            <button onClick={() => setRecordModal({ ...defaultRecordModal, open: true })} className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm text-white shadow-sm transition-all" style={{ backgroundColor: accentColor }}>
+            <button onClick={openRecordModal} className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm text-white shadow-sm transition-all" style={{ backgroundColor: accentColor }}>
               <span className="material-symbols-outlined text-lg">edit_note</span> Ghi nhận kết quả
             </button>
           )}
@@ -227,30 +262,69 @@ export default function StaffAuditSessionDetailPage() {
       {/* Record Results Modal */}
       {recordModal.open && (
         <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setRecordModal(defaultRecordModal)}>
-          <div style={{ backgroundColor: "#fff", borderRadius: 12, padding: 24, width: "100%", maxWidth: 700, maxHeight: "80vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Ghi nhận kết quả kiểm kê</h3>
-            <div style={{ maxHeight: 320, overflowY: "auto" }}>
-              {recordModal.items.map((item, idx) => (
-                <div key={idx} className="grid gap-2 mb-2" style={{ gridTemplateColumns: "2fr 1fr 1fr 2fr auto", alignItems: "start" }}>
-                  <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" placeholder="Tên hàng hóa *" value={item.itemName} onChange={e => updateItem(idx, "itemName", e.target.value)} />
-                  <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" type="number" min="0" placeholder="SL dự kiến *" value={item.expectedQty} onChange={e => updateItem(idx, "expectedQty", e.target.value)} />
-                  <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" type="number" min="0" placeholder="SL thực tế *" value={item.actualQty} onChange={e => updateItem(idx, "actualQty", e.target.value)} />
-                  <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" placeholder="Lý do chênh lệch" value={item.discrepancyReason} onChange={e => updateItem(idx, "discrepancyReason", e.target.value)} />
-                  {recordModal.items.length > 1 && <button className="px-2 py-1.5 rounded bg-red-50 text-red-500 text-sm font-bold" onClick={() => removeItem(idx)}>✕</button>}
+          <div style={{ backgroundColor: "#fff", borderRadius: 12, padding: 24, width: "100%", maxWidth: 750, maxHeight: "80vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">Ghi nhận kết quả kiểm kê</h3>
+            <p className="text-xs text-slate-500 mb-4">Chọn hàng hóa từ danh sách kho, số lượng dự kiến sẽ được tự động điền.</p>
+
+            {inventoryLoading ? (
+              <div className="text-center py-6 text-slate-400 text-sm">Đang tải danh sách hàng hóa...</div>
+            ) : inventoryItems.length === 0 ? (
+              <div className="flex gap-2 items-center p-3 bg-yellow-50 rounded-lg mb-4">
+                <span className="text-yellow-600 text-lg">⚠️</span>
+                <span className="text-xs text-yellow-800">Kho này chưa có hàng hóa nào trong tồn kho. Vui lòng nhập kho trước khi kiểm kê.</span>
+              </div>
+            ) : (
+              <>
+                <div className="mb-2">
+                  <div className="grid gap-2 mb-1" style={{ gridTemplateColumns: "2.5fr 1fr 1fr 2fr auto" }}>
+                    <span className="text-[11px] font-bold uppercase text-slate-400 px-1">Hàng hóa *</span>
+                    <span className="text-[11px] font-bold uppercase text-slate-400 px-1">SL dự kiến</span>
+                    <span className="text-[11px] font-bold uppercase text-slate-400 px-1">SL thực tế *</span>
+                    <span className="text-[11px] font-bold uppercase text-slate-400 px-1">Lý do chênh lệch</span>
+                    <span></span>
+                  </div>
                 </div>
-              ))}
-            </div>
-            <button onClick={addItem} className="text-sm font-bold mt-2 px-3 py-1.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-50">+ Thêm mục</button>
-            <div className="mt-4 mb-4">
-              <label className="text-sm flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={recordModal.completeSession} onChange={e => setRecordModal(p => ({ ...p, completeSession: e.target.checked }))} />
-                Hoàn thành phiên kiểm kê sau khi lưu
-              </label>
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setRecordModal(defaultRecordModal)} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 bg-slate-100" disabled={recordModal.loading}>Hủy</button>
-              <button onClick={handleRecord} className="px-4 py-2 rounded-lg text-sm font-bold text-white" style={{ backgroundColor: accentColor }} disabled={recordModal.loading}>{recordModal.loading ? "Đang lưu..." : "Lưu kết quả"}</button>
-            </div>
+                <div style={{ maxHeight: 320, overflowY: "auto" }}>
+                  {recordModal.items.map((item, idx) => (
+                    <div key={idx} className="grid gap-2 mb-2" style={{ gridTemplateColumns: "2.5fr 1fr 1fr 2fr auto", alignItems: "start" }}>
+                      <select
+                        className="px-2 py-1.5 rounded border border-slate-200 text-sm bg-white"
+                        value={item.itemName}
+                        onChange={e => updateItem(idx, "itemName", e.target.value)}
+                      >
+                        <option value="">-- Chọn hàng hóa --</option>
+                        {inventoryItems.map(inv => (
+                          <option
+                            key={inv.itemName}
+                            value={inv.itemName}
+                            disabled={recordedItemNames.has(inv.itemName) && item.itemName !== inv.itemName}
+                          >
+                            {inv.itemName} ({inv.quantity} {inv.unit})
+                          </option>
+                        ))}
+                      </select>
+                      <input className="px-2 py-1.5 rounded border border-slate-200 text-sm bg-slate-50 text-slate-500" type="number" min="0" placeholder="SL dự kiến" value={item.expectedQty} readOnly tabIndex={-1} />
+                      <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" type="number" min="0" placeholder="SL thực tế *" value={item.actualQty} onChange={e => updateItem(idx, "actualQty", e.target.value)} />
+                      <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" placeholder="Lý do chênh lệch" value={item.discrepancyReason} onChange={e => updateItem(idx, "discrepancyReason", e.target.value)} />
+                      {recordModal.items.length > 1 && <button className="px-2 py-1.5 rounded bg-red-50 text-red-500 text-sm font-bold" onClick={() => removeItem(idx)}>✕</button>}
+                    </div>
+                  ))}
+                </div>
+                {recordModal.items.length < inventoryItems.length && (
+                  <button onClick={addItem} className="text-sm font-bold mt-2 px-3 py-1.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-50">+ Thêm mục</button>
+                )}
+                <div className="mt-4 mb-4">
+                  <label className="text-sm flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={recordModal.completeSession} onChange={e => setRecordModal(p => ({ ...p, completeSession: e.target.checked }))} />
+                    Hoàn thành phiên kiểm kê sau khi lưu
+                  </label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setRecordModal(defaultRecordModal)} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 bg-slate-100" disabled={recordModal.loading}>Hủy</button>
+                  <button onClick={handleRecord} className="px-4 py-2 rounded-lg text-sm font-bold text-white" style={{ backgroundColor: accentColor }} disabled={recordModal.loading}>{recordModal.loading ? "Đang lưu..." : "Lưu kết quả"}</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

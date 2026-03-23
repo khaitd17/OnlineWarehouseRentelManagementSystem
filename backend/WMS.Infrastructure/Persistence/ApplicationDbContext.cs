@@ -66,12 +66,22 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<RentalArea> RentalAreas { get; set; }
 
+    public virtual DbSet<Notification> Notifications { get; set; }
+
+    public virtual DbSet<ContractVerification> ContractVerifications { get; set; }
+
+    public virtual DbSet<ContractLog> ContractLogs { get; set; }
+
+    public virtual DbSet<StaffShift> StaffShifts { get; set; }
+
+    public virtual DbSet<WarehouseShift> WarehouseShifts { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer("Server=localhost;Database=OWRMS;uid=sa;pwd=sa;Trusted_Connection=True;TrustServerCertificate=True;");
-        }
+        // if (!optionsBuilder.IsConfigured)
+        // {
+        //     optionsBuilder.UseSqlServer("Server=localhost;Database=OWRMS;uid=sa;pwd=sa;Trusted_Connection=True;TrustServerCertificate=True;");
+        // }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -135,6 +145,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ContractId).HasColumnName("contract_id");
             entity.Property(e => e.ContractNumber).HasMaxLength(100).HasColumnName("contract_number");
             entity.Property(e => e.ContractUrl).HasColumnName("contract_url");
+            entity.Property(e => e.SignedFileUrl).HasMaxLength(500).HasColumnName("signed_file_url");
+            entity.Property(e => e.SignedAt).HasColumnName("signed_at");
+            entity.Property(e => e.Terms).HasColumnName("terms");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.DepositAmount).HasColumnType("decimal(15, 2)").HasColumnName("deposit_amount");
             entity.Property(e => e.EndDate).HasColumnName("end_date");
@@ -142,7 +155,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RenterId).HasColumnName("renter_id");
             entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
-            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("ACTIVE").HasColumnName("status");
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("PENDING_OWNER_SIGNATURE").HasColumnName("status");
+            entity.Property(e => e.OwnerSignedFileUrl).HasMaxLength(500).HasColumnName("owner_signed_file_url");
+            entity.Property(e => e.OwnerSignedAt).HasColumnName("owner_signed_at");
+            entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
             entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
             entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
             entity.Property(e => e.TotalValue).HasColumnType("decimal(15, 2)").HasColumnName("total_value");
@@ -206,6 +222,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ConfirmedBy).HasColumnName("confirmed_by");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.DocumentUrls).HasColumnName("document_urls");
             entity.Property(e => e.RenterId).HasColumnName("renter_id");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.Type).HasMaxLength(20).HasColumnName("type");
@@ -366,12 +383,16 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsActive).HasColumnName("is_active");
             entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
             entity.Property(e => e.IsAllZone).HasColumnName("is_all_zone").HasDefaultValue(false);
+            entity.Property(e => e.WarehouseShiftId).HasColumnName("warehouse_shift_id").IsRequired(false);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(getdate())");
             entity.HasIndex(e => new { e.UserId, e.WarehouseId }).IsUnique();
             entity.HasOne(e => e.User).WithMany(u => u.WarehouseMemberships).HasForeignKey(e => e.UserId);
             entity.HasOne(e => e.Warehouse).WithMany(w => w.WarehouseMemberships).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(e => e.Role).WithMany(r => r.Memberships).HasForeignKey(e => e.WarehouseRoleId);
+            entity.HasOne(e => e.WarehouseShift).WithMany().HasForeignKey(e => e.WarehouseShiftId).IsRequired(false);
         });
+
+
 
         modelBuilder.Entity<WarehouseRole>(entity =>
         {
@@ -556,14 +577,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Lng).HasColumnName("lng");
             entity.Property(e => e.Name).HasMaxLength(255).HasColumnName("name");
             entity.Property(e => e.OperatingHours).HasMaxLength(100).HasColumnName("operating_hours");
-            entity.Property(e => e.Is24HoursAccess).HasColumnName("is_24_hours_access").HasDefaultValue(false);
-            entity.Property(e => e.OpenTime).HasColumnName("open_time");
-            entity.Property(e => e.CloseTime).HasColumnName("close_time");
             entity.Property(e => e.OwnerId).HasColumnName("owner_id");
             entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.TotalArea).HasColumnName("total_area");
-            entity.Property(e => e.HasZone).HasColumnName("has_zone").HasDefaultValue(false);
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.WarehouseApprovedByNavigations).HasForeignKey(d => d.ApprovedBy).HasConstraintName("FK_warehouses_approver");
             entity.HasOne(d => d.Owner).WithMany(p => p.WarehouseOwners).HasForeignKey(d => d.OwnerId).HasConstraintName("FK_warehouses_owner");
@@ -620,6 +637,25 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).HasConstraintName("FK_password_reset_tokens_user");
         });
 
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.NotificationId).HasName("PK_notifications");
+            entity.ToTable("notifications");
+            entity.HasIndex(e => e.UserId, "idx_notifications_user");
+            entity.HasIndex(e => e.IsRead, "idx_notifications_is_read");
+            entity.HasIndex(e => e.CreatedAt, "idx_notifications_created_at");
+            entity.Property(e => e.NotificationId).HasColumnName("notification_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Title).HasMaxLength(255).HasColumnName("title");
+            entity.Property(e => e.Message).HasColumnName("message");
+            entity.Property(e => e.Type).HasMaxLength(50).HasColumnName("type");
+            entity.Property(e => e.ReferenceId).HasColumnName("reference_id");
+            entity.Property(e => e.ReferenceType).HasMaxLength(50).HasColumnName("reference_type");
+            entity.Property(e => e.IsRead).HasDefaultValue(false).HasColumnName("is_read");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).HasConstraintName("FK_notifications_user");
+        });
+
         modelBuilder.Entity<RentalArea>(entity =>
         {
             entity.ToTable("rental_areas");
@@ -636,6 +672,69 @@ public class ApplicationDbContext : DbContext
                   .HasForeignKey(e => e.WarehouseId)
                   .OnDelete(DeleteBehavior.Cascade)
                   .HasConstraintName("FK_rental_areas_warehouse");
+        });
+
+        modelBuilder.Entity<ContractVerification>(entity =>
+        {
+            entity.HasKey(e => e.VerificationId).HasName("PK_contract_verifications");
+            entity.ToTable("contract_verifications");
+            entity.HasIndex(e => e.ContractId, "idx_cv_contract");
+            entity.HasIndex(e => e.UserId, "idx_cv_user");
+            entity.Property(e => e.VerificationId).HasColumnName("verification_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.OtpCode).HasMaxLength(6).HasColumnName("otp_code");
+            entity.Property(e => e.IsVerified).HasDefaultValue(false).HasColumnName("is_verified");
+            entity.Property(e => e.ExpiresAt).HasColumnName("expires_at");
+            entity.Property(e => e.VerifiedAt).HasColumnName("verified_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<ContractLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PK_contract_logs");
+            entity.ToTable("contract_logs");
+            entity.HasIndex(e => e.ContractId, "idx_cl_contract");
+            entity.Property(e => e.LogId).HasColumnName("log_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Action).HasMaxLength(50).HasColumnName("action");
+            entity.Property(e => e.IpAddress).HasMaxLength(50).HasColumnName("ip_address");
+            entity.Property(e => e.Details).HasColumnName("details");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<StaffShift>(entity =>
+        {
+            entity.ToTable("staff_shifts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+            entity.Property(e => e.MembershipId).HasColumnName("membership_id");
+            entity.Property(e => e.ShiftDate).HasColumnName("shift_date");
+            entity.Property(e => e.TimeIn1).HasMaxLength(5).HasColumnName("time_in1").IsRequired(false);
+            entity.Property(e => e.TimeOut1).HasMaxLength(5).HasColumnName("time_out1").IsRequired(false);
+            entity.Property(e => e.TimeIn2).HasMaxLength(5).HasColumnName("time_in2").IsRequired(false);
+            entity.Property(e => e.TimeOut2).HasMaxLength(5).HasColumnName("time_out2").IsRequired(false);
+            entity.Property(e => e.ShiftType).HasMaxLength(10).HasColumnName("shift_type").IsRequired(false);
+            entity.HasIndex(e => new { e.MembershipId, e.ShiftDate }).IsUnique().HasDatabaseName("UQ_staff_shifts_membership_date");
+            entity.HasOne(e => e.Membership)
+                  .WithMany(m => m.StaffShifts)
+                  .HasForeignKey(e => e.MembershipId)
+                  .OnDelete(DeleteBehavior.Cascade)
+                  .HasConstraintName("FK_staff_shifts_membership");
+        });
+
+        modelBuilder.Entity<WarehouseShift>(entity =>
+        {
+            entity.ToTable("warehouse_shifts");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.StartTime).HasMaxLength(5).HasColumnName("start_time");
+            entity.Property(e => e.EndTime).HasMaxLength(5).HasColumnName("end_time");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id").IsRequired(false);
+            entity.HasOne(e => e.Warehouse).WithMany().HasForeignKey(e => e.WarehouseId)
+                  .IsRequired(false).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

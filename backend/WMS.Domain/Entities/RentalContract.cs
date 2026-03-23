@@ -14,8 +14,14 @@ public class RentalContract
     public decimal MonthlyPayment { get; private set; }
     public decimal TotalValue { get; private set; }
     public decimal? DepositAmount { get; private set; }
-    public string Status { get; private set; } = "DRAFT";
+    public string Status { get; private set; } = "PENDING_OWNER_SIGNATURE";
     public string? Terms { get; private set; }
+    public string? ContractFileUrl { get; private set; }
+    public string? SignedFileUrl { get; private set; }
+    public DateTime? SignedAt { get; private set; }
+    public string? OwnerSignedFileUrl { get; private set; }
+    public DateTime? OwnerSignedAt { get; private set; }
+    public string? OwnerSignatureBase64 { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -28,13 +34,17 @@ public class RentalContract
         RentalRequest request,
         decimal monthlyPayment,
         decimal? depositAmount = null,
-        string? terms = null)
+        string? terms = null,
+        DateTime? startDateOverride = null,
+        int? durationMonthsOverride = null)
     {
         if (request.Status != "APPROVED")
             throw new InvalidOperationException("Can only create contract from approved request");
 
-        var endDate = request.StartDate.AddMonths(request.DurationMonths);
-        var totalValue = monthlyPayment * request.DurationMonths;
+        var effectiveStartDate = startDateOverride ?? request.StartDate;
+        var effectiveDuration = durationMonthsOverride ?? request.DurationMonths;
+        var endDate = effectiveStartDate.AddMonths(effectiveDuration);
+        var totalValue = monthlyPayment * effectiveDuration;
 
         var contractNumber = GenerateContractNumber();
 
@@ -44,23 +54,51 @@ public class RentalContract
             ContractNumber = contractNumber,
             RenterId = request.RenterId,
             WarehouseId = request.WarehouseId,
-            StartDate = request.StartDate,
+            StartDate = effectiveStartDate,
             EndDate = endDate,
             MonthlyPayment = monthlyPayment,
             TotalValue = totalValue,
             DepositAmount = depositAmount,
-            Status = "DRAFT",
+            Status = "PENDING_OWNER_SIGNATURE",
             Terms = terms,
             CreatedAt = DateTime.UtcNow
         };
     }
 
     // Domain methods
-    public void Activate()
+    public void SetContractFileUrl(string url)
     {
-        if (Status != "DRAFT")
-            throw new InvalidOperationException($"Cannot activate contract with status {Status}");
+        ContractFileUrl = url;
+    }
 
+    public void OwnerSign(string ownerSignedFileUrl, string ownerSignatureBase64)
+    {
+        if (Status != "PENDING_OWNER_SIGNATURE")
+            throw new InvalidOperationException($"Cannot owner-sign contract with status {Status}");
+
+        OwnerSignedFileUrl = ownerSignedFileUrl;
+        OwnerSignedAt = DateTime.UtcNow;
+        OwnerSignatureBase64 = ownerSignatureBase64;
+        Status = "PENDING_SIGNATURE"; // Chờ xác thực ký của người thuê
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkPendingSignature()
+    {
+        if (Status != "PENDING_RENTER_SIGNATURE" && Status != "PENDING_SIGNATURE")
+            throw new InvalidOperationException($"Cannot mark pending signature for contract with status {Status}");
+
+        Status = "PENDING_SIGNATURE";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Sign(string signedFileUrl)
+    {
+        if (Status != "PENDING_SIGNATURE")
+            throw new InvalidOperationException($"Cannot sign contract with status {Status}");
+
+        SignedFileUrl = signedFileUrl;
+        SignedAt = DateTime.UtcNow;
         Status = "ACTIVE";
         UpdatedAt = DateTime.UtcNow;
     }
@@ -90,7 +128,9 @@ public class RentalContract
         return $"RTC-{year}-{timestamp % 100000:D5}";
     }
 
-    public bool IsDraft => Status == "DRAFT";
+    public bool IsPendingOwnerSignature => Status == "PENDING_OWNER_SIGNATURE";
+    public bool IsPendingRenterSignature => Status == "PENDING_RENTER_SIGNATURE";
+    public bool IsPendingSignature => Status == "PENDING_SIGNATURE";
     public bool IsActive => Status == "ACTIVE";
     public bool IsExpired => Status == "EXPIRED";
     public bool IsTerminated => Status == "TERMINATED";

@@ -11,6 +11,7 @@ using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Repositories;
 using WMS.Infrastructure.Services;
+using WMS.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,11 +85,20 @@ builder.Services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalAreaRepository, WMS.Infrastructure.Repositories.RentalAreaRepository>();
 builder.Services.AddScoped<ITaskRepository, TaskRepository>();
 builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.Infrastructure.Repositories.NotificationRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
+builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
+builder.Services.AddScoped<IPdfService, PdfService>();
+
+// SignalR
+builder.Services.AddSignalR();
+builder.Services.AddScoped<INotificationSender, WMS.API.Hubs.SignalRNotificationSender>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -107,15 +117,31 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "A_VERY_SECRET_DEVELOPMENT_KEY_THAT_IS_LONG_ENOUGH"))
     };
+
+    // Allow SignalR to receive token from query string
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/notifications"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.AllowAnyOrigin()
+            policy.WithOrigins("http://localhost:3000","http://localhost:3001", "http://localhost:5173")
                   .AllowAnyHeader()
-                  .AllowAnyMethod();
+                  .AllowAnyMethod()
+                  .AllowCredentials();
         });
 });
 builder.Services.AddAuthorization();
@@ -127,26 +153,25 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Role seeding disabled — data already exists in DB, EF mapping causes SqlException
-// using (var scope = app.Services.CreateScope())
-// {
-//     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-//     if (!context.Roles.Any())
-//     {
-//         context.Roles.AddRange(
-//             new WMS.Domain.Entities.Role { RoleName = "RENTER", Description = "Khách thuê" },
-//             new WMS.Domain.Entities.Role { RoleName = "OWNER",  Description = "Chủ kho" },
-//             new WMS.Domain.Entities.Role { RoleName = "STAFF",  Description = "Nhân viên" },
-//             new WMS.Domain.Entities.Role { RoleName = "ADMIN",  Description = "Quản trị viên" }
-//         );
-//         context.SaveChanges();
-//     }
-// }
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
-    DatabaseSeeder.Seed(context);
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        // 1. Apply any pending migrations automatically
+        context.Database.Migrate();
+        logger.LogInformation("Database migrations applied successfully.");
+
+        // 2. Seed the database
+        DatabaseSeeder.Seed(context);
+        logger.LogInformation("Database seeded successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while initializing the database: {Message}", ex.Message);
+        // We log the error but allow the application to continue starting
+    }
 }
 
 // ==========================================
@@ -181,5 +206,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

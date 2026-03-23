@@ -1,172 +1,464 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { searchWarehouses } from '../services/warehouseService';
 
-const SearchResultsPage = () => {
-  const [activeFilters, setActiveFilters] = useState({
-    location: '',
-    type: 'All',
-    priceRange: [0, 1000000],
-    area: 'All'
-  });
+/* ── 63 tỉnh thành Việt Nam ─────────────────────────────── */
+const PROVINCES = [
+  'An Giang','Bà Rịa - Vũng Tàu','Bắc Giang','Bắc Kạn','Bạc Liêu',
+  'Bắc Ninh','Bến Tre','Bình Định','Bình Dương','Bình Phước','Bình Thuận',
+  'Cà Mau','Cần Thơ','Cao Bằng','Đà Nẵng','Đắk Lắk','Đắk Nông',
+  'Điện Biên','Đồng Nai','Đồng Tháp','Gia Lai','Hà Giang','Hà Nam',
+  'Hà Nội','Hà Tĩnh','Hải Dương','Hải Phòng','Hậu Giang','Hòa Bình',
+  'Hưng Yên','Khánh Hòa','Kiên Giang','Kon Tum','Lai Châu','Lâm Đồng',
+  'Lạng Sơn','Lào Cai','Long An','Nam Định','Nghệ An','Ninh Bình',
+  'Ninh Thuận','Phú Thọ','Phú Yên','Quảng Bình','Quảng Nam','Quảng Ngãi',
+  'Quảng Ninh','Quảng Trị','Sóc Trăng','Sơn La','Tây Ninh','Thái Bình',
+  'Thái Nguyên','Thanh Hóa','Thừa Thiên Huế','Tiền Giang','TP. Hồ Chí Minh',
+  'Trà Vinh','Tuyên Quang','Vĩnh Long','Vĩnh Phúc','Yên Bái',
+];
 
-  const results = [
-    { id: 1, title: "Kho lạnh hiện đại - KCN Tân Bình", price: "250.000", area: "200", location: "Quận Tân Bình, TP. HCM", rating: 4.8, image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800", type: "Kho lạnh" },
-    { id: 2, title: "Kho bãi trung tâm - Quận 7", price: "180.000", area: "500", location: "Quận 7, TP. HCM", rating: 4.5, image: "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=800", type: "Kho chung" },
-    { id: 3, title: "Nhà xưởng tiêu chuẩn - Bình Dương", price: "120.000", area: "1000", location: "Thuận An, Bình Dương", rating: 4.7, image: "https://images.unsplash.com/photo-1565891741441-64926e441838?auto=format&fit=crop&q=80&w=800", type: "Kho tự quản" },
-    { id: 4, title: "Kho phân phối Logistics - Long An", price: "95.000", area: "2500", location: "Bến Lức, Long An", rating: 4.6, image: "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=800", type: "Kho chung" },
-    { id: 5, title: "Kho mini trung tâm Quận 1", price: "500.000", area: "50", location: "Quận 1, TP. HCM", rating: 4.9, image: "https://images.unsplash.com/photo-1504384764586-bb4cdc17477b?auto=format&fit=crop&q=80&w=800", type: "Kho tự quản" },
-    { id: 6, title: "Kho bãi container - Cát Lái", price: "150.000", area: "5000", location: "Quận 2, TP. HCM", rating: 4.4, image: "https://images.unsplash.com/photo-1493946747784-a5a52230da76?auto=format&fit=crop&q=80&w=800", type: "Bãi trống" },
-  ];
+const WAREHOUSE_TYPES = [
+  { value: '',         label: 'Tất cả loại kho' },
+  { value: 'lạnh',    label: 'Kho lạnh / mát' },
+  { value: 'chung',   label: 'Kho chung' },
+  { value: 'tự quản', label: 'Kho tự quản' },
+  { value: 'xưởng',   label: 'Kho xưởng' },
+  { value: 'ngoại quan', label: 'Kho ngoại quan' },
+];
+
+const AREA_OPTIONS = [
+  { label: '< 50 m²',      min: 0,  max: 50   },
+  { label: '< 100 m²',     min: 0,  max: 100  },
+  { label: '< 500 m²',     min: 0,  max: 500  },
+  { label: '< 1,000 m²',   min: 0,  max: 1000 },
+];
+
+const resolveImage = (url) => {
+  if (!url) return 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800';
+  if (url.startsWith('http')) return url;
+  return `http://localhost:5276${url}`;
+};
+
+/* ── Main Component ─────────────────────────────────────── */
+export default function SearchResultsPage() {
+  const navigate = useNavigate();
+
+  /* Filter state */
+  const [provinceInput,  setProvinceInput]  = useState('');
+  const [showProvDrop,   setShowProvDrop]   = useState(false);
+  const provRef = useRef(null);
+
+  // Derive province for API from provinceInput (only when it matches exactly)
+  const province = PROVINCES.includes(provinceInput) ? provinceInput : provinceInput;
+
+  // Accent-insensitive province filter
+  const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const filteredProvinces = provinceInput.trim()
+    ? PROVINCES.filter(p => norm(p).includes(norm(provinceInput)))
+    : PROVINCES;
+
+  const [warehouseType, setWarehouseType] = useState('');
+  const [areaIdx,       setAreaIdx]       = useState(null);
+  const [sortBy,        setSortBy]        = useState('newest');
+  const [page,          setPage]          = useState(1);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (provRef.current && !provRef.current.contains(e.target)) setShowProvDrop(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  /* Data state */
+  const [results,  setResults]  = useState([]);
+  const [total,    setTotal]    = useState(0);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
+
+  const PAGE_SIZE = 12;
+
+  /* ── Fetch ──────────────────────────────────────────────── */
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const areaFilter = areaIdx != null ? AREA_OPTIONS[areaIdx] : {};
+      const data = await searchWarehouses({
+        province: provinceInput,
+        warehouseType,
+        minArea: areaFilter.min ?? undefined,
+        maxArea: areaFilter.max ?? undefined,
+        sortBy,
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      setResults(data.items ?? []);
+      setTotal(data.total ?? 0);
+    } catch (e) {
+      setError('Không thể tải dữ liệu. Vui lòng thử lại.');
+      setResults([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [provinceInput, warehouseType, areaIdx, sortBy, page]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  /* ── Handlers ───────────────────────────────────────────── */
+  const handleApply = () => { setPage(1); fetchData(); };
+  const handleReset = () => {
+    setProvinceInput('');
+    setWarehouseType('');
+    setAreaIdx(null);
+    setSortBy('newest');
+    setPage(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  /* ── Styles ─────────────────────────────────────────────── */
+  const inputStyle = {
+    width: '100%', padding: '10px 12px', borderRadius: 8,
+    border: '1px solid #e2e8f0', fontSize: '0.9rem',
+    outline: 'none', boxSizing: 'border-box',
+    fontFamily: 'inherit', background: '#fff',
+    color: '#1e293b',
+  };
+  const labelStyle = {
+    display: 'block', fontSize: '0.8rem', fontWeight: 700,
+    color: '#475569', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em',
+  };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '2rem auto', padding: '0 2rem' }}>
-      <div style={{ display: 'flex', gap: '2rem' }}>
-        {/* Filters Sidebar */}
-        <aside style={{ width: '300px', flexShrink: 0 }}>
-          <div style={{ backgroundColor: '#fff', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', position: 'sticky', top: '100px' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1.5rem', color: '#0f172a' }}>Bộ lọc tìm kiếm</h3>
-            
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Địa điểm</label>
-              <input type="text" placeholder="TP. Hồ Chí Minh" style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.9rem' }} />
+    <div style={{
+      maxWidth: 1260, margin: '0 auto',
+      padding: '2rem 1.5rem',
+      fontFamily: "'Inter','Segoe UI',sans-serif",
+    }}>
+      <div style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }}>
+
+        {/* ══ FILTER SIDEBAR ══════════════════════════════════ */}
+        <aside style={{ width: 280, flexShrink: 0 }}>
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: '24px 20px',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+            border: '1px solid #f1f5f9',
+            position: 'sticky', top: 108,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                🔍 Bộ lọc
+              </h3>
+              <button onClick={handleReset} style={{
+                background: 'none', border: 'none', color: '#0095c7',
+                fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0,
+              }}>Xóa tất cả</button>
             </div>
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Loại kho</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {['Tất cả', 'Kho lạnh', 'Kho chung', 'Kho tự quản', 'Bãi trống'].map(t => (
-                  <label key={t} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', cursor: 'pointer' }}>
-                    <input type="checkbox" checked={t === 'Tất cả'} style={{ width: '16px', height: '16px', borderRadius: '4px' }} />
-                    {t}
+            {/* Province autocomplete */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>📍 Địa điểm (Tỉnh/Thành phố)</label>
+              <div ref={provRef} style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Nhập tỉnh, thành phố..."
+                  value={provinceInput}
+                  onChange={e => { setProvinceInput(e.target.value); setShowProvDrop(true); setPage(1); }}
+                  onFocus={() => setShowProvDrop(true)}
+                  autoComplete="off"
+                  style={{ ...inputStyle, cursor: 'text' }}
+                />
+                {showProvDrop && (
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+                    background: '#fff',
+                    border: '1.5px solid #bae6fd',
+                    borderRadius: 10,
+                    boxShadow: '0 10px 28px rgba(14,165,233,0.14)',
+                    maxHeight: 220,
+                    overflowY: 'auto',
+                    zIndex: 999,
+                    scrollbarWidth: 'thin',
+                  }}>
+                    {filteredProvinces.length > 0 ? filteredProvinces.map(p => (
+                      <div
+                        key={p}
+                        onMouseDown={e => { e.preventDefault(); setProvinceInput(p); setShowProvDrop(false); setPage(1); }}
+                        style={{
+                          padding: '9px 13px',
+                          fontSize: '0.88rem',
+                          color: provinceInput === p ? '#0369a1' : '#1e293b',
+                          fontWeight: provinceInput === p ? 700 : 400,
+                          background: provinceInput === p ? '#f0f9ff' : 'transparent',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #f0f9ff',
+                          transition: 'background 0.12s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
+                        onMouseLeave={e => e.currentTarget.style.background = provinceInput === p ? '#f0f9ff' : 'transparent'}
+                      >
+                        {p}
+                      </div>
+                    )) : (
+                      <div style={{ padding: '10px 13px', fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center' }}>
+                        Không tìm thấy tỉnh thành
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Warehouse type */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={labelStyle}>🏭 Loại kho</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {WAREHOUSE_TYPES.map(t => (
+                  <label key={t.value} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    fontSize: '0.9rem', cursor: 'pointer',
+                    color: warehouseType === t.value ? '#0095c7' : '#334155',
+                    fontWeight: warehouseType === t.value ? 700 : 400,
+                  }}>
+                    <input
+                      type='radio'
+                      name='warehouseType'
+                      checked={warehouseType === t.value}
+                      onChange={() => { setWarehouseType(t.value); setPage(1); }}
+                      style={{ accentColor: '#0095c7', width: 16, height: 16 }}
+                    />
+                    {t.label}
                   </label>
                 ))}
               </div>
             </div>
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Giá thuê (VNĐ/m2)</label>
-              <input type="range" min="0" max="1000000" style={{ width: '100%' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>
-                <span>0</span>
-                <span>1.000.000</span>
+            {/* Area */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={labelStyle}>📐 Diện tích (m²)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {AREA_OPTIONS.map((opt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setAreaIdx(areaIdx === i ? null : i); setPage(1); }}
+                    style={{
+                      padding: '8px 6px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600,
+                      border: areaIdx === i ? '2px solid #0095c7' : '1px solid #e2e8f0',
+                      background: areaIdx === i ? '#e0f2fe' : '#fff',
+                      color: areaIdx === i ? '#0369a1' : '#334155',
+                      cursor: 'pointer', transition: 'all 0.15s',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#64748b', marginBottom: '0.5rem' }}>Diện tích (m2)</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <button style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#fff', fontSize: '0.85rem' }}>&lt; 100m²</button>
-                <button style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#fff', fontSize: '0.85rem' }}>100-500m²</button>
-                <button style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#fff', fontSize: '0.85rem' }}>500-1000m²</button>
-                <button style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#fff', fontSize: '0.85rem' }}>&gt; 1000m²</button>
-              </div>
-            </div>
-
-            <button style={{ 
-              width: '100%', 
-              backgroundColor: '#0095c7', 
-              color: '#fff', 
-              padding: '1rem', 
-              borderRadius: '10px', 
-              fontWeight: 700, 
-              border: 'none', 
-              cursor: 'pointer',
-              marginTop: '1rem'
-            }}>
+            <button
+              onClick={handleApply}
+              style={{
+                width: '100%', padding: '12px', borderRadius: 10,
+                background: 'linear-gradient(135deg,#0095c7,#0077a3)',
+                color: '#fff', fontWeight: 700, fontSize: '0.95rem',
+                border: 'none', cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(0,149,199,0.3)',
+              }}
+            >
               Áp dụng bộ lọc
             </button>
           </div>
         </aside>
 
-        {/* Results Main Area */}
-        <main style={{ flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>1,240 Kết quả tìm kiếm</h2>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.9rem', color: '#64748b' }}>Sắp xếp:</span>
-              <select style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', fontSize: '0.9rem' }}>
-                <option>Mới nhất</option>
-                <option>Giá thấp đến cao</option>
-                <option>Giá cao đến thấp</option>
-                <option>Diện tích lớn nhất</option>
+        {/* ══ RESULTS AREA ════════════════════════════════════ */}
+        <main style={{ flex: 1, minWidth: 0 }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
+                {loading ? 'Đang tìm...' : `${total.toLocaleString()} kết quả tìm kiếm`}
+              </h2>
+              {(province || warehouseType) && (
+                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                  {[province, warehouseType ? WAREHOUSE_TYPES.find(t=>t.value===warehouseType)?.label : ''].filter(Boolean).join(' · ')}
+                </p>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: '0.88rem', color: '#64748b' }}>Sắp xếp:</span>
+              <select
+                value={sortBy}
+                onChange={e => { setSortBy(e.target.value); setPage(1); }}
+                style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', color: '#1e293b' }}
+              >
+                <option value='newest'>Mới nhất</option>
+                <option value='area_asc'>Diện tích: Nhỏ → Lớn</option>
+                <option value='area_desc'>Diện tích: Lớn → Nhỏ</option>
               </select>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
-            {results.map(w => (
-              <div key={w.id} style={{ 
-                backgroundColor: '#fff', 
-                borderRadius: '16px', 
-                overflow: 'hidden', 
-                boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-                border: '1px solid #f1f5f9',
-                display: 'flex',
-                flexDirection: 'column'
-              }}>
-                <div style={{ position: 'relative' }}>
-                  <img src={w.image} alt={w.title} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
-                  <span style={{ 
-                    position: 'absolute', 
-                    top: '12px', 
-                    right: '12px', 
-                    backgroundColor: 'rgba(255,255,255,0.9)', 
-                    padding: '0.3rem 0.6rem', 
-                    borderRadius: '6px', 
-                    fontSize: '0.8rem', 
-                    fontWeight: 700,
-                    color: '#0095c7'
-                  }}>
-                    {w.type}
-                  </span>
-                </div>
-                <div style={{ padding: '1.2rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem', lineHeight: 1.4 }}>{w.title}</h3>
-                  <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1rem' }}>📍 {w.location}</p>
-                  
-                  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.2rem' }}>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.85rem' }}>
-                      <span style={{ fontWeight: 600 }}>{w.area}</span> m²
+          {/* Cards */}
+          {loading ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 20 }}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} style={{
+                  background: '#f1f5f9', borderRadius: 16, height: 340,
+                  animation: 'pulse 1.5s infinite',
+                }} />
+              ))}
+            </div>
+          ) : error ? (
+            <div style={{ textAlign: 'center', padding: '4rem 0', color: '#ef4444' }}>
+              <p style={{ fontSize: '1rem', fontWeight: 600 }}>{error}</p>
+              <button onClick={fetchData} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 8, background: '#0095c7', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                Thử lại
+              </button>
+            </div>
+          ) : results.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '5rem 0' }}>
+              <div style={{ fontSize: '3rem', marginBottom: 16 }}>🏗️</div>
+              <h3 style={{ color: '#334155', fontWeight: 700, marginBottom: 8 }}>Không tìm thấy kho phù hợp</h3>
+              <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Thử điều chỉnh bộ lọc để xem thêm kết quả.</p>
+              <button onClick={handleReset} style={{ marginTop: 16, padding: '10px 24px', borderRadius: 8, background: '#0095c7', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                Xóa bộ lọc
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: 20 }}>
+              {results.map(w => (
+                <Link
+                  to={`/warehouse/${w.warehouseId}`}
+                  key={w.warehouseId}
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  <div
+                    style={{
+                      background: '#fff', borderRadius: 16, overflow: 'hidden',
+                      boxShadow: '0 2px 12px rgba(0,0,0,0.05)',
+                      border: '1px solid #f1f5f9',
+                      display: 'flex', flexDirection: 'column',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-5px)';
+                      e.currentTarget.style.boxShadow = '0 16px 32px rgba(0,149,199,0.12)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.05)';
+                    }}
+                  >
+                    {/* Image */}
+                    <div style={{ position: 'relative', height: 180, flexShrink: 0 }}>
+                      <img
+                        src={resolveImage(w.imageUrl)}
+                        alt={w.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={e => { e.target.src = 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800'; }}
+                      />
+                      <div style={{
+                        position: 'absolute', top: 10, right: 10,
+                        background: 'rgba(0,149,199,0.9)', backdropFilter: 'blur(4px)',
+                        color: '#fff', padding: '3px 10px', borderRadius: 20,
+                        fontSize: '0.72rem', fontWeight: 700,
+                      }}>
+                        APPROVED
+                      </div>
                     </div>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '0.4rem 0.8rem', borderRadius: '6px', fontSize: '0.85rem' }}>
-                      ⭐ <span style={{ fontWeight: 600 }}>{w.rating}</span>
-                    </div>
-                  </div>
 
-                  <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
-                    <div>
-                      <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0095c7' }}>{w.price}</span>
-                      <span style={{ fontSize: '0.8rem', color: '#64748b' }}> đ/tháng</span>
+                    {/* Info */}
+                    <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <h3 style={{
+                        margin: '0 0 6px', fontSize: '0.95rem', fontWeight: 700,
+                        color: '#0f172a', lineHeight: 1.4,
+                        overflow: 'hidden', textOverflow: 'ellipsis',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      }}>{w.name}</h3>
+
+                      <p style={{
+                        margin: '0 0 12px', fontSize: '0.8rem', color: '#64748b',
+                        display: 'flex', alignItems: 'flex-start', gap: 4,
+                        overflow: 'hidden', textOverflow: 'ellipsis',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      }}>
+                        <span style={{ flexShrink: 0 }}>📍</span>
+                        {w.address}
+                      </p>
+
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        borderTop: '1px solid #f1f5f9', paddingTop: 12, marginTop: 'auto',
+                      }}>
+                        <div>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>Tổng DT</div>
+                          <div style={{ fontWeight: 700, color: '#334155', fontSize: '0.95rem' }}>
+                            {w.totalArea?.toLocaleString()} m²
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>Còn trống</div>
+                          <div style={{ fontWeight: 800, color: '#0095c7', fontSize: '1rem' }}>
+                            {w.availableArea?.toLocaleString()} m²
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <button style={{ 
-                      backgroundColor: '#f1f5f9', 
-                      border: 'none', 
-                      padding: '0.5rem 1rem', 
-                      borderRadius: '8px', 
-                      fontSize: '0.85rem', 
-                      fontWeight: 600, 
-                      color: '#0f172a',
-                      cursor: 'pointer'
-                    }}>
-                      Chi tiết
-                    </button>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
 
           {/* Pagination */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginTop: '3rem' }}>
-            <button style={{ padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer' }}>Trước</button>
-            <button style={{ padding: '0.6rem 1rem', borderRadius: '8px', border: 'none', backgroundColor: '#0095c7', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>1</button>
-            <button style={{ padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer' }}>2</button>
-            <button style={{ padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer' }}>3</button>
-            <button style={{ padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: '#fff', cursor: 'pointer' }}>Sau</button>
-          </div>
+          {!loading && totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 40 }}>
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={{
+                  padding: '8px 16px', borderRadius: 8,
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight: 600,
+                  color: page === 1 ? '#cbd5e1' : '#334155',
+                }}
+              >← Trước</button>
+
+              {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+                const p = i + 1;
+                return (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    style={{
+                      padding: '8px 14px', borderRadius: 8,
+                      border: page === p ? 'none' : '1px solid #e2e8f0',
+                      background: page === p ? '#0095c7' : '#fff',
+                      color: page === p ? '#fff' : '#334155',
+                      fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >{p}</button>
+                );
+              })}
+
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={{
+                  padding: '8px 16px', borderRadius: 8,
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight: 600,
+                  color: page === totalPages ? '#cbd5e1' : '#334155',
+                }}
+              >Sau →</button>
+            </div>
+          )}
         </main>
       </div>
     </div>
   );
-};
-
-export default SearchResultsPage;
+}

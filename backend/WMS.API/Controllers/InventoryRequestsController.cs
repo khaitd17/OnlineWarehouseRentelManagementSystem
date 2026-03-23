@@ -31,8 +31,6 @@ public class InventoryRequestsController : ControllerBase
         ?? User.FindFirst("role")?.Value?.ToUpper()
         ?? "";
 
-    // ── GET /api/InventoryRequests ─────────────────────────────────────────
-    /// <summary>Lấy danh sách yêu cầu (Owner/Renter/Staff view)</summary>
     [HttpGet]
     public async Task<IActionResult> GetList(
         [FromQuery] string type = "INBOUND",

@@ -22,6 +22,7 @@ public record CreateInventoryRequestCommand : IRequest<InventoryRequestDto>
     public int WarehouseId { get; init; }
     public string Type { get; init; } = "INBOUND";    // INBOUND | OUTBOUND
     public string? Notes { get; init; }
+    public List<string>? DocumentUrls { get; init; }
     public List<CreateInventoryItemInput> Items { get; init; } = new();
 }
 
@@ -76,6 +77,9 @@ public class CreateInventoryRequestHandler
             WarehouseId = cmd.WarehouseId,
             Type        = cmd.Type.ToUpper(),
             Notes       = cmd.Notes,
+            DocumentUrls = cmd.DocumentUrls != null && cmd.DocumentUrls.Count > 0
+                ? System.Text.Json.JsonSerializer.Serialize(cmd.DocumentUrls)
+                : null,
             Status      = "PENDING",
             InventoryItems = cmd.Items.Select(i => new InventoryItem
             {

@@ -22,7 +22,7 @@ public class CreateTaskHandler : IRequestHandler<CreateTaskCommand, int>
         var caller = await _membershipRepo.GetCallerMembershipAsync(cmd.CallerId, cmd.WarehouseId, ct)
             ?? throw new UnauthorizedAccessException("Bạn không có quyền trong kho này.");
 
-        var allowedRoles = new[] { "MANAGER", "OPERATOR", "OWNER" };
+        var allowedRoles = new[] { "MANAGER", "OPERATOR" };
         if (!allowedRoles.Contains(caller.RoleCode))
             throw new UnauthorizedAccessException("Chỉ Manager/Operator mới được tạo task.");
 

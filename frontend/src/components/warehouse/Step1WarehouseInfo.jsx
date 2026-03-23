@@ -113,15 +113,47 @@ const Step1WarehouseInfo = ({
 
       </div>
 
+      {/* Kích thước */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
+        <div style={{ ...groupStyle, marginBottom: 0 }}>
+          <label style={labelStyle}>Chiều rộng (m)</label>
+          <input
+            name="width"
+            type="number"
+            min="1"
+            step="0.1"
+            value={formData.width || ""}
+            placeholder="Ví dụ: 20"
+            onChange={handleChange}
+            required
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ ...groupStyle, marginBottom: 0 }}>
+          <label style={labelStyle}>Chiều dài (m)</label>
+          <input
+            name="length"
+            type="number"
+            min="1"
+            step="0.1"
+            value={formData.length || ""}
+            placeholder="Ví dụ: 50"
+            onChange={handleChange}
+            required
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
       {/* Diện tích */}
       <div style={groupStyle}>
-        <label style={labelStyle}>Tổng diện tích (m²)</label>
+        <label style={labelStyle}>Tổng diện tích mặt sàn (m²)</label>
         <input
           name="totalArea"
-          placeholder="Nhập tổng diện tích"
-          onChange={handleChange}
-          required
-          style={inputStyle}
+          value={formData.totalArea || ""}
+          placeholder="Tự động tính bằng Chiều rộng x Chiều dài"
+          readOnly
+          style={{ ...inputStyle, backgroundColor: "#e2e8f0", color: "#475569", cursor: "not-allowed", fontWeight: 700 }}
         />
       </div>
 
@@ -186,6 +218,26 @@ const Step1WarehouseInfo = ({
           </div>
         </div>
       )}
+
+
+
+      {/* Tình trạng pháp lý */}
+      <div style={groupStyle}>
+        <label style={labelStyle}>Tình trạng giấy tờ pháp lý</label>
+        <select
+          name="mainDoorDirection"
+          value={formData.mainDoorDirection}
+          onChange={handleChange}
+          required
+          style={inputStyle}
+        >
+          <option value="">-- Chọn tình trạng --</option>
+          <option value="Đã có sổ đỏ/sổ hồng">Đã có sổ đỏ/sổ hồng</option>
+          <option value="Hợp đồng thuê/ủy quyền">Hợp đồng thuê/ủy quyền</option>
+          <option value="Giấy phép kinh doanh">Giấy phép kinh doanh</option>
+          <option value="Đang chờ cấp">Đang chờ cấp</option>
+        </select>
+      </div>
 
       {/* Mô tả */}
       <div style={groupStyle}>

@@ -1,5 +1,6 @@
 using MediatR;
 using WMS.Application.Interfaces;
+using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Staff.ListStaff;
 
@@ -24,6 +25,7 @@ public class ListStaffHandler : IRequestHandler<ListStaffQuery, StaffMembershipP
             request.Search,
             request.Page,
             request.PageSize,
+            callerId: request.CallerId,
             cancellationToken);
     }
 }
