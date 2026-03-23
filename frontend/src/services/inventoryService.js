@@ -38,6 +38,19 @@ const inventoryService = {
   deleteInventoryRequest: (id) => {
     return axiosClient.delete(`/InventoryRequests/${id}`);
   },
+
+  /**
+   * Lịch sử chuyển khoản (thanh toán tiền thuê kho)
+   * params: { status, from, to, page, pageSize }
+   */
+  getPaymentHistory: (params = {}) => {
+    const { status, from, to, page = 1, pageSize = 20 } = params;
+    const query = new URLSearchParams({ page, pageSize });
+    if (status) query.append('status', status);
+    if (from)   query.append('from', from);
+    if (to)     query.append('to', to);
+    return axiosClient.get(`/payments/history?${query.toString()}`);
+  },
 };
 
 export default inventoryService;
