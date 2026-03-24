@@ -37,19 +37,10 @@ public class StaffMembershipDto
     public string RoleCode { get; set; } = null!;
     public string RoleName { get; set; } = null!;
     public bool IsAllSkill { get; set; }
-    public bool IsAllZone { get; set; }
     public List<SkillDto> Skills { get; set; } = new();
-    public List<ZoneDto> Zones { get; set; } = new();
 }
 
 public class SkillDto
-{
-    public int Id { get; set; }
-    public string Code { get; set; } = null!;
-    public string Name { get; set; } = null!;
-}
-
-public class ZoneDto
 {
     public int Id { get; set; }
     public string Code { get; set; } = null!;
@@ -71,9 +62,7 @@ public class CallerMembershipDto
     public int MembershipId { get; set; }
     public string RoleCode { get; set; } = null!;
     public bool IsAllSkill { get; set; }
-    public bool IsAllZone { get; set; }
     public List<int> SkillIds { get; set; } = new();
-    public List<int> ZoneIds { get; set; } = new();
 }
 
 public class CreateMembershipDto
@@ -82,9 +71,7 @@ public class CreateMembershipDto
     public int WarehouseId { get; set; }
     public string RoleCode { get; set; } = null!;
     public bool IsAllSkill { get; set; }
-    public bool IsAllZone { get; set; }
     public List<int> SkillIds { get; set; } = new();
-    public List<int> ZoneIds { get; set; } = new();
     public int? WarehouseShiftId { get; set; }  // null = ca xoay (rotating)
 }
 
@@ -108,9 +95,7 @@ public class ReassignMembershipDto
     public int MembershipId { get; set; }
     public string TargetRoleCode { get; set; } = null!;
     public bool IsAllSkill { get; set; }
-    public bool IsAllZone { get; set; }
     public List<int> SkillIds { get; set; } = new();
-    public List<int> ZoneIds { get; set; } = new();
 }
 
 public class ManagerScopeDto
@@ -118,7 +103,13 @@ public class ManagerScopeDto
     public int MembershipId { get; set; }
     public string FullName { get; set; } = null!;
     public bool IsAllSkill { get; set; }
-    public bool IsAllZone { get; set; }
     public List<int> SkillIds { get; set; } = new();
-    public List<int> ZoneIds { get; set; } = new();
+}
+
+// ZoneDto kept for potential use in other non-staff features
+public class ZoneDto
+{
+    public int Id { get; set; }
+    public string Code { get; set; } = null!;
+    public string Name { get; set; } = null!;
 }

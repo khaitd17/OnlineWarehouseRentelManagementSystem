@@ -71,20 +71,15 @@ public class StaffShiftRepository : IStaffShiftRepository
         if (callerRole == "MANAGER")
         {
             var callerSkillIds = caller.Skills.Select(s => s.Id).ToList();
-            var callerZoneIds  = caller.Zones.Select(z => z.Id).ToList();
             bool allSkill = caller.IsAllSkill;
-            bool allZone  = caller.IsAllZone;
 
+            // Manager chỉ thấy STAFF trong phạm vi skill của mình
             q = q.Where(m =>
                 m.Role.Code == "OPERATOR" || // operators visible to manager
                 m.UserId == callerId      || // chính mình
-                (allSkill && allZone)     || // full access
-                (allSkill  && (m.IsAllZone || m.Zones.Any(z  => callerZoneIds.Contains(z.Id))))  ||
-                (allZone   && (m.IsAllSkill || m.Skills.Any(s => callerSkillIds.Contains(s.Id)))) ||
-                (!allSkill && !allZone && (
-                    m.Skills.Any(s => callerSkillIds.Contains(s.Id)) ||
-                    m.Zones.Any(z  => callerZoneIds.Contains(z.Id))
-                ))
+                allSkill                  || // full skill access
+                m.IsAllSkill              ||
+                m.Skills.Any(s => callerSkillIds.Contains(s.Id))
             );
         }
         else if (callerRole == "STAFF")

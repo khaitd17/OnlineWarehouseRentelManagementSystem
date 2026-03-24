@@ -49,9 +49,7 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             WarehouseId = warehouseId,
             RoleCode    = "OPERATOR",
             IsAllSkill  = true,
-            IsAllZone   = true,
             SkillIds    = new List<int>(),
-            ZoneIds     = new List<int>(),
         }, cancellationToken);
 
         return warehouseId;
