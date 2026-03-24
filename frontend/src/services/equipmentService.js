@@ -16,8 +16,8 @@ const equipmentService = {
     return res.data;
   },
 
-  updateStatus: async (id, status) => {
-    const res = await axiosClient.patch(`/Equipments/${id}/status`, { equipmentId: id, status });
+  updateStatus: async (id, status, note = '') => {
+    const res = await axiosClient.patch(`/Equipments/${id}/status`, { equipmentId: id, status, note });
     return res.data;
   },
 

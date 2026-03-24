@@ -83,6 +83,7 @@ public class RentalRequestRepository : IRentalRequestRepository
         {
             RenterId = request.RenterId,
             WarehouseId = request.WarehouseId,
+            RentalAreaId = request.RentalAreaId,
             RequestedArea = request.RequestedArea,
             StartDate = request.StartDate,
             DurationMonths = request.DurationMonths,
@@ -142,6 +143,7 @@ public class RentalRequestRepository : IRentalRequestRepository
         var reviewedAtProp = typeof(DomainRentalRequest).GetProperty("ReviewedAt");
         var rejectionReasonProp = typeof(DomainRentalRequest).GetProperty("RejectionReason");
         var contractImageUrlProp = typeof(DomainRentalRequest).GetProperty("ContractImageUrl");
+        var rentalAreaIdProp = typeof(DomainRentalRequest).GetProperty("RentalAreaId");
 
         requestIdProp?.SetValue(domainRequest, dbRequest.RequestId);
         renterIdProp?.SetValue(domainRequest, dbRequest.RenterId);
@@ -156,6 +158,7 @@ public class RentalRequestRepository : IRentalRequestRepository
         reviewedAtProp?.SetValue(domainRequest, dbRequest.ReviewedAt);
         rejectionReasonProp?.SetValue(domainRequest, dbRequest.RejectionReason);
         contractImageUrlProp?.SetValue(domainRequest, dbRequest.ContractImageUrl);
+        rentalAreaIdProp?.SetValue(domainRequest, dbRequest.RentalAreaId);
 
         return domainRequest;
     }

@@ -88,6 +88,7 @@ public class RentalContractRepository : IRentalContractRepository
         return dbContract.ContractId;
     }
 
+
     public async SystemTask UpdateAsync(DomainRentalContract contract)
     {
         var dbContract = await _context.Contracts.FindAsync(contract.ContractId);
@@ -105,6 +106,45 @@ public class RentalContractRepository : IRentalContractRepository
         dbContract.OwnerSignatureBase64 = contract.OwnerSignatureBase64;
 
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<DomainRentalContract?> GetWithEquipmentsByIdAsync(int contractId)
+    {
+        var dbContract = await _context.Contracts
+            .Include(c => c.IncludedEquipments)
+            .FirstOrDefaultAsync(c => c.ContractId == contractId);
+
+        if (dbContract == null) return null;
+
+        var domain = MapToDomain(dbContract);
+        
+        // Manual mapping for the many-to-many property since MapToDomain uses reflection for primitives
+        foreach(var e in dbContract.IncludedEquipments)
+        {
+            domain.IncludedEquipments.Add(e);
+        }
+
+        return domain;
+    }
+
+    public async Task AssignEquipmentsAsync(int contractId, List<int> equipmentIds, CancellationToken cancellationToken)
+    {
+        var dbContract = await _context.Contracts
+            .Include(c => c.IncludedEquipments)
+            .FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken)
+            ?? throw new KeyNotFoundException("Contract not found");
+
+        var equipments = await _context.Equipments
+            .Where(e => equipmentIds.Contains(e.EquipmentId))
+            .ToListAsync(cancellationToken);
+
+        dbContract.IncludedEquipments.Clear();
+        foreach (var equipment in equipments)
+        {
+            dbContract.IncludedEquipments.Add(equipment);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     private DomainRentalContract MapToDomain(DbContract dbContract)
