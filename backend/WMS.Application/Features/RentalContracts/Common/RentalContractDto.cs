@@ -26,5 +26,7 @@ public class RentalContractDto
     public string? OwnerSignedFileUrl { get; set; }
     public DateTime? OwnerSignedAt { get; set; }
     public string? OwnerSignatureBase64 { get; set; }
+    public int? RentalAreaId { get; set; }
+    public double RequestedArea { get; set; }
     public DateTime CreatedAt { get; set; }
 }

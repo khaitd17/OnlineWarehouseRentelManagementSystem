@@ -10,7 +10,7 @@ function CreateStaff() {
   const [managedWarehouses, setManagedWarehouses] = useState([]);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
   const [callerMembership, setCallerMembership] = useState(null);
-  const [warehouseOptions, setWarehouseOptions] = useState({ skills: [], zones: [] });
+  const [warehouseOptions, setWarehouseOptions] = useState({ skills: [] });
   const [warehouseShifts, setWarehouseShifts] = useState([]);  // danh sach ca cua kho
 
   const [form, setForm] = useState({
@@ -19,9 +19,7 @@ function CreateStaff() {
     phone: "",
     targetRoleCode: "STAFF",
     skillIds: [],
-    zoneIds: [],
     isAllSkill: false,
-    isAllZone: false,
     warehouseShiftId: null,  // null = ca xoay
   });
 
@@ -50,19 +48,17 @@ function CreateStaff() {
     init();
   }, []);
 
-  // ── Khi chọn kho: tải membership + skills/zones của kho đó ────────────────
+  // ── Khi chọn kho: tải membership + skills của kho đó ────────────────
   const handleWarehouseChange = useCallback(async (warehouseId) => {
     setSelectedWarehouseId(warehouseId);
     setCallerMembership(null);
-    setWarehouseOptions({ skills: [], zones: [] });
+    setWarehouseOptions({ skills: [] });
     setWarehouseShifts([]);
     setForm(f => ({
       ...f,
       targetRoleCode: "STAFF",
       skillIds: [],
-      zoneIds: [],
       isAllSkill: false,
-      isAllZone: false,
       warehouseShiftId: null,
     }));
 
@@ -89,14 +85,10 @@ function CreateStaff() {
   const isOperator = callerMembership?.roleCode === "OPERATOR";
   const isManager  = callerMembership?.roleCode === "MANAGER";
 
-  // Skills/zones hiển thị dựa trên quyền của caller
+  // Skills hiển thị dựa trên quyền của caller
   const availableSkills = isOperator
     ? warehouseOptions.skills
     : warehouseOptions.skills.filter(s => callerMembership?.skillIds?.includes(s.id));
-
-  const availableZones = isOperator
-    ? warehouseOptions.zones
-    : warehouseOptions.zones.filter(z => callerMembership?.zoneIds?.includes(z.id));
 
   const toggleMultiSelect = (field, id) => {
     setForm(prev => {
@@ -118,7 +110,7 @@ function CreateStaff() {
     if (!form.email.trim())    return setError("Vui lòng nhập email.");
     if (!selectedWarehouseId)  return setError("Vui lòng chọn kho.");
 
-    // MANAGER chỉ được tạo STAFF (thực ra đã cố định nhưng verify lại)
+    // MANAGER chỉ được tạo STAFF
     if (isManager && form.targetRoleCode !== "STAFF") {
       return setError("Manager chỉ được phép tạo nhân viên STAFF.");
     }
@@ -132,9 +124,7 @@ function CreateStaff() {
         warehouseId:      parseInt(selectedWarehouseId),
         targetRoleCode:   form.targetRoleCode,
         skillIds:         form.isAllSkill ? [] : form.skillIds,
-        zoneIds:          form.isAllZone  ? [] : form.zoneIds,
         isAllSkill:       form.isAllSkill,
-        isAllZone:        form.isAllZone,
         warehouseShiftId: form.warehouseShiftId || null,
       };
 
@@ -143,7 +133,7 @@ function CreateStaff() {
 
       // Reset form
       setForm({ fullName:"", email:"", phone:"", targetRoleCode:"STAFF",
-                skillIds:[], zoneIds:[], isAllSkill:false, isAllZone:false, warehouseShiftId:null });
+                skillIds:[], isAllSkill:false, warehouseShiftId:null });
 
       setTimeout(() => navigate("/list-staff"), 2000);
     } catch (err) {
@@ -290,7 +280,13 @@ function CreateStaff() {
                         key={r}
                         type="button"
                         style={styles.tabBtn(form.targetRoleCode === r)}
-                        onClick={() => setForm(f => ({ ...f, targetRoleCode: r, skillIds:[], zoneIds:[], isAllSkill:false, isAllZone:false }))}
+                        onClick={() => setForm(f => ({
+                          ...f,
+                          targetRoleCode: r,
+                          skillIds: [],
+                          // Manager mặc định allSkill; Staff mặc định không có skill
+                          isAllSkill: r === "MANAGER",
+                        }))}
                       >
                         {r === "STAFF" ? "👷 Nhân viên (STAFF)" : "🗂 Quản lý (MANAGER)"}
                       </button>
@@ -333,9 +329,13 @@ function CreateStaff() {
                     ))}
                   </div>
                 )}
-                <div style={styles.note}>
-                  {isManager ? "Chỉ hiển thị skills trong phạm vi quản lý của bạn." : "Chọn các bộ phận nhân viên sẽ phụ trách."}
-                </div>
+                  <div style={styles.note}>
+                    {isManager 
+                      ? "Chỉ hiển thị skills trong phạm vi quản lý của bạn."
+                      : form.targetRoleCode === "MANAGER"
+                        ? "Mặc định Manager phụ trách tất cả — có thể giới hạn cụ thể."
+                        : "Nhân viên không cần skill cũng được tạo (nhân viên tổng hợp)."}
+                  </div>
               </div>
 
               {/* Ca lam viec */}
@@ -361,41 +361,6 @@ function CreateStaff() {
                   </select>
                 )}
                 <div style={styles.note}>Ca co dinh se duoc gan vao membership va dung khi Generate Schedule.</div>
-              </div>
-
-              {/* Zones */}
-              <div style={styles.group}>
-                <label style={styles.label}>Khu vực phụ trách (Zones)</label>
-
-                {isOperator && (
-                  <label style={styles.checkRow}>
-                    <input
-                      type="checkbox"
-                      checked={form.isAllZone}
-                      onChange={e => setForm(f => ({ ...f, isAllZone: e.target.checked, zoneIds:[] }))}
-                    />
-                    Phụ trách tất cả khu vực
-                  </label>
-                )}
-
-                {!form.isAllZone && (
-                  <div style={{ ...styles.chipsArea, marginTop:"8px" }}>
-                    {availableZones.length === 0 ? (
-                      <span style={{ color:"#9ca3af", fontSize:"13px" }}>Không có zone nào</span>
-                    ) : availableZones.map(z => (
-                      <span
-                        key={z.id}
-                        style={styles.chip(form.zoneIds.includes(z.id))}
-                        onClick={() => toggleMultiSelect("zoneIds", z.id)}
-                      >
-                        {z.name} ({z.code})
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div style={styles.note}>
-                  {isManager ? "Chỉ hiển thị zones trong phạm vi quản lý của bạn." : "Chọn khu vực nhân viên sẽ làm việc."}
-                </div>
               </div>
 
               {/* ── Buttons ── */}

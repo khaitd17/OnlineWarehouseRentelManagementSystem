@@ -1,10 +1,7 @@
 import React, { useState, useRef } from "react";
-import {
-  uploadWarehouseDocument,
-  submitWarehouse
-} from "../../services/warehouseService";
+import { uploadWarehouseDocument, submitWarehouse } from "../../services/warehouseService";
 
-const Step3UploadDocuments = ({ warehouseId, finish }) => {
+const Step3UploadDocuments = ({ warehouseId, onComplete }) => {
   const [hasDocument, setHasDocument] = useState(true);
   const [documentType, setDocumentType] = useState("BUSINESS_LICENSE");
   const [file, setFile] = useState(null);
@@ -20,20 +17,18 @@ const Step3UploadDocuments = ({ warehouseId, finish }) => {
   const handleSubmit = async () => {
     try {
       setLoading(true);
-
       if (hasDocument && file) {
-        await uploadWarehouseDocument(
-          warehouseId,
-          file,
-          documentType
-        );
+        await uploadWarehouseDocument(warehouseId, file, documentType);
       }
-
       await submitWarehouse(warehouseId);
-      finish();
+      onComplete({
+        hasDocument,
+        file,
+        type: documentType
+      });
     } catch (err) {
-      console.error("Submission failed:", err);
-      alert("Xử lý hồ sơ không thành công. Vui lòng thử lại.");
+      console.error("Failed to upload doc:", err);
+      alert("Lỗi khi tải tài liệu");
     } finally {
       setLoading(false);
     }

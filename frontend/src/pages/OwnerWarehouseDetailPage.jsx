@@ -107,8 +107,15 @@ const OwnerWarehouseDetailPage = () => {
   const activeContracts     = contracts.filter(c => c.status?.toUpperCase() === "ACTIVE");
   const totalMonthlyRevenue = activeContracts.reduce((s, c) => s + (c.monthlyPayment || 0), 0);
   const totalContractValue  = contracts.reduce((s, c) => s + (c.totalValue || 0), 0);
-  const rentedAreaIds       = new Set(contracts.filter(c => c.status?.toUpperCase() === "ACTIVE").map(c => c.rentalAreaId));
-  const rentedAreas         = areas.filter(a => rentedAreaIds.has(a.id) || activeContracts.some(c => c.warehouseId === parseInt(id)));
+  
+  // New: Calculate total rented area directly from active contracts
+  const totalRentedArea     = activeContracts.reduce((s, c) => s + (c.requestedArea || 0), 0);
+  
+  // Use either the DB value or a calculated value if the DB hasn't been updated
+  const displayAvailableArea = Math.min(warehouse.availableArea, warehouse.totalArea - totalRentedArea);
+
+  const rentedAreaIds       = new Set(activeContracts.map(c => c.rentalAreaId).filter(id => id !== null));
+  const rentedAreas         = areas.filter(a => rentedAreaIds.has(a.id));
 
   return (
     <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
@@ -310,7 +317,7 @@ const OwnerWarehouseDetailPage = () => {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#f8fafc" }}>
-                      {["Số HĐ", "Người thuê", "Bắt đầu", "Kết thúc", "Tiền/tháng", "Tổng GTriị", "Đặt Cọc", "Trạng thái"].map(h => (
+                      {["Số HĐ", "Người thuê", "Diện tích", "Bắt đầu", "Kết thúc", "Tiền/tháng", "Tổng GTriị", "Trạng thái"].map(h => (
                         <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>{h}</th>
                       ))}
                     </tr>
@@ -320,11 +327,11 @@ const OwnerWarehouseDetailPage = () => {
                       <tr key={c.contractId} style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                         <td style={{ padding: "14px 16px", fontWeight: 600, color: "#0284c7", fontSize: "0.9rem" }}>{c.contractNumber || `#${c.contractId}`}</td>
                         <td style={{ padding: "14px 16px", color: "#1e293b", fontSize: "0.9rem" }}>{c.renterName || "—"}</td>
+                        <td style={{ padding: "14px 16px", color: "#475569", fontSize: "0.875rem", fontWeight: 600 }}>{c.requestedArea} m²</td>
                         <td style={{ padding: "14px 16px", color: "#475569", fontSize: "0.875rem" }}>{fmtDate(c.startDate)}</td>
                         <td style={{ padding: "14px 16px", color: "#475569", fontSize: "0.875rem" }}>{fmtDate(c.endDate)}</td>
                         <td style={{ padding: "14px 16px", color: "#1e293b", fontWeight: 600, fontSize: "0.875rem" }}>{fmt(c.monthlyPayment)} ₫</td>
                         <td style={{ padding: "14px 16px", color: "#0f172a", fontWeight: 700, fontSize: "0.875rem" }}>{fmt(c.totalValue)} ₫</td>
-                        <td style={{ padding: "14px 16px", color: "#475569", fontSize: "0.875rem" }}>{fmt(c.depositAmount)} ₫</td>
                         <td style={{ padding: "14px 16px" }}>{getContractBadge(c.status)}</td>
                       </tr>
                     ))}
@@ -436,15 +443,15 @@ const OwnerWarehouseDetailPage = () => {
                     { label: "Địa chỉ",           value: warehouse.address },
                     { label: "Tổng diện tích",    value: `${warehouse.totalArea} m²` },
                     { label: "Diện tích còn trống", value: `${warehouse.availableArea} m²` },
-                    { label: "Chiều dài",          value: warehouse.length ? `${warehouse.length} m` : "—" },
-                    { label: "Chiều rộng",         value: warehouse.width  ? `${warehouse.width} m`  : "—" },
+                    { label: "Chiều dài",          value: (warehouse.length ?? warehouse.Length) != null ? `${warehouse.length ?? warehouse.Length} m` : "—" },
+                    { label: "Chiều rộng",         value: (warehouse.width ?? warehouse.Width)  != null ? `${warehouse.width ?? warehouse.Width} m`  : "—" },
                     { label: "Giờ hoạt động",     value: warehouse.is24HoursAccess ? "24/7" : (warehouse.operatingHours || "—") },
                     { label: "Pháp lý",           value: warehouse.mainDoorDirection || "—" },
                     { label: "Trạng thái",         value: STATUS_BADGE[warehouse.status?.toUpperCase()]?.label || warehouse.status },
                   ].map(f => (
                     <div key={f.label} style={{ padding: "12px", background: "#f8fafc", borderRadius: 10 }}>
                       <p style={{ margin: 0, fontSize: "0.78rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{f.label}</p>
-                      <p style={{ margin: "4px 0 0", fontSize: "0.95rem", color: "#1e293b", fontWeight: 600 }}>{f.value || "—"}</p>
+                      <p style={{ margin: "4px 0 0", fontSize: "0.95rem", color: "#1e293b", fontWeight: 600 }}>{f.value ?? "—"}</p>
                     </div>
                   ))}
                 </div>

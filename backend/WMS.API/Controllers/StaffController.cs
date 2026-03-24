@@ -139,7 +139,7 @@ public class StaffController : ControllerBase
     }
 
     /// <summary>
-    /// Lấy danh sách skills và zones có trong một kho — dùng để render form thêm nhân viên.
+    /// Lấy danh sách skills có trong hệ thống — dùng để render form thêm nhân viên.
     /// </summary>
     [HttpGet("warehouse-options")]
     public async Task<IActionResult> GetWarehouseOptions(
@@ -150,12 +150,7 @@ public class StaffController : ControllerBase
             .Select(s => new { s.Id, s.Code, s.Name })
             .ToListAsync(ct);
 
-        var zones = await _db.Zones
-            .Where(z => z.WarehouseId == warehouseId && z.IsActive)
-            .Select(z => new { z.Id, z.Code, z.Name })
-            .ToListAsync(ct);
-
-        return Ok(new { skills, zones });
+        return Ok(new { skills });
     }
 
     /// <summary>Deactivate membership của nhân viên trong kho</summary>

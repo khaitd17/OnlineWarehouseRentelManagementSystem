@@ -12,19 +12,22 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
     private readonly IUserRepository _userRepository;
     private readonly INotificationRepository _notificationRepository;
     private readonly INotificationSender _notificationSender;
+    private readonly IEquipmentRepository _equipmentRepository;
 
     public CreateRentalRequestHandler(
         IRentalRequestRepository rentalRequestRepository,
         IWarehouseRepository warehouseRepository,
         IUserRepository userRepository,
         INotificationRepository notificationRepository,
-        INotificationSender notificationSender)
+        INotificationSender notificationSender,
+        IEquipmentRepository equipmentRepository)
     {
         _rentalRequestRepository = rentalRequestRepository;
         _warehouseRepository = warehouseRepository;
         _userRepository = userRepository;
         _notificationRepository = notificationRepository;
         _notificationSender = notificationSender;
+        _equipmentRepository = equipmentRepository;
     }
 
     public async Task<int> Handle(CreateRentalRequestCommand request, CancellationToken cancellationToken)
@@ -40,6 +43,21 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         if (warehouse.AvailableArea < request.RequestedArea)
             throw new InvalidOperationException($"Warehouse does not have enough available area. Available: {warehouse.AvailableArea}, Requested: {request.RequestedArea}");
 
+        // If specific area is requested, check equipment status
+        if (request.RentalAreaId.HasValue)
+        {
+            var areaEquipments = await _equipmentRepository.GetByRentalAreaIdAsync(request.RentalAreaId.Value, cancellationToken);
+            var brokenOrMaintenance = areaEquipments.Where(e => e.Status == "BROKEN" || e.Status == "MAINTENANCE").ToList();
+            
+            if (brokenOrMaintenance.Any())
+            {
+                // Strict mode: Fail request if equipment is broken/maintenance
+                throw new InvalidOperationException($"Cannot rent this area because it contains equipment that is BROKEN or in MAINTENANCE. ({brokenOrMaintenance.Count} items)");
+                
+                // Note: Flexible mode would just be a warning in the response, but this is a command (Action)
+            }
+        }
+
         // Check if user already has pending request for this warehouse
         var hasPending = await _rentalRequestRepository.HasPendingRequestAsync(request.RenterId, request.WarehouseId);
         if (hasPending)
@@ -54,6 +72,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
             request.DurationMonths,
             request.Notes
         );
+        rentalRequest.RentalAreaId = request.RentalAreaId;
 
         var requestId = await _rentalRequestRepository.AddAsync(rentalRequest);
 

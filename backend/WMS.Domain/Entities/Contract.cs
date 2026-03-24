@@ -58,4 +58,7 @@ public partial class Contract
     public virtual User Renter { get; set; } = null!;
 
     public virtual Warehouse Warehouse { get; set; } = null!;
+
+    public virtual ICollection<Equipment> IncludedEquipments { get; set; } = new List<Equipment>();
+    public virtual ICollection<EquipmentHistory> EquipmentUsageLogs { get; set; } = new List<EquipmentHistory>();
 }

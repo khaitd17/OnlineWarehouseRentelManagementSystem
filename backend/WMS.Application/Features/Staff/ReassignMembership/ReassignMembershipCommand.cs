@@ -3,7 +3,7 @@ using MediatR;
 namespace WMS.Application.Features.Staff.ReassignMembership;
 
 /// <summary>
-/// Command để cập nhật role, skills, và zones của một membership.
+/// Command để cập nhật role và skills của một membership.
 /// Caller phải là OPERATOR hoặc MANAGER và không thể vượt phạm vi quyền của mình.
 /// </summary>
 public class ReassignMembershipCommand : IRequest<Unit>
@@ -20,12 +20,6 @@ public class ReassignMembershipCommand : IRequest<Unit>
     /// <summary>Skills mới (IDs). Bỏ qua nếu IsAllSkill = true.</summary>
     public List<int> SkillIds { get; set; } = new();
 
-    /// <summary>Zones mới (IDs). Bỏ qua nếu IsAllZone = true.</summary>
-    public List<int> ZoneIds { get; set; } = new();
-
     /// <summary>Chỉ OPERATOR mới được set true.</summary>
     public bool IsAllSkill { get; set; }
-
-    /// <summary>Chỉ OPERATOR mới được set true.</summary>
-    public bool IsAllZone { get; set; }
 }

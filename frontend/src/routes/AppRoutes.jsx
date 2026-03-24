@@ -46,6 +46,7 @@ import RenterInboundList from "../pages/Requests/RenterInboundList";
 import RenterOutboundList from "../pages/Requests/RenterOutboundList";
 import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
 import StaffInventoryRequests from "../pages/Requests/StaffInventoryRequests";
+import PaymentHistory from "../pages/Requests/PaymentHistory";
 
 // Audit session pages
 import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
@@ -179,6 +180,7 @@ function AppRoutes() {
           <Route element={<DashboardLayout />}>
             <Route path="/create-inbound" element={<CreateInboundRequest />} />
             <Route path="/create-outbound" element={<CreateOutboundRequest />} />
+            <Route path="/payment-history" element={<PaymentHistory />} />
           </Route>
         </Route>
 

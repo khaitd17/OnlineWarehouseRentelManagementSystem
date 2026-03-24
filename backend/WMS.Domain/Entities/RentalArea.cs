@@ -25,4 +25,5 @@ public partial class RentalArea
 
     public double? Length { get; set; }
     public virtual Warehouse Warehouse { get; set; } = null!;
+    public virtual ICollection<Equipment> Equipments { get; set; } = new List<Equipment>();
 }

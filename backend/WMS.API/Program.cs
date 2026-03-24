@@ -89,6 +89,8 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.In
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -171,26 +173,14 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger  = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
-        // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
         DatabaseSeeder.Seed(context);
     }
     catch (Exception ex)
     {
-        // Log lỗi seeder nhưng không crash app — backend vẫn khởi động bình thường
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi (có thể data đã tồn tại hoặc SQL Server chưa sẵn sàng). Backend vẫn tiếp tục chạy.");
-    }
-    context.Database.EnsureCreated();
-    try
-    {
-        DatabaseSeeder.Seed(context);
-    }
-    catch (Exception ex)
-    {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Seeder failed: {Message}", ex.Message);
     }
 }
 
