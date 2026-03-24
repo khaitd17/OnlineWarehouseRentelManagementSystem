@@ -25,15 +25,30 @@ public class AddEquipmentHandler : BaseEquipmentHandler, IRequestHandler<AddEqui
         var equipment = new Equipment
         {
             WarehouseId = request.WarehouseId,
+            RentalAreaId = request.RentalAreaId,
             Name = request.Name,
             Type = string.IsNullOrWhiteSpace(request.Type) ? null : request.Type,
+            SerialNumber = string.IsNullOrWhiteSpace(request.SerialNumber) ? null : request.SerialNumber,
             Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location,
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description,
             Specifications = string.IsNullOrWhiteSpace(request.Specifications) ? null : request.Specifications,
+            MaintenanceCycleDays = request.MaintenanceCycleDays,
             IotDeviceId = string.IsNullOrWhiteSpace(request.IotDeviceId) ? null : request.IotDeviceId,
-            Status = "ACTIVE",
+            Status = "AVAILABLE", // Default initial status
         };
 
-        return await _equipmentRepository.CreateAsync(equipment, cancellationToken);
+        var id = await _equipmentRepository.CreateAsync(equipment, cancellationToken);
+
+        // Add history record
+        await _equipmentRepository.AddHistoryAsync(new EquipmentHistory
+        {
+            EquipmentId = id,
+            NewStatus = "AVAILABLE",
+            NewRentalAreaId = request.RentalAreaId,
+            ChangedBy = request.RequestUserId,
+            Note = "Initial equipment creation"
+        }, cancellationToken);
+
+        return id;
     }
 }

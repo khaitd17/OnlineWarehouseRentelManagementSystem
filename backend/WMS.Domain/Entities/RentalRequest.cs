@@ -11,6 +11,8 @@ public partial class RentalRequest
 
     public int WarehouseId { get; set; }
 
+    public int? RentalAreaId { get; set; }
+
     public double RequestedArea { get; set; }
 
     public DateTime StartDate { get; set; }
@@ -38,6 +40,7 @@ public partial class RentalRequest
     public virtual User? ReviewedByNavigation { get; set; }
 
     public virtual Warehouse Warehouse { get; set; } = null!;
+    public virtual RentalArea? RentalArea { get; set; }
 
     public virtual ICollection<Contract> Contracts { get; set; } = new List<Contract>();
 

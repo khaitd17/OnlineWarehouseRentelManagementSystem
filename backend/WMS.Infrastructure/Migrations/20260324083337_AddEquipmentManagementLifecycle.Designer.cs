@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WMS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324083337_AddEquipmentManagementLifecycle")]
+    partial class AddEquipmentManagementLifecycle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1037,8 +1040,7 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("description");
 
                     b.Property<double?>("Length")
-                        .HasColumnType("float")
-                        .HasColumnName("Length");
+                        .HasColumnType("float");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1047,12 +1049,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("name");
 
                     b.Property<double?>("PositionX")
-                        .HasColumnType("float")
-                        .HasColumnName("PositionX");
+                        .HasColumnType("float");
 
                     b.Property<double?>("PositionY")
-                        .HasColumnType("float")
-                        .HasColumnName("PositionY");
+                        .HasColumnType("float");
 
                     b.Property<double>("Size")
                         .HasColumnType("float")
@@ -1063,8 +1063,7 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("warehouse_id");
 
                     b.Property<double?>("Width")
-                        .HasColumnType("float")
-                        .HasColumnName("Width");
+                        .HasColumnType("float");
 
                     b.HasKey("Id");
 
@@ -1654,10 +1653,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("float")
                         .HasColumnName("available_area");
 
-                    b.Property<TimeSpan?>("CloseTime")
-                        .HasColumnType("time")
-                        .HasColumnName("close_time");
-
                     b.Property<DateTime?>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -1668,35 +1663,19 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
 
-                    b.Property<bool>("Is24HoursAccess")
-                        .HasColumnType("bit")
-                        .HasColumnName("is_24_hours_access");
-
                     b.Property<double?>("Lat")
                         .HasColumnType("float")
                         .HasColumnName("lat");
 
-                    b.Property<double?>("Length")
-                        .HasColumnType("float")
-                        .HasColumnName("Length");
-
                     b.Property<double?>("Lng")
                         .HasColumnType("float")
                         .HasColumnName("lng");
-
-                    b.Property<string>("MainDoorDirection")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("MainDoorDirection");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("name");
-
-                    b.Property<TimeSpan?>("OpenTime")
-                        .HasColumnType("time")
-                        .HasColumnName("open_time");
 
                     b.Property<string>("OperatingHours")
                         .HasMaxLength(100)
@@ -1727,10 +1706,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("(getdate())");
-
-                    b.Property<double?>("Width")
-                        .HasColumnType("float")
-                        .HasColumnName("Width");
 
                     b.HasKey("WarehouseId")
                         .HasName("PK__warehous__734FE6BFFBD35973");

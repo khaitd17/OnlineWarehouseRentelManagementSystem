@@ -17,8 +17,8 @@ public class SubmitWarehouseHandler : IRequestHandler<SubmitWarehouseCommand>
         if (warehouse == null)
             throw new Exception("Warehouse not found");
 
-        if (warehouse.Status != "HIDDEN")
-            throw new Exception("Warehouse already submitted");
+        if (warehouse.Status != "HIDDEN" && warehouse.Status != "DRAFT")
+            throw new Exception("Warehouse cannot be submitted in its current status");
 
         warehouse.Status = "PENDING";
 
