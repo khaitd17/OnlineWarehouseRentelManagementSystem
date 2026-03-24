@@ -28,14 +28,22 @@ public class GetEquipmentsByWarehouseHandler : BaseEquipmentHandler, IRequestHan
         {
             EquipmentId = e.EquipmentId,
             WarehouseId = e.WarehouseId,
+            RentalAreaId = e.RentalAreaId,
+            RentalAreaName = e.RentalArea?.Name,
             Name = e.Name,
             Type = e.Type,
+            SerialNumber = e.SerialNumber,
             Location = e.Location,
             Description = e.Description,
+            Note = e.Note,
             Status = e.Status,
             Specifications = e.Specifications,
+            MaintenanceCycleDays = e.MaintenanceCycleDays,
             IotDeviceId = e.IotDeviceId,
-            LastUpdated = e.UpdatedAt
+            CreatedAt = e.CreatedAt,
+            LastUpdated = e.UpdatedAt,
+            LastMaintenanceDate = e.LastMaintenanceDate,
+            NextMaintenanceDate = e.NextMaintenanceDate
         }).ToList();
     }
 }

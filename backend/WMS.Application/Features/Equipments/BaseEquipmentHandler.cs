@@ -16,32 +16,34 @@ public abstract class BaseEquipmentHandler
         MembershipRepository = membershipRepository;
     }
 
-    protected async Task EnsureCanManageEquipment(int warehouseId, int userId, CancellationToken ct, bool isStaffAllowed = false, bool isDelete = false)
+    protected async Task<string> EnsureCanManageEquipment(int warehouseId, int userId, CancellationToken ct, bool isStaffAllowed = false, bool isDelete = false)
     {
         // Check if user is owner
         var ownerId = await WarehouseRepository.FindWarehouseOwnerById(warehouseId, ct);
-        if (ownerId == userId) return;
+        if (ownerId == userId) return "OWNER";
 
         // Check if user has staff/manager membership
         var membership = await MembershipRepository.GetCallerMembershipAsync(userId, warehouseId, ct);
         if (membership == null)
-            throw new UnauthorizedAccessException("You don't have access to this warehouse.");
+            throw new UnauthorizedAccessException("Bạn không có quyền truy cập vào kho này.");
 
         var role = membership.RoleCode;
-        
+
         if (isDelete)
         {
-            // Delete: OWNER or OPERATOR only
-            if (role == "OPERATOR") return;
-            throw new UnauthorizedAccessException("Only OWNER or OPERATOR can delete equipment.");
+            // Owner is returned above. Manager/Operator/Staff cannot delete.
+            throw new UnauthorizedAccessException("Chỉ Chủ kho (OWNER) mới có quyền xóa thiết bị.");
         }
 
-        // Add/Update info/Control: OWNER, OPERATOR, MANAGER
-        if (role == "OPERATOR" || role == "MANAGER") return;
+        // isStaffAllowed == true means operations like Update Status, Maintenance, Read, etc.
+        if (isStaffAllowed)
+        {
+            if (role == "MANAGER" || role == "OPERATOR" || role == "STAFF") return role;
+        }
 
-        // Update status or view: STAFF is allowed if specifically flagged
-        if (isStaffAllowed && role == "STAFF") return;
+        // Add/Update info/Control/Assign: OWNER or MANAGER. Operator/Staff cannot do these core info changes.
+        if (role == "MANAGER") return role;
 
-        throw new UnauthorizedAccessException("You don't have permission to perform this equipment operation.");
+        throw new UnauthorizedAccessException("Bạn không có quyền quản lý thông tin của thiết bị này.");
     }
 }

@@ -16,6 +16,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
     private readonly IWarehouseRepository _warehouseRepo;
     private readonly IUserRepository _userRepo;
     private readonly IRentalRequestRepository _rentalRequestRepo;
+    private readonly IEquipmentRepository _equipmentRepo;
 
     public SignContractHandler(
         IRentalContractRepository contractRepo,
@@ -26,7 +27,8 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         INotificationSender notificationSender,
         IWarehouseRepository warehouseRepo,
         IUserRepository userRepo,
-        IRentalRequestRepository rentalRequestRepo)
+        IRentalRequestRepository rentalRequestRepo,
+        IEquipmentRepository equipmentRepo)
     {
         _contractRepo = contractRepo;
         _verificationRepo = verificationRepo;
@@ -37,6 +39,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         _warehouseRepo = warehouseRepo;
         _userRepo = userRepo;
         _rentalRequestRepo = rentalRequestRepo;
+        _equipmentRepo = equipmentRepo;
     }
 
     public async Task<SignContractResult> Handle(SignContractCommand request, CancellationToken cancellationToken)
@@ -88,6 +91,27 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         contract.SetContractFileUrl(signedFileUrl);
         contract.Sign(signedFileUrl);
         await _contractRepo.UpdateAsync(contract);
+
+        // Update Equipments to IN_USE
+        var fullContract = await _contractRepo.GetWithEquipmentsByIdAsync(contract.ContractId);
+        if (fullContract?.IncludedEquipments.Any() == true)
+        {
+            var equipmentIds = fullContract.IncludedEquipments.Select(e => e.EquipmentId).ToList();
+            await _equipmentRepo.UpdateStatusesAsync(equipmentIds, "IN_USE", cancellationToken);
+            
+            // Log equipment history
+            foreach (var eqId in equipmentIds)
+            {
+                await _equipmentRepo.AddHistoryAsync(new EquipmentHistory
+                {
+                    EquipmentId = eqId,
+                    PreviousStatus = "AVAILABLE",
+                    NewStatus = "IN_USE",
+                    ContractId = contract.ContractId,
+                    Note = $"Equipment assigned to contract {contract.ContractNumber}"
+                }, cancellationToken);
+            }
+        }
 
         // Log
         await _logRepo.AddAsync(new ContractLog

@@ -11,4 +11,6 @@ public interface IRentalContractRepository
     Task<IEnumerable<RentalContract>> GetActiveContractsAsync();
     Task<int> AddAsync(RentalContract contract);
     Task UpdateAsync(RentalContract contract);
+    Task<RentalContract?> GetWithEquipmentsByIdAsync(int contractId);
+    Task AssignEquipmentsAsync(int contractId, List<int> equipmentIds, CancellationToken cancellationToken);
 }
