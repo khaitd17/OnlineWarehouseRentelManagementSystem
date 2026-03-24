@@ -8,15 +8,18 @@ namespace WMS.Application.Features.RentalContracts.GetContractsByWarehouse;
 public class GetContractsByWarehouseHandler : IRequestHandler<GetContractsByWarehouseQuery, IEnumerable<RentalContractDto>>
 {
     private readonly IRentalContractRepository _contractRepo;
+    private readonly IRentalRequestRepository _requestRepo;
     private readonly IUserRepository _userRepo;
     private readonly IWarehouseRepository _warehouseRepo;
 
     public GetContractsByWarehouseHandler(
         IRentalContractRepository contractRepo,
+        IRentalRequestRepository requestRepo,
         IUserRepository userRepo,
         IWarehouseRepository warehouseRepo)
     {
         _contractRepo = contractRepo;
+        _requestRepo = requestRepo;
         _userRepo = userRepo;
         _warehouseRepo = warehouseRepo;
     }
@@ -37,6 +40,7 @@ public class GetContractsByWarehouseHandler : IRequestHandler<GetContractsByWare
         foreach (var contract in contracts)
         {
             var renter = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
+            var rentalRequest = await _requestRepo.GetByIdAsync(contract.RentalRequestId);
 
             result.Add(new RentalContractDto
             {
@@ -56,6 +60,8 @@ public class GetContractsByWarehouseHandler : IRequestHandler<GetContractsByWare
                 DepositAmount = contract.DepositAmount,
                 Status = contract.Status,
                 Terms = contract.Terms,
+                RentalAreaId = rentalRequest?.RentalAreaId,
+                RequestedArea = rentalRequest?.RequestedArea ?? 0,
                 CreatedAt = contract.CreatedAt
             });
         }

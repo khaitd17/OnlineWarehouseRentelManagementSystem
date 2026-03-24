@@ -1,4 +1,5 @@
 using MediatR;
+using System.Collections.Generic;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
@@ -94,13 +95,51 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
 
         // Update Equipments to IN_USE
         var fullContract = await _contractRepo.GetWithEquipmentsByIdAsync(contract.ContractId);
+        var equipmentIdsToUpdate = new HashSet<int>();
+
+        // 1. Add explicitly included equipments
         if (fullContract?.IncludedEquipments.Any() == true)
         {
-            var equipmentIds = fullContract.IncludedEquipments.Select(e => e.EquipmentId).ToList();
-            await _equipmentRepo.UpdateStatusesAsync(equipmentIds, "IN_USE", cancellationToken);
+            foreach (var e in fullContract.IncludedEquipments)
+                equipmentIdsToUpdate.Add(e.EquipmentId);
+        }
+
+        // 2. Add equipments from the rented area/warehouse automatically
+        var rentalRequest = await _rentalRequestRepo.GetByIdAsync(contract.RentalRequestId);
+        if (rentalRequest != null)
+        {
+            List<Equipment> autoEquipments;
+            if (rentalRequest.RentalAreaId.HasValue)
+            {
+                autoEquipments = await _equipmentRepo.GetByRentalAreaIdAsync(rentalRequest.RentalAreaId.Value, cancellationToken);
+            }
+            else
+            {
+                autoEquipments = await _equipmentRepo.GetByWarehouseIdAsync(contract.WarehouseId, cancellationToken);
+            }
+
+            foreach (var e in autoEquipments)
+            {
+                // Only auto-include equipments that are actually available
+                if (e.Status == "AVAILABLE")
+                {
+                    equipmentIdsToUpdate.Add(e.EquipmentId);
+                }
+            }
+        }
+
+        if (equipmentIdsToUpdate.Any())
+        {
+            var idList = equipmentIdsToUpdate.ToList();
+            
+            // Map the link in the database first
+            await _contractRepo.AssignEquipmentsAsync(contract.ContractId, idList, cancellationToken);
+            
+            // Update statuses to IN_USE
+            await _equipmentRepo.UpdateStatusesAsync(idList, "IN_USE", cancellationToken);
             
             // Log equipment history
-            foreach (var eqId in equipmentIds)
+            foreach (var eqId in idList)
             {
                 await _equipmentRepo.AddHistoryAsync(new EquipmentHistory
                 {
@@ -108,7 +147,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
                     PreviousStatus = "AVAILABLE",
                     NewStatus = "IN_USE",
                     ContractId = contract.ContractId,
-                    Note = $"Equipment assigned to contract {contract.ContractNumber}"
+                    Note = $"Equipment automatically assigned to active contract {contract.ContractNumber}"
                 }, cancellationToken);
             }
         }

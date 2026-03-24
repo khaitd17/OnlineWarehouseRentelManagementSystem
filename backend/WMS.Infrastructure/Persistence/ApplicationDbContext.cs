@@ -615,6 +615,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.TotalArea).HasColumnName("total_area");
+            entity.Property(e => e.Width).HasColumnName("Width");
+            entity.Property(e => e.Length).HasColumnName("Length");
+            entity.Property(e => e.MainDoorDirection).HasColumnName("MainDoorDirection");
+            entity.Property(e => e.Is24HoursAccess).HasColumnName("is_24_hours_access");
+            entity.Property(e => e.OpenTime).HasColumnName("open_time");
+            entity.Property(e => e.CloseTime).HasColumnName("close_time");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.WarehouseApprovedByNavigations).HasForeignKey(d => d.ApprovedBy).HasConstraintName("FK_warehouses_approver");
             entity.HasOne(d => d.Owner).WithMany(p => p.WarehouseOwners).HasForeignKey(d => d.OwnerId).HasConstraintName("FK_warehouses_owner");
@@ -698,6 +704,10 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
             entity.Property(e => e.Size).HasColumnName("size");
+            entity.Property(e => e.Width).HasColumnName("Width");
+            entity.Property(e => e.Length).HasColumnName("Length");
+            entity.Property(e => e.PositionX).HasColumnName("PositionX");
+            entity.Property(e => e.PositionY).HasColumnName("PositionY");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
 

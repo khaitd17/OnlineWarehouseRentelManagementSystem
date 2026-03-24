@@ -19,14 +19,14 @@ public class EquipmentRepository : IEquipmentRepository
         return await _context.Equipments
             .Include(e => e.Warehouse)
             .Include(e => e.RentalArea)
-            .FirstOrDefaultAsync(x => x.EquipmentId == equipmentId, cancellationToken);
+            .FirstOrDefaultAsync(x => x.EquipmentId == equipmentId && x.Status != "DELETED", cancellationToken);
     }
 
     public async Task<List<Equipment>> GetByWarehouseIdAsync(int warehouseId, CancellationToken cancellationToken)
     {
         return await _context.Equipments
             .Include(e => e.RentalArea)
-            .Where(x => x.WarehouseId == warehouseId)
+            .Where(x => x.WarehouseId == warehouseId && x.Status != "DELETED")
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
     }
@@ -111,7 +111,7 @@ public class EquipmentRepository : IEquipmentRepository
         return await _context.Equipments
             .Include(e => e.Warehouse)
             .Include(e => e.RentalArea)
-            .Where(e => e.Warehouse != null && e.Warehouse.OwnerId == ownerId)
+            .Where(e => e.Warehouse != null && e.Warehouse.OwnerId == ownerId && e.Status != "DELETED")
             .OrderByDescending(e => e.CreatedAt)
             .ToListAsync(cancellationToken);
     }
@@ -148,7 +148,7 @@ public class EquipmentRepository : IEquipmentRepository
     {
         return await _context.Equipments
             .Include(e => e.RentalArea)
-            .Where(x => x.RentalAreaId == rentalAreaId)
+            .Where(x => x.RentalAreaId == rentalAreaId && x.Status != "DELETED")
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
     }
