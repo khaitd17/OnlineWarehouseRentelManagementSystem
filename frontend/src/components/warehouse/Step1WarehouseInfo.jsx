@@ -39,6 +39,7 @@ const Step1WarehouseInfo = ({
         <label style={labelStyle}>Tên kho</label>
         <input
           name="name"
+          value={formData.name || ""}
           placeholder="Nhập tên kho"
           onChange={handleChange}
           required
@@ -51,6 +52,7 @@ const Step1WarehouseInfo = ({
         <label style={labelStyle}>Địa chỉ</label>
         <input
           name="address"
+          value={formData.address || ""}
           placeholder="Nhập địa chỉ kho"
           onChange={handleChange}
           required
@@ -63,7 +65,7 @@ const Step1WarehouseInfo = ({
         <label style={labelStyle}>Chọn vị trí trên bản đồ (tùy chọn)</label>
 
         <MapContainer
-          center={[10.762622, 106.660172]}
+          center={[formData.lat || 10.762622, formData.lng || 106.660172]}
           zoom={13}
           style={{
             height: "300px",
@@ -198,7 +200,7 @@ const Step1WarehouseInfo = ({
             <input
               type="time"
               name="openTime"
-              value={formData.openTime}
+              value={formData.openTime || ""}
               onChange={handleChange}
               required={!formData.is24HoursAccess}
               style={inputStyle}
@@ -210,7 +212,7 @@ const Step1WarehouseInfo = ({
             <input
               type="time"
               name="closeTime"
-              value={formData.closeTime}
+              value={formData.closeTime || ""}
               onChange={handleChange}
               required={!formData.is24HoursAccess}
               style={inputStyle}
@@ -219,32 +221,13 @@ const Step1WarehouseInfo = ({
         </div>
       )}
 
-
-
-      {/* Tình trạng pháp lý */}
-      <div style={groupStyle}>
-        <label style={labelStyle}>Tình trạng giấy tờ pháp lý</label>
-        <select
-          name="mainDoorDirection"
-          value={formData.mainDoorDirection}
-          onChange={handleChange}
-          required
-          style={inputStyle}
-        >
-          <option value="">-- Chọn tình trạng --</option>
-          <option value="Đã có sổ đỏ/sổ hồng">Đã có sổ đỏ/sổ hồng</option>
-          <option value="Hợp đồng thuê/ủy quyền">Hợp đồng thuê/ủy quyền</option>
-          <option value="Giấy phép kinh doanh">Giấy phép kinh doanh</option>
-          <option value="Đang chờ cấp">Đang chờ cấp</option>
-        </select>
-      </div>
-
       {/* Mô tả */}
       <div style={groupStyle}>
         <label style={labelStyle}>Mô tả</label>
         <textarea
           name="description"
           rows="4"
+          value={formData.description || ""}
           placeholder="Mô tả thêm về kho"
           onChange={handleChange}
           style={{

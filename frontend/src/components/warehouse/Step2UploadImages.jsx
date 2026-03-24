@@ -1,9 +1,9 @@
 import React, { useState, useRef } from "react";
 import { uploadWarehouseImage } from "../../services/warehouseService";
 
-const Step2UploadImages = ({ warehouseId, next }) => {
+const Step2UploadImages = ({ onImagesSelected, warehouseId, existingImages = [] }) => {
   const [files, setFiles] = useState([]);
-  const [preview, setPreview] = useState([]);
+  const [preview, setPreview] = useState(existingImages.map(img => img.url));
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -31,23 +31,23 @@ const Step2UploadImages = ({ warehouseId, next }) => {
     setPreview(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleUpload = async () => {
-    if (files.length === 0) {
+  const handleContinue = async () => {
+    if (files.length === 0 && existingImages.length === 0) {
       alert("Vui lòng chọn ít nhất một hình ảnh của kho");
       return;
     }
 
     try {
       setLoading(true);
-      // Upload images sequentially
+      // Upload ONLY new files sequentially to the existing warehouseId
       for (let i = 0; i < files.length; i++) {
         await uploadWarehouseImage(
           warehouseId,
           files[i],
-          i === 0 // Mark the first image as the primary one
+          i === 0 && existingImages.length === 0 // Mark as primary only if no existing images
         );
       }
-      next();
+      onImagesSelected(files);
     } catch (err) {
       console.error("Upload failed:", err);
       alert("Tải lên hình ảnh không thành công. Vui lòng thử lại.");
@@ -216,7 +216,7 @@ const Step2UploadImages = ({ warehouseId, next }) => {
           Quay lại
         </button>
         <button
-          onClick={handleUpload}
+          onClick={handleContinue}
           disabled={loading || files.length === 0}
           style={{
             padding: "14px 40px",

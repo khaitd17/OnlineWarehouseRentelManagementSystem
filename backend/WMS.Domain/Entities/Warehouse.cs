@@ -22,26 +22,16 @@ public partial class Warehouse
 
     public double TotalArea { get; set; }
 
-    [NotMapped]
     public double? Width { get; set; }
-
-    [NotMapped]
     public double? Length { get; set; }
-
-    [NotMapped]
     public string? MainDoorDirection { get; set; }
 
     public double AvailableArea { get; set; }
 
     public string? OperatingHours { get; set; }
     
-    [NotMapped]
     public bool Is24HoursAccess { get; set; } = false;
-
-    [NotMapped]
     public TimeSpan? OpenTime { get; set; }
-
-    [NotMapped]
     public TimeSpan? CloseTime { get; set; }
 
     public string? Status { get; set; }
