@@ -10,7 +10,7 @@ const DASHBOARD_PATHS = [
   '/staff-dashboard', '/inbound-requests', '/outbound-requests',
   '/confirm-movement', '/create-inbound', '/create-outbound',
   '/renter-dashboard', '/my-rental-requests', '/renter-inbound-requests', '/renter-outbound-requests',
-  '/transaction-history', '/profile',
+  '/transaction-history', '/payment-history', '/profile',
 ];
 
 const NAV_STYLES = `

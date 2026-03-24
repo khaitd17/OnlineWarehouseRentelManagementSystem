@@ -713,6 +713,110 @@ namespace WMS.Infrastructure.Persistence
                 }
             }
             context.SaveChanges();
+
+            // ─── Seed Contract + Payment (để test) ──────────────────────────────────
+            var renter1 = context.Users.FirstOrDefault(u => u.Email == "renter1@owrms.com");
+            var renter2 = context.Users.FirstOrDefault(u => u.Email == "renter2@owrms.com");
+            var renter3 = context.Users.FirstOrDefault(u => u.Email == "renter3@owrms.com");
+
+            if (renter1 != null && renter2 != null && !context.Contracts.Any())
+            {
+                // Seed RentalRequest trước (Contract có FK → RentalRequest)
+                var req1 = new RentalRequest { RenterId = renter1.UserId, WarehouseId = warehouse.WarehouseId,  RequestedArea = 200, StartDate = new DateTime(2024,1,1), DurationMonths = 12, Status = "APPROVED", CreatedAt = new DateTime(2024,1,1) };
+                var req2 = new RentalRequest { RenterId = renter2.UserId, WarehouseId = warehouse2.WarehouseId, RequestedArea = 100, StartDate = new DateTime(2024,3,1), DurationMonths = 12, Status = "APPROVED", CreatedAt = new DateTime(2024,3,1) };
+                context.RentalRequests.AddRange(req1, req2);
+                RentalRequest? req3 = null;
+                if (renter3 != null)
+                {
+                    req3 = new RentalRequest { RenterId = renter3.UserId, WarehouseId = warehouse.WarehouseId, RequestedArea = 150, StartDate = new DateTime(2024,6,1), DurationMonths = 12, Status = "APPROVED", CreatedAt = new DateTime(2024,6,1) };
+                    context.RentalRequests.Add(req3);
+                }
+                context.SaveChanges();
+
+                // Hợp đồng 1: renter1 thuê warehouse 1
+                var contract1 = new Contract
+                {
+                    RenterId       = renter1.UserId,
+                    WarehouseId    = warehouse.WarehouseId,
+                    RequestId      = req1.RequestId,
+                    ContractNumber = "HD-2024-001",
+                    StartDate      = new DateOnly(2024, 1, 1),
+                    EndDate        = new DateOnly(2025, 1, 1),
+                    Status         = "ACTIVE",
+                    TotalValue     = 120_000_000,
+                    MonthlyPayment = 10_000_000,
+                    DepositAmount  = 20_000_000,
+                    CreatedAt      = new DateTime(2024, 1, 1),
+                };
+                // Hợp đồng 2: renter2 thuê warehouse 2
+                var contract2 = new Contract
+                {
+                    RenterId       = renter2.UserId,
+                    WarehouseId    = warehouse2.WarehouseId,
+                    RequestId      = req2.RequestId,
+                    ContractNumber = "HD-2024-002",
+                    StartDate      = new DateOnly(2024, 3, 1),
+                    EndDate        = new DateOnly(2025, 3, 1),
+                    Status         = "ACTIVE",
+                    TotalValue     = 60_000_000,
+                    MonthlyPayment = 5_000_000,
+                    DepositAmount  = 10_000_000,
+                    CreatedAt      = new DateTime(2024, 3, 1),
+                };
+                // Hợp đồng 3: renter3 thuê warehouse 1
+                var contract3 = renter3 == null ? null : new Contract
+                {
+                    RenterId       = renter3!.UserId,
+                    WarehouseId    = warehouse.WarehouseId,
+                    RequestId      = req3!.RequestId,
+                    ContractNumber = "HD-2024-003",
+                    StartDate      = new DateOnly(2024, 6, 1),
+                    EndDate        = new DateOnly(2025, 6, 1),
+                    Status         = "ACTIVE",
+                    TotalValue     = 96_000_000,
+                    MonthlyPayment = 8_000_000,
+                    DepositAmount  = 16_000_000,
+                    CreatedAt      = new DateTime(2024, 6, 1),
+                };
+
+                context.Contracts.Add(contract1);
+                context.Contracts.Add(contract2);
+                if (contract3 != null) context.Contracts.Add(contract3);
+                context.SaveChanges();
+
+                // ── Payments cho contract1 ──
+                var payments1 = new[]
+                {
+                    new Payment { ContractId = contract1.ContractId, Amount = 10_000_000, PaymentPeriod = "T1/2024", PaymentDate = new DateTime(2024,1,5),  DueDate = new DateOnly(2024,1,10),  PaymentMethod = "Chuyển khoản", Status = "PAID",    TransactionReference = "MB24010001", CreatedAt = new DateTime(2024,1,5)  },
+                    new Payment { ContractId = contract1.ContractId, Amount = 10_000_000, PaymentPeriod = "T2/2024", PaymentDate = new DateTime(2024,2,6),  DueDate = new DateOnly(2024,2,10),  PaymentMethod = "Chuyển khoản", Status = "PAID",    TransactionReference = "MB24020001", CreatedAt = new DateTime(2024,2,6)  },
+                    new Payment { ContractId = contract1.ContractId, Amount = 10_000_000, PaymentPeriod = "T3/2024", PaymentDate = new DateTime(2024,3,4),  DueDate = new DateOnly(2024,3,10),  PaymentMethod = "Tiền mặt",     Status = "PAID",    TransactionReference = null,         CreatedAt = new DateTime(2024,3,4)  },
+                    new Payment { ContractId = contract1.ContractId, Amount = 10_000_000, PaymentPeriod = "T4/2024", PaymentDate = null,                    DueDate = new DateOnly(2024,4,10),  PaymentMethod = null,           Status = "OVERDUE",  TransactionReference = null,         CreatedAt = new DateTime(2024,4,1)  },
+                    new Payment { ContractId = contract1.ContractId, Amount = 10_000_000, PaymentPeriod = "T5/2024", PaymentDate = null,                    DueDate = new DateOnly(2024,5,10),  PaymentMethod = null,           Status = "PENDING",  TransactionReference = null,         CreatedAt = new DateTime(2024,5,1)  },
+                };
+
+                // ── Payments cho contract2 ──
+                var payments2 = new[]
+                {
+                    new Payment { ContractId = contract2.ContractId, Amount = 5_000_000, PaymentPeriod = "T3/2024", PaymentDate = new DateTime(2024,3,8),  DueDate = new DateOnly(2024,3,10), PaymentMethod = "Chuyển khoản", Status = "PAID",   TransactionReference = "VCB24030001", CreatedAt = new DateTime(2024,3,8) },
+                    new Payment { ContractId = contract2.ContractId, Amount = 5_000_000, PaymentPeriod = "T4/2024", PaymentDate = new DateTime(2024,4,9),  DueDate = new DateOnly(2024,4,10), PaymentMethod = "Chuyển khoản", Status = "PAID",   TransactionReference = "VCB24040001", CreatedAt = new DateTime(2024,4,9) },
+                    new Payment { ContractId = contract2.ContractId, Amount = 5_000_000, PaymentPeriod = "T5/2024", PaymentDate = null,                   DueDate = new DateOnly(2024,5,10), PaymentMethod = null,           Status = "PENDING", TransactionReference = null,          CreatedAt = new DateTime(2024,5,1) },
+                };
+
+                context.Payments.AddRange(payments1);
+                context.Payments.AddRange(payments2);
+
+                if (contract3 != null)
+                {
+                    var payments3 = new[]
+                    {
+                        new Payment { ContractId = contract3.ContractId, Amount = 8_000_000, PaymentPeriod = "T6/2024", PaymentDate = new DateTime(2024,6,7), DueDate = new DateOnly(2024,6,10), PaymentMethod = "Chuyển khoản", Status = "PAID",   TransactionReference = "TCB24060001", CreatedAt = new DateTime(2024,6,7) },
+                        new Payment { ContractId = contract3.ContractId, Amount = 8_000_000, PaymentPeriod = "T7/2024", PaymentDate = null,                   DueDate = new DateOnly(2024,7,10), PaymentMethod = null,           Status = "OVERDUE", TransactionReference = null,          CreatedAt = new DateTime(2024,7,1) },
+                    };
+                    context.Payments.AddRange(payments3);
+                }
+
+                context.SaveChanges();
+            }
         }
     }
 }
