@@ -29,36 +29,33 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         if (callerId.HasValue)
             caller = await GetCallerMembershipAsync(callerId.Value, warehouseId, ct);
 
-        // Bước 2: base query — tất cả non-OWNER active memberships trong kho
+        // Bước 2: base query — tất cả non-OWNER memberships trong kho
         var query = _db.WarehouseMemberships
             .Where(m => m.WarehouseId == warehouseId && m.Role.Code != "OWNER");
 
-        // Bước 3: áp scope filter hoàn toàn qua EF → SQL (không in-memory)
+        // Bước 3: áp scope filter
         if (caller != null)
         {
             if (caller.RoleCode == "MANAGER")
             {
-                var callerSkillIds = caller.SkillIds; // List<int> — captured in closure
-                var callerZoneIds  = caller.ZoneIds;
+                var callerSkillIds = caller.SkillIds;
                 bool allSkill      = caller.IsAllSkill;
-                bool allZone       = caller.IsAllZone;
-                int  callerUserId  = callerId!.Value;
 
+                // MANAGER chỉ thấy STAFF nằm trong phạm vi skill quản lý của mình
                 query = query.Where(m =>
-                    // Bản thân caller
-                    m.UserId == callerUserId ||
-                    // STAFF chia sẻ skill/zone (EF dịch .Any() → SQL EXISTS)
-                    (m.Role.Code == "STAFF" && (
-                        allSkill || allZone ||
-                        m.Skills.Any(s => callerSkillIds.Contains(s.Id)) ||
-                        m.Zones.Any(z  => callerZoneIds.Contains(z.Id))
-                    ))
+                    m.Role.Code == "STAFF" && (
+                        allSkill ||
+                        m.IsAllSkill ||
+                        m.Skills.Any(s => callerSkillIds.Contains(s.Id))
+                    )
                 );
             }
             else if (caller.RoleCode == "OPERATOR")
             {
-                // OPERATOR thấy MANAGER + STAFF (không thấy OWNER đã loại ở bước 2)
-                // → không cần filter thêm, giữ nguyên query
+                // OPERATOR thấy MANAGER + STAFF (không thấy OWNER)
+                query = query.Where(m =>
+                    m.Role.Code == "MANAGER" || m.Role.Code == "STAFF"
+                );
             }
             else
             {
@@ -77,9 +74,9 @@ public class StaffMembershipRepository : IStaffMembershipRepository
                 m.User.Email.ToLower().Contains(s));
         }
 
-        // Bước 5: count + paginate — hoàn toàn ở DB, không in-memory
+        // Bước 5: count + paginate
         var total = await query
-            .Include(m => m.User)   // cần cho search và sort
+            .Include(m => m.User)
             .Include(m => m.Role)
             .CountAsync(ct);
 
@@ -87,7 +84,6 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             .Include(m => m.User)
             .Include(m => m.Role)
             .Include(m => m.Skills)
-            .Include(m => m.Zones)
             .OrderBy(m => m.Role.Code)
             .ThenBy(m => m.User.FullName)
             .Skip((page - 1) * pageSize)
@@ -106,9 +102,7 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             RoleCode           = m.Role.Code,
             RoleName           = m.Role.Name,
             IsAllSkill         = m.IsAllSkill,
-            IsAllZone          = m.IsAllZone,
             Skills = m.Skills.Select(s => new SkillDto { Id = s.Id, Code = s.Code, Name = s.Name }).ToList(),
-            Zones  = m.Zones.Select(z  => new ZoneDto  { Id = z.Id, Code = z.Code, Name = z.Name }).ToList(),
         }).ToList();
 
         return new StaffMembershipPagedResult
@@ -144,7 +138,6 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             .Where(x => x.UserId == userId && x.WarehouseId == warehouseId && x.IsActive)
             .Include(x => x.Role)
             .Include(x => x.Skills)
-            .Include(x => x.Zones)
             .FirstOrDefaultAsync(ct);
 
         if (m == null) return null;
@@ -154,9 +147,7 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             MembershipId = m.Id,
             RoleCode     = m.Role.Code,
             IsAllSkill   = m.IsAllSkill,
-            IsAllZone    = m.IsAllZone,
             SkillIds     = m.Skills.Select(s => s.Id).ToList(),
-            ZoneIds      = m.Zones.Select(z => z.Id).ToList(),
         };
     }
 
@@ -185,9 +176,9 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             WarehouseRoleId   = role.Id,
             IsActive          = true,
             IsAllSkill        = dto.IsAllSkill,
-            IsAllZone         = dto.IsAllZone,
+            IsAllZone         = false,
             CreatedAt         = DateTime.UtcNow,
-            WarehouseShiftId  = dto.WarehouseShiftId,  // null = ca xoay
+            WarehouseShiftId  = dto.WarehouseShiftId,
         };
 
         // Gán skills
@@ -198,16 +189,6 @@ public class StaffMembershipRepository : IStaffMembershipRepository
                 .ToListAsync(ct);
             foreach (var s in skills)
                 membership.Skills.Add(s);
-        }
-
-        // Gán zones
-        if (dto.ZoneIds.Any())
-        {
-            var zones = await _db.Zones
-                .Where(z => dto.ZoneIds.Contains(z.Id))
-                .ToListAsync(ct);
-            foreach (var z in zones)
-                membership.Zones.Add(z);
         }
 
         _db.WarehouseMemberships.Add(membership);
@@ -221,7 +202,6 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         int userId,
         CancellationToken ct = default)
     {
-        // Chỉ trả về những kho mà user có role OPERATOR hoặc MANAGER và membership đang active
         var allowedRoles = new[] { "OPERATOR", "MANAGER" };
 
         var result = await _db.WarehouseMemberships
@@ -268,7 +248,6 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         var membership = await _db.WarehouseMemberships
             .Where(m => m.Id == dto.MembershipId)
             .Include(m => m.Skills)
-            .Include(m => m.Zones)
             .FirstOrDefaultAsync(ct)
             ?? throw new KeyNotFoundException($"Membership {dto.MembershipId} không tồn tại.");
 
@@ -279,7 +258,6 @@ public class StaffMembershipRepository : IStaffMembershipRepository
 
         membership.WarehouseRoleId = role.Id;
         membership.IsAllSkill      = dto.IsAllSkill;
-        membership.IsAllZone       = dto.IsAllZone;
 
         // Xóa skills cũ và gán lại
         membership.Skills.Clear();
@@ -289,16 +267,6 @@ public class StaffMembershipRepository : IStaffMembershipRepository
                 .Where(s => dto.SkillIds.Contains(s.Id))
                 .ToListAsync(ct);
             foreach (var s in skills) membership.Skills.Add(s);
-        }
-
-        // Xóa zones cũ và gán lại
-        membership.Zones.Clear();
-        if (!dto.IsAllZone && dto.ZoneIds.Any())
-        {
-            var zones = await _db.Zones
-                .Where(z => dto.ZoneIds.Contains(z.Id))
-                .ToListAsync(ct);
-            foreach (var z in zones) membership.Zones.Add(z);
         }
 
         await _db.SaveChangesAsync(ct);
@@ -314,15 +282,12 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             .Include(m => m.User)
             .Include(m => m.Role)
             .Include(m => m.Skills)
-            .Include(m => m.Zones)
             .Select(m => new ManagerScopeDto
             {
                 MembershipId = m.Id,
                 FullName     = m.User!.FullName ?? m.User.Email ?? "",
                 IsAllSkill   = m.IsAllSkill,
-                IsAllZone    = m.IsAllZone,
                 SkillIds     = m.Skills.Select(s => s.Id).ToList(),
-                ZoneIds      = m.Zones.Select(z => z.Id).ToList(),
             })
             .ToListAsync(ct);
     }

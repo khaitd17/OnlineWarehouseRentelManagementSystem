@@ -24,14 +24,14 @@ public class ToggleMembershipHandler : IRequestHandler<ToggleMembershipCommand, 
         if (caller.RoleCode == "MANAGER" && target.RoleCode != "STAFF")
             throw new UnauthorizedAccessException("Manager chỉ được phép thay đổi trạng thái nhân viên cấp STAFF.");
 
+        // MANAGER chỉ được toggle STAFF nằm trong phạm vi skill của mình
         if (caller.RoleCode == "MANAGER")
         {
-            var callerInfo = await _repo.GetCallerMembershipAsync(cmd.CallerId, target.WarehouseId, ct)!;
-            var targetInScope = callerInfo!.IsAllSkill || callerInfo.IsAllZone ||
+            var inScope = caller.IsAllSkill ||
                 (await _repo.GetByWarehouseAsync(target.WarehouseId, null, 1, 1, cmd.CallerId, ct))
                     .Items.Any(m => m.MembershipId == cmd.MembershipId);
 
-            if (!targetInScope)
+            if (!inScope)
                 throw new UnauthorizedAccessException("Nhân viên này không thuộc phạm vi quản lý của bạn.");
         }
 

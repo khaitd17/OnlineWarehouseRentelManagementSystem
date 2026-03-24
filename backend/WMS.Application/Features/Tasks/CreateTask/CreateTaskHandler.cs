@@ -29,12 +29,9 @@ public class CreateTaskHandler : IRequestHandler<CreateTaskCommand, int>
         var warehouse = await _warehouseRepo.GetByIdAsync(cmd.WarehouseId, ct)
             ?? throw new KeyNotFoundException("Kho không tồn tại.");
 
+        // Zone logic thuộc về WarehouseTask, không còn phụ thuộc vào CallerMembership zone scope
         bool effectiveAllZone = !warehouse.HasZone || cmd.IsAllZone;
-        var zoneIds = effectiveAllZone
-            ? new List<int>()
-            : caller.IsAllZone
-                ? cmd.ZoneIds
-                : caller.ZoneIds.Intersect(cmd.ZoneIds).ToList();
+        var zoneIds = effectiveAllZone ? new List<int>() : cmd.ZoneIds;
 
         return await _repo.CreateTaskAsync(new CreateTaskDto
         {

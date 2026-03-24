@@ -71,15 +71,11 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
   const isOperator = callerMembership?.roleCode === "OPERATOR";
   const availSkills = isOperator ? warehouseOptions.skills
     : warehouseOptions.skills.filter(s => callerMembership?.skillIds?.includes(s.id));
-  const availZones  = isOperator ? warehouseOptions.zones
-    : warehouseOptions.zones.filter(z => callerMembership?.zoneIds?.includes(z.id));
 
   const [form, setForm] = useState({
     targetRoleCode: staff.roleCode === "MANAGER" || staff.roleCode === "STAFF" ? staff.roleCode : "STAFF",
     skillIds: staff.skills?.map(s => s.id).filter(Boolean) ?? [],
-    zoneIds:  staff.zones?.map(z => z.id).filter(Boolean) ?? [],
     isAllSkill: staff.isAllSkill || false,
-    isAllZone:  staff.isAllZone  || false,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
@@ -94,9 +90,7 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
         targetMembershipId: staff.membershipId,
         targetRoleCode: form.targetRoleCode,
         skillIds:  form.isAllSkill ? [] : form.skillIds,
-        zoneIds:   form.isAllZone  ? [] : form.zoneIds,
         isAllSkill: form.isAllSkill,
-        isAllZone:  form.isAllZone,
       });
       onSuccess();
     } catch(e) {
@@ -124,7 +118,13 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
           <div style={{ display:"flex", gap:8, marginBottom:18 }}>
             {["STAFF","MANAGER"].map(r => (
               <button key={r} type="button"
-                onClick={() => setForm(f => ({ ...f, targetRoleCode:r, skillIds:[], zoneIds:[], isAllSkill:false, isAllZone:false }))}
+                onClick={() => setForm(f => ({
+                  ...f,
+                  targetRoleCode: r,
+                  skillIds: [],
+                  // Manager mặc định allSkill; Staff mặc định không skill
+                  isAllSkill: r === "MANAGER",
+                }))}
                 style={{ padding:"7px 16px", borderRadius:20, fontWeight:600, fontSize:12, cursor:"pointer",
                   background: form.targetRoleCode === r ? C.accent : "transparent",
                   color:      form.targetRoleCode === r ? "#fff"   : C.sub,
@@ -163,32 +163,6 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
                   <Chip key={s.id} label={s.name||s.code} active={form.skillIds.includes(s.id)}
                     color="#4f46e5" bg="#eff0ff"
                     onClick={() => toggleArr("skillIds", s.id)} />
-                ))
-            }
-          </div>
-        )}
-
-        {/* Zones */}
-        <label style={{ fontSize:11, fontWeight:700, color:C.sub, textTransform:"uppercase",
-          letterSpacing:".6px", marginTop:12, marginBottom:6, display:"block" }}>Khu vực phụ trách</label>
-        {isOperator && (
-          <label style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, fontSize:12, color:C.text }}>
-            <input type="checkbox" checked={form.isAllZone}
-              onChange={e => setForm(f => ({ ...f, isAllZone:e.target.checked, zoneIds:[] }))}
-              style={{ accentColor:C.accent }} />
-            Tất cả khu vực
-          </label>
-        )}
-        {!form.isAllZone && (
-          <div style={{ display:"flex", flexWrap:"wrap", padding:"8px 10px",
-            border:`1px solid ${C.border}`, borderRadius:10, minHeight:40,
-            marginBottom:8, background:C.card }}>
-            {availZones.length === 0
-              ? <span style={{ fontSize:11, color:C.subL }}>Không có zone</span>
-              : availZones.map(z => (
-                  <Chip key={z.id} label={z.name||z.code} active={form.zoneIds.includes(z.id)}
-                    color={C.green} bg={C.greenBg}
-                    onClick={() => toggleArr("zoneIds", z.id)} />
                 ))
             }
           </div>
@@ -269,21 +243,12 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
             {staff.phone && <span>{staff.phone}</span>}
           </div>
 
-          <div style={{ marginBottom:6 }}>
+          <div>
             <span style={{ fontSize:10, color:C.subL, textTransform:"uppercase", letterSpacing:".5px", marginRight:6 }}>Bộ phận</span>
             {staff.isAllSkill
               ? <Chip label="Tất cả bộ phận" bg="#eff0ff" color="#4f46e5" />
               : staff.skills?.length > 0
                 ? staff.skills.map(s => <Chip key={s.code} label={s.name||s.code} />)
-                : <span style={{ fontSize:11, color:C.subL }}>—</span>
-            }
-          </div>
-          <div>
-            <span style={{ fontSize:10, color:C.subL, textTransform:"uppercase", letterSpacing:".5px", marginRight:6 }}>Khu vực</span>
-            {staff.isAllZone
-              ? <Chip label="Tất cả khu vực" bg={C.greenBg} color={C.green} />
-              : staff.zones?.length > 0
-                ? staff.zones.map(z => <Chip key={z.code} label={z.code} bg={C.greenBg} color={C.green} />)
                 : <span style={{ fontSize:11, color:C.subL }}>—</span>
             }
           </div>
@@ -334,7 +299,7 @@ export default function ListStaff() {
   const [error,              setError]              = useState(null);
   const [page,               setPage]               = useState(1);
   const [callerMembership,   setCallerMembership]   = useState(null);
-  const [warehouseOptions,   setWarehouseOptions]   = useState({ skills:[], zones:[] });
+  const [warehouseOptions,   setWarehouseOptions]   = useState({ skills:[] });
   const PAGE_SIZE = 20;
 
   useEffect(() => {
