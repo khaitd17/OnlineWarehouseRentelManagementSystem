@@ -26,6 +26,14 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<Payment> Payments { get; set; }
 
+    public virtual DbSet<RentalPayment> RentalPayments { get; set; }
+
+    public virtual DbSet<RentalContract> RentalContracts { get; set; }
+
+    public virtual DbSet<WarehouseReturn> WarehouseReturns { get; set; }
+
+    public virtual DbSet<ContractExtension> ContractExtensions { get; set; }
+
     public virtual DbSet<Rating> Ratings { get; set; }
 
     public virtual DbSet<RentalRequest> RentalRequests { get; set; }
@@ -76,15 +84,11 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<StaffShift> StaffShifts { get; set; }
 
-<<<<<<< HEAD
     public virtual DbSet<WarehouseShift> WarehouseShifts { get; set; }
 
     public virtual DbSet<RenterAsset> RenterAssets { get; set; }
 
     public virtual DbSet<RenterInventory> RenterInventories { get; set; }
-
-=======
->>>>>>> parent of 5416285b (update contract)
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // if (!optionsBuilder.IsConfigured)
@@ -176,6 +180,18 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Renter).WithMany(p => p.Contracts).HasForeignKey(d => d.RenterId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_contracts_renter");
             entity.HasOne(d => d.Request).WithMany(p => p.Contracts).HasForeignKey(d => d.RequestId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_contracts_request");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Contracts).HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_contracts_warehouse");
+
+            // TODO: Fix Contract entity configuration - temporary comment out due to type resolution issues
+            // Configure many-to-many relationship with Equipment
+            /*
+            entity.HasMany<WMS.Domain.Entities.Equipment>(c => c.IncludedEquipments)
+                .WithMany(e => e.RentalContracts)
+                .UsingEntity<Dictionary<string, object>>(
+                    "rental_contract_equipments",
+                    j => j.HasOne<WMS.Domain.Entities.Equipment>().WithMany().HasForeignKey("equipment_id"),
+                    j => j.HasOne<WMS.Domain.Entities.Contract>().WithMany().HasForeignKey("contract_id"),
+                    j => { j.HasKey("contract_id", "equipment_id"); });
+            */
         });
 
         modelBuilder.Entity<Equipment>(entity =>
@@ -207,13 +223,7 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Equipment).HasForeignKey(d => d.WarehouseId).HasConstraintName("FK_equipments_warehouse");
             entity.HasOne(d => d.RentalArea).WithMany(p => p.Equipments).HasForeignKey(d => d.RentalAreaId).HasConstraintName("FK_equipments_rental_area");
 
-            entity.HasMany(e => e.RentalContracts)
-                .WithMany(c => c.IncludedEquipments)
-                .UsingEntity<Dictionary<string, object>>(
-                    "rental_contract_equipments",
-                    j => j.HasOne<Contract>().WithMany().HasForeignKey("contract_id"),
-                    j => j.HasOne<Equipment>().WithMany().HasForeignKey("equipment_id"),
-                    j => { j.HasKey("contract_id", "equipment_id"); });
+            // Note: Many-to-many relationship with Contract is configured in Contract entity
         });
 
         modelBuilder.Entity<EquipmentHistory>(entity =>
@@ -222,7 +232,8 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.HasOne(d => d.Equipment).WithMany(p => p.History).HasForeignKey(d => d.EquipmentId);
-            entity.HasOne(d => d.Contract).WithMany(p => p.EquipmentUsageLogs).HasForeignKey(d => d.ContractId);
+            // TODO: Fix EquipmentUsageLogs relationship - temporary comment out due to type resolution issues
+            // entity.HasOne(d => d.Contract).WithMany(p => p.EquipmentUsageLogs).HasForeignKey(d => d.ContractId);
         });
 
         modelBuilder.Entity<EquipmentMaintenanceRecord>(entity =>
@@ -343,6 +354,29 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.TransactionReference).HasMaxLength(100).HasColumnName("transaction_reference");
             entity.HasOne(d => d.Contract).WithMany(p => p.Payments).HasForeignKey(d => d.ContractId).HasConstraintName("FK_payments_contract");
+        });
+
+        modelBuilder.Entity<RentalPayment>(entity =>
+        {
+            entity.HasKey(e => e.PaymentId).HasName("PK_rental_payments");
+            entity.ToTable("rental_payments");
+            entity.HasIndex(e => e.ContractId, "idx_rental_payments_contract");
+            entity.HasIndex(e => e.Status, "idx_rental_payments_status");
+            entity.HasIndex(e => e.PaymentCode, "UQ_rental_payments_code").IsUnique();
+            entity.Property(e => e.PaymentId).HasColumnName("payment_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.Amount).HasColumnType("decimal(15, 2)").HasColumnName("amount");
+            entity.Property(e => e.PaymentType).HasMaxLength(20).HasColumnName("payment_type");
+            entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
+            entity.Property(e => e.PaymentCode).HasMaxLength(50).HasColumnName("payment_code");
+            entity.Property(e => e.SepayTransactionId).HasColumnName("sepay_transaction_id");
+            entity.Property(e => e.SepayReferenceCode).HasMaxLength(100).HasColumnName("sepay_reference_code");
+            entity.Property(e => e.PaidAt).HasColumnName("paid_at");
+            entity.Property(e => e.ExpiredAt).HasColumnName("expired_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            // TODO: Fix relationship after RentalContract entity is properly configured
+            // entity.HasOne(d => d.Contract).WithMany().HasForeignKey(d => d.ContractId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_rental_payments_contract");
         });
 
         modelBuilder.Entity<Rating>(entity =>

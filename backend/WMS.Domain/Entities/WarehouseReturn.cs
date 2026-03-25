@@ -42,6 +42,32 @@ public class WarehouseReturn
         };
     }
 
+    // Alternative factory method for contract-based creation
+    public static WarehouseReturn CreateForContract(
+        int contractId,
+        bool? isClean = null,
+        bool? isEquipmentIntact = null,
+        bool? isNoOutstandingDebt = null,
+        string? notes = null)
+    {
+        var warehouseReturn = new WarehouseReturn
+        {
+            ContractId = contractId,
+            Status = WarehouseReturnStatus.Initiated,
+            CreatedAt = DateTime.UtcNow,
+            Notes = notes
+        };
+
+        if (isClean.HasValue)
+            warehouseReturn.IsClean = isClean.Value;
+        if (isEquipmentIntact.HasValue)
+            warehouseReturn.IsEquipmentIntact = isEquipmentIntact.Value;
+        if (isNoOutstandingDebt.HasValue)
+            warehouseReturn.IsNoOutstandingDebt = isNoOutstandingDebt.Value;
+
+        return warehouseReturn;
+    }
+
     // Record inspection results
     public void RecordInspection(
         int inspectorId,
@@ -61,6 +87,40 @@ public class WarehouseReturn
         DamageFee = damageFee;
         PenaltyFee = penaltyFee;
         Status = WarehouseReturnStatus.PendingApproval;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Submit inspection (alias for RecordInspection or for changing status)
+    public void SubmitInspection()
+    {
+        if (Status != WarehouseReturnStatus.Initiated && Status != WarehouseReturnStatus.PendingApproval)
+            throw new InvalidOperationException($"Cannot submit inspection for return with status {Status}");
+
+        Status = WarehouseReturnStatus.Inspected;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Submit inspection with parameters (calls RecordInspection)
+    public void SubmitInspection(
+        int inspectorId,
+        bool isClean,
+        bool isEquipmentIntact,
+        bool isNoOutstandingDebt,
+        string? notes = null,
+        decimal? damageFee = null,
+        decimal? penaltyFee = null)
+    {
+        RecordInspection(
+            inspectorId,
+            isClean,
+            isEquipmentIntact,
+            isNoOutstandingDebt,
+            notes,
+            damageFee,
+            penaltyFee);
+
+        // Change to inspected status after recording
+        Status = WarehouseReturnStatus.Inspected;
         UpdatedAt = DateTime.UtcNow;
     }
 

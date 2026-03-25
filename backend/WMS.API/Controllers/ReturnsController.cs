@@ -181,7 +181,7 @@ public class ReturnsController : ControllerBase
             var userId = GetUserId();
 
             // Get warehouses owned by this user
-            var warehouses = await _warehouseRepo.GetByOwnerIdAsync(userId);
+            var warehouses = await _warehouseRepo.GetByOwnerIdAsync(userId, CancellationToken.None);
             var warehouseIds = warehouses.Select(w => w.WarehouseId).ToList();
 
             if (!warehouseIds.Any())
@@ -243,7 +243,7 @@ public class ReturnsController : ControllerBase
             if (contract == null)
                 return NotFound(new { message = "Contract not found" });
 
-            var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId);
+            var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, CancellationToken.None);
             if (warehouse == null || warehouse.OwnerId != userId)
                 return Forbid("You are not authorized to approve this return");
 
@@ -290,7 +290,7 @@ public class ReturnsController : ControllerBase
             if (contract == null)
                 return NotFound(new { message = "Contract not found" });
 
-            var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId);
+            var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, CancellationToken.None);
             if (warehouse == null || warehouse.OwnerId != userId)
                 return Forbid("You are not authorized to reject this return");
 
