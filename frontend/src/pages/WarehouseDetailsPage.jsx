@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../services/axiosClient';
 import rentalService from '../services/rentalService';
+import ratingService from '../services/ratingService';
+import authService from '../services/authService';
 
 const WarehouseDetailsPage = () => {
   const { id } = useParams();
@@ -16,9 +18,14 @@ const WarehouseDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState({ open: false, index: 0 });
   const [submitting, setSubmitting] = useState(false);
-  const [submitMsg, setSubmitMsg] = useState(null); // { type: 'success'|'error', text }
+  const [submitMsg, setSubmitMsg] = useState(null);
+  const [ratingsData, setRatingsData] = useState(null);
+  const [replyText, setReplyText] = useState({});
+  const [replyLoading, setReplyLoading] = useState(false);
 
   const isLoggedIn = !!localStorage.getItem('token');
+  const currentUser = authService.getCurrentUser();
+  const isOwner = currentUser && warehouseData && currentUser.userId === warehouseData.ownerId;
 
   useEffect(() => {
     const fetchWarehouse = async () => {
@@ -32,7 +39,35 @@ const WarehouseDetailsPage = () => {
       }
     };
     fetchWarehouse();
+    const fetchRatings = async () => {
+      try {
+        const data = await ratingService.getWarehouseRatings(id);
+        setRatingsData(data);
+      } catch (err) { console.error('Failed to load ratings:', err); }
+    };
+    fetchRatings();
   }, [id]);
+
+  const handleReplySubmit = async (ratingId) => {
+    if (!replyText[ratingId]) return;
+    setReplyLoading(true);
+    try {
+      await ratingService.replyToRating(ratingId, replyText[ratingId]);
+      // Update local state
+      setRatingsData(prev => ({
+        ...prev,
+        ratings: prev.ratings.map(r => 
+          r.ratingId === ratingId ? { ...r, ownerReply: replyText[ratingId] } : r
+        )
+      }));
+      setReplyText(prev => ({ ...prev, [ratingId]: '' }));
+    } catch (err) {
+      console.error('Failed to reply:', err);
+      alert('Không thể gửi phản hồi. Vui lòng thử lại.');
+    } finally {
+      setReplyLoading(false);
+    }
+  };
 
   const FALLBACK_IMAGES = [
     "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1200",
@@ -244,6 +279,99 @@ const WarehouseDetailsPage = () => {
                 </div>
               </section>
             )}
+
+            {/* ── Rating & Review Section ── */}
+            <section style={{ marginTop: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>⭐ Đánh giá & Nhận xét</h2>
+              {ratingsData && ratingsData.totalCount > 0 ? (
+                <>
+                  {/* Summary Row */}
+                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginBottom: '1.5rem', padding: '1.5rem', background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)', borderRadius: '16px', border: '1px solid #fde68a' }}>
+                    <div style={{ textAlign: 'center', minWidth: '100px' }}>
+                      <div style={{ fontSize: '2.8rem', fontWeight: 900, color: '#d97706', lineHeight: 1 }}>{ratingsData.averageStar}</div>
+                      <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', margin: '6px 0' }}>
+                        {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '1.1rem' }}>{s <= Math.round(ratingsData.averageStar) ? '⭐' : '☆'}</span>)}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#92400e', fontWeight: 600 }}>{ratingsData.totalCount} đánh giá</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      {[5,4,3,2,1].map(star => {
+                        const count = ratingsData.starDistribution[star - 1] || 0;
+                        const pct = ratingsData.totalCount > 0 ? (count / ratingsData.totalCount * 100) : 0;
+                        return (
+                          <div key={star} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#78716c', width: '24px', textAlign: 'right' }}>{star}★</span>
+                            <div style={{ flex: 1, height: '8px', backgroundColor: '#fef3c7', borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #f59e0b, #d97706)', borderRadius: '4px', transition: 'width 0.5s ease' }} />
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 600, width: '28px' }}>{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Review Cards */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {ratingsData.ratings.slice(0, 5).map(r => (
+                      <div key={r.ratingId} style={{ padding: '1.2rem 1.5rem', backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #f1f5f9', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', transition: 'box-shadow 0.2s' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1rem' }}>
+                              {(r.renterName || 'U')[0]}
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem' }}>{r.renterName || 'Người thuê'}</div>
+                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}</div>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '1px' }}>
+                            {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '0.9rem' }}>{s <= r.star ? '⭐' : '☆'}</span>)}
+                          </div>
+                        </div>
+                        {r.comment && <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: 1.6, margin: '0 0 8px 0' }}>{r.comment}</p>}
+                        {r.ownerReply ? (
+                          <div style={{ marginTop: '10px', padding: '12px 16px', backgroundColor: '#f0fdf4', borderRadius: '10px', borderLeft: '3px solid #22c55e' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#16a34a', marginBottom: '4px' }}>💬 Phản hồi từ chủ kho</div>
+                            <p style={{ fontSize: '0.85rem', color: '#15803d', margin: 0, lineHeight: 1.5 }}>{r.ownerReply}</p>
+                          </div>
+                        ) : (
+                          isOwner && (
+                            <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+                              <input 
+                                type="text" 
+                                placeholder="Viết phản hồi của bạn..." 
+                                value={replyText[r.ratingId] || ''}
+                                onChange={(e) => setReplyText({ ...replyText, [r.ratingId]: e.target.value })}
+                                style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                                disabled={replyLoading}
+                              />
+                              <button 
+                                onClick={() => handleReplySubmit(r.ratingId)}
+                                disabled={!replyText[r.ratingId] || replyLoading}
+                                style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: (!replyText[r.ratingId] || replyLoading) ? 'not-allowed' : 'pointer', opacity: (!replyText[r.ratingId] || replyLoading) ? 0.6 : 1 }}
+                              >
+                                Phản hồi
+                              </button>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {ratingsData.totalCount > 5 && (
+                    <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                      <span style={{ color: '#0095c7', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}>Xem tất cả {ratingsData.totalCount} đánh giá ›</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '8px' }}>📝</div>
+                  <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: 0 }}>Chưa có đánh giá nào cho kho này</p>
+                </div>
+              )}
+            </section>
           </div>
 
           {/* RIGHT: Sidebar — Rental Request Form */}
@@ -252,6 +380,24 @@ const WarehouseDetailsPage = () => {
 
               <div style={{ marginBottom: '1.2rem' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Gửi yêu cầu thuê kho</h3>
+                {warehouseData?.pricePerM2 ? (
+                  <div style={{
+                    background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)',
+                    border: '1px solid #6ee7b7',
+                    borderRadius: 12,
+                    padding: '10px 14px',
+                    marginTop: 8,
+                    marginBottom: 4,
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 4,
+                  }}>
+                    <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#065f46' }}>
+                      {Number(warehouseData.pricePerM2).toLocaleString('vi-VN')} đ
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: '#047857', fontWeight: 600 }}>/m²/tháng</span>
+                  </div>
+                ) : null}
                 <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Diện tích còn trống: <strong>{warehouse.availableArea} m²</strong></p>
               </div>
 

@@ -473,6 +473,25 @@ const HOME_STYLES = `
     background-clip: text;
   }
 
+  .wh-price-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 1px solid #6ee7b7;
+    color: #047857;
+    font-size: 0.88rem;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    margin-bottom: 14px;
+    letter-spacing: -0.01em;
+  }
+  .wh-price-tag strong {
+    font-size: 1rem;
+    color: #065f46;
+  }
+
   /* ── BENEFITS (dark) ─────────── */
   .benefits-section {
     background: linear-gradient(140deg, #060f1e 0%, #0a1e3c 50%, #081530 100%);
@@ -970,6 +989,11 @@ const HomePage = () => {
                         {w.address}
                       </p>
                       {w.description && <p className="wh-desc">{w.description}</p>}
+                      {w.pricePerM2 && (
+                        <div className="wh-price-tag">
+                          💰 <strong>{Number(w.pricePerM2).toLocaleString('vi-VN')} đ</strong>/m²/tháng
+                        </div>
+                      )}
                       <div className="wh-footer">
                         <div>
                           <div className="wh-area-label">Tổng diện tích</div>

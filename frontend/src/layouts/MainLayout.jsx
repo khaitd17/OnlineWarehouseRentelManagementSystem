@@ -9,7 +9,7 @@ const DASHBOARD_PATHS = [
   '/owner-audit-sessions', '/staff-audit-sessions', '/renter-audit-sessions',
   '/staff-dashboard', '/inbound-requests', '/outbound-requests',
   '/confirm-movement', '/create-inbound', '/create-outbound',
-  '/renter-dashboard', '/my-rental-requests', '/renter-inbound-requests', '/renter-outbound-requests',
+  '/renter-dashboard', '/my-rental-requests', '/my-ratings', '/renter-inbound-requests', '/renter-outbound-requests',
   '/transaction-history', '/payment-history', '/profile',
 ];
 
@@ -268,7 +268,7 @@ const MainLayout = () => {
 
   if (isDashboard) return <Outlet />;
 
-  const userRole = (user?.role || user?.roleName || '').toUpperCase();
+  const userRole = (user?.systemRole || user?.role || user?.roleName || '').toUpperCase();
   const dashboardPath = userRole === 'STAFF' || userRole === 'MANAGER' ? '/staff-dashboard'
     : userRole === 'RENTER' ? '/renter-dashboard'
     : '/dashboard';

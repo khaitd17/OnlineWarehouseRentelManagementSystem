@@ -55,7 +55,8 @@ builder.Services.AddSwaggerGen(c =>
 
 // Database Context - merged from ScaffoldModels
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
 // MediatR Registration - scan tất cả handlers trong Application assembly
 builder.Services.AddMediatR(cfg =>
@@ -91,8 +92,8 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Inf
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
-// ─── Luồng mới: xem tài sản renter ────────────────────
-builder.Services.AddScoped<WMS.Domain.Interfaces.IRenterAssetRepository, WMS.Infrastructure.Repositories.RenterAssetRepository>();
+builder.Services.AddScoped<IRenterAssetRepository, RenterAssetRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IRatingRepository, WMS.Infrastructure.Repositories.RatingRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -142,7 +143,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+            policy.WithOrigins("http://localhost:3000","http://localhost:3001", "http://localhost:5173")
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
@@ -157,31 +158,24 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Role seeding disabled — data already exists in DB, EF mapping causes SqlException
-// using (var scope = app.Services.CreateScope())
-// {
-//     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-//     if (!context.Roles.Any())
-//     {
-//         context.Roles.AddRange(
-//             new WMS.Domain.Entities.Role { RoleName = "RENTER", Description = "Khách thuê" },
-//             new WMS.Domain.Entities.Role { RoleName = "OWNER",  Description = "Chủ kho" },
-//             new WMS.Domain.Entities.Role { RoleName = "STAFF",  Description = "Nhân viên" },
-//             new WMS.Domain.Entities.Role { RoleName = "ADMIN",  Description = "Quản trị viên" }
-//         );
-//         context.SaveChanges();
-//     }
-// }
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var logger  = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
+        // 1. Apply any pending migrations automatically
+        context.Database.Migrate();
+        logger.LogInformation("Database migrations applied successfully.");
+
+        // 2. Seed the database
         DatabaseSeeder.Seed(context);
+        logger.LogInformation("Database seeded successfully.");
     }
     catch (Exception ex)
     {
+        logger.LogError(ex, "An error occurred while initializing the database: {Message}", ex.Message);
+        // We log the error but allow the application to continue starting
         logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi (có thể data đã tồn tại hoặc SQL Server chưa sẵn sàng). Backend vẫn tiếp tục chạy.");
     }
 }

@@ -270,7 +270,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Type).HasMaxLength(20).HasColumnName("type");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            // Assignment fields
+            entity.Property(e => e.AssignedStaffId).HasColumnName("assigned_staff_id").IsRequired(false);
+            entity.Property(e => e.AssignedNote).HasColumnName("assigned_note").IsRequired(false);
+            entity.Property(e => e.AssignedAt).HasColumnName("assigned_at").IsRequired(false);
             entity.HasOne(d => d.ConfirmedByNavigation).WithMany(p => p.InventoryRequestConfirmedByNavigations).HasForeignKey(d => d.ConfirmedBy).HasConstraintName("FK_inventory_requests_confirmer");
+            entity.HasOne(d => d.AssignedStaff).WithMany().HasForeignKey(d => d.AssignedStaffId).HasConstraintName("FK_inventory_requests_assigned_staff");
             entity.HasOne(d => d.Renter).WithMany(p => p.InventoryRequestRenters).HasForeignKey(d => d.RenterId).HasConstraintName("FK_inventory_requests_renter");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.InventoryRequests).HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_inventory_requests_warehouse");
         });

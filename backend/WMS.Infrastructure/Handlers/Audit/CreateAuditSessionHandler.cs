@@ -44,6 +44,17 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
                     && c.Status == "ACTIVE", cancellationToken);
             if (!hasActiveContract)
                 return ApiResponse<int>.ErrorResponse("Bạn không có hợp đồng thuê kho này hoặc hợp đồng đã hết hạn.");
+
+            // Giới hạn RENTER chỉ tạo 1 phiên kiểm kê / tháng / kho
+            var now = DateTime.UtcNow;
+            var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var hasCreatedThisMonth = await _db.AuditSessions
+                .AnyAsync(a => a.WarehouseId == request.WarehouseId
+                    && a.CreatedBy == request.CreatedBy
+                    && a.CreatedAt >= startOfMonth, cancellationToken);
+            if (hasCreatedThisMonth)
+                return ApiResponse<int>.ErrorResponse(
+                    "Bạn chỉ được tạo yêu cầu kiểm kê 1 lần/tháng cho mỗi kho. Vui lòng đợi sang tháng sau.");
         }
         else
         {

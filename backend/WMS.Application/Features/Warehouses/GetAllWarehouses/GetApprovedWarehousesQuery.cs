@@ -37,4 +37,5 @@ public class ApprovedWarehouseDto
     public double AvailableArea { get; set; }
     public string? ImageUrl { get; set; }
     public DateTime CreatedAt { get; set; }
+    public decimal? PricePerM2 { get; set; }
 }

@@ -10,6 +10,8 @@ public record InventoryItemDto
     public string Unit { get; init; } = "";
     public decimal? Weight { get; init; }
     public string? Description { get; init; }
+    public int? AssetId { get; init; }
+    public string? AssetName { get; init; }
 }
 
 public record InventoryRequestDto
@@ -27,6 +29,11 @@ public record InventoryRequestDto
     public DateTime? CreatedAt { get; init; }
     public DateTime? ConfirmedAt { get; init; }
     public string? ConfirmedByName { get; init; }
+    // Assignment
+    public int? AssignedStaffId { get; init; }
+    public string? AssignedStaffName { get; init; }
+    public string? AssignedNote { get; init; }
+    public DateTime? AssignedAt { get; init; }
     public int TotalItems { get; init; }
     public List<InventoryItemDto> Items { get; init; } = new();
 }
@@ -59,6 +66,10 @@ public static class InventoryRequestMapper
         CreatedAt       = r.CreatedAt,
         ConfirmedAt     = r.ConfirmedAt,
         ConfirmedByName = r.ConfirmedByNavigation?.FullName,
+        AssignedStaffId   = r.AssignedStaffId,
+        AssignedStaffName = r.AssignedStaff?.FullName,
+        AssignedNote      = r.AssignedNote,
+        AssignedAt        = r.AssignedAt,
         TotalItems      = r.InventoryItems.Count,
         Items           = r.InventoryItems.Select(i => new InventoryItemDto
         {
@@ -68,6 +79,8 @@ public static class InventoryRequestMapper
             Unit        = i.Unit,
             Weight      = i.Weight,
             Description = i.Description,
+            AssetId     = i.AssetId,
+            AssetName   = i.Asset?.AssetName,
         }).ToList()
     };
 }
