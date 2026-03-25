@@ -18,6 +18,8 @@ public static class DependencyInjection
 
         services.AddScoped<IPaymentRepository, PaymentRepository>();
 
+        services.AddScoped<IRatingRepository, RatingRepository>();
+
         return services;
     }
 }

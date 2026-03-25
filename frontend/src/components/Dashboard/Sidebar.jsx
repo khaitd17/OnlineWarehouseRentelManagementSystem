@@ -68,6 +68,7 @@ const MENU_BY_ROLE = {
     { icon: "upload",                  label: "Tạo yêu cầu xuất",    path: "/create-outbound" },
     { icon: "fact_check",              label: "Kiểm kê kho",         path: "/renter-audit-sessions" },
     { icon: "receipt_long",            label: "Lịch sử thanh toán",  path: "/payment-history",       section: "TÀI CHÍNH" },
+    { icon: "star",                     label: "Đánh giá của tôi",    path: "/my-ratings" },
     { icon: "settings",                label: "Cài đặt",             path: "/settings",              isBottom: true },
   ],
   // Người dùng thường chưa có kho
@@ -80,6 +81,7 @@ const MENU_BY_ROLE = {
   // Admin hệ thống
   ADMIN: [
     { icon: "admin_panel_settings",    label: "Quản trị viên",       path: "/admin" },
+    { icon: "star",                     label: "Quản lý đánh giá",    path: "/admin/ratings" },
     { icon: "settings",                label: "Cài đặt",             path: "/settings",              isBottom: true },
   ],
 };
@@ -110,7 +112,10 @@ function resolveEffectiveRole(systemRole, warehouses) {
     if (warehouseRoles.includes(r)) return r;
   }
 
-  // No warehouse membership → plain user
+  // No warehouse membership → check systemRole (e.g. RENTER, OWNER)
+  const sr = (systemRole || "").toUpperCase();
+  if (MENU_BY_ROLE[sr]) return sr;
+
   return "USER";
 }
 

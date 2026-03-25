@@ -22,7 +22,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
         var query = _context.InventoryRequests
             .Include(r => r.Renter)
             .Include(r => r.Warehouse)
-            .Include(r => r.InventoryItems)
+            .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Where(r => r.Warehouse.OwnerId == ownerId && r.Type == type);
 
         if (!string.IsNullOrEmpty(status))
@@ -45,7 +45,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
     {
         var query = _context.InventoryRequests
             .Include(r => r.Warehouse)
-            .Include(r => r.InventoryItems)
+            .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Where(r => r.RenterId == renterId && r.Type == type);
 
         if (!string.IsNullOrEmpty(status))
@@ -67,7 +67,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
         var query = _context.InventoryRequests
             .Include(r => r.Renter)
             .Include(r => r.Warehouse)
-            .Include(r => r.InventoryItems)
+            .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Where(r => r.Type == type);
 
         if (!string.IsNullOrEmpty(status))
@@ -88,7 +88,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
         => await _context.InventoryRequests
             .Include(r => r.Renter)
             .Include(r => r.Warehouse)
-            .Include(r => r.InventoryItems)
+            .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Include(r => r.ConfirmedByNavigation)
             .Include(r => r.AssignedStaff)
             .FirstOrDefaultAsync(r => r.InvReqId == id, cancellationToken);
@@ -99,7 +99,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
         => await _context.InventoryRequests
             .Include(r => r.Renter)
             .Include(r => r.Warehouse)
-            .Include(r => r.InventoryItems)
+            .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Include(r => r.AssignedStaff)
             .Where(r => r.AssignedStaffId == staffId && r.Status == "ASSIGNED")
             .OrderByDescending(r => r.AssignedAt)
