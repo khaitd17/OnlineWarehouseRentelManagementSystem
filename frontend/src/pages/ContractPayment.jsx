@@ -259,7 +259,7 @@ const ContractPayment = () => {
           </h2>
 
           <img
-            src={qrInfo.qrCodeUrl}
+            src={qrInfo.qrImageUrl}
             alt="QR Code"
             style={{
               width: "300px", height: "300px",

@@ -94,6 +94,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Inf
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalPaymentRepository, WMS.Infrastructure.Repositories.RentalPaymentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseReturnRepository, WMS.Infrastructure.Repositories.WarehouseReturnRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IStaffShiftRepository, WMS.Infrastructure.Repositories.StaffShiftRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -197,7 +198,7 @@ using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
-    DatabaseSeeder.Seed(context);
+    // DatabaseSeeder.Seed(context); // Temporarily disabled for faster startup
 }
 
 // ==========================================

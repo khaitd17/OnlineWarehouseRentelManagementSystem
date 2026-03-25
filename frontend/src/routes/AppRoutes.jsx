@@ -29,6 +29,8 @@ import PendingRentalRequests from "../pages/PendingRentalRequests";
 import RentalRequestDetail from "../pages/RentalRequestDetail";
 import MyContracts from "../pages/MyContracts";
 import ContractDetail from "../pages/ContractDetail";
+import ContractPayment from "../pages/ContractPayment";
+import PaymentResult from "../pages/PaymentResult";
 import WarehouseContracts from "../pages/WarehouseContracts";
 import OccupancyDashboard from "../pages/OccupancyDashboard";
 import RoleBasedRoute from "./RoleBasedRoute";
@@ -113,6 +115,8 @@ function AppRoutes() {
               <Route path="/my-rental-requests" element={<MyRentalRequests />} />
               <Route path="/my-contracts" element={<MyContracts />} />
               <Route path="/contracts/:id" element={<ContractDetail />} />
+              <Route path="/contracts/:id/payment" element={<ContractPayment />} />
+              <Route path="/payment-result" element={<PaymentResult />} />
               <Route path="/settings" element={<ProfilePage />} />
               {/* User can also view warehouse listings from dashboard */}
               <Route path="/create-warehouse" element={<CreateWarehouse />} />

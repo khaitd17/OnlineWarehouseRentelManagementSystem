@@ -174,8 +174,21 @@ public class SepayService : ISepayService
         if (string.IsNullOrEmpty(ipAddress))
             return false;
 
+        // Bypass IP validation in development mode
+        if (_settings.BypassIpValidation)
+        {
+            _logger.LogInformation("IP validation bypassed for development: {IpAddress}", ipAddress);
+            return true;
+        }
+
         // Allow localhost for testing
         if (ipAddress == "127.0.0.1" || ipAddress == "::1")
+            return true;
+
+        // Allow ngrok IPs for development (ngrok uses various IP ranges)
+        if (ipAddress.StartsWith("3.") || ipAddress.StartsWith("52.") ||
+            ipAddress.StartsWith("54.") || ipAddress.StartsWith("18.") ||
+            ipAddress.StartsWith("13.") || ipAddress.StartsWith("35."))
             return true;
 
         return _whitelistIps.Contains(ipAddress);

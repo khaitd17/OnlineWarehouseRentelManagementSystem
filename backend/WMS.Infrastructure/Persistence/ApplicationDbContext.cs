@@ -83,6 +83,10 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<ContractExtension> ContractExtensions { get; set; }
 
+    public virtual DbSet<WarehouseShift> WarehouseShifts { get; set; }
+
+    public virtual DbSet<StaffShift> StaffShifts { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         if (!optionsBuilder.IsConfigured)

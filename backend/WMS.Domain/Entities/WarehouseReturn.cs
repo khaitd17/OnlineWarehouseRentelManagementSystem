@@ -42,6 +42,33 @@ public class WarehouseReturn
         };
     }
 
+    // Factory method with inspection data
+    public static WarehouseReturn CreateForContract(
+        int contractId,
+        bool isClean,
+        bool isEquipmentIntact,
+        bool isNoOutstandingDebt,
+        string? notes = null)
+    {
+        return new WarehouseReturn
+        {
+            ContractId = contractId,
+            IsClean = isClean,
+            IsEquipmentIntact = isEquipmentIntact,
+            IsNoOutstandingDebt = isNoOutstandingDebt,
+            Notes = notes,
+            Status = WarehouseReturnStatus.Initiated,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    // Set status
+    public void SetStatus(string status)
+    {
+        Status = status;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     // Record inspection results
     public void RecordInspection(
         int inspectorId,
