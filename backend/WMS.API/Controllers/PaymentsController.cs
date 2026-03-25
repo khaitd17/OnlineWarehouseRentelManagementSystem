@@ -6,6 +6,10 @@ using WMS.Application.Features.Payments.GetPaymentHistory;
 
 namespace WMS.API.Controllers;
 
+/// <summary>
+/// Lịch sử chuyển khoản — dùng chung cho Renter và Owner.
+/// Backend tự tìm mọi khoản thanh toán liên quan đến userId (qua Contract).
+/// </summary>
 [ApiController]
 [Route("api/payments")]
 [Authorize]
@@ -17,6 +21,7 @@ public class PaymentsController : ControllerBase
     private int GetUserId() =>
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
 
+    /// <summary>Lịch sử chuyển khoản của người dùng hiện tại</summary>
     [HttpGet("history")]
     public async Task<IActionResult> GetHistory(
         [FromQuery] string?   status   = null,
