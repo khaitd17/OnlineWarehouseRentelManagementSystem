@@ -390,6 +390,20 @@ export default function SearchResultsPage() {
                         {w.address}
                       </p>
 
+                      {/* Price tag */}
+                      {w.pricePerM2 && (
+                        <div style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)',
+                          border: '1px solid #6ee7b7',
+                          color: '#047857', fontSize: '0.8rem', fontWeight: 700,
+                          padding: '4px 10px', borderRadius: 20, marginBottom: 10,
+                        }}>
+                          💰 <strong style={{ color: '#065f46', fontSize: '0.9rem' }}>
+                            {Number(w.pricePerM2).toLocaleString('vi-VN')} đ
+                          </strong>/m²/tháng
+                        </div>
+                      )}
                       <div style={{
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                         borderTop: '1px solid #f1f5f9', paddingTop: 12, marginTop: 'auto',

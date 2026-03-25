@@ -103,14 +103,16 @@ namespace WMS.Infrastructure.Persistence
                     CreatedAt      = DateTime.UtcNow,
                     ApprovedAt     = DateTime.UtcNow,
                     ApprovedBy     = adminUser.UserId,
+                    PricePerM2     = 100000m,
                     HasZone        = true
                 };
                 context.Warehouses.Add(warehouse);
                 context.SaveChanges();
             }
-            else if (!warehouse.HasZone)
+            else
             {
-                warehouse.HasZone = true;
+                if (!warehouse.HasZone) warehouse.HasZone = true;
+                if (warehouse.PricePerM2 == null) warehouse.PricePerM2 = 100000m;
                 context.SaveChanges();
             }
 
@@ -132,14 +134,16 @@ namespace WMS.Infrastructure.Persistence
                     CreatedAt      = DateTime.UtcNow,
                     ApprovedAt     = DateTime.UtcNow,
                     ApprovedBy     = adminUser.UserId,
+                    PricePerM2     = 80000m,
                     HasZone        = true
                 };
                 context.Warehouses.Add(warehouse2);
                 context.SaveChanges();
             }
-            else if (!warehouse2.HasZone)
+            else
             {
-                warehouse2.HasZone = true;
+                if (!warehouse2.HasZone) warehouse2.HasZone = true;
+                if (warehouse2.PricePerM2 == null) warehouse2.PricePerM2 = 80000m;
                 context.SaveChanges();
             }
 

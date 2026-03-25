@@ -28,6 +28,9 @@ public partial class Warehouse
 
     public double AvailableArea { get; set; }
 
+    [Column("PricePerM2", TypeName = "decimal(18,2)")]
+    public decimal? PricePerM2 { get; set; }
+
     public string? OperatingHours { get; set; }
     
     public bool Is24HoursAccess { get; set; } = false;

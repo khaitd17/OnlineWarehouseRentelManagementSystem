@@ -27,6 +27,11 @@ public record InventoryRequestDto
     public DateTime? CreatedAt { get; init; }
     public DateTime? ConfirmedAt { get; init; }
     public string? ConfirmedByName { get; init; }
+    // Assignment
+    public int? AssignedStaffId { get; init; }
+    public string? AssignedStaffName { get; init; }
+    public string? AssignedNote { get; init; }
+    public DateTime? AssignedAt { get; init; }
     public int TotalItems { get; init; }
     public List<InventoryItemDto> Items { get; init; } = new();
 }
@@ -59,6 +64,10 @@ public static class InventoryRequestMapper
         CreatedAt       = r.CreatedAt,
         ConfirmedAt     = r.ConfirmedAt,
         ConfirmedByName = r.ConfirmedByNavigation?.FullName,
+        AssignedStaffId   = r.AssignedStaffId,
+        AssignedStaffName = r.AssignedStaff?.FullName,
+        AssignedNote      = r.AssignedNote,
+        AssignedAt        = r.AssignedAt,
         TotalItems      = r.InventoryItems.Count,
         Items           = r.InventoryItems.Select(i => new InventoryItemDto
         {
