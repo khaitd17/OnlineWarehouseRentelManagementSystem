@@ -23,6 +23,10 @@ public partial class Rating
 
     public DateTime? UpdatedAt { get; set; }
 
+    public string? OwnerReply { get; set; }
+
+    public DateTime? RepliedAt { get; set; }
+
     public virtual Contract? Contract { get; set; }
 
     public virtual User Renter { get; set; } = null!;

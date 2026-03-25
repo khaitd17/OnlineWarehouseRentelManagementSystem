@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace WMS.Infrastructure.Persistence.ScaffoldModels;
@@ -22,6 +22,10 @@ public partial class Rating
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    public string? OwnerReply { get; set; }
+
+    public DateTime? RepliedAt { get; set; }
 
     public virtual Contract? Contract { get; set; }
 
