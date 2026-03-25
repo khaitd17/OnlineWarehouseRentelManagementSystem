@@ -1139,6 +1139,9 @@ namespace WMS.Infrastructure.Persistence
 
                 context.SaveChanges();
             }
+
+            // Seed tài sản và tồn kho demo cho Renter
+            SeedRenterInventory(context);
         }
 
         // ──────────── Helper Methods ────────────
@@ -1228,6 +1231,82 @@ namespace WMS.Infrastructure.Persistence
                 ctx.SaveChanges();
             }
             return m;
+        }
+
+        // ══════════════════════════════════════════════════════════════
+        // SEED RENTER ASSETS + INVENTORY (idempotent — Ensure từng record)
+        // ══════════════════════════════════════════════════════════════
+        private static void SeedRenterInventory(ApplicationDbContext ctx)
+        {
+            var renter1 = ctx.Users.FirstOrDefault(u => u.Email == "renter@owrms.com");
+            var renter2 = ctx.Users.FirstOrDefault(u => u.Email == "renter2@owrms.com");
+            var wh1     = ctx.Warehouses.FirstOrDefault(w => w.Name == "Kho Hà Nội");
+            var wh2     = ctx.Warehouses.FirstOrDefault(w => w.Name == "Kho Hải Phòng");
+
+            if (renter1 == null || wh1 == null) return;
+
+            // ── Ensure asset của renter1 + inventory ─────────────────
+            var laptop  = EnsureAsset(ctx, renter1.UserId, "Laptop Dell XPS 15",   "chiếc",  1.8m,  "Laptop cao cấp, dùng cho văn phòng");
+            var phone   = EnsureAsset(ctx, renter1.UserId, "iPhone 15 Pro",         "chiếc",  0.2m,  "Điện thoại mới nhất");
+            var monitor = EnsureAsset(ctx, renter1.UserId, "Màn hình LG 27 inch",   "chiếc",  5.0m,  "Màn hình 4K UHD");
+
+            EnsureInventory(ctx, laptop.AssetId,  wh1.WarehouseId, 50);
+            EnsureInventory(ctx, phone.AssetId,   wh1.WarehouseId, 70);
+            EnsureInventory(ctx, monitor.AssetId, wh1.WarehouseId, 0);
+
+            if (wh2 != null)
+            {
+                EnsureInventory(ctx, laptop.AssetId, wh2.WarehouseId, 20);
+                EnsureInventory(ctx, phone.AssetId,  wh2.WarehouseId, 5);
+            }
+
+            // ── Ensure asset của renter2 + inventory ─────────────────
+            if (renter2 != null)
+            {
+                var box    = EnsureAsset(ctx, renter2.UserId, "Thùng hàng 50x50x50", "thùng",  0.5m,  "Thùng carton đóng gói hàng");
+                var pallet = EnsureAsset(ctx, renter2.UserId, "Pallet gỗ",            "pallet", 20.0m, "Pallet gỗ tiêu chuẩn 1200x1000");
+
+                EnsureInventory(ctx, box.AssetId,    wh1.WarehouseId, 200);
+                EnsureInventory(ctx, pallet.AssetId, wh1.WarehouseId, 8);
+            }
+        }
+
+        private static RenterAsset EnsureAsset(
+            ApplicationDbContext ctx, int renterId, string name, string unit,
+            decimal? weight, string? desc)
+        {
+            var a = ctx.RenterAssets.FirstOrDefault(x => x.RenterId == renterId && x.AssetName == name);
+            if (a == null)
+            {
+                a = new RenterAsset
+                {
+                    RenterId      = renterId,
+                    AssetName     = name,
+                    Unit          = unit,
+                    WeightPerUnit = weight,
+                    Description   = desc,
+                    CreatedAt     = DateTime.UtcNow,
+                };
+                ctx.RenterAssets.Add(a);
+                ctx.SaveChanges();
+            }
+            return a;
+        }
+
+        private static void EnsureInventory(
+            ApplicationDbContext ctx, int assetId, int warehouseId, int qty)
+        {
+            if (!ctx.RenterInventories.Any(x => x.AssetId == assetId && x.WarehouseId == warehouseId))
+            {
+                ctx.RenterInventories.Add(new RenterInventory
+                {
+                    AssetId     = assetId,
+                    WarehouseId = warehouseId,
+                    Quantity    = qty,
+                    UpdatedAt   = DateTime.UtcNow,
+                });
+                ctx.SaveChanges();
+            }
         }
     }
 }

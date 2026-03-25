@@ -1,6 +1,9 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using WMS.Application.Features.RenterInventory.GetRenterInventory;
+using WMS.Application.Features.RenterInventory.GetWarehouseInventoryForOwner;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 
@@ -12,15 +15,20 @@ namespace WMS.API.Controllers;
 public class RenterAssetsController : ControllerBase
 {
     private readonly IRenterAssetRepository _repo;
+    private readonly IMediator _mediator;
 
-    public RenterAssetsController(IRenterAssetRepository repo) => _repo = repo;
+    public RenterAssetsController(IRenterAssetRepository repo, IMediator mediator)
+    {
+        _repo     = repo;
+        _mediator = mediator;
+    }
 
     private int GetUserId() =>
         int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                   ?? User.FindFirst("sub")?.Value
                   ?? throw new UnauthorizedAccessException());
 
-    /// <summary>Lấy danh sách tài sản của renter hiện tại</summary>
+    /// <summary>Lấy danh sách tài sản (catalogue) của renter hiện tại</summary>
     [HttpGet]
     public async Task<IActionResult> GetMyAssets(CancellationToken ct)
     {
@@ -44,11 +52,11 @@ public class RenterAssetsController : ControllerBase
         var userId = GetUserId();
         var asset = new RenterAsset
         {
-            RenterId = userId,
-            AssetName = input.AssetName.Trim(),
-            Unit = input.Unit ?? "cái",
+            RenterId      = userId,
+            AssetName     = input.AssetName.Trim(),
+            Unit          = input.Unit ?? "cái",
             WeightPerUnit = input.WeightPerUnit,
-            Description = input.Description,
+            Description   = input.Description,
         };
         var created = await _repo.CreateAsync(asset, ct);
         return CreatedAtAction(nameof(GetMyAssets), new
@@ -62,33 +70,64 @@ public class RenterAssetsController : ControllerBase
         });
     }
 
-    /// <summary>
-    /// Lấy tồn kho tại 1 warehouse cụ thể.
-    /// Chỉ trả về asset của renter hiện tại có qty > 0.
-    /// </summary>
+    /// <summary>Lấy tồn kho tại 1 warehouse cụ thể (API cũ)</summary>
     [HttpGet("inventory")]
     public async Task<IActionResult> GetInventoryByWarehouse(
         [FromQuery] int warehouseId, CancellationToken ct)
     {
-        var userId = GetUserId();
+        var userId    = GetUserId();
         var inventory = await _repo.GetInventoryByWarehouseAsync(userId, warehouseId, ct);
         return Ok(inventory.Select(ri => new
         {
             ri.InventoryId,
             ri.AssetId,
-            AssetName = ri.Asset.AssetName,
-            Unit = ri.Asset.Unit,
+            AssetName     = ri.Asset.AssetName,
+            Unit          = ri.Asset.Unit,
             WeightPerUnit = ri.Asset.WeightPerUnit,
             ri.Quantity,
             ri.UpdatedAt
         }));
     }
+
+    /// <summary>
+    /// Renter xem toàn bộ tồn kho của mình.
+    /// Logic xử lý trong GetRenterInventoryHandler.
+    /// </summary>
+    [HttpGet("my-inventory")]
+    public async Task<IActionResult> GetMyInventory(
+        [FromQuery] int? warehouseId, CancellationToken ct)
+    {
+        var rows = await _mediator.Send(
+            new GetRenterInventoryQuery { RenterId = GetUserId(), WarehouseId = warehouseId }, ct);
+        return Ok(rows);
+    }
+
+    /// <summary>
+    /// Owner / Operator / Manager xem tồn kho của tất cả renter trong 1 kho.
+    /// Kiểm tra quyền trong GetWarehouseInventoryForOwnerHandler qua WarehouseMembership.
+    /// </summary>
+    [HttpGet("warehouse-inventory")]
+    public async Task<IActionResult> GetWarehouseInventory(
+        [FromQuery] int warehouseId, CancellationToken ct)
+    {
+        var result = await _mediator.Send(
+            new GetWarehouseInventoryForOwnerQuery
+            {
+                RequestingUserId = GetUserId(),
+                WarehouseId      = warehouseId
+            }, ct);
+
+        if (!result.IsAuthorized)
+            return Forbid();
+
+        return Ok(result.Rows);
+    }
 }
 
 public record CreateAssetInput
 {
-    public string AssetName { get; init; } = "";
-    public string? Unit { get; init; }
+    public string AssetName       { get; init; } = "";
+    public string? Unit           { get; init; }
     public decimal? WeightPerUnit { get; init; }
-    public string? Description { get; init; }
+    public string? Description    { get; init; }
 }
