@@ -1139,6 +1139,71 @@ namespace WMS.Infrastructure.Persistence
 
                 context.SaveChanges();
             }
+
+            // Seed RenterAssets + RenterInventory
+            var r1 = context.Users.FirstOrDefault(u => u.Email == "renter1@owrms.com");
+            var r2 = context.Users.FirstOrDefault(u => u.Email == "renter2@owrms.com");
+            var r3 = context.Users.FirstOrDefault(u => u.Email == "renter3@owrms.com");
+            var wh1 = context.Warehouses.FirstOrDefault(w => w.Name == "Kho Hà Nội");
+            var wh2 = context.Warehouses.FirstOrDefault(w => w.Name == "Kho Hải Phòng");
+
+            if (r1 != null && r2 != null && r3 != null && wh1 != null && wh2 != null)
+            {
+                void EnsureAsset(int renterId, string name, string unit, decimal? weight, string? desc,
+                                 List<(int whId, int qty)> stocks)
+                {
+                    var asset = context.RenterAssets.FirstOrDefault(a => a.RenterId == renterId && a.AssetName == name);
+                    if (asset == null)
+                    {
+                        asset = new RenterAsset
+                        {
+                            RenterId      = renterId,
+                            AssetName     = name,
+                            Unit          = unit,
+                            WeightPerUnit = weight,
+                            Description   = desc,
+                            CreatedAt     = DateTime.UtcNow,
+                        };
+                        context.RenterAssets.Add(asset);
+                        context.SaveChanges();
+                    }
+
+                    foreach (var (whId, qty) in stocks)
+                    {
+                        if (!context.RenterInventories.Any(i => i.AssetId == asset.AssetId && i.WarehouseId == whId))
+                        {
+                            context.RenterInventories.Add(new RenterInventory
+                            {
+                                AssetId     = asset.AssetId,
+                                WarehouseId = whId,
+                                Quantity    = qty,
+                                UpdatedAt   = DateTime.UtcNow,
+                            });
+                        }
+                    }
+                    context.SaveChanges();
+                }
+
+                // renter1 — hàng tiêu dùng nhanh
+                EnsureAsset(r1.UserId, "Mì tôm Hảo Hảo 75g",       "thùng", 1.5m,   "Mỳ tôm ăn liền",               new() { (wh1.WarehouseId, 320), (wh2.WarehouseId, 180) });
+                EnsureAsset(r1.UserId, "Nước ngọt Pepsi 330ml",     "thùng", 7.2m,   "24 lon/thùng",                 new() { (wh1.WarehouseId, 150) });
+                EnsureAsset(r1.UserId, "Dầu ăn Neptune 1L",         "thùng", 12.0m,  "12 chai/thùng",                new() { (wh1.WarehouseId, 90),  (wh2.WarehouseId, 60) });
+                EnsureAsset(r1.UserId, "Sữa tươi TH True Milk 1L",  "thùng", 12.0m,  "12 hộp/thùng",                 new() { (wh2.WarehouseId, 200) });
+                EnsureAsset(r1.UserId, "Bột giặt OMO 3kg",          "bao",   3.2m,   null,                           new() { (wh1.WarehouseId, 410) });
+
+                // renter2 — vật liệu xây dựng & công nghiệp
+                EnsureAsset(r2.UserId, "Xi măng Hà Tiên PCB40",     "bao",   50.0m,  "Bao 50kg",                     new() { (wh2.WarehouseId, 600), (wh1.WarehouseId, 200) });
+                EnsureAsset(r2.UserId, "Sơn Nippon nội thất 5L",    "thùng", 6.5m,   "Sơn cao cấp nội thất",         new() { (wh2.WarehouseId, 120) });
+                EnsureAsset(r2.UserId, "Ống nước PVC D60",          "cây",   2.8m,   "Ống dài 4m",                   new() { (wh2.WarehouseId, 300) });
+                EnsureAsset(r2.UserId, "Gạch ốp lát 60x60",         "hộp",   20.0m,  "6 viên/hộp",                   new() { (wh1.WarehouseId, 80),  (wh2.WarehouseId, 250) });
+
+                // renter3 — điện tử & phụ kiện
+                EnsureAsset(r3.UserId, "Cáp HDMI 2.0 1.5m",         "cuộn",  0.15m,  "Hộp 50 sợi",                   new() { (wh1.WarehouseId, 40) });
+                EnsureAsset(r3.UserId, "Bộ sạc nhanh USB-C 65W",    "cái",   0.22m,  null,                           new() { (wh1.WarehouseId, 110) });
+                EnsureAsset(r3.UserId, "Ram DDR4 8GB 3200MHz",       "cái",   0.03m,  "Hãng Kingston",                new() { (wh1.WarehouseId, 75) });
+                EnsureAsset(r3.UserId, "Ổ cứng SSD 256GB SATA",     "cái",   0.08m,  "Samsung 870 EVO",              new() { (wh1.WarehouseId, 55),  (wh2.WarehouseId, 30) });
+                EnsureAsset(r3.UserId, "Tai nghe không dây Sony",    "cái",   0.25m,  "Model WH-1000XM5",             new() { (wh2.WarehouseId, 20) });
+            }
         }
 
         // ──────────── Helper Methods ────────────

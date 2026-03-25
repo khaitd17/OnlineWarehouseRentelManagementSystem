@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
@@ -7,59 +6,73 @@ namespace WMS.Infrastructure.Repositories;
 
 public class RenterAssetRepository : IRenterAssetRepository
 {
-    private readonly ApplicationDbContext _db;
+    private readonly ApplicationDbContext _context;
 
-    public RenterAssetRepository(ApplicationDbContext db) => _db = db;
-
-    public async Task<List<RenterAsset>> GetByRenterAsync(int renterId, CancellationToken ct)
-        => await _db.RenterAssets
-            .Where(a => a.RenterId == renterId)
-            .OrderByDescending(a => a.CreatedAt)
-            .ToListAsync(ct);
-
-    public async Task<RenterAsset?> GetByIdAsync(int assetId, CancellationToken ct)
-        => await _db.RenterAssets.FindAsync(new object[] { assetId }, ct);
-
-    public async Task<RenterAsset> CreateAsync(RenterAsset asset, CancellationToken ct)
+    public RenterAssetRepository(ApplicationDbContext context)
     {
-        asset.CreatedAt = DateTime.Now;
-        _db.RenterAssets.Add(asset);
-        await _db.SaveChangesAsync(ct);
-        return asset;
+        _context = context;
     }
 
-    public async Task<List<RenterInventory>> GetInventoryByWarehouseAsync(
-        int renterId, int warehouseId, CancellationToken ct)
-        => await _db.RenterInventories
-            .Include(ri => ri.Asset)
-            .Where(ri => ri.WarehouseId == warehouseId && ri.Asset.RenterId == renterId)
-            .ToListAsync(ct);
-
-    public async Task AdjustRenterInventoryAsync(
-        int assetId, int warehouseId, int delta, CancellationToken ct)
+    public async Task<List<RenterInventoryRowDto>> GetInventoryByRenterAsync(
+        int renterId,
+        int? warehouseId,
+        CancellationToken cancellationToken)
     {
-        var inv = await _db.RenterInventories
-            .FirstOrDefaultAsync(ri => ri.AssetId == assetId && ri.WarehouseId == warehouseId, ct);
-
-        if (inv == null)
-        {
-            inv = new RenterInventory
+        var query =
+            from inv in _context.RenterInventories
+            join asset in _context.RenterAssets on inv.AssetId equals asset.AssetId
+            join wh in _context.Warehouses on inv.WarehouseId equals wh.WarehouseId
+            where asset.RenterId == renterId
+            select new RenterInventoryRowDto
             {
-                AssetId = assetId,
-                WarehouseId = warehouseId,
-                Quantity = 0,
-                UpdatedAt = DateTime.Now
+                InventoryId   = inv.InventoryId,
+                AssetId       = asset.AssetId,
+                AssetName     = asset.AssetName,
+                Unit          = asset.Unit,
+                WeightPerUnit = asset.WeightPerUnit,
+                Description   = asset.Description,
+                WarehouseId   = inv.WarehouseId,
+                WarehouseName = wh.Name,
+                Quantity      = inv.Quantity,
+                UpdatedAt     = inv.UpdatedAt,
             };
-            _db.RenterInventories.Add(inv);
-        }
 
-        var newQty = inv.Quantity + delta;
-        if (newQty < 0)
-            throw new InvalidOperationException(
-                $"Không đủ tồn kho. Hiện có: {inv.Quantity}, yêu cầu xuất: {Math.Abs(delta)}.");
+        if (warehouseId.HasValue)
+            query = query.Where(r => r.WarehouseId == warehouseId.Value);
 
-        inv.Quantity = newQty;
-        inv.UpdatedAt = DateTime.Now;
-        await _db.SaveChangesAsync(ct);
+        return await query
+            .OrderBy(r => r.WarehouseName)
+            .ThenBy(r => r.AssetName)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<WarehouseInventoryRowDto>> GetInventoryByWarehouseAsync(
+        int warehouseId,
+        CancellationToken cancellationToken)
+    {
+        var query =
+            from inv in _context.RenterInventories
+            join asset in _context.RenterAssets on inv.AssetId equals asset.AssetId
+            join renter in _context.Users on asset.RenterId equals renter.UserId
+            where inv.WarehouseId == warehouseId
+            select new WarehouseInventoryRowDto
+            {
+                InventoryId   = inv.InventoryId,
+                AssetId       = asset.AssetId,
+                AssetName     = asset.AssetName,
+                Unit          = asset.Unit,
+                WeightPerUnit = asset.WeightPerUnit,
+                Description   = asset.Description,
+                RenterId      = asset.RenterId,
+                RenterName    = renter.FullName,
+                RenterEmail   = renter.Email,
+                Quantity      = inv.Quantity,
+                UpdatedAt     = inv.UpdatedAt,
+            };
+
+        return await query
+            .OrderBy(r => r.RenterName)
+            .ThenBy(r => r.AssetName)
+            .ToListAsync(cancellationToken);
     }
 }

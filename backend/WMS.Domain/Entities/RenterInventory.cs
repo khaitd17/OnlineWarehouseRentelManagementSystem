@@ -1,10 +1,5 @@
 namespace WMS.Domain.Entities;
 
-/// <summary>
-/// Tồn kho hiện tại — số lượng thực của 1 loại tài sản đang lưu tại 1 kho.
-/// Được cập nhật mỗi khi staff confirm inventory_request (INBOUND tăng, OUTBOUND giảm).
-/// Unique: (asset_id, warehouse_id) — 1 tài sản chỉ có 1 dòng tồn kho tại mỗi kho.
-/// </summary>
 public partial class RenterInventory
 {
     public int InventoryId { get; set; }
