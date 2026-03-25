@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { searchWarehouses } from '../services/warehouseService';
 
@@ -44,11 +44,32 @@ export default function SearchResultsPage() {
   const navigate = useNavigate();
 
   /* Filter state */
-  const [province,      setProvince]      = useState('');
+  const [provinceInput,  setProvinceInput]  = useState('');
+  const [showProvDrop,   setShowProvDrop]   = useState(false);
+  const provRef = useRef(null);
+
+  // Derive province for API from provinceInput (only when it matches exactly)
+  const province = PROVINCES.includes(provinceInput) ? provinceInput : provinceInput;
+
+  // Accent-insensitive province filter
+  const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const filteredProvinces = provinceInput.trim()
+    ? PROVINCES.filter(p => norm(p).includes(norm(provinceInput)))
+    : PROVINCES;
+
   const [warehouseType, setWarehouseType] = useState('');
-  const [areaIdx,       setAreaIdx]       = useState(null);    // index into AREA_OPTIONS
+  const [areaIdx,       setAreaIdx]       = useState(null);
   const [sortBy,        setSortBy]        = useState('newest');
   const [page,          setPage]          = useState(1);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (provRef.current && !provRef.current.contains(e.target)) setShowProvDrop(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   /* Data state */
   const [results,  setResults]  = useState([]);
@@ -65,7 +86,7 @@ export default function SearchResultsPage() {
     try {
       const areaFilter = areaIdx != null ? AREA_OPTIONS[areaIdx] : {};
       const data = await searchWarehouses({
-        province,
+        province: provinceInput,
         warehouseType,
         minArea: areaFilter.min ?? undefined,
         maxArea: areaFilter.max ?? undefined,
@@ -82,14 +103,14 @@ export default function SearchResultsPage() {
     } finally {
       setLoading(false);
     }
-  }, [province, warehouseType, areaIdx, sortBy, page]);
+  }, [provinceInput, warehouseType, areaIdx, sortBy, page]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   /* ── Handlers ───────────────────────────────────────────── */
   const handleApply = () => { setPage(1); fetchData(); };
   const handleReset = () => {
-    setProvince('');
+    setProvinceInput('');
     setWarehouseType('');
     setAreaIdx(null);
     setSortBy('newest');
@@ -104,6 +125,7 @@ export default function SearchResultsPage() {
     border: '1px solid #e2e8f0', fontSize: '0.9rem',
     outline: 'none', boxSizing: 'border-box',
     fontFamily: 'inherit', background: '#fff',
+    color: '#1e293b',
   };
   const labelStyle = {
     display: 'block', fontSize: '0.8rem', fontWeight: 700,
@@ -136,19 +158,58 @@ export default function SearchResultsPage() {
               }}>Xóa tất cả</button>
             </div>
 
-            {/* Province dropdown */}
+            {/* Province autocomplete */}
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>📍 Địa điểm (Tỉnh/Thành phố)</label>
-              <select
-                value={province}
-                onChange={e => { setProvince(e.target.value); setPage(1); }}
-                style={inputStyle}
-              >
-                <option value=''>-- Tất cả tỉnh thành --</option>
-                {PROVINCES.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
+              <div ref={provRef} style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Nhập tỉnh, thành phố..."
+                  value={provinceInput}
+                  onChange={e => { setProvinceInput(e.target.value); setShowProvDrop(true); setPage(1); }}
+                  onFocus={() => setShowProvDrop(true)}
+                  autoComplete="off"
+                  style={{ ...inputStyle, cursor: 'text' }}
+                />
+                {showProvDrop && (
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+                    background: '#fff',
+                    border: '1.5px solid #bae6fd',
+                    borderRadius: 10,
+                    boxShadow: '0 10px 28px rgba(14,165,233,0.14)',
+                    maxHeight: 220,
+                    overflowY: 'auto',
+                    zIndex: 999,
+                    scrollbarWidth: 'thin',
+                  }}>
+                    {filteredProvinces.length > 0 ? filteredProvinces.map(p => (
+                      <div
+                        key={p}
+                        onMouseDown={e => { e.preventDefault(); setProvinceInput(p); setShowProvDrop(false); setPage(1); }}
+                        style={{
+                          padding: '9px 13px',
+                          fontSize: '0.88rem',
+                          color: provinceInput === p ? '#0369a1' : '#1e293b',
+                          fontWeight: provinceInput === p ? 700 : 400,
+                          background: provinceInput === p ? '#f0f9ff' : 'transparent',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid #f0f9ff',
+                          transition: 'background 0.12s',
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
+                        onMouseLeave={e => e.currentTarget.style.background = provinceInput === p ? '#f0f9ff' : 'transparent'}
+                      >
+                        {p}
+                      </div>
+                    )) : (
+                      <div style={{ padding: '10px 13px', fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center' }}>
+                        Không tìm thấy tỉnh thành
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Warehouse type */}
@@ -231,7 +292,7 @@ export default function SearchResultsPage() {
               <select
                 value={sortBy}
                 onChange={e => { setSortBy(e.target.value); setPage(1); }}
-                style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.9rem', background: '#fff' }}
+                style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', color: '#1e293b' }}
               >
                 <option value='newest'>Mới nhất</option>
                 <option value='area_asc'>Diện tích: Nhỏ → Lớn</option>

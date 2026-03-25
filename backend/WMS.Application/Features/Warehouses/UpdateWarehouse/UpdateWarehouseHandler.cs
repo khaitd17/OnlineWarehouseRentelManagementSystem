@@ -15,33 +15,31 @@ public class UpdateWarehouseHandler : IRequestHandler<UpdateWarehouseCommand>
 
     public async Task Handle(UpdateWarehouseCommand request, CancellationToken cancellationToken)
     {
-        var ownerId = await _repository.FindWarehouseOwnerById(
-            request.WarehouseId,
-            cancellationToken
-        );
-
-        if (ownerId == null)
+        var warehouse = await _repository.GetByIdAsync(request.WarehouseId, cancellationToken);
+        if (warehouse == null)
             throw new Exception("Warehouse not found");
 
-        if (ownerId != request.OwnerId)
+        if (warehouse.OwnerId != request.OwnerId)
             throw new UnauthorizedAccessException("You are not the owner");
 
-        var warehouse = new Warehouse
-        {
-            WarehouseId = request.WarehouseId,
-            OwnerId = request.OwnerId,
-            Name = request.Name,
-            Address = request.Address,
-            Lat = request.Lat,
-            Lng = request.Lng,
-            Description = request.Description,
-            OperatingHours = request.OperatingHours,
-            Is24HoursAccess = request.Is24HoursAccess,
-            OpenTime = request.OpenTime,
-            CloseTime = request.CloseTime,
-            MainDoorDirection = request.MainDoorDirection,
-            Status = request.Status
-        };
+        // Maintain current occupancy by recalculating available area
+        var rentedArea = warehouse.TotalArea - warehouse.AvailableArea;
+        
+        warehouse.Name = request.Name;
+        warehouse.Address = request.Address;
+        warehouse.Lat = request.Lat;
+        warehouse.Lng = request.Lng;
+        warehouse.Description = request.Description;
+        warehouse.OperatingHours = request.OperatingHours;
+        warehouse.Is24HoursAccess = request.Is24HoursAccess;
+        warehouse.OpenTime = request.OpenTime;
+        warehouse.CloseTime = request.CloseTime;
+        warehouse.TotalArea = request.TotalArea;
+        warehouse.Width = request.Width;
+        warehouse.Length = request.Length;
+        warehouse.AvailableArea = request.TotalArea - rentedArea;
+        warehouse.MainDoorDirection = request.MainDoorDirection;
+        warehouse.Status = request.Status ?? warehouse.Status;
 
         await _repository.UpdateAsync(warehouse, cancellationToken);
     }

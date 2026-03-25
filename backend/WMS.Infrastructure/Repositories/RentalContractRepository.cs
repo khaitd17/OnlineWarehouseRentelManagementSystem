@@ -4,6 +4,9 @@ using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 using SystemTask = System.Threading.Tasks.Task;
 
+using DomainRentalContract = WMS.Domain.Entities.RentalContract;
+using DbContract = WMS.Domain.Entities.Contract;
+
 namespace WMS.Infrastructure.Repositories;
 
 public class RentalContractRepository : IRentalContractRepository
@@ -15,255 +18,185 @@ public class RentalContractRepository : IRentalContractRepository
         _context = context;
     }
 
-    public async Task<RentalContract?> GetByIdAsync(int contractId)
+    public async Task<DomainRentalContract?> GetByIdAsync(int contractId)
     {
-        return await _context.RentalContracts
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
+        var dbContract = await _context.Contracts
             .FirstOrDefaultAsync(c => c.ContractId == contractId);
+
+        return dbContract != null ? MapToDomain(dbContract) : null;
     }
 
-    public async Task<RentalContract?> GetByRentalRequestIdAsync(int requestId)
+    public async Task<DomainRentalContract?> GetByRentalRequestIdAsync(int requestId)
     {
-        return await _context.RentalContracts
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
-            .FirstOrDefaultAsync(c => c.RentalRequestId == requestId);
+        var dbContract = await _context.Contracts
+            .FirstOrDefaultAsync(c => c.RequestId == requestId);
+
+        return dbContract != null ? MapToDomain(dbContract) : null;
     }
 
-    public async Task<List<RentalContract>> GetMyContractsAsync(
-        int renterId,
-        int pageNumber = 1,
-        int pageSize = 10,
-        string? status = null)
+    public async Task<IEnumerable<DomainRentalContract>> GetByRenterIdAsync(int renterId)
     {
-        var query = _context.RentalContracts
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
-            .Where(c => c.RenterId == renterId);
-
-        if (!string.IsNullOrEmpty(status))
-        {
-            query = query.Where(c => c.Status == status);
-        }
-
-        return await query
-            .OrderByDescending(c => c.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-    }
-
-    public async Task<List<RentalContract>> GetContractsByWarehouseAsync(int warehouseId)
-    {
-        return await _context.RentalContracts
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
-            .Where(c => c.WarehouseId == warehouseId)
-            .OrderByDescending(c => c.CreatedAt)
-            .ToListAsync();
-    }
-
-    public async Task<int> CountMyContractsAsync(int renterId, string? status = null)
-    {
-        var query = _context.RentalContracts.Where(c => c.RenterId == renterId);
-
-        if (!string.IsNullOrEmpty(status))
-        {
-            query = query.Where(c => c.Status == status);
-        }
-
-        return await query.CountAsync();
-    }
-
-    public async Task<int> AddAsync(RentalContract contract)
-    {
-        var result = await _context.RentalContracts.AddAsync(contract);
-        await _context.SaveChangesAsync();
-        return result.Entity.ContractId;
-    }
-
-    public async Task<IEnumerable<RentalContract>> GetByRenterIdAsync(int renterId)
-    {
-        return await _context.RentalContracts
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
+        var dbContracts = await _context.Contracts
             .Where(c => c.RenterId == renterId)
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
+
+        return dbContracts.Select(MapToDomain).ToList();
     }
 
-    public async Task<IEnumerable<RentalContract>> GetByWarehouseIdAsync(int warehouseId)
+    public async Task<IEnumerable<DomainRentalContract>> GetByWarehouseIdAsync(int warehouseId)
     {
-        return await _context.RentalContracts
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
+        var dbContracts = await _context.Contracts
             .Where(c => c.WarehouseId == warehouseId)
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
+
+        return dbContracts.Select(MapToDomain).ToList();
     }
 
-    public async Task<IEnumerable<RentalContract>> GetActiveContractsAsync()
+    public async Task<IEnumerable<DomainRentalContract>> GetActiveContractsAsync()
     {
-        return await _context.RentalContracts
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
+        var dbContracts = await _context.Contracts
             .Where(c => c.Status == "ACTIVE")
-            .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
+
+        return dbContracts.Select(MapToDomain).ToList();
     }
 
-    public async SystemTask UpdateAsync(RentalContract contract)
+    public async Task<int> AddAsync(DomainRentalContract contract)
     {
-        _context.RentalContracts.Update(contract);
+        var dbContract = new DbContract
+        {
+            RequestId = contract.RentalRequestId,
+            RenterId = contract.RenterId,
+            WarehouseId = contract.WarehouseId,
+            ContractNumber = contract.ContractNumber,
+            StartDate = DateOnly.FromDateTime(contract.StartDate),
+            EndDate = DateOnly.FromDateTime(contract.EndDate),
+            MonthlyPayment = contract.MonthlyPayment,
+            TotalValue = contract.TotalValue,
+            DepositAmount = contract.DepositAmount,
+            Status = contract.Status,
+            Terms = contract.Terms,
+            ContractUrl = contract.ContractFileUrl,
+            CreatedAt = contract.CreatedAt
+        };
+
+        _context.Contracts.Add(dbContract);
+        await _context.SaveChangesAsync();
+
+        return dbContract.ContractId;
+    }
+
+
+    public async SystemTask UpdateAsync(DomainRentalContract contract)
+    {
+        var dbContract = await _context.Contracts.FindAsync(contract.ContractId);
+        if (dbContract == null)
+            throw new InvalidOperationException($"Contract {contract.ContractId} not found");
+
+        dbContract.Status = contract.Status;
+        dbContract.UpdatedAt = DateTime.UtcNow;
+        dbContract.ContractUrl = contract.ContractFileUrl;
+        dbContract.SignedFileUrl = contract.SignedFileUrl;
+        dbContract.SignedAt = contract.SignedAt;
+        dbContract.Terms = contract.Terms;
+        dbContract.OwnerSignedFileUrl = contract.OwnerSignedFileUrl;
+        dbContract.OwnerSignedAt = contract.OwnerSignedAt;
+        dbContract.OwnerSignatureBase64 = contract.OwnerSignatureBase64;
+
         await _context.SaveChangesAsync();
     }
 
-    public async SystemTask DeleteAsync(RentalContract contract)
+    public async Task<DomainRentalContract?> GetWithEquipmentsByIdAsync(int contractId)
     {
-        _context.RentalContracts.Remove(contract);
-        await _context.SaveChangesAsync();
-    }
+        var dbContract = await _context.Contracts
+            .Include(c => c.IncludedEquipments)
+            .FirstOrDefaultAsync(c => c.ContractId == contractId);
 
-    public async Task<bool> ExistsAsync(int contractId)
-    {
-        return await _context.RentalContracts.AnyAsync(c => c.ContractId == contractId);
-    }
+        if (dbContract == null) return null;
 
-    public async Task<List<RentalContract>> GetByOwnerIdAsync(int ownerId)
-    {
-        return await _context.RentalContracts
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
-            .Where(c => c.Warehouse.OwnerId == ownerId)
-            .OrderByDescending(c => c.CreatedAt)
-            .ToListAsync();
-    }
-
-    // New methods for updated rental flow
-
-    public async Task<List<RentalContract>> GetPagedAsync(
-        int pageNumber = 1,
-        int pageSize = 10,
-        int? userId = null,
-        string? status = null,
-        DateTime? startDateFrom = null,
-        DateTime? startDateTo = null)
-    {
-        var query = _context.RentalContracts.AsQueryable();
-
-        if (userId.HasValue)
+        var domain = MapToDomain(dbContract);
+        
+        // Manual mapping for the many-to-many property since MapToDomain uses reflection for primitives
+        foreach(var e in dbContract.IncludedEquipments)
         {
-            query = query.Where(c => c.RenterId == userId);
+            domain.IncludedEquipments.Add(e);
         }
 
-        if (!string.IsNullOrEmpty(status))
-        {
-            query = query.Where(c => c.Status == status);
-        }
-
-        if (startDateFrom.HasValue)
-        {
-            query = query.Where(c => c.StartDate >= startDateFrom.Value);
-        }
-
-        if (startDateTo.HasValue)
-        {
-            query = query.Where(c => c.StartDate <= startDateTo.Value);
-        }
-
-        return await query
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
-            .OrderByDescending(c => c.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        return domain;
     }
 
-    public async Task<int> CountAsync(
-        int? userId = null,
-        string? status = null,
-        DateTime? startDateFrom = null,
-        DateTime? startDateTo = null)
+    public async Task AssignEquipmentsAsync(int contractId, List<int> equipmentIds, CancellationToken cancellationToken)
     {
-        var query = _context.RentalContracts.AsQueryable();
+        var dbContract = await _context.Contracts
+            .Include(c => c.IncludedEquipments)
+            .FirstOrDefaultAsync(c => c.ContractId == contractId, cancellationToken)
+            ?? throw new KeyNotFoundException("Contract not found");
 
-        if (userId.HasValue)
+        var equipments = await _context.Equipments
+            .Where(e => equipmentIds.Contains(e.EquipmentId))
+            .ToListAsync(cancellationToken);
+
+        dbContract.IncludedEquipments.Clear();
+        foreach (var equipment in equipments)
         {
-            query = query.Where(c => c.RenterId == userId);
+            dbContract.IncludedEquipments.Add(equipment);
         }
 
-        if (!string.IsNullOrEmpty(status))
-        {
-            query = query.Where(c => c.Status == status);
-        }
-
-        if (startDateFrom.HasValue)
-        {
-            query = query.Where(c => c.StartDate >= startDateFrom.Value);
-        }
-
-        if (startDateTo.HasValue)
-        {
-            query = query.Where(c => c.StartDate <= startDateTo.Value);
-        }
-
-        return await query.CountAsync();
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<List<RentalContract>> GetExpiredContractsAsync()
+    private DomainRentalContract MapToDomain(DbContract dbContract)
     {
-        return await _context.RentalContracts
-            .Where(c => c.Status == "ACTIVE" && c.EndDate < DateTime.UtcNow)
-            .ToListAsync();
-    }
+        // Using reflection to bypass private constructor
+#pragma warning disable SYSLIB0050
+        var domainContract = (DomainRentalContract)System.Runtime.Serialization.FormatterServices
+            .GetUninitializedObject(typeof(DomainRentalContract));
+#pragma warning restore SYSLIB0050
 
-    public async Task<List<RentalContract>> GetPendingSignatureExpiredAsync()
-    {
-        return await _context.RentalContracts
-            .Where(c => c.Status == "PENDING_SIGNATURE" &&
-                       c.PendingSignatureExpiry != null &&
-                       c.PendingSignatureExpiry < DateTime.UtcNow)
-            .ToListAsync();
-    }
+        var contractIdProp = typeof(DomainRentalContract).GetProperty("ContractId");
+        var rentalRequestIdProp = typeof(DomainRentalContract).GetProperty("RentalRequestId");
+        var renterIdProp = typeof(DomainRentalContract).GetProperty("RenterId");
+        var warehouseIdProp = typeof(DomainRentalContract).GetProperty("WarehouseId");
+        var contractNumberProp = typeof(DomainRentalContract).GetProperty("ContractNumber");
+        var startDateProp = typeof(DomainRentalContract).GetProperty("StartDate");
+        var endDateProp = typeof(DomainRentalContract).GetProperty("EndDate");
+        var monthlyPaymentProp = typeof(DomainRentalContract).GetProperty("MonthlyPayment");
+        var totalValueProp = typeof(DomainRentalContract).GetProperty("TotalValue");
+        var depositAmountProp = typeof(DomainRentalContract).GetProperty("DepositAmount");
+        var statusProp = typeof(DomainRentalContract).GetProperty("Status");
+        var termsProp = typeof(DomainRentalContract).GetProperty("Terms");
+        var contractFileUrlProp = typeof(DomainRentalContract).GetProperty("ContractFileUrl");
+        var signedFileUrlProp = typeof(DomainRentalContract).GetProperty("SignedFileUrl");
+        var signedAtProp = typeof(DomainRentalContract).GetProperty("SignedAt");
+        var ownerSignedFileUrlProp = typeof(DomainRentalContract).GetProperty("OwnerSignedFileUrl");
+        var ownerSignedAtProp = typeof(DomainRentalContract).GetProperty("OwnerSignedAt");
+        var ownerSignatureBase64Prop = typeof(DomainRentalContract).GetProperty("OwnerSignatureBase64");
+        var createdAtProp = typeof(DomainRentalContract).GetProperty("CreatedAt");
+        var updatedAtProp = typeof(DomainRentalContract).GetProperty("UpdatedAt");
 
-    public async Task<List<RentalContract>> GetPendingPaymentExpiredAsync()
-    {
-        return await _context.RentalContracts
-            .Where(c => c.Status == "PENDING_PAYMENT" &&
-                       c.PendingPaymentExpiry != null &&
-                       c.PendingPaymentExpiry < DateTime.UtcNow)
-            .ToListAsync();
-    }
+        contractIdProp?.SetValue(domainContract, dbContract.ContractId);
+        rentalRequestIdProp?.SetValue(domainContract, dbContract.RequestId);
+        renterIdProp?.SetValue(domainContract, dbContract.RenterId);
+        warehouseIdProp?.SetValue(domainContract, dbContract.WarehouseId);
+        contractNumberProp?.SetValue(domainContract, dbContract.ContractNumber);
+        startDateProp?.SetValue(domainContract, dbContract.StartDate.ToDateTime(TimeOnly.MinValue));
+        endDateProp?.SetValue(domainContract, dbContract.EndDate.ToDateTime(TimeOnly.MinValue));
+        monthlyPaymentProp?.SetValue(domainContract, dbContract.MonthlyPayment);
+        totalValueProp?.SetValue(domainContract, dbContract.TotalValue);
+        depositAmountProp?.SetValue(domainContract, dbContract.DepositAmount);
+        statusProp?.SetValue(domainContract, dbContract.Status);
+        termsProp?.SetValue(domainContract, dbContract.Terms);
+        contractFileUrlProp?.SetValue(domainContract, dbContract.ContractUrl);
+        signedFileUrlProp?.SetValue(domainContract, dbContract.SignedFileUrl);
+        signedAtProp?.SetValue(domainContract, dbContract.SignedAt);
+        ownerSignedFileUrlProp?.SetValue(domainContract, dbContract.OwnerSignedFileUrl);
+        ownerSignedAtProp?.SetValue(domainContract, dbContract.OwnerSignedAt);
+        ownerSignatureBase64Prop?.SetValue(domainContract, dbContract.OwnerSignatureBase64);
+        createdAtProp?.SetValue(domainContract, dbContract.CreatedAt ?? DateTime.UtcNow);
+        updatedAtProp?.SetValue(domainContract, dbContract.UpdatedAt);
 
-    public async Task<List<RentalContract>> GetOverdueContractsAsync()
-    {
-        var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
-        return await _context.RentalContracts
-            .Where(c => c.Status == "COMPLETED" &&
-                       c.ReturnedAt == null &&
-                       c.EndDate < sevenDaysAgo)
-            .ToListAsync();
-    }
-
-    public async Task<List<RentalContract>> GetContractsNearingExpiry(int daysBeforeExpiry)
-    {
-        var targetDate = DateTime.UtcNow.AddDays(daysBeforeExpiry);
-        return await _context.RentalContracts
-            .Include(c => c.RentalRequest)
-                .ThenInclude(r => r.Renter)
-            .Include(c => c.Warehouse)
-            .Where(c => c.Status == "ACTIVE" && c.EndDate.Date == targetDate.Date)
-            .ToListAsync();
+        return domainContract;
     }
 }

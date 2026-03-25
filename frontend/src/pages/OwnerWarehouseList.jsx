@@ -44,7 +44,9 @@ const OwnerWarehouseList = () => {
       case "REJECTED":
         return <span style={{ padding: "4px 12px", background: "#fee2e2", color: "#991b1b", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "bold" }}>Bị Từ Chối</span>;
       case "HIDDEN":
-        return <span style={{ padding: "4px 12px", background: "#f1f5f9", color: "#475569", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "bold" }}>Chưa Duyệt</span>;
+        return <span style={{ padding: "4px 12px", background: "#f1f5f9", color: "#475569", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "bold" }}>Chờ Duyệt</span>;
+      case "DRAFT":
+        return <span style={{ padding: "4px 12px", background: "#fff7ed", color: "#c2410c", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "bold" }}>Bản nháp</span>;
       case "DELETED":
         return <span style={{ padding: "4px 12px", background: "#f9fafb", color: "#9ca3af", borderRadius: "20px", fontSize: "0.8rem", fontWeight: "bold" }}>Đã Xóa</span>;
       default:
@@ -175,53 +177,78 @@ const OwnerWarehouseList = () => {
 
             {/* Actions Footer */}
             <div style={{ padding: "20px 24px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", gap: "12px" }}>
-              <button
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  background: "#fff",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: "10px",
-                  color: "#334155",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  transition: "background 0.2s"
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
-                onMouseLeave={(e) => e.currentTarget.style.background = "#fff"}
-                onClick={() => navigate(`/owner-warehouse/${w.warehouseId}`)}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>dashboard</span>
-                Chi tiết
-              </button>
+              {w.status?.toUpperCase() === "DRAFT" ? (
+                <button
+                  style={{
+                    flex: 2,
+                    padding: "10px",
+                    background: "#00b2d6",
+                    border: "none",
+                    borderRadius: "10px",
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                  }}
+                  onClick={() => navigate(`/create-warehouse?id=${w.warehouseId}`)}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>arrow_forward</span>
+                  Tiếp tục đăng ký
+                </button>
+              ) : (
+                <>
+                  <button
+                    style={{
+                      flex: 1,
+                      padding: "10px",
+                      background: "#fff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "10px",
+                      color: "#334155",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      transition: "background 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#fff"}
+                    onClick={() => navigate(`/owner-warehouse/${w.warehouseId}`)}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>dashboard</span>
+                    Chi tiết
+                  </button>
 
-              <button
-                style={{
-                  flex: 1,
-                  padding: "10px",
-                  background: "#fef3c7",
-                  border: "1px solid #fde68a",
-                  borderRadius: "10px",
-                  color: "#d97706",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  transition: "background 0.2s"
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = "#fde68a"}
-                onMouseLeave={(e) => e.currentTarget.style.background = "#fef3c7"}
-                onClick={() => navigate(`/warehouse-edit/${w.warehouseId}`)}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>edit</span>
-                Sửa
-              </button>
+                  <button
+                    style={{
+                      flex: 1,
+                      padding: "10px",
+                      background: "#fef3c7",
+                      border: "1px solid #fde68a",
+                      borderRadius: "10px",
+                      color: "#d97706",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      transition: "background 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "#fde68a"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "#fef3c7"}
+                    onClick={() => navigate(`/warehouse-edit/${w.warehouseId}`)}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>edit</span>
+                    Sửa
+                  </button>
+                </>
+              )}
 
               <button
                 style={{

@@ -12,9 +12,6 @@ using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Repositories;
 using WMS.Infrastructure.Services;
 using WMS.API.Hubs;
-using WMS.API.Filters;
-using WMS.Infrastructure.BackgroundJobs;
-using Hangfire;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -91,36 +88,15 @@ builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.Infrastructure.Repositories.NotificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
-builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalPaymentRepository, WMS.Infrastructure.Repositories.RentalPaymentRepository>();
-builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseReturnRepository, WMS.Infrastructure.Repositories.WarehouseReturnRepository>();
-builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
-builder.Services.AddScoped<WMS.Domain.Interfaces.IStaffShiftRepository, WMS.Infrastructure.Repositories.StaffShiftRepository>();
+builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
 builder.Services.AddScoped<IPdfService, PdfService>();
-
-// SePay Integration
-builder.Services.Configure<SepaySettings>(builder.Configuration.GetSection("SePay"));
-builder.Services.AddHttpClient("SePay", client =>
-{
-    client.DefaultRequestHeaders.Add("Accept", "application/json");
-});
-builder.Services.AddScoped<ISepayService, SepayService>();
-
-// Background Jobs
-builder.Services.AddScoped<ContractExpiryJob>();
-builder.Services.AddScoped<ContractNotificationJob>();
-
-// Hangfire for background jobs
-builder.Services.AddHangfire(config => config
-    .SetDataCompatibilityLevel(Hangfire.CompatibilityLevel.Version_180)
-    .UseSimpleAssemblyNameTypeSerializer()
-    .UseRecommendedSerializerSettings()
-    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.AddHangfireServer();
 
 // SignalR
 builder.Services.AddSignalR();
@@ -197,8 +173,15 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
-    // DatabaseSeeder.Seed(context); // Temporarily disabled for faster startup
+    var logger  = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        DatabaseSeeder.Seed(context);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi (có thể data đã tồn tại hoặc SQL Server chưa sẵn sàng). Backend vẫn tiếp tục chạy.");
+    }
 }
 
 // ==========================================
@@ -233,37 +216,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-// Hangfire Dashboard - accessible at /hangfire
-app.MapHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
-{
-    Authorization = new[] { new HangfireAuthorizationFilter() },
-    DashboardTitle = "OWRMS Background Jobs"
-});
-
-// Setup recurring jobs
-using (var scope = app.Services.CreateScope())
-{
-    var recurringJobManager = scope.ServiceProvider.GetRequiredService<Hangfire.IRecurringJobManager>();
-
-    // Run contract expiry checks every hour
-    recurringJobManager.AddOrUpdate(
-        "process-contract-expiries",
-        () => scope.ServiceProvider.GetRequiredService<ContractExpiryJob>().ProcessAllExpiries(),
-        Hangfire.Cron.Hourly);
-
-    // Send expiry notifications daily at 8 AM
-    recurringJobManager.AddOrUpdate(
-        "send-expiry-notifications",
-        () => scope.ServiceProvider.GetRequiredService<ContractNotificationJob>().SendExpiryNotifications(),
-        Hangfire.Cron.Daily(8));
-
-    // Send payment reminders every 6 hours
-    recurringJobManager.AddOrUpdate(
-        "send-payment-reminders",
-        () => scope.ServiceProvider.GetRequiredService<ContractNotificationJob>().SendPaymentReminders(),
-        "0 */6 * * *"); // Every 6 hours
-}
 
 app.MapHub<NotificationHub>("/hubs/notifications");
 

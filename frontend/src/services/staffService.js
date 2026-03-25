@@ -15,7 +15,7 @@ const staffService = {
 
   /**
    * Lấy membership của current user trong một kho cụ thể.
-   * Trả về { membershipId, roleCode, isAllSkill, isAllZone, skillIds, zoneIds }
+   * Trả về { membershipId, roleCode, isAllSkill, skillIds }
    */
   getMyMembership: async (warehouseId) => {
     const response = await axiosClient.get(`/staff/my-membership?warehouseId=${warehouseId}`);
@@ -32,15 +32,16 @@ const staffService = {
   },
 
   /**
-   * Lấy danh sách skills và zones của một kho (dùng để render form chọn khi tạo nhân viên).
+   * Lấy danh sách skills của hệ thống (dùng để render form chọn khi tạo nhân viên).
+   * Trả về { skills: [...] }
    */
   getWarehouseOptions: async (warehouseId) => {
     const response = await axiosClient.get(`/staff/warehouse-options?warehouseId=${warehouseId}`);
-    return response.data; // { skills: [...], zones: [...] }
+    return response.data; // { skills: [...] }
   },
 
   /**
-   * Cập nhật role, skills, zones của một membership (reassign).
+   * Cập nhật role và skills của một membership (reassign).
    */
   reassignMembership: async (data) => {
     const response = await axiosClient.put("/staff/reassign", data);

@@ -33,7 +33,10 @@ const EditWarehouse = () => {
     description: "",
     images: [],
     status: "",
-    legalStatus: ""
+    legalStatus: "",
+    width: "",
+    length: "",
+    totalArea: ""
   });
 
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -67,7 +70,10 @@ const EditWarehouse = () => {
       status: ["APPROVED", "PENDING", "REJECTED", "HIDDEN", "DELETED"].includes(res.data.status?.toUpperCase()) 
               ? res.data.status 
               : "PENDING",
-      legalStatus: res.data.mainDoorDirection || ""
+      legalStatus: res.data.mainDoorDirection || "",
+      width: res.data.width ?? res.data.Width ?? "",
+      length: res.data.length ?? res.data.Length ?? "",
+      totalArea: res.data.totalArea ?? res.data.TotalArea ?? ""
     });
   };
 
@@ -108,7 +114,10 @@ const EditWarehouse = () => {
       closeTime: formData.is24HoursAccess ? null : formData.closeTime,
       operatingHours: formData.is24HoursAccess ? "24/7" : `${formData.openTime} - ${formData.closeTime}`,
       status: formData.status,
-      mainDoorDirection: formData.legalStatus
+      mainDoorDirection: formData.legalStatus,
+      totalArea: parseFloat(formData.totalArea) || 0,
+      width: formData.width ? parseFloat(formData.width) : null,
+      length: formData.length ? parseFloat(formData.length) : null
     };
 
     await api.put(`/Warehouse/${id}`, payload);
@@ -249,6 +258,21 @@ const EditWarehouse = () => {
                 />
               </div>
 
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+                <div style={groupStyle}>
+                  <label style={labelStyle}>Chiều rộng (m)</label>
+                  <input name="width" type="number" value={formData.width} readOnly style={{ ...inputStyle, backgroundColor: "#f1f5f9" }} />
+                </div>
+                <div style={groupStyle}>
+                  <label style={labelStyle}>Chiều dài (m)</label>
+                  <input name="length" type="number" value={formData.length} readOnly style={{ ...inputStyle, backgroundColor: "#f1f5f9" }} />
+                </div>
+                <div style={groupStyle}>
+                  <label style={labelStyle}>Tổng diện tích (m²)</label>
+                  <input name="totalArea" type="number" value={formData.totalArea} readOnly style={{ ...inputStyle, backgroundColor: "#f1f5f9" }} />
+                </div>
+              </div>
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div style={groupStyle}>
                   <label style={labelStyle}>Tọa độ Latitude</label>
@@ -313,18 +337,19 @@ const EditWarehouse = () => {
               )}
 
               <div style={groupStyle}>
-                <label style={labelStyle}>Tình trạng giấy tờ pháp lý</label>
+                <label style={labelStyle}>Loại giấy tờ pháp lý</label>
                 <select
                   name="legalStatus"
                   value={formData.legalStatus || ""}
                   onChange={handleChange}
                   style={inputStyle}
                 >
-                  <option value="">-- Chọn tình trạng --</option>
-                  <option value="Đã có sổ đỏ/sổ hồng">Đã có sổ đỏ/sổ hồng</option>
-                  <option value="Hợp đồng thuê/ủy quyền">Hợp đồng thuê/ủy quyền</option>
-                  <option value="Giấy phép kinh doanh">Giấy phép kinh doanh</option>
-                  <option value="Đang chờ cấp">Đang chờ cấp</option>
+                  <option value="">-- Chọn loại giấy tờ --</option>
+                  <option value="BUSINESS_LICENSE">Giấy phép kinh doanh</option>
+                  <option value="WAREHOUSE_CERT">Giấy chứng nhận quyền sử dụng kho (Sổ đỏ/hồng)</option>
+                  <option value="FIRE_SAFETY">Chứng nhận phòng cháy chữa cháy</option>
+                  <option value="OTHER">Tài liệu bổ sung khác</option>
+                  <option value="Chưa xác minh">Đang chờ cấp / Chưa bổ sung</option>
                 </select>
               </div>
 

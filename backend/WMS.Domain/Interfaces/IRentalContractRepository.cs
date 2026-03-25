@@ -23,4 +23,6 @@ public interface IRentalContractRepository
         DateTime? startDateTo = null);
     Task<int> AddAsync(RentalContract contract);
     Task UpdateAsync(RentalContract contract);
+    Task<RentalContract?> GetWithEquipmentsByIdAsync(int contractId);
+    Task AssignEquipmentsAsync(int contractId, List<int> equipmentIds, CancellationToken cancellationToken);
 }

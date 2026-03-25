@@ -29,8 +29,6 @@ import PendingRentalRequests from "../pages/PendingRentalRequests";
 import RentalRequestDetail from "../pages/RentalRequestDetail";
 import MyContracts from "../pages/MyContracts";
 import ContractDetail from "../pages/ContractDetail";
-import ContractPayment from "../pages/ContractPayment";
-import PaymentResult from "../pages/PaymentResult";
 import WarehouseContracts from "../pages/WarehouseContracts";
 import OccupancyDashboard from "../pages/OccupancyDashboard";
 import RoleBasedRoute from "./RoleBasedRoute";
@@ -48,6 +46,7 @@ import RenterInboundList from "../pages/Requests/RenterInboundList";
 import RenterOutboundList from "../pages/Requests/RenterOutboundList";
 import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
 import StaffInventoryRequests from "../pages/Requests/StaffInventoryRequests";
+import PaymentHistory from "../pages/Requests/PaymentHistory";
 
 // Audit session pages
 import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
@@ -98,6 +97,7 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* ── PUBLIC pages: MainLayout (public navbar + footer) ── */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchResultsPage />} />
@@ -106,94 +106,90 @@ function AppRoutes() {
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/forgot-password" element={<ForgotPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+        </Route>
 
-          {/* ── Any logged-in user: profile, settings, public dashboard features ── */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route element={<DashboardLayout />}>
-              {/* Plain user routes — visible to everyone logged in */}
-              <Route path="/my-rental-requests" element={<MyRentalRequests />} />
-              <Route path="/my-contracts" element={<MyContracts />} />
-              <Route path="/contracts/:id" element={<ContractDetail />} />
-              <Route path="/contracts/:id/payment" element={<ContractPayment />} />
-              <Route path="/payment-result" element={<PaymentResult />} />
-              <Route path="/settings" element={<ProfilePage />} />
-              {/* User can also view warehouse listings from dashboard */}
-              <Route path="/create-warehouse" element={<CreateWarehouse />} />
-              <Route path="/post-warehouse" element={<PostWarehousePage />} />
-            </Route>
+        {/* ── DASHBOARD pages: NO public navbar ── */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route element={<DashboardLayout />}>
+            <Route path="/my-rental-requests" element={<MyRentalRequests />} />
+            <Route path="/my-contracts" element={<MyContracts />} />
+            <Route path="/contracts/:id" element={<ContractDetail />} />
+            <Route path="/settings" element={<ProfilePage />} />
+            <Route path="/create-warehouse" element={<CreateWarehouse />} />
+            <Route path="/post-warehouse" element={<PostWarehousePage />} />
           </Route>
+        </Route>
 
-          {/* ── OWNER / OPERATOR: full warehouse management ── */}
-          <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'USER', 'ADMIN']} />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<DashboardRedirect />} />
-              <Route path="/owner-dashboard" element={<Dashboard />} />
-              <Route path="/occupancy-dashboard" element={<OccupancyDashboard />} />
-              <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
-              <Route path="/owner-warehouse/:id" element={<OwnerWarehouseDetailPage />} />
-              <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />
-              <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
-              <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
-              <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
-              <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
-              <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
-            </Route>
+        {/* ── OWNER / OPERATOR ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'USER', 'ADMIN']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<DashboardRedirect />} />
+            <Route path="/owner-dashboard" element={<Dashboard />} />
+            <Route path="/occupancy-dashboard" element={<OccupancyDashboard />} />
+            <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
+            <Route path="/owner-warehouse/:id" element={<OwnerWarehouseDetailPage />} />
+            <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />
+            <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
+            <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
+            <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
+            <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
+            <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
           </Route>
+        </Route>
 
-          {/* ── OWNER / OPERATOR / MANAGER: staff management ── */}
-          <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'MANAGER', 'ADMIN']} />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/create-staff" element={<CreateStaff />} />
-              <Route path="/list-staff" element={<ListStaff />} />
-              <Route path="/shift-scheduling" element={<ShiftSchedulingPage />} />
-              <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
-              <Route path="/equipment-management" element={<EquipmentManagement />} />
-            </Route>
+        {/* ── OWNER / OPERATOR / MANAGER: staff management ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'MANAGER', 'ADMIN']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/create-staff" element={<CreateStaff />} />
+            <Route path="/list-staff" element={<ListStaff />} />
+            <Route path="/shift-scheduling" element={<ShiftSchedulingPage />} />
+            <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
+            <Route path="/equipment-management" element={<EquipmentManagement />} />
           </Route>
+        </Route>
 
-          {/* ── STAFF / MANAGER / OPERATOR / OWNER: warehouse operational routes ── */}
-          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'ADMIN']} />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/staff-dashboard" element={<StaffDashboard />} />
-              <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
-              <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
-              <Route path="/outbound-requests" element={<OutboundRequestsList />} />
-              <Route path="/confirm-movement" element={<ConfirmMovement />} />
-              <Route path="/transaction-history" element={<TransactionHistory />} />
-              <Route path="/my-schedule" element={<MySchedulePage />} />
-              <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
-              <Route path="/staff-audit-sessions/:id" element={<StaffAuditSessionDetailPage />} />
-            </Route>
+        {/* ── STAFF / MANAGER / OPERATOR / OWNER ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'ADMIN']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/staff-dashboard" element={<StaffDashboard />} />
+            <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
+            <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
+            <Route path="/outbound-requests" element={<OutboundRequestsList />} />
+            <Route path="/confirm-movement" element={<ConfirmMovement />} />
+            <Route path="/transaction-history" element={<TransactionHistory />} />
+            <Route path="/my-schedule" element={<MySchedulePage />} />
+            <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
+            <Route path="/staff-audit-sessions/:id" element={<StaffAuditSessionDetailPage />} />
           </Route>
+        </Route>
 
-          {/* ── RENTER: khách thuê kho ── */}
-          <Route element={<RoleBasedRoute allowedRoles={['RENTER', 'USER', 'ADMIN']} />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/renter-dashboard" element={<RenterDashboard />} />
-              <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
-              <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
-              <Route path="/renter-audit-sessions" element={<RenterAuditSessionsPage />} />
-              <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
-            </Route>
+        {/* ── RENTER ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['RENTER', 'USER', 'ADMIN']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/renter-dashboard" element={<RenterDashboard />} />
+            <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
+            <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
+            <Route path="/renter-audit-sessions" element={<RenterAuditSessionsPage />} />
+            <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
           </Route>
+        </Route>
 
-          {/* ── Any warehouse member: create inbound/outbound requests ── */}
-          <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'RENTER', 'USER', 'ADMIN']} />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/create-inbound" element={<CreateInboundRequest />} />
-              <Route path="/create-outbound" element={<CreateOutboundRequest />} />
-            </Route>
+        {/* ── Any warehouse member ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'RENTER', 'USER', 'ADMIN']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/create-inbound" element={<CreateInboundRequest />} />
+            <Route path="/create-outbound" element={<CreateOutboundRequest />} />
+            <Route path="/payment-history" element={<PaymentHistory />} />
           </Route>
+        </Route>
 
-          {/* ── OWNER audit sessions ── */}
-          <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'MANAGER', 'ADMIN']} />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/owner-audit-sessions" element={<OwnerAuditSessionsPage />} />
-              <Route path="/owner-audit-sessions/:id" element={<OwnerAuditSessionDetailPage />} />
-            </Route>
+        {/* ── OWNER audit sessions ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'MANAGER', 'ADMIN']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/owner-audit-sessions" element={<OwnerAuditSessionsPage />} />
+            <Route path="/owner-audit-sessions/:id" element={<OwnerAuditSessionDetailPage />} />
           </Route>
-
         </Route>
 
         {/* Admin Routes */}
