@@ -17,7 +17,6 @@ public class ReassignMembershipHandler : IRequestHandler<ReassignMembershipComma
     public async Task<Unit> Handle(ReassignMembershipCommand cmd, CancellationToken ct)
     {
         // ── Bước 1: Lấy membership của caller để kiểm tra quyền ──────────────
-        // Trước tiên cần lấy warehouseId từ target membership
         var target = await _repo.GetMembershipByIdAsync(cmd.TargetMembershipId, ct)
             ?? throw new KeyNotFoundException($"Membership {cmd.TargetMembershipId} không tồn tại.");
 
@@ -32,18 +31,15 @@ public class ReassignMembershipHandler : IRequestHandler<ReassignMembershipComma
         if (caller.RoleCode == "MANAGER" && cmd.TargetRoleCode != "STAFF")
             throw new UnauthorizedAccessException("Manager chỉ được phép phân quyền nhân viên cấp STAFF.");
 
-        // MANAGER không được set IsAllSkill / IsAllZone
-        if (caller.RoleCode == "MANAGER" && (cmd.IsAllSkill || cmd.IsAllZone))
-            throw new UnauthorizedAccessException("Manager không được cấp quyền 'tất cả skill/zone'.");
+        // MANAGER không được set IsAllSkill
+        if (caller.RoleCode == "MANAGER" && cmd.IsAllSkill)
+            throw new UnauthorizedAccessException("Manager không được cấp quyền 'tất cả skill'.");
 
         // ── Bước 3: Validate scope của MANAGER ───────────────────────────────
         if (caller.RoleCode == "MANAGER")
         {
             if (!caller.IsAllSkill && cmd.SkillIds.Any(id => !caller.SkillIds.Contains(id)))
                 throw new UnauthorizedAccessException("Bạn đang gán skill nằm ngoài phạm vi quản lý của mình.");
-
-            if (!caller.IsAllZone && cmd.ZoneIds.Any(id => !caller.ZoneIds.Contains(id)))
-                throw new UnauthorizedAccessException("Bạn đang gán zone nằm ngoài phạm vi quản lý của mình.");
         }
 
         // ── Bước 4: Cập nhật membership ──────────────────────────────────────
@@ -52,9 +48,7 @@ public class ReassignMembershipHandler : IRequestHandler<ReassignMembershipComma
             MembershipId   = cmd.TargetMembershipId,
             TargetRoleCode = cmd.TargetRoleCode,
             IsAllSkill     = cmd.IsAllSkill,
-            IsAllZone      = cmd.IsAllZone,
             SkillIds       = cmd.IsAllSkill ? new() : cmd.SkillIds,
-            ZoneIds        = cmd.IsAllZone  ? new() : cmd.ZoneIds,
         }, ct);
 
         return Unit.Value;

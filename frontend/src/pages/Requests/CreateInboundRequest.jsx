@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
+import renterAssetService from '../../services/renterAssetService';
 
 const FIELD = ({ label, children }) => (
   <div className="flex flex-col gap-1.5">
@@ -38,17 +39,24 @@ const CreateInboundRequest = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Asset catalogue
+  const [assets, setAssets] = useState([]);
+  const [loadingAssets, setLoadingAssets] = useState(false);
+  const [isNewAsset, setIsNewAsset] = useState(false);
+
   // Document upload state
-  const [docFiles, setDocFiles] = useState([]); // { file, name, size, previewUrl? }
+  const [docFiles, setDocFiles] = useState([]);
   const [uploadingDocs, setUploadingDocs] = useState(false);
-  const [uploadedUrls, setUploadedUrls] = useState([]); // URLs sau khi upload
+  const [uploadedUrls, setUploadedUrls] = useState([]);
   const [dragOver, setDragOver] = useState(false);
 
   const [form, setForm] = useState({
     warehouseId: '',
+    assetId: '',
     qty: 1,
-    unit: 'Pallet',
+    unit: 'cái',
     itemName: '',
+    weightPerUnit: '',
     description: '',
     notes: '',
   });
@@ -74,6 +82,38 @@ const CreateInboundRequest = () => {
       .finally(() => setLoadingWH(false));
   }, []);
 
+  // Tải danh sách tài sản (catalogue) khi mount
+  useEffect(() => {
+    setLoadingAssets(true);
+    renterAssetService.getMyAssets()
+      .then(res => setAssets(Array.isArray(res.data) ? res.data : []))
+      .catch(() => setAssets([]))
+      .finally(() => setLoadingAssets(false));
+  }, []);
+
+  // Khi chọn asset → autofill unit, weight
+  const handleAssetChange = (e) => {
+    const assetId = e.target.value;
+    if (assetId === '__new__') {
+      setIsNewAsset(true);
+      setForm(f => ({ ...f, assetId: '', itemName: '', unit: 'cái', weightPerUnit: '' }));
+    } else {
+      setIsNewAsset(false);
+      const asset = assets.find(a => String(a.assetId) === assetId);
+      if (asset) {
+        setForm(f => ({
+          ...f,
+          assetId: String(asset.assetId),
+          itemName: asset.assetName,
+          unit: asset.unit || 'cái',
+          weightPerUnit: asset.weightPerUnit ?? '',
+        }));
+      } else {
+        setForm(f => ({ ...f, assetId: '', itemName: '' }));
+      }
+    }
+  };
+
   // ── File handling ──────────────────────────────────────────────────────────
   const ALLOWED_TYPES = [
     'application/pdf',
@@ -96,9 +136,9 @@ const CreateInboundRequest = () => {
     }
     setDocFiles(prev => {
       const combined = [...prev, ...valid.map(f => ({ file: f, name: f.name, size: f.size }))];
-      return combined.slice(0, 10); // max 10
+      return combined.slice(0, 10);
     });
-    setUploadedUrls([]); // reset uploaded URLs khi có file mới
+    setUploadedUrls([]);
   };
 
   const removeFile = (idx) => {
@@ -112,7 +152,6 @@ const CreateInboundRequest = () => {
     addFiles(e.dataTransfer.files);
   };
 
-  // Upload files rồi trả về URLs
   const uploadDocuments = async () => {
     if (docFiles.length === 0) return [];
     setUploadingDocs(true);
@@ -136,10 +175,25 @@ const CreateInboundRequest = () => {
     e.preventDefault();
     setError('');
     if (!form.warehouseId) { setError('Vui lòng chọn kho hàng.'); return; }
-    if (!form.itemName.trim()) { setError('Vui lòng nhập tên mặt hàng.'); return; }
+    if (!form.assetId && !form.itemName.trim()) { setError('Vui lòng chọn hoặc tạo tài sản mới.'); return; }
 
     setSubmitting(true);
     try {
+      // Nếu tạo tài sản mới → gọi API tạo trước
+      let assetId = form.assetId ? Number(form.assetId) : null;
+      if (isNewAsset && form.itemName.trim()) {
+        const createRes = await renterAssetService.createAsset({
+          assetName: form.itemName.trim(),
+          unit: form.unit,
+          weightPerUnit: form.weightPerUnit ? Number(form.weightPerUnit) : null,
+          description: form.description || null,
+        });
+        assetId = createRes.data.assetId;
+        // Refresh catalogue
+        const refreshed = await renterAssetService.getMyAssets();
+        setAssets(Array.isArray(refreshed.data) ? refreshed.data : []);
+      }
+
       // Upload chứng từ trước (nếu có)
       let documentUrls = uploadedUrls;
       if (docFiles.length > 0 && uploadedUrls.length === 0) {
@@ -152,9 +206,11 @@ const CreateInboundRequest = () => {
         notes: form.notes || null,
         documentUrls: documentUrls.length > 0 ? documentUrls : null,
         items: [{
+          assetId: assetId,
           itemName: form.itemName.trim(),
           quantity: Number(form.qty),
           unit: form.unit,
+          weight: form.weightPerUnit ? Number(form.weightPerUnit) * Number(form.qty) : null,
           description: form.description || null,
         }],
       });
@@ -185,8 +241,7 @@ const CreateInboundRequest = () => {
           <div>
             <p className="text-sm font-bold" style={{ color: '#00b2d6' }}>Kiểm tra trước khi nhập kho</p>
             <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-              Đảm bảo tất cả các mặt hàng đều được dán nhãn mã vạch phù hợp và tài liệu được đính kèm bên ngoài pallet
-              để xử lý nhanh chóng khi hàng đến.
+              Chọn tài sản từ danh mục hoặc tạo mới. Hệ thống sẽ tự động cập nhật tồn kho khi yêu cầu được xác nhận.
             </p>
           </div>
         </div>
@@ -237,16 +292,44 @@ const CreateInboundRequest = () => {
                 </div>
               </FIELD>
 
-              <FIELD label="Tên mặt hàng">
-                <input
-                  type="text"
-                  value={form.itemName}
-                  onChange={set('itemName')}
-                  placeholder="Nhập tên sản phẩm hoặc mã SKU"
-                  className={inputCls}
-                  required
-                />
+              <FIELD label="Chọn tài sản">
+                <div className="relative">
+                  {loadingAssets ? (
+                    <div className={inputCls + ' text-slate-400'}>Đang tải danh mục...</div>
+                  ) : (
+                    <select
+                      value={isNewAsset ? '__new__' : form.assetId}
+                      onChange={handleAssetChange}
+                      className={inputCls + ' appearance-none pr-10'}
+                    >
+                      <option value="">— Chọn từ danh mục tài sản —</option>
+                      {assets.map(a => (
+                        <option key={a.assetId} value={a.assetId}>
+                          {a.assetName} ({a.unit})
+                        </option>
+                      ))}
+                      <option value="__new__">➕ Tạo tài sản mới...</option>
+                    </select>
+                  )}
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    expand_more
+                  </span>
+                </div>
               </FIELD>
+
+              {/* Hiện fields tạo mới nếu chọn "Tạo tài sản mới" */}
+              {isNewAsset && (
+                <FIELD label="Tên tài sản mới">
+                  <input
+                    type="text"
+                    value={form.itemName}
+                    onChange={set('itemName')}
+                    placeholder="VD: Mì tôm Hảo Hảo 75g"
+                    className={inputCls}
+                    required
+                  />
+                </FIELD>
+              )}
 
               <FIELD label="Mô tả mặt hàng">
                 <textarea
@@ -274,23 +357,33 @@ const CreateInboundRequest = () => {
                   />
                 </FIELD>
                 <FIELD label="Đơn vị">
-                  <div className="relative">
-                    <select
+                  {isNewAsset ? (
+                    <input
+                      type="text"
                       value={form.unit}
                       onChange={set('unit')}
-                      className={inputCls + ' appearance-none pr-10'}
-                    >
-                      <option>Pallet</option>
-                      <option>Thùng</option>
-                      <option>Kiện</option>
-                      <option>Chiếc</option>
-                    </select>
-                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                      expand_more
-                    </span>
-                  </div>
+                      placeholder="cái, kg, thùng..."
+                      className={inputCls}
+                    />
+                  ) : (
+                    <div className={inputCls + ' bg-slate-100 text-slate-600'}>{form.unit || 'cái'}</div>
+                  )}
                 </FIELD>
               </div>
+
+              {isNewAsset && (
+                <FIELD label="Khối lượng / đơn vị (kg)">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.weightPerUnit}
+                    onChange={set('weightPerUnit')}
+                    placeholder="Tuỳ chọn"
+                    className={inputCls}
+                  />
+                </FIELD>
+              )}
 
               <FIELD label="Ghi chú lô hàng">
                 <textarea
@@ -388,7 +481,6 @@ const CreateInboundRequest = () => {
                   );
                 })}
 
-                {/* Upload button (tuỳ chọn - upload sẽ tự động khi submit) */}
                 {uploadedUrls.length === 0 && (
                   <div className="flex items-center gap-2 mt-3">
                     <div className="h-px flex-1" style={{ backgroundColor: '#e2e8f0' }} />

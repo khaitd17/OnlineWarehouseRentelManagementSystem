@@ -34,9 +34,11 @@ public class ApproveAuditSessionHandler : IRequestHandler<ApproveAuditSessionCom
         // Kiểm tra nhân viên được gán
         var staffMembership = await _db.WarehouseMemberships
             .Include(m => m.User)
+            .Include(m => m.Role)
             .FirstOrDefaultAsync(m => m.UserId == request.AssignedTo
                 && m.WarehouseId == session.WarehouseId
-                && m.IsActive, cancellationToken);
+                && m.IsActive
+                && m.Role.Code == "STAFF", cancellationToken);
 
         if (staffMembership == null)
             return ApiResponse<bool>.ErrorResponse("Nhân viên được chọn không thuộc kho này hoặc đã bị vô hiệu hóa.");

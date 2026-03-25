@@ -55,7 +55,8 @@ builder.Services.AddSwaggerGen(c =>
 
 // Database Context - merged from ScaffoldModels
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
 // MediatR Registration - scan tất cả handlers trong Application assembly
 builder.Services.AddMediatR(cfg =>
@@ -89,6 +90,9 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.In
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
+builder.Services.AddScoped<IRenterAssetRepository, RenterAssetRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -171,6 +175,7 @@ using (var scope = app.Services.CreateScope())
     {
         logger.LogError(ex, "An error occurred while initializing the database: {Message}", ex.Message);
         // We log the error but allow the application to continue starting
+        logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi (có thể data đã tồn tại hoặc SQL Server chưa sẵn sàng). Backend vẫn tiếp tục chạy.");
     }
 }
 

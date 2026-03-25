@@ -20,4 +20,11 @@ public partial class InventoryItem
     public string? Description { get; set; }
 
     public virtual InventoryRequest InvReq { get; set; } = null!;
+
+    /// <summary>
+    /// FK về catalogue tài sản (nullable — tương thích ngược với dữ liệu cũ).
+    /// Khi có giá trị: hệ thống có thể cộng/trừ tồn kho chính xác theo asset.
+    /// </summary>
+    public int? AssetId { get; set; }
+    public virtual RenterAsset? Asset { get; set; }
 }

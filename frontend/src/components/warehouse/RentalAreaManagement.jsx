@@ -289,8 +289,8 @@ const RentalAreaManagement = ({ warehouseId }) => {
   if (loading) return <p style={{ color: "#64748b" }}>Đang tải sơ đồ 2D...</p>;
 
   // Grid dimensions
-  const whW = warehouse?.width || 50; 
-  const whL = warehouse?.length || 50;
+  const whW = (warehouse?.width ?? warehouse?.Width) || 50; 
+  const whL = (warehouse?.length ?? warehouse?.Length) || 50;
   const inUseCount = areas.filter(a => a.status?.toUpperCase() === 'RENTED').length;
   const currentTotal = areas.reduce((s, a) => s + (a.size || 0), 0);
   

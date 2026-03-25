@@ -76,25 +76,15 @@ public class AuthController : ControllerBase
             .Include(m => m.Warehouse)
             .Include(m => m.Role)
             .Include(m => m.Skills)
-            .Include(m => m.Zones)
             .ToListAsync();
 
-        var warehouseItems = memberships.Select(m =>
+        var warehouseItems = memberships.Select(m => new
         {
-            // Group zones by skill: each skill gets the list of all zone codes in this membership
-            var skillEntries = m.Skills.Select(skill => new
-            {
-                skill = skill.Code,
-                zones = m.Zones.Select(z => z.Code).ToList()
-            }).ToList();
-
-            return new
-            {
-                warehouseId   = m.WarehouseId,
-                warehouseName = m.Warehouse.Name,
-                role          = m.Role.Code,
-                skills        = skillEntries
-            };
+            warehouseId   = m.WarehouseId,
+            warehouseName = m.Warehouse.Name,
+            role          = m.Role.Code,
+            skills        = m.Skills.Select(skill => skill.Code).ToList(),
+            isAllSkill    = m.IsAllSkill,
         }).ToList();
 
         var context = new

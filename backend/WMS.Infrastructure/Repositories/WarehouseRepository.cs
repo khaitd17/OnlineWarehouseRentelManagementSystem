@@ -84,6 +84,7 @@ public async Task<Warehouse?> GetByIdAsync(
         OpenTime = entity.OpenTime,
         CloseTime = entity.CloseTime,
         MainDoorDirection = entity.MainDoorDirection,
+        PricePerM2 = entity.PricePerM2,
         Status = entity.Status ?? "UNKNOWN",
         CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
         WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
@@ -133,6 +134,7 @@ public async Task<Warehouse?> GetByIdAsync(
             OpenTime = entity.OpenTime,
             CloseTime = entity.CloseTime,
             MainDoorDirection = entity.MainDoorDirection,
+            PricePerM2 = entity.PricePerM2,
             Status = entity.Status ?? "UNKNOWN",
             CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
             WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
@@ -159,6 +161,10 @@ public async Task<Warehouse?> GetByIdAsync(
         entity.Lat = warehouse.Lat;
         entity.Lng = warehouse.Lng;
         entity.Description = warehouse.Description;
+        entity.TotalArea = warehouse.TotalArea;
+        entity.Width = warehouse.Width;
+        entity.Length = warehouse.Length;
+        entity.AvailableArea = warehouse.AvailableArea;
         entity.OperatingHours = warehouse.OperatingHours;
         entity.Is24HoursAccess = warehouse.Is24HoursAccess;
         entity.OpenTime = warehouse.OpenTime;
@@ -185,6 +191,17 @@ public async Task<Warehouse?> GetByIdAsync(
         if (entity != null)
         {
             entity.Status = "DELETED";
+            
+            // Soft delete all associated equipments
+            var equipments = await _context.Equipments
+                .Where(e => e.WarehouseId == warehouseId)
+                .ToListAsync(cancellationToken);
+                
+            foreach (var equipment in equipments)
+            {
+                equipment.Status = "DELETED";
+            }
+
             await _context.SaveChangesAsync(cancellationToken);
         }
     }
@@ -216,6 +233,7 @@ public async Task<Warehouse?> GetByIdAsync(
             Is24HoursAccess = entity.Is24HoursAccess,
             OpenTime = entity.OpenTime,
             CloseTime = entity.CloseTime,
+            PricePerM2 = entity.PricePerM2,
             Status = entity.Status ?? "UNKNOWN",
             CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
             WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium

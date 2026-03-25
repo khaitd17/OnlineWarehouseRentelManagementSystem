@@ -19,17 +19,20 @@ public class ConfirmInventoryRequestHandler
     private readonly IWarehouseInventoryRepository _invRepo;
     private readonly IInventoryTransactionRepository _txRepo;
     private readonly IWarehouseRepository _warehouseRepo;
+    private readonly IRenterAssetRepository _assetRepo;
 
     public ConfirmInventoryRequestHandler(
         IInventoryRequestRepository repo,
         IWarehouseInventoryRepository invRepo,
         IInventoryTransactionRepository txRepo,
-        IWarehouseRepository warehouseRepo)
+        IWarehouseRepository warehouseRepo,
+        IRenterAssetRepository assetRepo)
     {
-        _repo    = repo;
-        _invRepo = invRepo;
-        _txRepo  = txRepo;
+        _repo          = repo;
+        _invRepo       = invRepo;
+        _txRepo        = txRepo;
         _warehouseRepo = warehouseRepo;
+        _assetRepo     = assetRepo;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -48,19 +51,26 @@ public class ConfirmInventoryRequestHandler
                 $"Không thể thực hiện giao dịch: Kho hiện đang đóng cửa. Giờ hoạt động: {timeStr}.");
         }
 
-        // 2. Validate status
-        if (req.Status != "PENDING")
+        // 2. Validate status — must be ASSIGNED for Staff to confirm
+        if (req.Status != "ASSIGNED")
             throw new InvalidOperationException(
-                $"Request is already '{req.Status}' and cannot be confirmed.");
+                $"Chỉ có thể xác nhận yêu cầu đã được giao (ASSIGNED). Trạng thái hiện tại: '{req.Status}'.");
 
         // 3. For each item: check/update inventory and create transaction
         foreach (var item in req.InventoryItems)
         {
             int delta = req.Type == "OUTBOUND" ? -item.Quantity : item.Quantity;
 
-            // This throws if OUTBOUND and insufficient stock
+            // Update warehouse_inventory (text-based, backward compatible)
             await _invRepo.AdjustQuantityAsync(
                 req.WarehouseId, item.ItemName, item.Unit, delta, cancellationToken);
+
+            // Update renter_inventory (asset-based) if item has AssetId
+            if (item.AssetId.HasValue && item.AssetId.Value > 0)
+            {
+                await _assetRepo.AdjustRenterInventoryAsync(
+                    item.AssetId.Value, req.WarehouseId, delta, cancellationToken);
+            }
 
             // 4. Create transaction record per item
             await _txRepo.CreateAsync(new InventoryTransaction

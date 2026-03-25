@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
+import renterAssetService from '../../services/renterAssetService';
 
 const FIELD = ({ label, children }) => (
   <div className="flex flex-col gap-1.5">
@@ -21,15 +22,23 @@ const CreateOutboundRequest = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Tồn kho tại warehouse đã chọn
+  const [inventory, setInventory] = useState([]);
+  const [loadingInv, setLoadingInv] = useState(false);
+
   const [form, setForm] = useState({
     warehouseId: '',
+    assetId: '',
     itemName: '',
     qty: 1,
-    unit: 'Pallet',
+    unit: 'cái',
     destination: '',
     description: '',
     notes: '',
   });
+
+  // Số lượng tồn kho hiện tại của asset đã chọn
+  const [availableQty, setAvailableQty] = useState(null);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -53,11 +62,52 @@ const CreateOutboundRequest = () => {
       .finally(() => setLoadingWH(false));
   }, []);
 
+  // Khi chọn warehouse → load tồn kho tại warehouse đó
+  useEffect(() => {
+    if (!form.warehouseId) {
+      setInventory([]);
+      return;
+    }
+    setLoadingInv(true);
+    setForm(f => ({ ...f, assetId: '', itemName: '', unit: 'cái' }));
+    setAvailableQty(null);
+    renterAssetService.getInventoryByWarehouse(Number(form.warehouseId))
+      .then(res => {
+        const inv = Array.isArray(res.data) ? res.data : [];
+        // Chỉ hiện asset có qty > 0
+        setInventory(inv.filter(i => i.quantity > 0));
+      })
+      .catch(() => setInventory([]))
+      .finally(() => setLoadingInv(false));
+  }, [form.warehouseId]);
+
+  // Khi chọn asset → autofill + hiện tồn kho
+  const handleAssetChange = (e) => {
+    const assetId = e.target.value;
+    const item = inventory.find(i => String(i.assetId) === assetId);
+    if (item) {
+      setForm(f => ({
+        ...f,
+        assetId: String(item.assetId),
+        itemName: item.assetName,
+        unit: item.unit || 'cái',
+      }));
+      setAvailableQty(item.quantity);
+    } else {
+      setForm(f => ({ ...f, assetId: '', itemName: '', unit: 'cái' }));
+      setAvailableQty(null);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     if (!form.warehouseId) { setError('Vui lòng chọn kho xuất hàng.'); return; }
-    if (!form.itemName.trim()) { setError('Vui lòng nhập tên mặt hàng.'); return; }
+    if (!form.assetId) { setError('Vui lòng chọn tài sản cần xuất.'); return; }
+    if (availableQty !== null && Number(form.qty) > availableQty) {
+      setError(`Số lượng xuất (${form.qty}) vượt quá tồn kho (${availableQty}).`);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -66,7 +116,8 @@ const CreateOutboundRequest = () => {
         type: 'OUTBOUND',
         notes: form.notes || null,
         items: [{
-          itemName: form.itemName.trim(),
+          assetId: Number(form.assetId),
+          itemName: form.itemName,
           quantity: Number(form.qty),
           unit: form.unit,
           description: form.description || null,
@@ -99,8 +150,8 @@ const CreateOutboundRequest = () => {
           <div>
             <p className="text-sm font-bold text-amber-700">Kiểm tra trước khi xuất kho</p>
             <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-              Đảm bảo hàng hóa đã được kiểm đếm chính xác, đóng gói đúng quy cách và tài liệu vận chuyển đầy đủ trước
-              khi xác nhận xuất kho.
+              Chỉ những tài sản có tồn kho tại warehouse đã chọn mới hiện trong danh sách.
+              Số lượng xuất không được vượt quá tồn kho hiện có.
             </p>
           </div>
         </div>
@@ -151,20 +202,42 @@ const CreateOutboundRequest = () => {
                 </div>
               </FIELD>
 
-              <FIELD label="Tên mặt hàng / SKU">
+              <FIELD label="Chọn tài sản xuất kho">
                 <div className="relative">
-                  <input
-                    type="text"
-                    value={form.itemName}
-                    onChange={set('itemName')}
-                    placeholder="vd. LAPTOP-X1-CARBON hoặc SKU-9902"
-                    className={inputCls + ' pr-10'}
-                    required
-                  />
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
-                    inventory_2
+                  {loadingInv ? (
+                    <div className={inputCls + ' text-slate-400'}>Đang tải tồn kho...</div>
+                  ) : !form.warehouseId ? (
+                    <div className={inputCls + ' text-slate-400'}>Vui lòng chọn kho trước</div>
+                  ) : inventory.length === 0 ? (
+                    <div className={inputCls + ' text-slate-400'}>Không có tài sản tồn kho tại kho này</div>
+                  ) : (
+                    <select
+                      value={form.assetId}
+                      onChange={handleAssetChange}
+                      className={inputCls + ' appearance-none pr-10'}
+                      required
+                    >
+                      <option value="">— Chọn tài sản —</option>
+                      {inventory.map(i => (
+                        <option key={i.assetId} value={i.assetId}>
+                          {i.assetName} — Tồn: {i.quantity} {i.unit}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                    expand_more
                   </span>
                 </div>
+                {/* Hiện badge tồn kho */}
+                {availableQty !== null && (
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[14px]" style={{ color: '#16a34a' }}>inventory_2</span>
+                    <span className="text-xs font-medium" style={{ color: '#16a34a' }}>
+                      Tồn kho: {availableQty} {form.unit}
+                    </span>
+                  </div>
+                )}
               </FIELD>
 
               <FIELD label="Mô tả hàng hóa">
@@ -186,28 +259,26 @@ const CreateOutboundRequest = () => {
                   <input
                     type="number"
                     min={1}
+                    max={availableQty ?? undefined}
                     value={form.qty}
-                    onChange={set('qty')}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setForm(f => ({ ...f, qty: e.target.value }));
+                      if (availableQty !== null && val > availableQty) {
+                        setError(`Vượt quá tồn kho (${availableQty}).`);
+                      } else {
+                        setError('');
+                      }
+                    }}
                     className={inputCls}
                     required
                   />
+                  {availableQty !== null && Number(form.qty) > availableQty && (
+                    <p className="text-xs text-red-500 mt-1">Vượt quá tồn kho!</p>
+                  )}
                 </FIELD>
                 <FIELD label="Đơn vị">
-                  <div className="relative">
-                    <select
-                      value={form.unit}
-                      onChange={set('unit')}
-                      className={inputCls + ' appearance-none pr-10'}
-                    >
-                      <option>Pallet</option>
-                      <option>Thùng</option>
-                      <option>Kiện</option>
-                      <option>Chiếc</option>
-                    </select>
-                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                      expand_more
-                    </span>
-                  </div>
+                  <div className={inputCls + ' bg-slate-100 text-slate-600'}>{form.unit || 'cái'}</div>
                 </FIELD>
               </div>
 
@@ -251,7 +322,7 @@ const CreateOutboundRequest = () => {
           </button>
           <button
             type="submit"
-            disabled={submitting || loadingWH}
+            disabled={submitting || loadingWH || (availableQty !== null && Number(form.qty) > availableQty)}
             className="px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all shadow-sm hover:opacity-90 flex items-center gap-2 disabled:opacity-60"
             style={{ backgroundColor: '#00b2d6' }}
           >

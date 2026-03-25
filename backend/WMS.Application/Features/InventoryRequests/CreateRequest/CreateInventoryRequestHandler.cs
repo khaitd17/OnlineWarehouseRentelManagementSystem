@@ -13,6 +13,9 @@ public record CreateInventoryItemInput
     public string Unit { get; init; } = "cái";
     public decimal? Weight { get; init; }
     public string? Description { get; init; }
+
+    /// <summary>FK về catalogue renter_assets (nếu chọn từ catalogue)</summary>
+    public int? AssetId { get; init; }
 }
 
 // ─── Command ─────────────────────────────────────────────────────────────────
@@ -33,15 +36,18 @@ public class CreateInventoryRequestHandler
     private readonly IInventoryRequestRepository _repo;
     private readonly IWarehouseInventoryRepository _invRepo;
     private readonly IWarehouseRepository _warehouseRepo;
+    private readonly IRenterAssetRepository _assetRepo;
 
     public CreateInventoryRequestHandler(
         IInventoryRequestRepository repo,
         IWarehouseInventoryRepository invRepo,
-        IWarehouseRepository warehouseRepo)
+        IWarehouseRepository warehouseRepo,
+        IRenterAssetRepository assetRepo)
     {
-        _repo    = repo;
-        _invRepo = invRepo;
+        _repo          = repo;
+        _invRepo       = invRepo;
         _warehouseRepo = warehouseRepo;
+        _assetRepo     = assetRepo;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -57,18 +63,63 @@ public class CreateInventoryRequestHandler
                 $"Kho hiện đang đóng cửa. Thời gian hoạt động: {timeStr}. Vui lòng thực hiện yêu cầu trong giờ làm việc.");
         }
 
-        // For OUTBOUND: pre-check each item's inventory before creating request
-        if (cmd.Type.ToUpper() == "OUTBOUND")
+        // Resolve asset info & build InventoryItems
+        var inventoryItems = new List<InventoryItem>();
+        foreach (var item in cmd.Items)
         {
-            foreach (var item in cmd.Items)
+            string itemName    = item.ItemName;
+            string unit        = item.Unit;
+            decimal? weight    = item.Weight;
+            int? assetId       = item.AssetId;
+
+            // If assetId provided, lookup catalogue to auto-fill
+            if (assetId.HasValue && assetId.Value > 0)
             {
-                var inv = await _invRepo.GetAsync(cmd.WarehouseId, item.ItemName, cancellationToken);
-                var available = inv?.Quantity ?? 0;
-                if (available < item.Quantity)
-                    throw new InvalidOperationException(
-                        $"Không đủ hàng tồn kho cho '{item.ItemName}'. " +
-                        $"Hiện có: {available}, yêu cầu: {item.Quantity}.");
+                var asset = await _assetRepo.GetByIdAsync(assetId.Value, cancellationToken);
+                if (asset == null)
+                    throw new KeyNotFoundException($"Asset #{assetId.Value} không tồn tại.");
+                if (asset.RenterId != cmd.RenterId)
+                    throw new UnauthorizedAccessException($"Asset #{assetId.Value} không thuộc về bạn.");
+
+                itemName = asset.AssetName;
+                unit     = asset.Unit;
+                weight   = asset.WeightPerUnit.HasValue ? asset.WeightPerUnit * item.Quantity : item.Weight;
             }
+
+            // OUTBOUND: check stock
+            if (cmd.Type.ToUpper() == "OUTBOUND")
+            {
+                if (assetId.HasValue && assetId.Value > 0)
+                {
+                    // Check renter_inventory
+                    var inventory = await _assetRepo.GetInventoryByWarehouseAsync(
+                        cmd.RenterId, cmd.WarehouseId, cancellationToken);
+                    var ri = inventory.FirstOrDefault(x => x.AssetId == assetId.Value);
+                    var available = ri?.Quantity ?? 0;
+                    if (available < item.Quantity)
+                        throw new InvalidOperationException(
+                            $"Không đủ tồn kho cho '{itemName}'. Hiện có: {available}, yêu cầu: {item.Quantity}.");
+                }
+                else
+                {
+                    // Fallback: check warehouse_inventory (text-based)
+                    var inv = await _invRepo.GetAsync(cmd.WarehouseId, itemName, cancellationToken);
+                    var available = inv?.Quantity ?? 0;
+                    if (available < item.Quantity)
+                        throw new InvalidOperationException(
+                            $"Không đủ hàng tồn kho cho '{itemName}'. Hiện có: {available}, yêu cầu: {item.Quantity}.");
+                }
+            }
+
+            inventoryItems.Add(new InventoryItem
+            {
+                ItemName    = itemName,
+                Quantity    = item.Quantity,
+                Unit        = unit,
+                Weight      = weight,
+                Description = item.Description,
+                AssetId     = assetId,
+            });
         }
 
         var request = new InventoryRequest
@@ -80,15 +131,8 @@ public class CreateInventoryRequestHandler
             DocumentUrls = cmd.DocumentUrls != null && cmd.DocumentUrls.Count > 0
                 ? System.Text.Json.JsonSerializer.Serialize(cmd.DocumentUrls)
                 : null,
-            Status      = "PENDING",
-            InventoryItems = cmd.Items.Select(i => new InventoryItem
-            {
-                ItemName    = i.ItemName,
-                Quantity    = i.Quantity,
-                Unit        = i.Unit,
-                Weight      = i.Weight,
-                Description = i.Description,
-            }).ToList()
+            Status         = "PENDING",
+            InventoryItems = inventoryItems,
         };
 
         var created = await _repo.CreateAsync(request, cancellationToken);

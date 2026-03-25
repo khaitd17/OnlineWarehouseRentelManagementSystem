@@ -134,4 +134,7 @@ public class RentalContract
     public bool IsActive => Status == "ACTIVE";
     public bool IsExpired => Status == "EXPIRED";
     public bool IsTerminated => Status == "TERMINATED";
+
+    public virtual ICollection<Equipment> IncludedEquipments { get; set; } = new List<Equipment>();
+    public virtual ICollection<EquipmentHistory> EquipmentUsageLogs { get; set; } = new List<EquipmentHistory>();
 }

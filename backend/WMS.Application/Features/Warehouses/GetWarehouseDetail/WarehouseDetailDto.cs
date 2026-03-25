@@ -25,6 +25,8 @@ public class WarehouseDetailDto
 
     public double AvailableArea { get; set; }
 
+    public decimal? PricePerM2 { get; set; }
+
     public string? OperatingHours { get; set; }
 
     public bool Is24HoursAccess { get; set; }

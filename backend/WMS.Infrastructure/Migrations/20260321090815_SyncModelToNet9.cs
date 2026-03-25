@@ -37,6 +37,43 @@ namespace WMS.Infrastructure.Migrations
                     ALTER TABLE [inventory_requests] ADD [document_urls] NVARCHAR(MAX) NULL;
                 END
             ");
+            // migrationBuilder.DropColumn(
+            //     name: "LegalStatus",
+            //     table: "warehouses");
+
+            // migrationBuilder.DropColumn(
+            //     name: "Length",
+            //     table: "warehouses");
+
+            // migrationBuilder.DropColumn(
+            //     name: "MainDoorDirection",
+            //     table: "warehouses");
+
+            // migrationBuilder.DropColumn(
+            //     name: "Width",
+            //     table: "warehouses");
+
+            // migrationBuilder.DropColumn(
+            //     name: "close_time",
+            //     table: "warehouses");
+
+            // migrationBuilder.DropColumn(
+            //     name: "has_zone",
+            //     table: "warehouses");
+
+            // migrationBuilder.DropColumn(
+            //     name: "is_24_hours_access",
+            //     table: "warehouses");
+
+            // migrationBuilder.DropColumn(
+            //     name: "open_time",
+            //     table: "warehouses");
+
+            // migrationBuilder.AddColumn<string>(
+            //     name: "document_urls",
+            //     table: "inventory_requests",
+            //     type: "nvarchar(max)",
+            //     nullable: true);
         }
 
         /// <inheritdoc />

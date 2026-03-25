@@ -46,11 +46,11 @@ export default function StaffAuditSessionDetailPage() {
 
   useEffect(() => { fetchResults(); }, [fetchResults]);
 
-  // Fetch warehouse inventory when modal opens
-  const fetchInventory = async (warehouseId) => {
+  // Fetch items to audit based on session creator
+  const fetchInventory = async () => {
     setInventoryLoading(true);
     try {
-      const res = await adminService.getWarehouseInventory(warehouseId);
+      const res = await adminService.getAuditSessionInventory(id);
       if (res.data.success) setInventoryItems(res.data.data || []);
       else setInventoryItems([]);
     } catch { setInventoryItems([]); }
@@ -59,7 +59,7 @@ export default function StaffAuditSessionDetailPage() {
 
   const openRecordModal = () => {
     setRecordModal({ ...defaultRecordModal, open: true });
-    if (session?.warehouseId) fetchInventory(session.warehouseId);
+    fetchInventory();
   };
 
   // Record results

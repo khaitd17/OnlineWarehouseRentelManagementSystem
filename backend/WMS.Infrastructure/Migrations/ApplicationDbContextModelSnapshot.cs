@@ -397,6 +397,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("location");
 
+                    b.Property<int?>("MaintenanceCycleDays")
+                        .HasColumnType("int")
+                        .HasColumnName("maintenance_cycle_days");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -407,9 +411,22 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("date")
                         .HasColumnName("next_maintenance_date");
 
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("note");
+
                     b.Property<DateOnly?>("PurchaseDate")
                         .HasColumnType("date")
                         .HasColumnName("purchase_date");
+
+                    b.Property<int?>("RentalAreaId")
+                        .HasColumnType("int")
+                        .HasColumnName("rental_area_id");
+
+                    b.Property<string>("SerialNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("serial_number");
 
                     b.Property<string>("Specifications")
                         .HasColumnType("nvarchar(max)")
@@ -419,7 +436,7 @@ namespace WMS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("ACTIVE")
+                        .HasDefaultValue("AVAILABLE")
                         .HasColumnName("status");
 
                     b.Property<string>("Type")
@@ -440,6 +457,8 @@ namespace WMS.Infrastructure.Migrations
                     b.HasKey("EquipmentId")
                         .HasName("PK__equipmen__197068AFB451FEC1");
 
+                    b.HasIndex(new[] { "RentalAreaId" }, "idx_equipments_area");
+
                     b.HasIndex(new[] { "IotDeviceId" }, "idx_equipments_iot");
 
                     b.HasIndex(new[] { "Status" }, "idx_equipments_status");
@@ -454,6 +473,96 @@ namespace WMS.Infrastructure.Migrations
                     b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.EquipmentHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("ChangedBy")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ContractId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("EquipmentId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NewRentalAreaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NewStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("PreviousRentalAreaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContractId");
+
+                    b.HasIndex("EquipmentId");
+
+                    b.ToTable("equipment_histories", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.EquipmentMaintenanceRecord", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("EquipmentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("MaintenanceDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MaintenanceType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Note")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PerformedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResolutionStatus")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("TotalCost")
+                        .HasColumnType("decimal(15, 2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EquipmentId");
+
+                    b.ToTable("equipment_maintenance_records", (string)null);
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.InventoryItem", b =>
                 {
                     b.Property<int>("ItemId")
@@ -462,6 +571,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("item_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ItemId"));
+
+                    b.Property<int?>("AssetId")
+                        .HasColumnType("int")
+                        .HasColumnName("asset_id");
 
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)")
@@ -494,6 +607,8 @@ namespace WMS.Infrastructure.Migrations
                     b.HasKey("ItemId")
                         .HasName("PK__inventor__52020FDDDDD8B22E");
 
+                    b.HasIndex(new[] { "AssetId" }, "idx_inventory_items_asset");
+
                     b.HasIndex(new[] { "InvReqId" }, "idx_inventory_items_request");
 
                     b.ToTable("inventory_items", (string)null);
@@ -507,6 +622,18 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("inv_req_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InvReqId"));
+
+                    b.Property<DateTime?>("AssignedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("assigned_at");
+
+                    b.Property<string>("AssignedNote")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("assigned_note");
+
+                    b.Property<int?>("AssignedStaffId")
+                        .HasColumnType("int")
+                        .HasColumnName("assigned_staff_id");
 
                     b.Property<DateTime?>("ConfirmedAt")
                         .HasColumnType("datetime2")
@@ -559,6 +686,8 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasKey("InvReqId")
                         .HasName("PK__inventor__A56BE5DEA2C9FF70");
+
+                    b.HasIndex("AssignedStaffId");
 
                     b.HasIndex("ConfirmedBy");
 
@@ -928,7 +1057,8 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("description");
 
                     b.Property<double?>("Length")
-                        .HasColumnType("float");
+                        .HasColumnType("float")
+                        .HasColumnName("Length");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -937,10 +1067,12 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("name");
 
                     b.Property<double?>("PositionX")
-                        .HasColumnType("float");
+                        .HasColumnType("float")
+                        .HasColumnName("PositionX");
 
                     b.Property<double?>("PositionY")
-                        .HasColumnType("float");
+                        .HasColumnType("float")
+                        .HasColumnName("PositionY");
 
                     b.Property<double>("Size")
                         .HasColumnType("float")
@@ -951,7 +1083,8 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("warehouse_id");
 
                     b.Property<double?>("Width")
-                        .HasColumnType("float");
+                        .HasColumnType("float")
+                        .HasColumnName("Width");
 
                     b.HasKey("Id");
 
@@ -991,6 +1124,9 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<string>("RejectionReason")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("rejection_reason");
+
+                    b.Property<int?>("RentalAreaId")
+                        .HasColumnType("int");
 
                     b.Property<int>("RenterId")
                         .HasColumnType("int")
@@ -1033,6 +1169,8 @@ namespace WMS.Infrastructure.Migrations
                     b.HasKey("RequestId")
                         .HasName("PK__rental_r__18D3B90F92B6C93A");
 
+                    b.HasIndex("RentalAreaId");
+
                     b.HasIndex("ReviewedBy");
 
                     b.HasIndex(new[] { "CreatedAt" }, "idx_rental_requests_created_at");
@@ -1049,6 +1187,95 @@ namespace WMS.Infrastructure.Migrations
                         });
 
                     b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.RenterAsset", b =>
+                {
+                    b.Property<int>("AssetId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("asset_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AssetId"));
+
+                    b.Property<string>("AssetName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)")
+                        .HasColumnName("asset_name");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("RenterId")
+                        .HasColumnType("int")
+                        .HasColumnName("renter_id");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("cái")
+                        .HasColumnName("unit");
+
+                    b.Property<decimal?>("WeightPerUnit")
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("weight_per_unit");
+
+                    b.HasKey("AssetId")
+                        .HasName("PK_renter_assets");
+
+                    b.HasIndex(new[] { "RenterId" }, "idx_ra_renter");
+
+                    b.ToTable("renter_assets", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.RenterInventory", b =>
+                {
+                    b.Property<int>("InventoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("inventory_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("InventoryId"));
+
+                    b.Property<int>("AssetId")
+                        .HasColumnType("int")
+                        .HasColumnName("asset_id");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("InventoryId")
+                        .HasName("PK_renter_inventory");
+
+                    b.HasIndex(new[] { "AssetId", "WarehouseId" }, "UQ_renter_inventory")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "AssetId" }, "idx_ri_asset");
+
+                    b.HasIndex(new[] { "WarehouseId" }, "idx_ri_warehouse");
+
+                    b.ToTable("renter_inventory", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.Role", b =>
@@ -1244,6 +1471,35 @@ namespace WMS.Infrastructure.Migrations
                     b.HasIndex("SkillId");
 
                     b.ToTable("task_types", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.UnitTask", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("WarehouseTaskId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WarehouseTaskId");
+
+                    b.ToTable("UnitTask");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.User", b =>
@@ -1536,6 +1792,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("float")
                         .HasColumnName("available_area");
 
+                    b.Property<TimeSpan?>("CloseTime")
+                        .HasColumnType("time")
+                        .HasColumnName("close_time");
+
                     b.Property<DateTime?>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -1546,19 +1806,35 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
 
+                    b.Property<bool>("Is24HoursAccess")
+                        .HasColumnType("bit")
+                        .HasColumnName("is_24_hours_access");
+
                     b.Property<double?>("Lat")
                         .HasColumnType("float")
                         .HasColumnName("lat");
 
+                    b.Property<double?>("Length")
+                        .HasColumnType("float")
+                        .HasColumnName("Length");
+
                     b.Property<double?>("Lng")
                         .HasColumnType("float")
                         .HasColumnName("lng");
+
+                    b.Property<string>("MainDoorDirection")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("MainDoorDirection");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("name");
+
+                    b.Property<TimeSpan?>("OpenTime")
+                        .HasColumnType("time")
+                        .HasColumnName("open_time");
 
                     b.Property<string>("OperatingHours")
                         .HasMaxLength(100)
@@ -1568,6 +1844,9 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<int>("OwnerId")
                         .HasColumnType("int")
                         .HasColumnName("owner_id");
+
+                    b.Property<decimal?>("PricePerM2")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("RejectionReason")
                         .HasColumnType("nvarchar(max)")
@@ -1589,6 +1868,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("(getdate())");
+
+                    b.Property<double?>("Width")
+                        .HasColumnType("float")
+                        .HasColumnName("Width");
 
                     b.HasKey("WarehouseId")
                         .HasName("PK__warehous__734FE6BFFBD35973");
@@ -1949,6 +2232,9 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("warehouse_id");
 
+                    b.Property<int>("referenceId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("TaskTypeId");
@@ -2004,6 +2290,21 @@ namespace WMS.Infrastructure.Migrations
                     b.HasIndex("WarehouseId");
 
                     b.ToTable("zones", (string)null);
+                });
+
+            modelBuilder.Entity("rental_contract_equipments", b =>
+                {
+                    b.Property<int>("contract_id")
+                        .HasColumnType("int");
+
+                    b.Property<int>("equipment_id")
+                        .HasColumnType("int");
+
+                    b.HasKey("contract_id", "equipment_id");
+
+                    b.HasIndex("equipment_id");
+
+                    b.ToTable("rental_contract_equipments");
                 });
 
             modelBuilder.Entity("task_zones", b =>
@@ -2127,6 +2428,12 @@ namespace WMS.Infrastructure.Migrations
 
             modelBuilder.Entity("WMS.Domain.Entities.Equipment", b =>
                 {
+                    b.HasOne("WMS.Domain.Entities.RentalArea", "RentalArea")
+                        .WithMany("Equipments")
+                        .HasForeignKey("RentalAreaId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_equipments_rental_area");
+
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany("Equipment")
                         .HasForeignKey("WarehouseId")
@@ -2134,11 +2441,48 @@ namespace WMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_equipments_warehouse");
 
+                    b.Navigation("RentalArea");
+
                     b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.EquipmentHistory", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.Contract", "Contract")
+                        .WithMany("EquipmentUsageLogs")
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("WMS.Domain.Entities.Equipment", "Equipment")
+                        .WithMany("History")
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Contract");
+
+                    b.Navigation("Equipment");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.EquipmentMaintenanceRecord", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.Equipment", "Equipment")
+                        .WithMany("MaintenanceRecords")
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Equipment");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.InventoryItem", b =>
                 {
+                    b.HasOne("WMS.Domain.Entities.RenterAsset", "Asset")
+                        .WithMany("InventoryItems")
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_inventory_items_asset");
+
                     b.HasOne("WMS.Domain.Entities.InventoryRequest", "InvReq")
                         .WithMany("InventoryItems")
                         .HasForeignKey("InvReqId")
@@ -2146,11 +2490,18 @@ namespace WMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_inventory_items_request");
 
+                    b.Navigation("Asset");
+
                     b.Navigation("InvReq");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.InventoryRequest", b =>
                 {
+                    b.HasOne("WMS.Domain.Entities.User", "AssignedStaff")
+                        .WithMany()
+                        .HasForeignKey("AssignedStaffId")
+                        .HasConstraintName("FK_inventory_requests_assigned_staff");
+
                     b.HasOne("WMS.Domain.Entities.User", "ConfirmedByNavigation")
                         .WithMany("InventoryRequestConfirmedByNavigations")
                         .HasForeignKey("ConfirmedBy")
@@ -2168,6 +2519,8 @@ namespace WMS.Infrastructure.Migrations
                         .HasForeignKey("WarehouseId")
                         .IsRequired()
                         .HasConstraintName("FK_inventory_requests_warehouse");
+
+                    b.Navigation("AssignedStaff");
 
                     b.Navigation("ConfirmedByNavigation");
 
@@ -2284,6 +2637,11 @@ namespace WMS.Infrastructure.Migrations
 
             modelBuilder.Entity("WMS.Domain.Entities.RentalRequest", b =>
                 {
+                    b.HasOne("WMS.Domain.Entities.RentalArea", "RentalArea")
+                        .WithMany()
+                        .HasForeignKey("RentalAreaId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("WMS.Domain.Entities.User", "Renter")
                         .WithMany("RentalRequestRenters")
                         .HasForeignKey("RenterId")
@@ -2302,9 +2660,44 @@ namespace WMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_rental_requests_warehouse");
 
+                    b.Navigation("RentalArea");
+
                     b.Navigation("Renter");
 
                     b.Navigation("ReviewedByNavigation");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.RenterAsset", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.User", "Renter")
+                        .WithMany()
+                        .HasForeignKey("RenterId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_ra_renter");
+
+                    b.Navigation("Renter");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.RenterInventory", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.RenterAsset", "Asset")
+                        .WithMany("Inventories")
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_ri_asset");
+
+                    b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_ri_warehouse");
+
+                    b.Navigation("Asset");
 
                     b.Navigation("Warehouse");
                 });
@@ -2348,6 +2741,17 @@ namespace WMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("Skill");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.UnitTask", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.WarehouseTask", "WarehouseTask")
+                        .WithMany("UnitTasks")
+                        .HasForeignKey("WarehouseTaskId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("WarehouseTask");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.User", b =>
@@ -2497,6 +2901,21 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("rental_contract_equipments", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.Contract", null)
+                        .WithMany()
+                        .HasForeignKey("contract_id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WMS.Domain.Entities.Equipment", null)
+                        .WithMany()
+                        .HasForeignKey("equipment_id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("task_zones", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.WarehouseTask", null)
@@ -2549,9 +2968,18 @@ namespace WMS.Infrastructure.Migrations
 
             modelBuilder.Entity("WMS.Domain.Entities.Contract", b =>
                 {
+                    b.Navigation("EquipmentUsageLogs");
+
                     b.Navigation("Payments");
 
                     b.Navigation("Ratings");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.Equipment", b =>
+                {
+                    b.Navigation("History");
+
+                    b.Navigation("MaintenanceRecords");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.InventoryRequest", b =>
@@ -2559,9 +2987,21 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("InventoryItems");
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.RentalArea", b =>
+                {
+                    b.Navigation("Equipments");
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.RentalRequest", b =>
                 {
                     b.Navigation("Contracts");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.RenterAsset", b =>
+                {
+                    b.Navigation("Inventories");
+
+                    b.Navigation("InventoryItems");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.Role", b =>
@@ -2645,6 +3085,8 @@ namespace WMS.Infrastructure.Migrations
             modelBuilder.Entity("WMS.Domain.Entities.WarehouseTask", b =>
                 {
                     b.Navigation("Assignments");
+
+                    b.Navigation("UnitTasks");
                 });
 #pragma warning restore 612, 618
         }
