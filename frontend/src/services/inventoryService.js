@@ -39,7 +39,10 @@ const inventoryService = {
     return axiosClient.delete(`/InventoryRequests/${id}`);
   },
 
- 
+  /**
+   * Lịch sử chuyển khoản (thanh toán tiền thuê kho)
+   * params: { status, from, to, page, pageSize }
+   */
   getPaymentHistory: (params = {}) => {
     const { status, from, to, page = 1, pageSize = 20 } = params;
     const query = new URLSearchParams({ page, pageSize });
@@ -47,24 +50,6 @@ const inventoryService = {
     if (from)   query.append('from', from);
     if (to)     query.append('to', to);
     return axiosClient.get(`/payments/history?${query.toString()}`);
-  },
-  // ─── Luồng mới: xem tài sản tồn kho ─────────────────────────────────────────
-
-  /**
-   * Renter xem tất cả tài sản của mình (tồn kho hiện tại theo kho).
-   * @param {number|undefined} warehouseId - lọc theo kho (tuỳ chọn)
-   */
-  getRenterMyInventory: (warehouseId) => {
-    const query = warehouseId ? `?warehouseId=${warehouseId}` : '';
-    return axiosClient.get(`/RenterAssets/my-inventory${query}`);
-  },
-
-  /**
-   * Owner / Operator / Manager / Staff xem toàn bộ tài sản trong một kho (kể cả của nhiều renter).
-   * @param {number} warehouseId
-   */
-  getWarehouseInventoryForOwner: (warehouseId) => {
-    return axiosClient.get(`/RenterAssets/warehouse/${warehouseId}`);
   },
 };
 
