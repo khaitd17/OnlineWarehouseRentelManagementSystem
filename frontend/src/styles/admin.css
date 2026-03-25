@@ -165,6 +165,112 @@
   flex-direction: column;
 }
 
+/* ── Top Bar ── */
+.admin-topbar {
+  height: var(--admin-topbar-height);
+  background: #fff;
+  border-bottom: 1px solid #eef0f3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.admin-topbar-left {
+  flex: 1;
+}
+
+.admin-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-topbar-icon-btn {
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #6b7280;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-topbar-icon-btn:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.admin-topbar-divider {
+  width: 1px;
+  height: 28px;
+  background: #e5e7eb;
+  margin: 0 10px;
+}
+
+.admin-topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 10px;
+  transition: background 0.15s;
+}
+
+.admin-topbar-user:hover {
+  background: #f3f4f6;
+}
+
+.admin-topbar-user-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.admin-topbar-user-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.admin-topbar-user-role {
+  font-size: 11.5px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.admin-topbar-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1e40af, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  border: 2.5px solid #e5e7eb;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.admin-topbar-user:hover .admin-topbar-avatar {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
 .admin-content {
   flex: 1;
   padding: 24px;

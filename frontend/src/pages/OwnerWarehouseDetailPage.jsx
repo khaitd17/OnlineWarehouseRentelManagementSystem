@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/axiosClient";
+import ratingService from "../services/ratingService";
 import RentalAreaManagement from "../components/warehouse/RentalAreaManagement";
 
 // ─── Status helpers ────────────────────────────────────────────────────────
@@ -54,6 +55,7 @@ const TABS = [
   { id: "contracts", icon: "description",      label: "Hợp đồng thuê" },
   { id: "revenue",   icon: "bar_chart",        label: "Doanh thu" },
   { id: "info",      icon: "info",             label: "Thông tin kho" },
+  { id: "ratings",   icon: "star",             label: "Đánh giá" },
 ];
 
 // ─── Main ──────────────────────────────────────────────────────────────────
@@ -67,6 +69,17 @@ const OwnerWarehouseDetailPage = () => {
   const [loading, setLoading]     = useState(true);
   const [activeTab, setActiveTab] = useState("map");
   const [activeImage, setActiveImage] = useState(0);
+  const [ratingsData, setRatingsData] = useState(null);
+  const [replyText, setReplyText] = useState({});
+  const [replyLoading, setReplyLoading] = useState(false);
+  const [hidingId, setHidingId] = useState(null);
+
+  const fetchRatings = async () => {
+    try {
+      const data = await ratingService.getWarehouseRatings(id);
+      setRatingsData(data);
+    } catch (err) { console.error('Failed to load ratings:', err); }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -87,7 +100,44 @@ const OwnerWarehouseDetailPage = () => {
       }
     };
     if (id) load();
+    fetchRatings();
   }, [id]);
+
+  const handleReplySubmit = async (ratingId) => {
+    if (!replyText[ratingId]?.trim()) return;
+    setReplyLoading(true);
+    try {
+      await ratingService.replyToRating(ratingId, replyText[ratingId].trim());
+      setRatingsData(prev => ({
+        ...prev,
+        ratings: prev.ratings.map(r =>
+          r.ratingId === ratingId ? { ...r, ownerReply: replyText[ratingId] } : r
+        )
+      }));
+      setReplyText(prev => ({ ...prev, [ratingId]: '' }));
+    } catch (err) {
+      console.error('Failed to reply:', err);
+    } finally {
+      setReplyLoading(false);
+    }
+  };
+
+  const handleToggleHide = async (ratingId) => {
+    setHidingId(ratingId);
+    try {
+      await ratingService.toggleHideRating(ratingId);
+      setRatingsData(prev => ({
+        ...prev,
+        ratings: prev.ratings.map(r =>
+          r.ratingId === ratingId ? { ...r, isHidden: !r.isHidden } : r
+        )
+      }));
+    } catch (err) {
+      console.error('Failed to toggle hide:', err);
+    } finally {
+      setHidingId(null);
+    }
+  };
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh", flexDirection: "column", gap: 16 }}>
@@ -518,6 +568,221 @@ const OwnerWarehouseDetailPage = () => {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* TAB: Ratings */}
+        {activeTab === "ratings" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Summary header */}
+            {ratingsData && ratingsData.totalCount > 0 ? (
+              <>
+                {/* Rating summary */}
+                <div style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderRadius: 16, padding: "1.5rem 2rem", border: "1px solid #fde68a", display: "flex", gap: "2rem", alignItems: "center" }}>
+                  <div style={{ textAlign: "center", minWidth: 110 }}>
+                    <div style={{ fontSize: "3rem", fontWeight: 900, color: "#d97706", lineHeight: 1 }}>{ratingsData.averageStar}</div>
+                    <div style={{ display: "flex", gap: 3, justifyContent: "center", margin: "8px 0 4px" }}>
+                      {[1,2,3,4,5].map(s => (
+                        <svg key={s} width="18" height="18" viewBox="0 0 24 24"
+                          fill={s <= Math.round(ratingsData.averageStar) ? '#f59e0b' : 'none'}
+                          stroke={s <= Math.round(ratingsData.averageStar) ? '#f59e0b' : '#cbd5e1'}
+                          strokeWidth="1.5"
+                          style={{ filter: s <= Math.round(ratingsData.averageStar) ? 'drop-shadow(0 1px 4px rgba(245,158,11,0.5))' : 'none' }}
+                        >
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                        </svg>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: "0.82rem", color: "#92400e", fontWeight: 700 }}>{ratingsData.totalCount} đánh giá</div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    {[5,4,3,2,1].map(star => {
+                      const count = ratingsData.starDistribution ? ratingsData.starDistribution[star - 1] || 0 : 0;
+                      const pct = ratingsData.totalCount > 0 ? (count / ratingsData.totalCount * 100) : 0;
+                      return (
+                        <div key={star} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                          <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#78716c", width: 24, textAlign: "right" }}>{star}</span>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b" style={{ flexShrink: 0 }}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                          <div style={{ flex: 1, height: 8, backgroundColor: "#fef3c7", borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #f59e0b, #d97706)", borderRadius: 4, transition: "width 0.5s ease" }} />
+                          </div>
+                          <span style={{ fontSize: "0.75rem", color: "#92400e", fontWeight: 700, width: 24 }}>{count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 160 }}>
+                    <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.7)", borderRadius: 10, border: "1px solid #fde68a", textAlign: "center" }}>
+                      <div style={{ fontSize: "0.75rem", color: "#92400e", fontWeight: 700, marginBottom: 2 }}>ĐÃ ẨN</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#dc2626" }}>{ratingsData.ratings.filter(r => r.isHidden).length}</div>
+                    </div>
+                    <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.7)", borderRadius: 10, border: "1px solid #fde68a", textAlign: "center" }}>
+                      <div style={{ fontSize: "0.75rem", color: "#92400e", fontWeight: 700, marginBottom: 2 }}>HIỂN THỊ</div>
+                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#16a34a" }}>{ratingsData.ratings.filter(r => !r.isHidden).length}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rating cards */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {ratingsData.ratings.map(r => (
+                    <div key={r.ratingId} style={{
+                      background: r.isHidden ? "#f8fafc" : "#fff",
+                      borderRadius: 16, padding: "1.4rem 1.6rem",
+                      border: `1px solid ${r.isHidden ? "#e2e8f0" : "#f1f5f9"}`,
+                      boxShadow: r.isHidden ? "none" : "0 2px 8px rgba(0,0,0,0.04)",
+                      opacity: r.isHidden ? 0.7 : 1,
+                      transition: "all 0.2s",
+                    }}>
+                      {/* Card header */}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ width: 42, height: 42, borderRadius: "50%", background: "linear-gradient(135deg, #0ea5e9, #0284c7)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: "1rem", flexShrink: 0 }}>
+                            {(r.renterName || "U")[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.95rem" }}>{r.renterName || "Người thuê"}</div>
+                            <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginTop: 2 }}>
+                              {r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN", { year: "numeric", month: "long", day: "numeric" }) : ""}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          {/* Stars */}
+                          <div style={{ display: "flex", gap: 3 }}>
+                            {[1,2,3,4,5].map(s => (
+                              <svg key={s} width="16" height="16" viewBox="0 0 24 24"
+                                fill={s <= r.star ? '#f59e0b' : 'none'}
+                                stroke={s <= r.star ? '#f59e0b' : '#cbd5e1'}
+                                strokeWidth="1.5"
+                                style={{ filter: s <= r.star ? 'drop-shadow(0 1px 4px rgba(245,158,11,0.4))' : 'none' }}
+                              >
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                              </svg>
+                            ))}
+                          </div>
+                          {/* Hidden badge */}
+                          {r.isHidden && (
+                            <span style={{ padding: "3px 10px", background: "#fef2f2", color: "#dc2626", borderRadius: 8, fontSize: "0.72rem", fontWeight: 700 }}>Đã ẩn</span>
+                          )}
+                          {/* Toggle hide button */}
+                          <button
+                            onClick={() => handleToggleHide(r.ratingId)}
+                            disabled={hidingId === r.ratingId}
+                            title={r.isHidden ? "Hiện lại đánh giá" : "Ẩn đánh giá này"}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 5,
+                              padding: "6px 14px",
+                              background: r.isHidden ? "#f0fdf4" : "#fef2f2",
+                              border: `1px solid ${r.isHidden ? "#bbf7d0" : "#fecaca"}`,
+                              borderRadius: 8,
+                              color: r.isHidden ? "#16a34a" : "#dc2626",
+                              fontWeight: 600, cursor: hidingId === r.ratingId ? "wait" : "pointer",
+                              fontSize: "0.8rem", transition: "all 0.2s",
+                              opacity: hidingId === r.ratingId ? 0.6 : 1,
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>
+                              {hidingId === r.ratingId ? "sync" : (r.isHidden ? "visibility" : "visibility_off")}
+                            </span>
+                            {r.isHidden ? "Hiện" : "Ẩn"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Comment */}
+                      {r.comment && (
+                        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 12 }}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                          </svg>
+                          <p style={{ color: "#475569", fontSize: "0.9rem", lineHeight: 1.6, margin: 0 }}>{r.comment}</p>
+                        </div>
+                      )}
+
+                      {/* Owner reply or reply form */}
+                      {r.ownerReply ? (
+                        <div style={{ padding: "12px 16px", background: "#f0fdf4", borderRadius: 10, borderLeft: "3px solid #22c55e" }}>
+                          <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#16a34a", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            Phản hồi của bạn
+                          </div>
+                          <p style={{ fontSize: "0.88rem", color: "#15803d", margin: 0, lineHeight: 1.5 }}>{r.ownerReply}</p>
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 12 }}>
+                          <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#64748b", display: "flex", alignItems: "center", gap: 5, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            Phản hồi đánh giá này
+                          </label>
+                          <div style={{ display: "flex", gap: 10 }}>
+                            <div style={{ flex: 1, position: "relative" }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                style={{ position: "absolute", top: 12, left: 12, pointerEvents: "none" }}>
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                              </svg>
+                              <input
+                                type="text"
+                                placeholder="Nhập phản hồi của bạn..."
+                                value={replyText[r.ratingId] || ""}
+                                onChange={e => setReplyText(prev => ({ ...prev, [r.ratingId]: e.target.value }))}
+                                onKeyDown={e => { if (e.key === "Enter") handleReplySubmit(r.ratingId); }}
+                                disabled={replyLoading}
+                                style={{
+                                  width: "100%", padding: "10px 12px 10px 36px",
+                                  borderRadius: 10, border: "1.5px solid #e2e8f0",
+                                  fontSize: "0.88rem", outline: "none", boxSizing: "border-box",
+                                  transition: "border-color 0.2s, box-shadow 0.2s",
+                                  fontFamily: "inherit",
+                                }}
+                                onFocus={e => { e.target.style.borderColor = "#0284c7"; e.target.style.boxShadow = "0 0 0 3px rgba(2,132,199,0.12)"; }}
+                                onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleReplySubmit(r.ratingId)}
+                              disabled={!replyText[r.ratingId]?.trim() || replyLoading}
+                              style={{
+                                padding: "10px 20px",
+                                background: (!replyText[r.ratingId]?.trim() || replyLoading) ? "#e2e8f0" : "linear-gradient(135deg, #0284c7, #0369a1)",
+                                color: (!replyText[r.ratingId]?.trim() || replyLoading) ? "#94a3b8" : "#fff",
+                                border: "none", borderRadius: 10,
+                                fontWeight: 700, cursor: (!replyText[r.ratingId]?.trim() || replyLoading) ? "not-allowed" : "pointer",
+                                fontSize: "0.88rem", transition: "all 0.2s", flexShrink: 0,
+                                boxShadow: (!replyText[r.ratingId]?.trim() || replyLoading) ? "none" : "0 4px 12px rgba(2,132,199,0.3)",
+                                display: "flex", alignItems: "center", gap: 6,
+                              }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                              </svg>
+                              Gửi
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ textAlign: "center", padding: "4rem 2rem", background: "#fff", borderRadius: 16, border: "1px solid #f1f5f9" }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #fef3c7, #fde68a)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </div>
+                <h3 style={{ margin: "0 0 8px", fontSize: "1.1rem", fontWeight: 700, color: "#64748b" }}>Chưa có đánh giá nào</h3>
+                <p style={{ fontSize: "0.88rem", color: "#94a3b8", margin: 0 }}>Chưa có renter nào đánh giá kho này</p>
+              </div>
+            )}
           </div>
         )}
 

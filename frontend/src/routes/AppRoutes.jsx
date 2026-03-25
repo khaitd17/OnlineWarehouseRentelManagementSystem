@@ -65,8 +65,11 @@ import WarehouseDetailPage from "../pages/admin/WarehouseDetailPage";
 import AuditSessionsPage from "../pages/admin/AuditSessionsPage";
 import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
 import ReportsPage from "../pages/admin/ReportsPage";
+import RatingsPage from "../pages/admin/RatingsPage";
+import AdminProfilePage from "../pages/admin/AdminProfilePage";
 
 import EquipmentManagement from "../pages/EquipmentManagement";
+import MyRatingsPage from "../pages/MyRatingsPage";
 
 import authService from "../services/authService";
 
@@ -172,6 +175,7 @@ function AppRoutes() {
             <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
             <Route path="/renter-audit-sessions" element={<RenterAuditSessionsPage />} />
             <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
+            <Route path="/my-ratings" element={<MyRatingsPage />} />
           </Route>
         </Route>
 
@@ -202,6 +206,8 @@ function AppRoutes() {
             <Route path="/admin/audit-sessions" element={<AuditSessionsPage />} />
             <Route path="/admin/audit-sessions/:id" element={<AuditSessionDetailPage />} />
             <Route path="/admin/reports" element={<ReportsPage />} />
+            <Route path="/admin/ratings" element={<RatingsPage />} />
+            <Route path="/admin/profile" element={<AdminProfilePage />} />
           </Route>
         </Route>
 
