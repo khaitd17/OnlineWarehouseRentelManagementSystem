@@ -48,10 +48,10 @@ public class ConfirmInventoryRequestHandler
                 $"Không thể thực hiện giao dịch: Kho hiện đang đóng cửa. Giờ hoạt động: {timeStr}.");
         }
 
-        // 2. Validate status
-        if (req.Status != "PENDING")
+        // 2. Validate status — must be ASSIGNED for Staff to confirm
+        if (req.Status != "ASSIGNED")
             throw new InvalidOperationException(
-                $"Request is already '{req.Status}' and cannot be confirmed.");
+                $"Chỉ có thể xác nhận yêu cầu đã được giao (ASSIGNED). Trạng thái hiện tại: '{req.Status}'.");
 
         // 3. For each item: check/update inventory and create transaction
         foreach (var item in req.InventoryItems)

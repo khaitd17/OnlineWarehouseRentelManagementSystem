@@ -17,6 +17,9 @@ public interface IInventoryRequestRepository
         string type, string? status, int? warehouseId,
         int page, int pageSize, CancellationToken cancellationToken);
 
+    /// <summary>Returns requests with Status=ASSIGNED where AssignedStaffId == staffId</summary>
+    Task<List<InventoryRequest>> GetAssignedToStaffAsync(int staffId, CancellationToken cancellationToken);
+
     Task<InventoryRequest?> GetByIdAsync(int id, CancellationToken cancellationToken);
 
     // Write
@@ -24,3 +27,4 @@ public interface IInventoryRequestRepository
     Task UpdateAsync(InventoryRequest request, CancellationToken cancellationToken);
     Task DeleteAsync(int id, CancellationToken cancellationToken);
 }
+

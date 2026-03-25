@@ -67,7 +67,8 @@ public class SearchWarehousesHandler
                 TotalArea     = w.TotalArea,
                 AvailableArea = w.AvailableArea,
                 ImageUrl      = w.Images.FirstOrDefault()?.MediaUrl,
-                CreatedAt     = w.CreatedAt ?? DateTime.UtcNow
+                CreatedAt     = w.CreatedAt ?? DateTime.UtcNow,
+                PricePerM2    = w.PricePerM2
             })
             .ToList();
 

@@ -90,8 +90,20 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.Warehouse)
             .Include(r => r.InventoryItems)
             .Include(r => r.ConfirmedByNavigation)
+            .Include(r => r.AssignedStaff)
             .FirstOrDefaultAsync(r => r.InvReqId == id, cancellationToken);
 
+    // ── ASSIGNED TO STAFF ───────────────────────────────────────────────────
+    public async Task<List<InventoryRequest>> GetAssignedToStaffAsync(
+        int staffId, CancellationToken cancellationToken)
+        => await _context.InventoryRequests
+            .Include(r => r.Renter)
+            .Include(r => r.Warehouse)
+            .Include(r => r.InventoryItems)
+            .Include(r => r.AssignedStaff)
+            .Where(r => r.AssignedStaffId == staffId && r.Status == "ASSIGNED")
+            .OrderByDescending(r => r.AssignedAt)
+            .ToListAsync(cancellationToken);
     // ── CREATE ──────────────────────────────────────────────────────────────
     public async Task<InventoryRequest> CreateAsync(InventoryRequest request, CancellationToken cancellationToken)
     {

@@ -1,14 +1,19 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using WMS.Application.Features.InventoryRequests.AssignRequest;
 using WMS.Application.Features.InventoryRequests.ConfirmRequest;
 using WMS.Application.Features.InventoryRequests.CreateRequest;
 using WMS.Application.Features.InventoryRequests.DeleteRequest;
+using WMS.Application.Features.InventoryRequests.GetAssignedRequests;
 using WMS.Application.Features.InventoryRequests.GetRequestById;
 using WMS.Application.Features.InventoryRequests.GetRequests;
 using WMS.Application.Features.InventoryRequests.GetOwnerInventoryRequests;
+using WMS.Application.Features.InventoryRequests.RejectRequest;
 using WMS.Application.Features.InventoryRequests.UpdateRequest;
+using WMS.Infrastructure.Persistence;
 
 namespace WMS.API.Controllers;
 
@@ -18,18 +23,33 @@ namespace WMS.API.Controllers;
 public class InventoryRequestsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ApplicationDbContext _db;
 
-    public InventoryRequestsController(IMediator mediator) => _mediator = mediator;
+    public InventoryRequestsController(IMediator mediator, ApplicationDbContext db)
+    {
+        _mediator = mediator;
+        _db = db;
+    }
 
     private int GetUserId() =>
         int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                   ?? User.FindFirst("sub")?.Value
                   ?? throw new UnauthorizedAccessException());
 
-    private string GetUserRole() =>
-        User.FindFirst(ClaimTypes.Role)?.Value?.ToUpper()
-        ?? User.FindFirst("role")?.Value?.ToUpper()
-        ?? "";
+    /// <summary>
+    /// Lấy warehouse role thực từ DB (RENTER/STAFF/MANAGER/OWNER/OPERATOR).
+    /// JWT chỉ lưu system role (USER/ADMIN), không phải warehouse role.
+    /// </summary>
+    private async Task<string> GetWarehouseRoleAsync(int userId)
+    {
+        var membership = await _db.WarehouseMemberships
+            .Include(m => m.Role)
+            .Where(m => m.UserId == userId && m.IsActive)
+            .OrderByDescending(m => m.WarehouseRoleId) // MANAGER > STAFF priority
+            .FirstOrDefaultAsync();
+
+        return membership?.Role?.Code?.ToUpper() ?? "";
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetList(
@@ -40,13 +60,15 @@ public class InventoryRequestsController : ControllerBase
         [FromQuery] int pageSize = 10)
     {
         var userId = GetUserId();
-        var role   = GetUserRole();
+        // Tra cứu warehouse role từ DB (JWT chỉ có system role USER/ADMIN)
+        var role = await GetWarehouseRoleAsync(userId);
 
         var viewAs = role switch
         {
             "RENTER" => "RENTER",
-            "STAFF" or "MANAGER" => "STAFF",
-            _ => "OWNER"
+            "STAFF" or "MANAGER" or "OPERATOR" => "STAFF",
+            "OWNER" => "OWNER",
+            _ => "STAFF"  // fallback: show all (safe default for unknown roles)
         };
 
         var result = await _mediator.Send(new GetInventoryRequestsQuery
@@ -62,8 +84,6 @@ public class InventoryRequestsController : ControllerBase
         return Ok(result);
     }
 
-    // ── GET /api/InventoryRequests/owner (legacy endpoint — kept for frontend) ─
-    /// <summary>Owner xem tất cả yêu cầu nhập/xuất kho</summary>
     [HttpGet("owner")]
     public async Task<IActionResult> GetOwnerRequests(
         [FromQuery] string type = "INBOUND",
@@ -85,8 +105,19 @@ public class InventoryRequestsController : ControllerBase
         return Ok(result);
     }
 
-    // ── GET /api/InventoryRequests/{id} ───────────────────────────────────
-    /// <summary>Lấy chi tiết một yêu cầu</summary>
+    /// <summary>Staff lấy danh sách yêu cầu được Manager giao (Status=ASSIGNED)</summary>
+    [HttpGet("assigned-to-me")]
+    public async Task<IActionResult> GetAssignedToMe([FromQuery] string? type = null)
+    {
+        var staffId = GetUserId();
+        var result  = await _mediator.Send(new GetAssignedRequestsQuery
+        {
+            StaffId = staffId,
+            Type    = type?.ToUpper(),
+        });
+        return Ok(result);
+    }
+
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
@@ -94,8 +125,6 @@ public class InventoryRequestsController : ControllerBase
         return result is null ? NotFound() : Ok(result);
     }
 
-    // ── POST /api/InventoryRequests ────────────────────────────────────────
-    /// <summary>Renter tạo yêu cầu nhập hoặc xuất kho</summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateInventoryRequestCommand cmd)
     {
@@ -112,8 +141,6 @@ public class InventoryRequestsController : ControllerBase
         }
     }
 
-    // ── PUT /api/InventoryRequests/{id} ────────────────────────────────────
-    /// <summary>Cập nhật yêu cầu (chỉ khi PENDING)</summary>
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateInventoryRequestCommand cmd)
     {
@@ -128,8 +155,6 @@ public class InventoryRequestsController : ControllerBase
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 
-    // ── DELETE /api/InventoryRequests/{id} ─────────────────────────────────
-    /// <summary>Xóa yêu cầu (chỉ khi PENDING)</summary>
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -144,8 +169,7 @@ public class InventoryRequestsController : ControllerBase
         catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
     }
 
-    // ── POST /api/InventoryRequests/{id}/confirm ───────────────────────────
-    /// <summary>Staff xác nhận nhập/xuất kho → cập nhật tồn kho + tạo transaction</summary>
+    /// <summary>Staff xác nhận hoàn thành yêu cầu (ASSIGNED → COMPLETED)</summary>
     [HttpPost("{id:int}/confirm")]
     public async Task<IActionResult> Confirm(int id, [FromBody] ConfirmRequestBody? body = null)
     {
@@ -163,9 +187,47 @@ public class InventoryRequestsController : ControllerBase
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
+
+    /// <summary>Manager giao yêu cầu PENDING cho Staff (PENDING → ASSIGNED)</summary>
+    [HttpPost("{id:int}/assign")]
+    public async Task<IActionResult> Assign(int id, [FromBody] AssignRequestBody body)
+    {
+        var managerId = GetUserId();
+        try
+        {
+            var result = await _mediator.Send(new AssignInventoryRequestCommand
+            {
+                Id              = id,
+                ManagerId       = managerId,
+                AssignedStaffId = body.StaffId,
+                AssignedNote    = body.Note,
+            });
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    /// <summary>Manager từ chối yêu cầu PENDING (PENDING → REJECTED)</summary>
+    [HttpPost("{id:int}/reject")]
+    public async Task<IActionResult> Reject(int id, [FromBody] RejectRequestBody? body = null)
+    {
+        var managerId = GetUserId();
+        try
+        {
+            var result = await _mediator.Send(new RejectInventoryRequestCommand
+            {
+                Id        = id,
+                ManagerId = managerId,
+                Reason    = body?.Reason,
+            });
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
 }
 
-public record ConfirmRequestBody
-{
-    public string? Notes { get; init; }
-}
+public record ConfirmRequestBody  { public string? Notes  { get; init; } }
+public record AssignRequestBody   { public int StaffId    { get; init; } public string? Note { get; init; } }
+public record RejectRequestBody   { public string? Reason  { get; init; } }

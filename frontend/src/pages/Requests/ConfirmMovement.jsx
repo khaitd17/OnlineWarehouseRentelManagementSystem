@@ -1,270 +1,334 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import axiosClient from '../../services/axiosClient';
 
-const MOCK_DATA = [
-  {
-    id: '#REQ-82910',
-    type: 'Nhập kho',
-    isInbound: true,
-    warehouse: 'Central WH - Z10',
-    item: 'Pneumatic Actuators',
-    sku: 'PA-4420-B',
-    qty: 250,
-    status: 'Đang chờ',
-    requester: 'John Doe',
-  },
-  {
-    id: '#REQ-82915',
-    type: 'Xuất kho',
-    isInbound: false,
-    warehouse: 'East-Side Hub',
-    item: 'High-Cap Li-Ion Cells',
-    sku: 'LI-900-X',
-    qty: 1200,
-    status: 'Đang xử lý',
-    requester: 'Sarah Jenkins',
-  },
-  {
-    id: '#REQ-82921',
-    type: 'Xuất kho',
-    isInbound: false,
-    warehouse: 'Main Logistics Park',
-    item: 'Control Unit v4',
-    sku: 'CU-V4-SYS',
-    qty: 45,
-    status: 'Sẵn sàng',
-    requester: 'Mike Ross',
-  },
-  {
-    id: '#REQ-82924',
-    type: 'Nhập kho',
-    isInbound: true,
-    warehouse: 'Cold Storage Alpha',
-    item: 'Silicone Gaskets',
-    sku: 'SG-12-RED',
-    qty: 5000,
-    status: 'Đang xử lý',
-    requester: 'Elena Gilbert',
-  },
-  {
-    id: '#REQ-82930',
-    type: 'Nhập kho',
-    isInbound: true,
-    warehouse: 'Distribution Cntr 2',
-    item: 'Steel Frame Supports',
-    sku: 'ST-FR-88',
-    qty: 80,
-    status: 'Sẵn sàng',
-    requester: 'David King',
-  },
-];
+/* ──────────────────────────────────────────────────────────────
+   Helpers
+────────────────────────────────────────────────────────────── */
+const TypeBadge = ({ type }) => (
+  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600, fontSize: '0.85rem', color: type === 'INBOUND' ? '#059669' : '#d97706' }}>
+    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+      {type === 'INBOUND' ? 'south_east' : 'north_east'}
+    </span>
+    {type === 'INBOUND' ? 'Nhập kho' : 'Xuất kho'}
+  </div>
+);
 
-const STATUS_MAP = {
-  'Đang chờ': 'bg-amber-100 text-amber-700 border border-amber-200',
-  'Đang xử lý': 'bg-blue-100 text-blue-700 border border-blue-200',
-  'Sẵn sàng': 'bg-emerald-100 text-emerald-700 border border-emerald-200',
-  'Đã xác nhận': 'bg-slate-100 text-slate-600 border border-slate-200',
+/* ──────────────────────────────────────────────────────────────
+   Detail + Confirm Modal
+────────────────────────────────────────────────────────────── */
+const ConfirmModal = ({ req, onClose, onConfirm, loading }) => {
+  const [note, setNote] = useState('');
+  if (!req) return null;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 24 }} onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 560, maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {req.type === 'INBOUND' ? '📦 Nhập kho' : '📤 Xuất kho'} • #{req.invReqId}
+            </p>
+            <h2 style={{ margin: '4px 0 0', fontSize: '1.15rem', fontWeight: 800, color: '#111827' }}>{req.warehouseName}</h2>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#9ca3af' }}>close</span>
+          </button>
+        </div>
+
+        {/* Manager's assignment note */}
+        {req.assignedNote && (
+          <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '12px 14px', marginBottom: 16 }}>
+            <p style={{ margin: '0 0 4px', fontSize: '0.7rem', fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase' }}>📋 Ghi chú từ Manager</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: '#1e40af' }}>{req.assignedNote}</p>
+          </div>
+        )}
+
+        {/* Info */}
+        <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+            {[
+              ['Người thuê', req.renterName],
+              ['Ngày tạo', req.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN') : '—'],
+              ['Email', req.renterEmail],
+              ['Ngày nhận', req.assignedAt ? new Date(req.assignedAt).toLocaleDateString('vi-VN') : '—'],
+            ].map(([k, v]) => (
+              <div key={k}>
+                <p style={{ margin: 0, fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>{k}</p>
+                <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#374151', fontWeight: 500 }}>{v}</p>
+              </div>
+            ))}
+          </div>
+          {req.notes && !req.notes.startsWith('[TỪ CHỐI]') && (
+            <div style={{ marginTop: 10, borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
+              <p style={{ margin: 0, fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>Ghi chú yêu cầu</p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#374151' }}>{req.notes}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Items */}
+        <p style={{ margin: '0 0 10px', fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Hàng hóa ({req.items?.length || 0} mặt hàng)
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+          {(req.items || []).map((item) => (
+            <div key={item.itemId} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{item.itemName}</p>
+                {item.description && <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>{item.description}</p>}
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: req.type === 'INBOUND' ? '#059669' : '#d97706' }}>
+                  {req.type === 'INBOUND' ? '+' : '-'}{item.quantity.toLocaleString()} {item.unit}
+                </p>
+                {item.weight && <p style={{ margin: 0, fontSize: '0.72rem', color: '#9ca3af' }}>{item.weight} kg</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Confirm Note + Button */}
+        <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#374151', marginBottom: 6, textTransform: 'uppercase' }}>Ghi chú xác nhận (tùy chọn)</label>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Nhập ghi chú khi thực hiện..."
+              rows={2}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none', resize: 'vertical', fontFamily: 'Inter, sans-serif', background: '#f8fafc' }}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <button onClick={onClose} style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', color: '#6b7280' }}>
+              Đóng
+            </button>
+            <button onClick={() => onConfirm(req.invReqId, note)} disabled={loading}
+              style={{ padding: '9px 24px', borderRadius: 8, border: 'none', background: loading ? '#9ca3af' : (req.type === 'INBOUND' ? '#059669' : '#d97706'), color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              {loading && <span className="material-symbols-outlined" style={{ fontSize: 16, animation: 'spin 1s linear infinite' }}>sync</span>}
+              {loading ? 'Đang xác nhận...' : (req.type === 'INBOUND' ? '✓ Xác nhận nhập kho' : '✓ Xác nhận xuất kho')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-const MOVEMENT_FILTERS = ['Tất cả', 'Nhập kho', 'Xuất kho'];
-
+/* ──────────────────────────────────────────────────────────────
+   Main — Staff Confirm Movement
+────────────────────────────────────────────────────────────── */
 const ConfirmMovement = () => {
+  const [typeFilter, setTypeFilter] = useState('');
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('Tất cả');
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedReq, setSelectedReq] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  const [toast, setToast] = useState(null);
 
-  const filtered = MOCK_DATA.filter(row => {
-    const matchSearch = !search || [row.id, row.item, row.sku].some(v =>
-      v.toLowerCase().includes(search.toLowerCase())
-    );
-    const matchType = typeFilter === 'Tất cả' || row.type === typeFilter;
-    return matchSearch && matchType;
-  });
+  const showToast = (msg, isError = false) => {
+    setToast({ msg, isError });
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const fetchAssigned = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await axiosClient.get('/InventoryRequests/assigned-to-me', {
+        params: typeFilter ? { type: typeFilter } : {},
+      });
+      setRequests(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setRequests([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [typeFilter]);
+
+  useEffect(() => { fetchAssigned(); }, [fetchAssigned]);
+
+  const filtered = search
+    ? requests.filter(r =>
+        String(r.invReqId).includes(search) ||
+        r.renterName?.toLowerCase().includes(search.toLowerCase()) ||
+        r.warehouseName?.toLowerCase().includes(search.toLowerCase()) ||
+        r.items?.some(i => i.itemName?.toLowerCase().includes(search.toLowerCase()))
+      )
+    : requests;
+
+  const handleConfirm = async (id, note) => {
+    setConfirming(true);
+    try {
+      await axiosClient.post(`/InventoryRequests/${id}/confirm`, { notes: note });
+      showToast(`✅ Xác nhận hoàn thành yêu cầu #${id} thành công! Tồn kho đã được cập nhật.`);
+      setSelectedReq(null);
+      fetchAssigned();
+    } catch (err) {
+      showToast(err?.response?.data?.message || 'Xác nhận thất bại.', true);
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const inboundCount  = requests.filter(r => r.type === 'INBOUND').length;
+  const outboundCount = requests.filter(r => r.type === 'OUTBOUND').length;
 
   return (
     <div className="w-full flex-1 flex flex-col min-w-0" style={{ fontFamily: 'Inter, sans-serif' }}>
-      <div className="space-y-6">
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
 
-        {/* ── Page Header ── */}
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Xác nhận di chuyển hàng</h1>
-            <p className="text-slate-500 text-sm mt-1">Quản lý và xác nhận các lô hàng nhập/xuất kho trên tất cả các khu vực.</p>
-          </div>
-          <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-white border border-slate-200 font-semibold text-sm text-slate-700 hover:bg-slate-50 transition-colors">
-              <span className="material-symbols-outlined text-lg leading-none">download</span>
-              Tạo báo cáo
-            </button>
-            <button className="flex items-center gap-2 bg-[#00b2d6] hover:bg-[#00a0c0] text-white px-5 py-2.5 rounded-lg font-bold text-sm transition-all shadow-sm">
-              <span className="material-symbols-outlined text-lg leading-none">add</span>
-              Di chuyển mới
-            </button>
-          </div>
-        </div>
-
-        {/* ── Quick Stats ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-2xl">input</span>
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nhập sẵn sàng</p>
-              <p className="text-2xl font-black text-slate-900">14</p>
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-2xl">output</span>
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Xuất sẵn sàng</p>
-              <p className="text-2xl font-black text-slate-900">08</p>
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-2xl">schedule</span>
-            </div>
-            <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Đang chờ</p>
-              <p className="text-2xl font-black text-slate-900">12</p>
-            </div>
-          </div>
-          <div className="bg-[#00b2d6] p-5 rounded-xl shadow-lg flex items-center gap-4 text-white">
-            <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-              <span className="material-symbols-outlined text-2xl">verified</span>
-            </div>
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider opacity-80">Xác nhận hôm nay</p>
-              <p className="text-2xl font-black">156</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Filter Card ── */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            {/* Search */}
-            <div className="md:col-span-7 relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#00b2d6]/30 focus:border-[#00b2d6] text-sm placeholder-slate-400 outline-none transition-all"
-                placeholder="Tìm Mã yêu cầu, Tên mặt hàng, hoặc SKU..."
-                type="text"
-              />
-            </div>
-
-            {/* Type Filter */}
-            <div className="md:col-span-3 flex gap-2 items-center">
-              {MOVEMENT_FILTERS.map(f => (
-                <button
-                  key={f}
-                  onClick={() => setTypeFilter(f)}
-                  className={`flex-1 py-2.5 rounded-lg font-semibold text-sm transition-all ${
-                    typeFilter === f
-                      ? 'bg-[#00b2d6]/10 text-[#00b2d6] border border-[#00b2d6]/30'
-                      : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-
-            {/* More Filters */}
-            <div className="md:col-span-2">
-              <button className="w-full h-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-50 text-slate-700 font-semibold text-sm hover:bg-slate-100 transition-colors border border-slate-200">
-                <span className="material-symbols-outlined text-lg leading-none">filter_list</span>
-                Bộ lọc
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Table Card ── */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Mã yêu cầu</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Loại</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Nhà kho</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Tên mặt hàng</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider text-center">Số lượng</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Trạng thái</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Người yêu cầu</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider text-right">Hành động</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtered.map(row => (
-                  <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 font-mono text-sm font-bold text-[#00b2d6]">{row.id}</td>
-                    <td className="px-6 py-4">
-                      <div className={`inline-flex items-center gap-1.5 font-semibold text-sm ${row.isInbound ? 'text-emerald-600' : 'text-orange-600'}`}>
-                        <span className="material-symbols-outlined text-lg leading-none">{row.isInbound ? 'south_east' : 'north_east'}</span>
-                        {row.type}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{row.warehouse}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-semibold text-slate-800">{row.item}</div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">SKU: {row.sku}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-bold text-center text-slate-800">{row.qty.toLocaleString()}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${STATUS_MAP[row.status] || 'bg-slate-100 text-slate-600'}`}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{row.requester}</td>
-                    <td className="px-6 py-4 text-right">
-                      {row.isInbound ? (
-                        <button className="px-4 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-bold transition-colors">
-                          Xác nhận nhập
-                        </button>
-                      ) : (
-                        <button className="px-4 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 text-xs font-bold transition-colors">
-                          Xác nhận xuất
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-slate-400 text-sm">
-                      Không tìm thấy yêu cầu nào.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Footer */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50">
-            <span className="text-sm text-slate-500">
-              Hiển thị <span className="font-bold text-slate-700">1</span> đến <span className="font-bold text-slate-700">5</span> trong số <span className="font-bold text-slate-700">42</span> di chuyển
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-400 hover:bg-slate-100 transition-colors bg-white" disabled>
-                <span className="material-symbols-outlined text-lg">chevron_left</span>
-              </button>
-              <button className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#00b2d6] text-white text-sm font-bold">1</button>
-              <button className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold bg-white">2</button>
-              <button className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm font-semibold bg-white">3</button>
-              <button className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors bg-white">
-                <span className="material-symbols-outlined text-lg">chevron_right</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Xác nhận di chuyển hàng</h1>
+        <p className="text-slate-500 text-sm mt-1">Danh sách yêu cầu nhập/xuất được Manager giao cho bạn hôm nay.</p>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 10, background: toast.isError ? '#fee2e2' : '#d1fae5', border: `1px solid ${toast.isError ? '#fecaca' : '#a7f3d0'}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span className="material-symbols-outlined" style={{ color: toast.isError ? '#dc2626' : '#059669', fontSize: 20 }}>{toast.isError ? 'error' : 'check_circle'}</span>
+          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: toast.isError ? '#991b1b' : '#065f46' }}>{toast.msg}</span>
+        </div>
+      )}
+
+      {/* Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+        {[
+          { icon: 'assignment', label: 'Nhiệm vụ hôm nay', value: requests.length, color: '#00b2d6', bg: '#e0f2fe' },
+          { icon: 'south_east', label: 'Nhập kho', value: inboundCount, color: '#059669', bg: '#d1fae5' },
+          { icon: 'north_east', label: 'Xuất kho', value: outboundCount, color: '#d97706', bg: '#fef3c7' },
+        ].map(c => (
+          <div key={c.label} style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 22, color: c.color }}>{c.icon}</span>
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>{c.label}</p>
+              <p style={{ margin: 0, fontSize: '1.6rem', fontWeight: 800, color: '#111827', lineHeight: 1.2 }}>{c.value}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter Bar */}
+      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: '14px 18px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          {/* Search */}
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ position: 'relative' }}>
+              <span className="material-symbols-outlined" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: '#9ca3af' }}>search</span>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm mã YC, tên hàng, kho..." type="text"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px 9px 36px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.875rem', outline: 'none', background: '#f8fafc', fontFamily: 'Inter, sans-serif' }} />
+            </div>
+          </div>
+          {/* Type Filter */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[['', 'Tất cả'], ['INBOUND', '📦 Nhập'], ['OUTBOUND', '📤 Xuất']].map(([val, label]) => (
+              <button key={val} onClick={() => setTypeFilter(val)}
+                style={{ padding: '8px 16px', borderRadius: 8, border: '1.5px solid', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.15s', fontFamily: 'Inter, sans-serif',
+                  background: typeFilter === val ? '#00b2d6' : '#f8fafc', color: typeFilter === val ? '#fff' : '#6b7280', borderColor: typeFilter === val ? '#00b2d6' : '#e2e8f0' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* Refresh */}
+          <button onClick={fetchAssigned} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: '#6b7280', fontSize: '0.85rem', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>refresh</span>
+            Làm mới
+          </button>
+        </div>
+      </div>
+
+      {/* Task Cards */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 40, display: 'block', marginBottom: 12, animation: 'spin 1s linear infinite', color: '#00b2d6' }}>sync</span>
+          <p style={{ margin: 0, fontSize: '0.9rem' }}>Đang tải nhiệm vụ...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '60px 0', textAlign: 'center' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#d1d5db', display: 'block', marginBottom: 12 }}>assignment_turned_in</span>
+          <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#374151' }}>Không có nhiệm vụ nào</p>
+          <p style={{ margin: '6px 0 0', fontSize: '0.85rem', color: '#9ca3af' }}>Bạn chưa được giao yêu cầu nào. Vui lòng chờ Manager phân công.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+          {filtered.map(req => (
+            <div key={req.invReqId} style={{ background: '#fff', borderRadius: 14, border: `2px solid ${req.type === 'INBOUND' ? '#a7f3d0' : '#fde68a'}`, padding: 20, transition: 'all 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.06)'; }}>
+
+              {/* Card Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.72rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>Yêu cầu #{req.invReqId}</p>
+                  <h3 style={{ margin: '4px 0 0', fontSize: '0.95rem', fontWeight: 800, color: '#111827', lineHeight: 1.3 }}>{req.warehouseName}</h3>
+                </div>
+                <TypeBadge type={req.type} />
+              </div>
+
+              {/* Info */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#6b7280' }}>person</span>
+                  <span style={{ fontSize: '0.83rem', color: '#374151', fontWeight: 500 }}>{req.renterName}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#6b7280' }}>inventory_2</span>
+                  <span style={{ fontSize: '0.83rem', color: '#374151' }}>{req.totalItems} mặt hàng</span>
+                </div>
+                {req.assignedAt && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#6b7280' }}>schedule</span>
+                    <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>Nhận lúc: {new Date(req.assignedAt).toLocaleString('vi-VN')}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Manager note preview */}
+              {req.assignedNote && (
+                <div style={{ background: '#eff6ff', borderRadius: 8, padding: '8px 12px', marginBottom: 14, borderLeft: '3px solid #3b82f6' }}>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#1d4ed8', fontWeight: 600 }}>📋 Ghi chú Manager:</p>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#4b5563', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{req.assignedNote}</p>
+                </div>
+              )}
+
+              {/* Items preview */}
+              <div style={{ marginBottom: 16 }}>
+                {(req.items || []).slice(0, 3).map(item => (
+                  <div key={item.itemId} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #f1f5f9', fontSize: '0.82rem' }}>
+                    <span style={{ color: '#374151', fontWeight: 500 }}>{item.itemName}</span>
+                    <span style={{ color: req.type === 'INBOUND' ? '#059669' : '#d97706', fontWeight: 700 }}>
+                      {req.type === 'INBOUND' ? '+' : '-'}{item.quantity} {item.unit}
+                    </span>
+                  </div>
+                ))}
+                {(req.items?.length || 0) > 3 && (
+                  <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>+{req.items.length - 3} mặt hàng khác...</p>
+                )}
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={() => setSelectedReq(req)}
+                style={{ width: '100%', padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.9rem', fontFamily: 'Inter, sans-serif',
+                  background: req.type === 'INBOUND' ? 'linear-gradient(135deg, #059669, #10b981)' : 'linear-gradient(135deg, #d97706, #f59e0b)',
+                  color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s', boxShadow: `0 3px 10px ${req.type === 'INBOUND' ? 'rgba(5,150,105,0.3)' : 'rgba(217,119,6,0.3)'}` }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.02)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>check_circle</span>
+                {req.type === 'INBOUND' ? 'Xác nhận nhập kho' : 'Xác nhận xuất kho'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal req={selectedReq} onClose={() => setSelectedReq(null)} onConfirm={handleConfirm} loading={confirming} />
     </div>
   );
 };
