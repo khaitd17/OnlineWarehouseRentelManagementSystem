@@ -1,53 +1,94 @@
-using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using WMS.Application.Features.InventoryRequests.GetRenterAssets;
-using WMS.Application.Features.InventoryRequests.GetWarehouseAssets;
+using WMS.Domain.Entities;
+using WMS.Domain.Interfaces;
 
 namespace WMS.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/renter-assets")]
 [Authorize]
 public class RenterAssetsController : ControllerBase
 {
-    private readonly IMediator _mediator;
-    public RenterAssetsController(IMediator mediator) => _mediator = mediator;
+    private readonly IRenterAssetRepository _repo;
+
+    public RenterAssetsController(IRenterAssetRepository repo) => _repo = repo;
 
     private int GetUserId() =>
         int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                   ?? User.FindFirst("sub")?.Value
                   ?? throw new UnauthorizedAccessException());
 
-    private string GetUserRole() =>
-        (User.FindFirst(ClaimTypes.Role)?.Value
-         ?? User.FindFirst("role")?.Value
-         ?? "").ToUpper();
-
-    [HttpGet("my-inventory")]
-    public async Task<IActionResult> GetMyInventory([FromQuery] int? warehouseId = null)
+    /// <summary>Lấy danh sách tài sản của renter hiện tại</summary>
+    [HttpGet]
+    public async Task<IActionResult> GetMyAssets(CancellationToken ct)
     {
-        var renterId = GetUserId();
-        var result = await _mediator.Send(new GetRenterAssetsQuery
+        var userId = GetUserId();
+        var assets = await _repo.GetByRenterAsync(userId, ct);
+        return Ok(assets.Select(a => new
         {
-            RenterId    = renterId,
-            WarehouseId = warehouseId,
-        });
-        return Ok(result);
+            a.AssetId,
+            a.AssetName,
+            a.Unit,
+            a.WeightPerUnit,
+            a.Description,
+            a.CreatedAt
+        }));
     }
 
-    [HttpGet("warehouse/{warehouseId:int}")]
-    public async Task<IActionResult> GetWarehouseInventory(int warehouseId)
+    /// <summary>Tạo tài sản mới</summary>
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateAssetInput input, CancellationToken ct)
     {
-        var role = GetUserRole();
-        if (role is not ("OWNER" or "OPERATOR" or "MANAGER" or "STAFF"))
-            return Forbid();
-
-        var result = await _mediator.Send(new GetWarehouseAssetsQuery
+        var userId = GetUserId();
+        var asset = new RenterAsset
         {
-            WarehouseId = warehouseId,
+            RenterId = userId,
+            AssetName = input.AssetName.Trim(),
+            Unit = input.Unit ?? "cái",
+            WeightPerUnit = input.WeightPerUnit,
+            Description = input.Description,
+        };
+        var created = await _repo.CreateAsync(asset, ct);
+        return CreatedAtAction(nameof(GetMyAssets), new
+        {
+            created.AssetId,
+            created.AssetName,
+            created.Unit,
+            created.WeightPerUnit,
+            created.Description,
+            created.CreatedAt
         });
-        return Ok(result);
     }
+
+    /// <summary>
+    /// Lấy tồn kho tại 1 warehouse cụ thể.
+    /// Chỉ trả về asset của renter hiện tại có qty > 0.
+    /// </summary>
+    [HttpGet("inventory")]
+    public async Task<IActionResult> GetInventoryByWarehouse(
+        [FromQuery] int warehouseId, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        var inventory = await _repo.GetInventoryByWarehouseAsync(userId, warehouseId, ct);
+        return Ok(inventory.Select(ri => new
+        {
+            ri.InventoryId,
+            ri.AssetId,
+            AssetName = ri.Asset.AssetName,
+            Unit = ri.Asset.Unit,
+            WeightPerUnit = ri.Asset.WeightPerUnit,
+            ri.Quantity,
+            ri.UpdatedAt
+        }));
+    }
+}
+
+public record CreateAssetInput
+{
+    public string AssetName { get; init; } = "";
+    public string? Unit { get; init; }
+    public decimal? WeightPerUnit { get; init; }
+    public string? Description { get; init; }
 }
