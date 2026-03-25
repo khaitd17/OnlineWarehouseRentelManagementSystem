@@ -92,6 +92,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Inf
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IRatingRepository, WMS.Infrastructure.Repositories.RatingRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
