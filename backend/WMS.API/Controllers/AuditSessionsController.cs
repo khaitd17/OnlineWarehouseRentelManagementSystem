@@ -182,7 +182,8 @@ public class AuditSessionsController : ControllerBase
     {
         var staff = await _db.WarehouseMemberships
             .Include(m => m.User)
-            .Where(m => m.WarehouseId == warehouseId && m.IsActive)
+            .Include(m => m.Role)
+            .Where(m => m.WarehouseId == warehouseId && m.IsActive && m.Role.Code == "STAFF")
             .Select(m => new
             {
                 userId = m.UserId,
@@ -193,6 +194,73 @@ public class AuditSessionsController : ControllerBase
             .ToListAsync();
 
         return Ok(new { success = true, data = staff });
+    }
+
+    /// <summary>Lấy danh sách hàng hóa trong kho (dùng cho form ghi nhận kiểm kê)</summary>
+    [HttpGet("warehouse/{warehouseId}/inventory")]
+    public async Task<IActionResult> GetWarehouseInventory(int warehouseId)
+    {
+        var items = await _db.WarehouseInventories
+            .Where(wi => wi.WarehouseId == warehouseId && wi.Quantity > 0)
+            .Select(wi => new { wi.ItemName, wi.Quantity, wi.Unit })
+            .OrderBy(wi => wi.ItemName)
+            .ToListAsync();
+
+        return Ok(new { success = true, data = items });
+    }
+
+    /// <summary>Lấy danh sách hàng hóa cần kiểm kê dựa theo thực thể tạo phiên (OWNER thấy hết, RENTER thấy của mình)</summary>
+    [HttpGet("{id}/inventory-to-audit")]
+    public async Task<IActionResult> GetAuditSessionInventory(int id)
+    {
+        var session = await _db.AuditSessions
+            .Include(a => a.CreatedByNavigation)
+                .ThenInclude(u => u.Role)
+            .FirstOrDefaultAsync(a => a.AuditId == id);
+
+        if (session == null)
+            return NotFound(ApiResponse<object>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
+
+        var warehouseId = session.WarehouseId;
+        var creator = session.CreatedByNavigation;
+        var roleName = creator.Role?.RoleName?.ToUpper() ?? "";
+
+        var resultItems = new List<object>();
+
+        if (roleName == "RENTER")
+        {
+            // Renter chỉ thấy hàng của mình
+            var renterItems = await _db.RenterInventories
+                .Include(ri => ri.Asset)
+                .Where(ri => ri.WarehouseId == warehouseId && ri.Asset.RenterId == session.CreatedBy && ri.Quantity > 0)
+                .Select(ri => new { itemName = ri.Asset.AssetName, quantity = ri.Quantity, unit = ri.Asset.Unit })
+                .OrderBy(i => i.itemName)
+                .ToListAsync();
+            resultItems.AddRange(renterItems);
+        }
+        else // OWNER hoặc các role khác (mặc định thấy hết cho an toàn)
+        {
+            // 1. Lấy Warehouse Inventory (đồ dùng chung / đồ của chủ kho)
+            var warehouseItems = await _db.WarehouseInventories
+                .Where(wi => wi.WarehouseId == warehouseId && wi.Quantity > 0)
+                .Select(wi => new { itemName = wi.ItemName, quantity = wi.Quantity, unit = wi.Unit })
+                .ToListAsync();
+            
+            // 2. Lấy tất cả Renter Inventory trong kho này
+            var renterItems = await _db.RenterInventories
+                .Include(ri => ri.Asset)
+                .Where(ri => ri.WarehouseId == warehouseId && ri.Quantity > 0)
+                .Select(ri => new { itemName = ri.Asset.AssetName, quantity = ri.Quantity, unit = ri.Asset.Unit })
+                .ToListAsync();
+
+            resultItems.AddRange(warehouseItems);
+            resultItems.AddRange(renterItems);
+        }
+
+        return Ok(new { 
+            success = true, 
+            data = resultItems.OrderBy(i => ((dynamic)i).itemName).ToList() 
+        });
     }
 
     // ==============================

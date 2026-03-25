@@ -268,7 +268,7 @@ const MainLayout = () => {
 
   if (isDashboard) return <Outlet />;
 
-  const userRole = (user?.role || user?.roleName || '').toUpperCase();
+  const userRole = (user?.systemRole || user?.role || user?.roleName || '').toUpperCase();
   const dashboardPath = userRole === 'STAFF' || userRole === 'MANAGER' ? '/staff-dashboard'
     : userRole === 'RENTER' ? '/renter-dashboard'
     : '/dashboard';

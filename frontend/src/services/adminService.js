@@ -30,6 +30,8 @@ const adminService = {
     closeAuditSession: (id,data) => axiosClient.put(`/audit-sessions/${id}/close`,data || {}),
     approveAuditSession: (id,data) => axiosClient.put(`/audit-sessions/${id}/approve`,data),
     rejectAuditSession: (id,data) => axiosClient.put(`/audit-sessions/${id}/reject`,data || {}),
+    getWarehouseInventory: (warehouseId) => axiosClient.get(`/audit-sessions/warehouse/${warehouseId}/inventory`),
+    getAuditSessionInventory: (id) => axiosClient.get(`/audit-sessions/${id}/inventory-to-audit`),
 };
 
 export default adminService;

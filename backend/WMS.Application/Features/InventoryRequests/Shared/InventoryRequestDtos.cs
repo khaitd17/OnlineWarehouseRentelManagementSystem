@@ -10,6 +10,8 @@ public record InventoryItemDto
     public string Unit { get; init; } = "";
     public decimal? Weight { get; init; }
     public string? Description { get; init; }
+    public int? AssetId { get; init; }
+    public string? AssetName { get; init; }
 }
 
 public record InventoryRequestDto
@@ -77,6 +79,8 @@ public static class InventoryRequestMapper
             Unit        = i.Unit,
             Weight      = i.Weight,
             Description = i.Description,
+            AssetId     = i.AssetId,
+            AssetName   = i.Asset?.AssetName,
         }).ToList()
     };
 }

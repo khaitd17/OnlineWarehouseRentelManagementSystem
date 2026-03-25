@@ -19,17 +19,20 @@ public class ConfirmInventoryRequestHandler
     private readonly IWarehouseInventoryRepository _invRepo;
     private readonly IInventoryTransactionRepository _txRepo;
     private readonly IWarehouseRepository _warehouseRepo;
+    private readonly IRenterAssetRepository _assetRepo;
 
     public ConfirmInventoryRequestHandler(
         IInventoryRequestRepository repo,
         IWarehouseInventoryRepository invRepo,
         IInventoryTransactionRepository txRepo,
-        IWarehouseRepository warehouseRepo)
+        IWarehouseRepository warehouseRepo,
+        IRenterAssetRepository assetRepo)
     {
-        _repo    = repo;
-        _invRepo = invRepo;
-        _txRepo  = txRepo;
+        _repo          = repo;
+        _invRepo       = invRepo;
+        _txRepo        = txRepo;
         _warehouseRepo = warehouseRepo;
+        _assetRepo     = assetRepo;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -58,9 +61,16 @@ public class ConfirmInventoryRequestHandler
         {
             int delta = req.Type == "OUTBOUND" ? -item.Quantity : item.Quantity;
 
-            // This throws if OUTBOUND and insufficient stock
+            // Update warehouse_inventory (text-based, backward compatible)
             await _invRepo.AdjustQuantityAsync(
                 req.WarehouseId, item.ItemName, item.Unit, delta, cancellationToken);
+
+            // Update renter_inventory (asset-based) if item has AssetId
+            if (item.AssetId.HasValue && item.AssetId.Value > 0)
+            {
+                await _assetRepo.AdjustRenterInventoryAsync(
+                    item.AssetId.Value, req.WarehouseId, delta, cancellationToken);
+            }
 
             // 4. Create transaction record per item
             await _txRepo.CreateAsync(new InventoryTransaction

@@ -112,7 +112,10 @@ function resolveEffectiveRole(systemRole, warehouses) {
     if (warehouseRoles.includes(r)) return r;
   }
 
-  // No warehouse membership → plain user
+  // No warehouse membership → check systemRole (e.g. RENTER, OWNER)
+  const sr = (systemRole || "").toUpperCase();
+  if (MENU_BY_ROLE[sr]) return sr;
+
   return "USER";
 }
 

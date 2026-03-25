@@ -111,7 +111,8 @@ public class ScheduleController : ControllerBase
             return BadRequest(new { message = "From không được lớn hơn To." });
 
         var memberships = await _db.WarehouseMemberships
-            .Where(m => m.WarehouseId == req.WarehouseId && m.IsActive && m.WarehouseShiftId != null)
+            .Include(m => m.Role)
+            .Where(m => m.WarehouseId == req.WarehouseId && m.IsActive && m.WarehouseShiftId != null && m.Role.Code == "STAFF")
             .Include(m => m.WarehouseShift)
             .ToListAsync(ct);
 
