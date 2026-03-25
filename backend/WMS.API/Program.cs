@@ -55,7 +55,8 @@ builder.Services.AddSwaggerGen(c =>
 
 // Database Context - merged from ScaffoldModels
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
 // MediatR Registration - scan tất cả handlers trong Application assembly
 builder.Services.AddMediatR(cfg =>

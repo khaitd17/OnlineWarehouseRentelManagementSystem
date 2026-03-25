@@ -252,6 +252,24 @@ const WarehouseDetailsPage = () => {
 
               <div style={{ marginBottom: '1.2rem' }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>Gửi yêu cầu thuê kho</h3>
+                {warehouseData?.pricePerM2 ? (
+                  <div style={{
+                    background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)',
+                    border: '1px solid #6ee7b7',
+                    borderRadius: 12,
+                    padding: '10px 14px',
+                    marginTop: 8,
+                    marginBottom: 4,
+                    display: 'flex',
+                    alignItems: 'baseline',
+                    gap: 4,
+                  }}>
+                    <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#065f46' }}>
+                      {Number(warehouseData.pricePerM2).toLocaleString('vi-VN')} đ
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: '#047857', fontWeight: 600 }}>/m²/tháng</span>
+                  </div>
+                ) : null}
                 <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Diện tích còn trống: <strong>{warehouse.availableArea} m²</strong></p>
               </div>
 

@@ -84,6 +84,7 @@ public async Task<Warehouse?> GetByIdAsync(
         OpenTime = entity.OpenTime,
         CloseTime = entity.CloseTime,
         MainDoorDirection = entity.MainDoorDirection,
+        PricePerM2 = entity.PricePerM2,
         Status = entity.Status ?? "UNKNOWN",
         CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
         WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
@@ -133,6 +134,7 @@ public async Task<Warehouse?> GetByIdAsync(
             OpenTime = entity.OpenTime,
             CloseTime = entity.CloseTime,
             MainDoorDirection = entity.MainDoorDirection,
+            PricePerM2 = entity.PricePerM2,
             Status = entity.Status ?? "UNKNOWN",
             CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
             WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
@@ -231,6 +233,7 @@ public async Task<Warehouse?> GetByIdAsync(
             Is24HoursAccess = entity.Is24HoursAccess,
             OpenTime = entity.OpenTime,
             CloseTime = entity.CloseTime,
+            PricePerM2 = entity.PricePerM2,
             Status = entity.Status ?? "UNKNOWN",
             CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
             WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium

@@ -48,6 +48,7 @@ public class GetWarehouseDetailHandler
             Width = warehouse.Width,
             Length = warehouse.Length,
             AvailableArea = warehouse.AvailableArea,
+            PricePerM2 = warehouse.PricePerM2,
             OperatingHours = warehouse.OperatingHours,
             Is24HoursAccess = warehouse.Is24HoursAccess,
             OpenTime = warehouse.OpenTime,
