@@ -76,12 +76,15 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<StaffShift> StaffShifts { get; set; }
 
+<<<<<<< HEAD
     public virtual DbSet<WarehouseShift> WarehouseShifts { get; set; }
 
     public virtual DbSet<RenterAsset> RenterAssets { get; set; }
 
     public virtual DbSet<RenterInventory> RenterInventories { get; set; }
 
+=======
+>>>>>>> parent of 5416285b (update contract)
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         // if (!optionsBuilder.IsConfigured)

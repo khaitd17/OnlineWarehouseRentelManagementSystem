@@ -26,8 +26,8 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
         // Calculate amount based on payment type
         decimal amount = request.AmountOverride ?? request.PaymentType switch
         {
-            "DEPOSIT" => contract.DepositAmount ?? contract.MonthlyPayment,
-            "MONTHLY" => contract.MonthlyPayment,
+            PaymentType.Deposit => contract.DepositAmount ?? contract.MonthlyPayment,
+            PaymentType.Monthly => contract.MonthlyPayment,
             _ => contract.MonthlyPayment
         };
 

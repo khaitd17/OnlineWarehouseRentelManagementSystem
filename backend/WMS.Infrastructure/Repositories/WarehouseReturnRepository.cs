@@ -82,6 +82,7 @@ namespace WMS.Infrastructure.Repositories
             // Get returns that are pending approval for contracts belonging to these warehouses
             return await _context.WarehouseReturns
                 .Include(r => r.Contract)
+                    .ThenInclude(c => c!.Renter)
                 .Where(r => r.Contract != null
                     && warehouseIds.Contains(r.Contract.WarehouseId)
                     && (r.Status == WarehouseReturnStatus.PendingApproval

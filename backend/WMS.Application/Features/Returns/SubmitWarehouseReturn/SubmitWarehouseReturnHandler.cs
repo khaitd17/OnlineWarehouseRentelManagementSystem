@@ -75,7 +75,7 @@ namespace WMS.Application.Features.Returns.SubmitWarehouseReturn
                     warehouseReturn.AddImage(imageDto.ImageUrl, imageDto.Description);
                 }
 
-                var returnId = await _returnRepository.AddAsync(warehouseReturn);
+                var savedReturn = await _returnRepository.AddAsync(warehouseReturn);
 
                 // Xác định có cần inspection không
                 var requiresInspection = !request.IsClean || !request.IsEquipmentIntact || !request.IsNoOutstandingDebt;
@@ -85,13 +85,8 @@ namespace WMS.Application.Features.Returns.SubmitWarehouseReturn
                     ? "Warehouse return submitted successfully. Awaiting staff inspection."
                     : "Warehouse return approved. Contract will be closed automatically.";
 
-                // Get the saved return to update status
-                var savedReturn = await _returnRepository.GetByIdAsync(returnId);
-                if (savedReturn != null)
-                {
-                    savedReturn.SetStatus(status);
-                    await _returnRepository.UpdateAsync(savedReturn);
-                }
+                savedReturn.SetStatus(status);
+                await _returnRepository.UpdateAsync(savedReturn);
 
                 // Nếu không cần inspection thì close contract luôn
                 if (!requiresInspection)
@@ -118,7 +113,7 @@ namespace WMS.Application.Features.Returns.SubmitWarehouseReturn
                 {
                     Success = true,
                     Message = "Warehouse return submitted successfully",
-                    ReturnId = returnId,
+                    ReturnId = savedReturn.ReturnId,
                     Status = status,
                     RequiresInspection = requiresInspection,
                     NextSteps = nextSteps

@@ -135,6 +135,7 @@ const Sidebar = () => {
     const avatar      = user.avatarUrl || user.AvatarUrl ||
       `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00b2d6&color=fff`;
 
+<<<<<<< HEAD
     setEffectiveRole(resolveEffectiveRole(systemRole, warehouses));
     setDisplayName(name);
     setAvatarSrc(avatar);
@@ -157,6 +158,24 @@ const Sidebar = () => {
     window.addEventListener("authChange", handler);
     return () => window.removeEventListener("authChange", handler);
   }, []);
+=======
+    axiosClient
+      .get("/staff/my-warehouses")
+      .then((res) => {
+        const list = res.data || [];
+        for (const r of ROLE_PRIORITY) {
+          if (list.some((w) => w.roleCode === r)) {
+            setWarehouseRole(r);
+            return;
+          }
+        }
+        // If no specifically prioritized warehouse role is found, don't force 'STAFF'
+        // This allows the systemRole (like USER or OWNER) to take precedence.
+      })
+      .catch(() => setWarehouseRole(null))
+      .finally(() => setLoading(false));
+  }, [systemRole]);
+>>>>>>> parent of 5416285b (update contract)
 
   const handleLogout = () => {
     authService.logout();
@@ -164,7 +183,143 @@ const Sidebar = () => {
     navigate("/auth");
   };
 
+<<<<<<< HEAD
   const menuItems  = MENU_BY_ROLE[effectiveRole] || MENU_BY_ROLE["USER"];
+=======
+  const allMenus = {
+    OWNER: [
+      { icon: "dashboard", label: "Tổng quan", path: "/dashboard" },
+      { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
+      { icon: "add_circle", label: "Tạo kho mới", path: "/post-warehouse" },
+      {
+        icon: "description",
+        label: "Quản lý hợp đồng",
+        path: "/my-contracts",
+        section: "HỢP ĐỒNG",
+      },
+      {
+        icon: "pending_actions",
+        label: "Yêu cầu thuê kho",
+        path: "/pending-rental-requests",
+      },
+      {
+        icon: "event_repeat",
+        label: "Yêu cầu gia hạn",
+        path: "/pending-extensions",
+      },
+      {
+        icon: "assignment_return",
+        label: "Trả kho chờ duyệt",
+        path: "/pending-returns",
+      },
+      {
+        icon: "inventory_2",
+        label: "Yêu cầu nhập/xuất",
+        path: "/owner-inventory-requests",
+        section: "YÊU CẦU",
+      },
+      {
+        icon: "group",
+        label: "Quản lý nhân viên",
+        path: "/list-staff",
+        section: "QUẢN LÝ",
+      },
+      { icon: "person_add", label: "Tạo nhân viên", path: "/create-staff" },
+      {
+        icon: "fact_check",
+        label: "Kiểm kê kho",
+        path: "/owner-audit-sessions",
+      },
+      {
+        icon: "bar_chart",
+        label: "Phân tích doanh thu",
+        path: "/analytics",
+        section: "BÁO CÁO",
+      },
+      { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
+    ],
+    RENTER: [
+      {
+        icon: "dashboard",
+        label: "Bảng điều khiển",
+        path: "/renter-dashboard",
+      },
+      {
+        icon: "receipt_long",
+        label: "Yêu cầu thuê kho",
+        path: "/my-rental-requests",
+        section: "HỢP ĐỒNG",
+      },
+      {
+        icon: "description",
+        label: "Hợp đồng của tôi",
+        path: "/my-contracts",
+      },
+      {
+        icon: "move_to_inbox",
+        label: "Yêu cầu nhập kho",
+        path: "/renter-inbound-requests",
+        section: "QUẢN LÝ KHO",
+      },
+      {
+        icon: "outbox",
+        label: "Yêu cầu xuất kho",
+        path: "/renter-outbound-requests",
+      },
+      {
+        icon: "add_circle",
+        label: "Tạo yêu cầu nhập",
+        path: "/create-inbound",
+      },
+      { icon: "upload", label: "Tạo yêu cầu xuất", path: "/create-outbound" },
+      {
+        icon: "fact_check",
+        label: "Kiểm kê kho",
+        path: "/renter-audit-sessions",
+      },
+      { icon: "bar_chart", label: "Báo cáo", path: "/transaction-history" },
+      { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
+    ],
+    STAFF: [
+      { icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" },
+      {
+        icon: "move_to_inbox",
+        label: "Yêu cầu nhập kho",
+        path: "/inbound-requests",
+      },
+      { icon: "outbox", label: "Yêu cầu xuất kho", path: "/outbound-requests" },
+      {
+        icon: "swap_horiz",
+        label: "Xác nhận di chuyển",
+        path: "/confirm-movement",
+      },
+      {
+        icon: "fact_check",
+        label: "Kiểm kê kho",
+        path: "/staff-audit-sessions",
+      },
+      {
+        icon: "history",
+        label: "Lịch sử giao dịch",
+        path: "/transaction-history",
+      },
+      { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
+    ],
+  };
+
+  allMenus["MANAGER"] = allMenus["STAFF"];
+  /* Chọn menu theo ưu tiên: ADMIN > warehouseRole > systemRole > STAFF */
+  let effectiveRole;
+  if (systemRole === "ADMIN") {
+    effectiveRole = "ADMIN";
+  } else if (systemRole === "RENTER") {
+    effectiveRole = "RENTER";
+  } else {
+    effectiveRole = warehouseRole || systemRole || "STAFF";
+  }
+
+  const menuItems = MENU_BY_ROLE[effectiveRole] || MENU_BY_ROLE["STAFF"];
+>>>>>>> parent of 5416285b (update contract)
   const displayRole = ROLE_LABEL[effectiveRole] || effectiveRole;
   const accentColor = "#00b2d6";
   const activeBg    = "#e0f2fe";

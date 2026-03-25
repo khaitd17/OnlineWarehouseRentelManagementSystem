@@ -6,7 +6,6 @@ const statusColors = {
   PENDING: { bg: "#fef3c7", color: "#d97706", label: "Chờ duyệt" },
   APPROVED: { bg: "#dcfce7", color: "#16a34a", label: "Đã duyệt" },
   REJECTED: { bg: "#fee2e2", color: "#dc2626", label: "Từ chối" },
-  CANCELLED: { bg: "#f1f5f9", color: "#64748b", label: "Đã hủy" },
 };
 
 const formatCurrency = (amount) => {
@@ -620,15 +619,6 @@ const PendingRentalRequests = () => {
                         marginTop: "0.6rem", fontStyle: "italic",
                       }}>
                         Ghi chú: {req.notes}
-                      </p>
-                    )}
-
-                    {req.rejectionReason && (
-                      <p style={{
-                        color: "#dc2626", fontSize: "0.88rem",
-                        marginTop: "0.6rem", fontStyle: "italic",
-                      }}>
-                        Lý do từ chối: {req.rejectionReason}
                       </p>
                     )}
                   </div>

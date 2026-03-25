@@ -41,8 +41,8 @@ namespace WMS.Application.Features.Returns.UpdateInspection
                     };
                 }
 
-                // Record inspection
-                warehouseReturn.RecordInspection(
+                // Submit inspection
+                warehouseReturn.SubmitInspection(
                     inspectorId: request.InspectorId,
                     isClean: request.IsClean,
                     isEquipmentIntact: request.IsEquipmentIntact,

@@ -108,6 +108,7 @@ function AppRoutes() {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Route>
 
+<<<<<<< HEAD
         {/* ── DASHBOARD pages: NO public navbar ── */}
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<ProfilePage />} />
@@ -118,6 +119,21 @@ function AppRoutes() {
             <Route path="/settings" element={<ProfilePage />} />
             <Route path="/create-warehouse" element={<CreateWarehouse />} />
             <Route path="/post-warehouse" element={<PostWarehousePage />} />
+=======
+          {/* ── Any logged-in user: profile, settings, public dashboard features ── */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route element={<DashboardLayout />}>
+              {/* Plain user routes — visible to everyone logged in */}
+              <Route path="/my-rental-requests" element={<MyRentalRequests />} />
+              <Route path="/my-contracts" element={<MyContracts />} />
+              <Route path="/contracts/:id" element={<ContractDetail />} />
+              <Route path="/settings" element={<ProfilePage />} />
+              {/* User can also view warehouse listings from dashboard */}
+              <Route path="/create-warehouse" element={<CreateWarehouse />} />
+              <Route path="/post-warehouse" element={<PostWarehousePage />} />
+            </Route>
+>>>>>>> parent of 5416285b (update contract)
           </Route>
         </Route>
 

@@ -88,9 +88,15 @@ builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.Infrastructure.Repositories.NotificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
+<<<<<<< HEAD
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
+=======
+builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalPaymentRepository, WMS.Infrastructure.Repositories.RentalPaymentRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseReturnRepository, WMS.Infrastructure.Repositories.WarehouseReturnRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
+>>>>>>> parent of 5416285b (update contract)
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -173,6 +179,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+<<<<<<< HEAD
     var logger  = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
@@ -182,6 +189,10 @@ using (var scope = app.Services.CreateScope())
     {
         logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi (có thể data đã tồn tại hoặc SQL Server chưa sẵn sàng). Backend vẫn tiếp tục chạy.");
     }
+=======
+    // Gọi DatabaseSeeder để khởi tạo dữ liệu mẫu
+    DatabaseSeeder.Seed(context);
+>>>>>>> parent of 5416285b (update contract)
 }
 
 // ==========================================

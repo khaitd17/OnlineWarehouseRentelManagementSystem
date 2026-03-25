@@ -8,7 +8,6 @@ public class SepaySettings
     public string AccountName { get; set; } = null!;
     public string WebhookUrl { get; set; } = null!;
     public string WhitelistIPs { get; set; } = null!;
-    public bool BypassIpValidation { get; set; } = false;
 
     public string[] GetWhitelistIpArray() =>
         WhitelistIPs?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
