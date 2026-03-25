@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
@@ -75,4 +76,44 @@ public class RenterAssetRepository : IRenterAssetRepository
             .ThenBy(r => r.AssetName)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<RenterAsset?> GetByIdAsync(int assetId, CancellationToken cancellationToken)
+    {
+        return await _context.RenterAssets
+            .FirstOrDefaultAsync(a => a.AssetId == assetId, cancellationToken);
+    }
+
+    public async Task AdjustRenterInventoryAsync(
+        int assetId, 
+        int warehouseId, 
+        int delta, 
+        CancellationToken cancellationToken)
+    {
+        var inv = await _context.RenterInventories
+            .FirstOrDefaultAsync(ri => ri.AssetId == assetId && ri.WarehouseId == warehouseId, cancellationToken);
+
+        if (inv == null)
+        {
+            if (delta > 0)
+            {
+                inv = new WMS.Domain.Entities.RenterInventory
+                {
+                    AssetId = assetId,
+                    WarehouseId = warehouseId,
+                    Quantity = delta,
+                    UpdatedAt = DateTime.Now
+                };
+                _context.RenterInventories.Add(inv);
+            }
+        }
+        else
+        {
+            inv.Quantity += delta;
+            if (inv.Quantity < 0) inv.Quantity = 0;
+            inv.UpdatedAt = DateTime.Now;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
 }
+

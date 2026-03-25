@@ -1,3 +1,5 @@
+using WMS.Domain.Entities;
+
 namespace WMS.Domain.Interfaces;
 
 public interface IRenterAssetRepository
@@ -10,6 +12,10 @@ public interface IRenterAssetRepository
     Task<List<WarehouseInventoryRowDto>> GetInventoryByWarehouseAsync(
         int warehouseId,
         CancellationToken cancellationToken);
+
+    Task<RenterAsset?> GetByIdAsync(int assetId, CancellationToken cancellationToken);
+
+    Task AdjustRenterInventoryAsync(int assetId, int warehouseId, int delta, CancellationToken cancellationToken);
 }
 
 public record RenterInventoryRowDto
