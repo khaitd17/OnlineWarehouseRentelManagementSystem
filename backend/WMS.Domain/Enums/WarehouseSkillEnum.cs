@@ -6,13 +6,9 @@ namespace WMS.Domain.Enums;
 /// </summary>
 public enum WarehouseSkill
 {
-    /// <summary>Kiểm tra đơn hàng</summary>
+    
     CHECK_ORDER,
-
-    /// <summary>Cất hàng vào vị trí</summary>
     PUTAWAY,
-
-    /// <summary>Kiểm kê tồn kho</summary>
     INVENTORY_COUNT
 }
 

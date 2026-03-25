@@ -91,6 +91,8 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Inf
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
+// ─── Luồng mới: xem tài sản renter ────────────────────
+builder.Services.AddScoped<WMS.Domain.Interfaces.IRenterAssetRepository, WMS.Infrastructure.Repositories.RenterAssetRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
