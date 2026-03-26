@@ -34,6 +34,21 @@ const ratingService = {
     return response.data;
   },
 
+  updateReply: async (ratingId, reply) => {
+    const response = await axiosClient.post(`/ratings/${ratingId}/reply`, { reply });
+    return response.data;
+  },
+
+  deleteReply: async (ratingId) => {
+    const response = await axiosClient.delete(`/ratings/${ratingId}/reply`);
+    return response.data;
+  },
+
+  getOwnerUnrepliedCount: async () => {
+    const response = await axiosClient.get('/ratings/owner/unreplied-count');
+    return response.data.count ?? 0;
+  },
+
   toggleHideRating: async (ratingId) => {
     const response = await axiosClient.patch(`/ratings/${ratingId}/toggle-hide`);
     return response.data;

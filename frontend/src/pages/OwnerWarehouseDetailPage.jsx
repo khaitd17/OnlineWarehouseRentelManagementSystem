@@ -72,7 +72,9 @@ const OwnerWarehouseDetailPage = () => {
   const [ratingsData, setRatingsData] = useState(null);
   const [replyText, setReplyText] = useState({});
   const [replyLoading, setReplyLoading] = useState(false);
-  const [hidingId, setHidingId] = useState(null);
+  const [editReplyId, setEditReplyId] = useState(null);
+  const [editReplyText, setEditReplyText] = useState({});
+  const [replyActionLoading, setReplyActionLoading] = useState(null);
 
   const fetchRatings = async () => {
     try {
@@ -115,6 +117,7 @@ const OwnerWarehouseDetailPage = () => {
         )
       }));
       setReplyText(prev => ({ ...prev, [ratingId]: '' }));
+      window.dispatchEvent(new Event('replyChanged'));
     } catch (err) {
       console.error('Failed to reply:', err);
     } finally {
@@ -122,22 +125,45 @@ const OwnerWarehouseDetailPage = () => {
     }
   };
 
-  const handleToggleHide = async (ratingId) => {
-    setHidingId(ratingId);
+  const handleUpdateReply = async (ratingId) => {
+    if (!editReplyText[ratingId]?.trim()) return;
+    setReplyActionLoading(ratingId);
     try {
-      await ratingService.toggleHideRating(ratingId);
+      await ratingService.updateReply(ratingId, editReplyText[ratingId].trim());
       setRatingsData(prev => ({
         ...prev,
         ratings: prev.ratings.map(r =>
-          r.ratingId === ratingId ? { ...r, isHidden: !r.isHidden } : r
+          r.ratingId === ratingId ? { ...r, ownerReply: editReplyText[ratingId].trim() } : r
         )
       }));
+      setEditReplyId(null);
+      // badge không cần thay đổi vì reply đã tồn tại
     } catch (err) {
-      console.error('Failed to toggle hide:', err);
+      console.error('Failed to update reply:', err);
     } finally {
-      setHidingId(null);
+      setReplyActionLoading(null);
     }
   };
+
+  const handleDeleteReply = async (ratingId) => {
+    setReplyActionLoading(ratingId + '_del');
+    try {
+      await ratingService.deleteReply(ratingId);
+      setRatingsData(prev => ({
+        ...prev,
+        ratings: prev.ratings.map(r =>
+          r.ratingId === ratingId ? { ...r, ownerReply: null, repliedAt: null } : r
+        )
+      }));
+      window.dispatchEvent(new Event('replyChanged'));
+    } catch (err) {
+      console.error('Failed to delete reply:', err);
+    } finally {
+      setReplyActionLoading(null);
+    }
+  };
+
+
 
   if (loading) return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh", flexDirection: "column", gap: 16 }}>
@@ -276,29 +302,70 @@ const OwnerWarehouseDetailPage = () => {
       {/* ── Tabs ── */}
       <div style={{ background: "#fff", borderBottom: "1px solid #e2e8f0", padding: "0 2.5rem", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ display: "flex", gap: 0 }}>
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                padding: "16px 24px",
-                background: "none",
-                border: "none",
-                borderBottom: activeTab === tab.id ? "3px solid #0284c7" : "3px solid transparent",
-                color: activeTab === tab.id ? "#0284c7" : "#64748b",
-                fontWeight: activeTab === tab.id ? 700 : 500,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                fontSize: "0.9rem",
-                transition: "all 0.15s"
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
+          {TABS.map(tab => {
+            const isActive = activeTab === tab.id;
+            // Số đánh giá chưa reply trên tab "ratings"
+            const badge = tab.id === "ratings" && ratingsData
+              ? ratingsData.ratings?.filter(r => !r.ownerReply).length || 0
+              : 0;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  padding: "16px 24px",
+                  background: "none",
+                  border: "none",
+                  borderBottom: isActive ? "3px solid #0284c7" : "3px solid transparent",
+                  color: isActive ? "#0284c7" : "#64748b",
+                  fontWeight: isActive ? 700 : 500,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: "0.9rem",
+                  transition: "all 0.15s",
+                  position: "relative",
+                }}
+              >
+                <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{tab.icon}</span>
+                  {badge > 0 && (
+                    <span style={{
+                      position: "absolute",
+                      top: "-8px",
+                      right: "-10px",
+                      minWidth: "17px",
+                      height: "17px",
+                      borderRadius: "9px",
+                      backgroundColor: "#ef4444",
+                      color: "#fff",
+                      fontSize: "0.62rem",
+                      fontWeight: 800,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: "0 4px",
+                      boxShadow: "0 2px 6px rgba(239,68,68,0.5)",
+                      border: "2px solid #fff",
+                      lineHeight: 1,
+                      animation: "badgePop 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+                    }}>
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
+                </span>
+                {tab.label}
+                <style>{`
+                  @keyframes badgePop {
+                    0% { transform: scale(0); opacity: 0; }
+                    70% { transform: scale(1.2); }
+                    100% { transform: scale(1); opacity: 1; }
+                  }
+                `}</style>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -611,27 +678,17 @@ const OwnerWarehouseDetailPage = () => {
                       );
                     })}
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 160 }}>
-                    <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.7)", borderRadius: 10, border: "1px solid #fde68a", textAlign: "center" }}>
-                      <div style={{ fontSize: "0.75rem", color: "#92400e", fontWeight: 700, marginBottom: 2 }}>ĐÃ ẨN</div>
-                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#dc2626" }}>{ratingsData.ratings.filter(r => r.isHidden).length}</div>
-                    </div>
-                    <div style={{ padding: "10px 16px", background: "rgba(255,255,255,0.7)", borderRadius: 10, border: "1px solid #fde68a", textAlign: "center" }}>
-                      <div style={{ fontSize: "0.75rem", color: "#92400e", fontWeight: 700, marginBottom: 2 }}>HIỂN THỊ</div>
-                      <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#16a34a" }}>{ratingsData.ratings.filter(r => !r.isHidden).length}</div>
-                    </div>
-                  </div>
+
                 </div>
 
                 {/* Rating cards */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {ratingsData.ratings.map(r => (
                     <div key={r.ratingId} style={{
-                      background: r.isHidden ? "#f8fafc" : "#fff",
+                      background: "#fff",
                       borderRadius: 16, padding: "1.4rem 1.6rem",
-                      border: `1px solid ${r.isHidden ? "#e2e8f0" : "#f1f5f9"}`,
-                      boxShadow: r.isHidden ? "none" : "0 2px 8px rgba(0,0,0,0.04)",
-                      opacity: r.isHidden ? 0.7 : 1,
+                      border: "1px solid #f1f5f9",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
                       transition: "all 0.2s",
                     }}>
                       {/* Card header */}
@@ -661,34 +718,6 @@ const OwnerWarehouseDetailPage = () => {
                               </svg>
                             ))}
                           </div>
-                          {/* Hidden badge */}
-                          {r.isHidden && (
-                            <span style={{ padding: "3px 10px", background: "#fef2f2", color: "#dc2626", borderRadius: 8, fontSize: "0.72rem", fontWeight: 700 }}>Đã ẩn</span>
-                          )}
-                          {/* Toggle hide button */}
-                          <button
-                            onClick={() => handleToggleHide(r.ratingId)}
-                            disabled={hidingId === r.ratingId}
-                            title={r.isHidden ? "Hiện lại đánh giá" : "Ẩn đánh giá này"}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 5,
-                              padding: "6px 14px",
-                              background: r.isHidden ? "#f0fdf4" : "#fef2f2",
-                              border: `1px solid ${r.isHidden ? "#bbf7d0" : "#fecaca"}`,
-                              borderRadius: 8,
-                              color: r.isHidden ? "#16a34a" : "#dc2626",
-                              fontWeight: 600, cursor: hidingId === r.ratingId ? "wait" : "pointer",
-                              fontSize: "0.8rem", transition: "all 0.2s",
-                              opacity: hidingId === r.ratingId ? 0.6 : 1,
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: 15 }}>
-                              {hidingId === r.ratingId ? "sync" : (r.isHidden ? "visibility" : "visibility_off")}
-                            </span>
-                            {r.isHidden ? "Hiện" : "Ẩn"}
-                          </button>
                         </div>
                       </div>
 
@@ -705,13 +734,69 @@ const OwnerWarehouseDetailPage = () => {
                       {/* Owner reply or reply form */}
                       {r.ownerReply ? (
                         <div style={{ padding: "12px 16px", background: "#f0fdf4", borderRadius: 10, borderLeft: "3px solid #22c55e" }}>
-                          <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#16a34a", marginBottom: 4, display: "flex", alignItems: "center", gap: 4 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                            </svg>
-                            Phản hồi của bạn
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                            <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#16a34a", display: "flex", alignItems: "center", gap: 4 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                              </svg>
+                              Phản hồi của bạn
+                            </div>
+                            {editReplyId !== r.ratingId && (
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button
+                                  onClick={() => { setEditReplyId(r.ratingId); setEditReplyText(prev => ({ ...prev, [r.ratingId]: r.ownerReply })); }}
+                                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 6, color: "#2563eb", fontWeight: 600, cursor: "pointer", fontSize: "0.75rem" }}
+                                  onMouseEnter={e => e.currentTarget.style.background = "#dbeafe"}
+                                  onMouseLeave={e => e.currentTarget.style.background = "#eff6ff"}
+                                >
+                                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>edit</span>
+                                  Sửa
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteReply(r.ratingId)}
+                                  disabled={replyActionLoading === r.ratingId + '_del'}
+                                  style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 6, color: "#dc2626", fontWeight: 600, cursor: replyActionLoading === r.ratingId + '_del' ? "wait" : "pointer", fontSize: "0.75rem", opacity: replyActionLoading === r.ratingId + '_del' ? 0.6 : 1 }}
+                                  onMouseEnter={e => { if (replyActionLoading !== r.ratingId + '_del') e.currentTarget.style.background = "#fee2e2"; }}
+                                  onMouseLeave={e => e.currentTarget.style.background = "#fef2f2"}
+                                >
+                                  <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+                                    {replyActionLoading === r.ratingId + '_del' ? "sync" : "delete"}
+                                  </span>
+                                  Xóa
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          <p style={{ fontSize: "0.88rem", color: "#15803d", margin: 0, lineHeight: 1.5 }}>{r.ownerReply}</p>
+                          {editReplyId === r.ratingId ? (
+                            <div style={{ marginTop: 8 }}>
+                              <textarea
+                                value={editReplyText[r.ratingId] || ""}
+                                onChange={e => setEditReplyText(prev => ({ ...prev, [r.ratingId]: e.target.value }))}
+                                rows={3}
+                                style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1.5px solid #86efac", fontSize: "0.88rem", outline: "none", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical", color: "#0f172a" }}
+                                onFocus={e => { e.target.style.borderColor = "#16a34a"; e.target.style.boxShadow = "0 0 0 3px rgba(22,163,74,0.12)"; }}
+                                onBlur={e => { e.target.style.borderColor = "#86efac"; e.target.style.boxShadow = "none"; }}
+                              />
+                              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                <button
+                                  onClick={() => handleUpdateReply(r.ratingId)}
+                                  disabled={!editReplyText[r.ratingId]?.trim() || replyActionLoading === r.ratingId}
+                                  style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 18px", background: "linear-gradient(135deg, #16a34a, #15803d)", color: "#fff", border: "none", borderRadius: 8, fontWeight: 700, cursor: "pointer", fontSize: "0.85rem", boxShadow: "0 3px 10px rgba(22,163,74,0.3)" }}
+                                >
+                                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>check</span>
+                                  Lưu phản hồi
+                                </button>
+                                <button
+                                  onClick={() => setEditReplyId(null)}
+                                  style={{ padding: "7px 14px", background: "#f1f5f9", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 8, fontWeight: 600, cursor: "pointer", fontSize: "0.85rem" }}
+                                >
+                                  Hủy
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p style={{ fontSize: "0.88rem", color: "#15803d", margin: 0, lineHeight: 1.5 }}>{r.ownerReply}</p>
+                          )}
                         </div>
                       ) : (
                         <div style={{ marginTop: 12 }}>
