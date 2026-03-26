@@ -44,9 +44,11 @@ import CreateInboundRequest from "../pages/Requests/CreateInboundRequest";
 import TransactionHistory from "../pages/Requests/TransactionHistory";
 import RenterInboundList from "../pages/Requests/RenterInboundList";
 import RenterOutboundList from "../pages/Requests/RenterOutboundList";
+import RenterInventoryHistory from "../pages/Requests/RenterInventoryHistory";
 import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
 import StaffInventoryRequests from "../pages/Requests/StaffInventoryRequests";
 import PaymentHistory from "../pages/Requests/PaymentHistory";
+import CreateInventoryRequest from "../pages/Requests/CreateInventoryRequest";
 import RenterInventoryPage from "../pages/RenterInventoryPage";
 import OwnerInventoryPage from "../pages/OwnerInventoryPage";
 
@@ -174,6 +176,9 @@ function AppRoutes() {
         <Route element={<RoleBasedRoute allowedRoles={['RENTER', 'USER', 'ADMIN']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/renter-dashboard" element={<RenterDashboard />} />
+            {/* Merged history page (2 tabs) */}
+            <Route path="/renter-inventory-history" element={<RenterInventoryHistory />} />
+            {/* Keep old routes for backward compatibility */}
             <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
             <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
             <Route path="/renter-audit-sessions" element={<RenterAuditSessionsPage />} />
@@ -186,6 +191,9 @@ function AppRoutes() {
         {/* ── Any warehouse member ── */}
         <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'RENTER', 'USER', 'ADMIN']} />}>
           <Route element={<DashboardLayout />}>
+            {/* Merged create page (2 tabs) */}
+            <Route path="/create-inventory" element={<CreateInventoryRequest />} />
+            {/* Keep old routes for backward compatibility */}
             <Route path="/create-inbound" element={<CreateInboundRequest />} />
             <Route path="/create-outbound" element={<CreateOutboundRequest />} />
             <Route path="/payment-history" element={<PaymentHistory />} />

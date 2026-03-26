@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import authService from "../../services/authService";
+import rentalService from "../../services/rentalService";
+import ratingService from "../../services/ratingService";
 
 /* ── Menu definitions per warehouse role ── */
 const MENU_BY_ROLE = {
@@ -62,17 +64,14 @@ const MENU_BY_ROLE = {
   ],
   // Người thuê kho
   RENTER: [
-    { icon: "description",             label: "Hợp đồng của tôi",    path: "/my-contracts" },
-    { icon: "list_alt",                label: "Yêu cầu thuê kho",   path: "/my-rental-requests" },
-    { icon: "move_to_inbox",           label: "Yêu cầu nhập kho",    path: "/renter-inbound-requests",  section: "KHO" },
-    { icon: "outbox",                  label: "Yêu cầu xuất kho",    path: "/renter-outbound-requests" },
-    { icon: "add_circle",              label: "Tạo yêu cầu nhập",    path: "/create-inbound" },
-    { icon: "upload",                  label: "Tạo yêu cầu xuất",    path: "/create-outbound" },
-    { icon: "inventory",               label: "Tồn kho của tôi",     path: "/renter-inventory" },
-    { icon: "fact_check",              label: "Kiểm kê kho",         path: "/renter-audit-sessions" },
-    { icon: "receipt_long",            label: "Lịch sử thanh toán",  path: "/payment-history",       section: "TÀI CHÍNH" },
-    { icon: "star",                     label: "Đánh giá của tôi",    path: "/my-ratings" },
-    { icon: "settings",                label: "Cài đặt",             path: "/settings",              isBottom: true },
+    { icon: "description",             label: "Hợp đồng của tôi",       path: "/my-contracts" },
+    { icon: "list_alt",                label: "Yêu cầu thuê kho",        path: "/my-rental-requests" },
+    { icon: "add_circle",              label: "Tạo yêu cầu nhập/xuất",   path: "/create-inventory",         section: "KHO" },
+    { icon: "history",                 label: "Lịch sử nhập/xuất kho",   path: "/renter-inventory-history" },
+    { icon: "fact_check",              label: "Kiểm kê kho",             path: "/renter-audit-sessions" },
+    { icon: "receipt_long",            label: "Lịch sử thanh toán",      path: "/payment-history",          section: "TÀI CHÍNH" },
+    { icon: "star",                    label: "Đánh giá của tôi",        path: "/my-ratings",               badgeKey: "unratedCount" },
+    { icon: "settings",                label: "Cài đặt",                 path: "/settings",                 isBottom: true },
   ],
   // Người dùng thường chưa có kho
   USER: [
@@ -129,8 +128,11 @@ const Sidebar = () => {
   const [effectiveRole, setEffectiveRole] = useState("USER");
   const [displayName,   setDisplayName]   = useState("Người dùng");
   const [avatarSrc,     setAvatarSrc]     = useState("");
+  // Badge: số kho chưa đánh giá (Renter) / số đánh giá chưa reply (Owner)
+  const [unratedCount,    setUnratedCount]   = useState(0);
+  const [unrepliedCount,  setUnrepliedCount] = useState(0);
 
-  useEffect(() => {
+  const loadUserInfo = () => {
     const user = authService.getCurrentUser() || {};
     const ctx  = authService.getWarehouseContext() || {};
     const systemRole  = (ctx.systemRole || user.role || user.roleName || "user").toLowerCase();
@@ -139,28 +141,89 @@ const Sidebar = () => {
     const avatar      = user.avatarUrl || user.AvatarUrl ||
       `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00b2d6&color=fff`;
 
-    setEffectiveRole(resolveEffectiveRole(systemRole, warehouses));
+    const role = resolveEffectiveRole(systemRole, warehouses);
+    setEffectiveRole(role);
     setDisplayName(name);
     setAvatarSrc(avatar);
+    return role;
+  };
+
+  // Fetch số hợp đồng chưa đánh giá (chỉ dành cho Renter)
+  const fetchUnratedCount = async () => {
+    try {
+      const [contracts, myRatings] = await Promise.all([
+        rentalService.getMyContracts(),
+        ratingService.getMyRatings(),
+      ]);
+      const activeContracts = contracts.filter(
+        c => c.status === "ACTIVE" || c.status === "EXPIRED"
+      );
+      const ratedContractIds = new Set(myRatings.map(r => r.contractId));
+      const unrated = activeContracts.filter(c => !ratedContractIds.has(c.contractId));
+      setUnratedCount(unrated.length);
+    } catch {
+      setUnratedCount(0);
+    }
+  };
+
+  // Fetch số đánh giá chưa reply (chỉ dành cho Owner/Operator)
+  const fetchUnrepliedCount = async () => {
+    try {
+      const count = await ratingService.getOwnerUnrepliedCount();
+      setUnrepliedCount(count);
+    } catch {
+      setUnrepliedCount(0);
+    }
+  };
+
+  useEffect(() => {
+    const role = loadUserInfo();
+    if (role === "RENTER") fetchUnratedCount();
+    if (role === "OWNER" || role === "OPERATOR") fetchUnrepliedCount();
   }, []);
 
-  // Also re-resolve when authChange fires (login/logout)
+  // Re-resolve when authChange fires (login/logout)
   useEffect(() => {
     const handler = () => {
-      const user = authService.getCurrentUser() || {};
-      const ctx  = authService.getWarehouseContext() || {};
-      const systemRole = (ctx.systemRole || user.role || user.roleName || "user").toLowerCase();
-      const warehouses = ctx.warehouses || [];
-      const name       = user.fullName || user.FullName || ctx.name || "Người dùng";
-      const avatar     = user.avatarUrl || user.AvatarUrl ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00b2d6&color=fff`;
-      setEffectiveRole(resolveEffectiveRole(systemRole, warehouses));
-      setDisplayName(name);
-      setAvatarSrc(avatar);
+      const role = loadUserInfo();
+      if (role === "RENTER") {
+        fetchUnratedCount();
+      } else {
+        setUnratedCount(0);
+      }
+      if (role === "OWNER" || role === "OPERATOR") {
+        fetchUnrepliedCount();
+      } else {
+        setUnrepliedCount(0);
+      }
     };
     window.addEventListener("authChange", handler);
     return () => window.removeEventListener("authChange", handler);
   }, []);
+
+  // Cập nhật badge ngay khi renter gửi đánh giá
+  useEffect(() => {
+    const handler = () => {
+      if (effectiveRole === "RENTER") fetchUnratedCount();
+    };
+    window.addEventListener("ratingSubmitted", handler);
+    return () => window.removeEventListener("ratingSubmitted", handler);
+  }, [effectiveRole]);
+
+  // Cập nhật badge owner khi reply được thêm/xóa
+  useEffect(() => {
+    const handler = () => {
+      if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR") fetchUnrepliedCount();
+    };
+    window.addEventListener("replyChanged", handler);
+    return () => window.removeEventListener("replyChanged", handler);
+  }, [effectiveRole]);
+
+  // Cập nhật badge khi điều hướng trang
+  useEffect(() => {
+    if (effectiveRole === "RENTER") fetchUnratedCount();
+    if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR") fetchUnrepliedCount();
+  }, [location.pathname, effectiveRole]);
 
   const handleLogout = () => {
     authService.logout();
@@ -168,10 +231,13 @@ const Sidebar = () => {
     navigate("/auth");
   };
 
-  const menuItems  = MENU_BY_ROLE[effectiveRole] || MENU_BY_ROLE["USER"];
+  const menuItems   = MENU_BY_ROLE[effectiveRole] || MENU_BY_ROLE["USER"];
   const displayRole = ROLE_LABEL[effectiveRole] || effectiveRole;
   const accentColor = "#00b2d6";
   const activeBg    = "#e0f2fe";
+
+  // Badge values map
+  const badgeValues = { unratedCount, unrepliedCount };
 
   return (
     <div style={{
@@ -194,10 +260,11 @@ const Sidebar = () => {
       <nav style={{ flex: 1, overflowY: "auto", padding: "12px 8px" }}>
         {menuItems.map((item, idx) => {
           const isActive = location.pathname === item.path;
+          const badge = item.badgeKey ? (badgeValues[item.badgeKey] || 0) : 0;
           if (item.isBottom) return (
             <React.Fragment key={idx}>
               <div style={{ height: "1px", backgroundColor: "#e5e7eb", margin: "12px 8px" }} />
-              <NavLink item={item} isActive={isActive} accentColor={accentColor} activeBg={activeBg} />
+              <NavLink item={item} isActive={isActive} accentColor={accentColor} activeBg={activeBg} badge={badge} />
             </React.Fragment>
           );
           return (
@@ -210,7 +277,7 @@ const Sidebar = () => {
                   {item.section}
                 </p>
               )}
-              <NavLink item={item} isActive={isActive} accentColor={accentColor} activeBg={activeBg} />
+              <NavLink item={item} isActive={isActive} accentColor={accentColor} activeBg={activeBg} badge={badge} />
             </React.Fragment>
           );
         })}
@@ -256,7 +323,7 @@ const Sidebar = () => {
   );
 };
 
-const NavLink = ({ item, isActive, accentColor, activeBg }) => (
+const NavLink = ({ item, isActive, accentColor, activeBg, badge = 0 }) => (
   <Link to={item.path} style={{
     display: "flex", alignItems: "center", gap: "12px",
     padding: "10px 12px", borderRadius: "8px", textDecoration: "none",
@@ -274,8 +341,42 @@ const NavLink = ({ item, isActive, accentColor, activeBg }) => (
         backgroundColor: accentColor, borderRadius: "0 3px 3px 0",
       }} />
     )}
-    <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>{item.icon}</span>
-    <span>{item.label}</span>
+    {/* Icon với badge */}
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
+      <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>{item.icon}</span>
+      {badge > 0 && (
+        <span style={{
+          position: "absolute",
+          top: "-7px",
+          right: "-9px",
+          minWidth: "17px",
+          height: "17px",
+          borderRadius: "9px",
+          backgroundColor: "#ef4444",
+          color: "#fff",
+          fontSize: "0.65rem",
+          fontWeight: 800,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 4px",
+          boxShadow: "0 2px 6px rgba(239,68,68,0.55)",
+          border: "2px solid #fff",
+          lineHeight: 1,
+          animation: "badgePop 0.3s cubic-bezier(0.34,1.56,0.64,1)",
+        }}>
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+    </span>
+    <span style={{ flex: 1 }}>{item.label}</span>
+    <style>{`
+      @keyframes badgePop {
+        0% { transform: scale(0); opacity: 0; }
+        70% { transform: scale(1.2); }
+        100% { transform: scale(1); opacity: 1; }
+      }
+    `}</style>
   </Link>
 );
 

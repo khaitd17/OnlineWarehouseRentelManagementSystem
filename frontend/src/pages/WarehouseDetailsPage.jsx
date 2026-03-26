@@ -22,9 +22,18 @@ const WarehouseDetailsPage = () => {
   const [ratingsData, setRatingsData] = useState(null);
   const [replyText, setReplyText] = useState({});
   const [replyLoading, setReplyLoading] = useState(false);
-
+  // Rating by renter
+  const [myContractForWarehouse, setMyContractForWarehouse] = useState(null);
+  const [existingMyRating, setExistingMyRating] = useState(null);
+  const [ratingForm, setRatingForm] = useState({ star: 5, comment: '' });
+  const [hoveredStar, setHoveredStar] = useState(0);
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [ratingMsg, setRatingMsg] = useState(null);
+  const [showThankPopup, setShowThankPopup] = useState(false);
   const isLoggedIn = !!localStorage.getItem('token');
   const currentUser = authService.getCurrentUser();
+  const userRole = (currentUser?.role || currentUser?.roleName || '').toUpperCase();
+  const isRenter = userRole === 'RENTER';
   const isOwner = currentUser && warehouseData && currentUser.userId === warehouseData.ownerId;
 
   useEffect(() => {
@@ -46,7 +55,26 @@ const WarehouseDetailsPage = () => {
       } catch (err) { console.error('Failed to load ratings:', err); }
     };
     fetchRatings();
-  }, [id]);
+
+    // Fetch renter's contract for this warehouse
+    if (isRenter) {
+      rentalService.getMyContracts()
+        .then(contracts => {
+          const contract = contracts.find(
+            c => String(c.warehouseId) === String(id) &&
+              (c.status === 'ACTIVE' || c.status === 'EXPIRED')
+          );
+          setMyContractForWarehouse(contract || null);
+          if (contract) {
+            ratingService.getMyRatings().then(ratings => {
+              const found = ratings.find(r => r.contractId === contract.contractId);
+              setExistingMyRating(found || null);
+            }).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+  }, [id, isRenter]);
 
   const handleReplySubmit = async (ratingId) => {
     if (!replyText[ratingId]) return;
@@ -66,6 +94,35 @@ const WarehouseDetailsPage = () => {
       alert('Không thể gửi phản hồi. Vui lòng thử lại.');
     } finally {
       setReplyLoading(false);
+    }
+  };
+
+  const handleSubmitRating = async () => {
+    if (!myContractForWarehouse) return;
+    setRatingSubmitting(true);
+    try {
+      await ratingService.createRating({
+        warehouseId: Number(id),
+        contractId: myContractForWarehouse.contractId,
+        star: ratingForm.star,
+        comment: ratingForm.comment,
+      });
+      setShowThankPopup(true);
+      // Thông báo sidebar cập nhật badge
+      window.dispatchEvent(new Event('ratingSubmitted'));
+      // Reload ratings
+      const [ratings, warehouseRatings] = await Promise.all([
+        ratingService.getMyRatings(),
+        ratingService.getWarehouseRatings(id),
+      ]);
+      const found = ratings.find(r => r.contractId === myContractForWarehouse.contractId);
+      setExistingMyRating(found || null);
+      setRatingsData(warehouseRatings);
+    } catch (err) {
+      setRatingMsg({ type: 'error', text: err.response?.data?.message || err.response?.data || 'Lỗi khi gửi đánh giá' });
+      setTimeout(() => setRatingMsg(null), 4000);
+    } finally {
+      setRatingSubmitting(false);
     }
   };
 
@@ -371,7 +428,130 @@ const WarehouseDetailsPage = () => {
                   <p style={{ color: '#94a3b8', fontSize: '0.9rem', margin: 0 }}>Chưa có đánh giá nào cho kho này</p>
                 </div>
               )}
+
+              {/* ── Form đánh giá của Renter ── */}
+              {isRenter && myContractForWarehouse && (
+                <div style={{ marginTop: '1.5rem', backgroundColor: '#fff', borderRadius: '16px', padding: '1.5rem', border: '1px solid #fde68a', boxShadow: '0 2px 12px rgba(245,158,11,0.08)' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#92400e', marginBottom: '1rem', paddingBottom: '0.8rem', borderBottom: '1px solid #fef3c7', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    Đánh giá của bạn
+                  </h3>
+
+                  {ratingMsg && (
+                    <div style={{ padding: '10px 16px', borderRadius: '10px', marginBottom: '1rem', fontSize: '0.85rem', fontWeight: 600, backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
+                      {ratingMsg.text}
+                    </div>
+                  )}
+
+                  {existingMyRating ? (
+                    <div style={{ padding: '1.2rem', backgroundColor: '#fffbeb', borderRadius: '12px', border: '1px solid #fde68a' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: 700, color: '#92400e', fontSize: '0.9rem' }}>Đánh giá của bạn</span>
+                        <div style={{ display: 'flex', gap: '2px' }}>
+                          {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '1rem' }}>{s <= existingMyRating.star ? '⭐' : '☆'}</span>)}
+                        </div>
+                      </div>
+                      {existingMyRating.comment && <p style={{ color: '#78716c', fontSize: '0.9rem', margin: '0 0 8px 0', lineHeight: 1.5 }}>{existingMyRating.comment}</p>}
+                      <div style={{ fontSize: '0.75rem', color: '#a8a29e' }}>
+                        Đã đánh giá ngày {existingMyRating.createdAt ? new Date(existingMyRating.createdAt).toLocaleDateString('vi-VN') : ''}
+                      </div>
+                      {existingMyRating.ownerReply && (
+                        <div style={{ marginTop: '10px', padding: '10px 14px', backgroundColor: '#f0fdf4', borderRadius: '8px', borderLeft: '3px solid #22c55e' }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16a34a', marginBottom: '3px' }}>💬 Phản hồi từ chủ kho</div>
+                          <p style={{ fontSize: '0.85rem', color: '#15803d', margin: 0 }}>{existingMyRating.ownerReply}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      {/* Star selector */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Chọn số sao</label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          {[1,2,3,4,5].map(s => (
+                            <button
+                              key={s}
+                              onClick={() => setRatingForm(f => ({ ...f, star: s }))}
+                              onMouseEnter={() => setHoveredStar(s)}
+                              onMouseLeave={() => setHoveredStar(0)}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', transform: (hoveredStar >= s || ratingForm.star >= s) ? 'scale(1.18)' : 'scale(1)', transition: 'transform 0.14s ease', lineHeight: 1 }}
+                            >
+                              <svg width="34" height="34" viewBox="0 0 24 24"
+                                fill={s <= (hoveredStar || ratingForm.star) ? '#f59e0b' : 'none'}
+                                stroke={s <= (hoveredStar || ratingForm.star) ? '#f59e0b' : '#cbd5e1'}
+                                strokeWidth="1.5"
+                                style={{ filter: s <= (hoveredStar || ratingForm.star) ? 'drop-shadow(0 2px 6px rgba(245,158,11,0.45))' : 'none', transition: 'all 0.14s' }}
+                              >
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                              </svg>
+                            </button>
+                          ))}
+                          <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginLeft: '4px' }}>
+                            {['', 'Rất tệ', 'Tệ', 'Bình thường', 'Tốt', 'Xuất sắc'][hoveredStar || ratingForm.star]}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Comment */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Nhận xét (tùy chọn)</label>
+                        <textarea
+                          value={ratingForm.comment}
+                          onChange={e => setRatingForm(f => ({ ...f, comment: e.target.value }))}
+                          rows={3}
+                          placeholder="Chia sẻ trải nghiệm thuê kho của bạn..."
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', resize: 'vertical', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box', color: '#0f172a', lineHeight: 1.6, fontFamily: 'inherit' }}
+                          onFocus={e => { e.target.style.borderColor = '#f59e0b'; e.target.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.12)'; }}
+                          onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+                        />
+                      </div>
+
+                      {/* Submit button */}
+                      <button
+                        onClick={handleSubmitRating}
+                        disabled={ratingSubmitting}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 28px', background: ratingSubmitting ? '#e2e8f0' : 'linear-gradient(135deg, #f59e0b, #d97706)', color: ratingSubmitting ? '#94a3b8' : '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, cursor: ratingSubmitting ? 'wait' : 'pointer', fontSize: '0.9rem', boxShadow: ratingSubmitting ? 'none' : '0 4px 14px rgba(245,158,11,0.35)', transition: 'all 0.2s' }}
+                        onMouseEnter={e => { if (!ratingSubmitting) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(245,158,11,0.5)'; } }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = ratingSubmitting ? 'none' : '0 4px 14px rgba(245,158,11,0.35)'; }}
+                      >
+                        {ratingSubmitting ? (
+                          <>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: 'spin 1s linear infinite' }}>
+                              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                            </svg>
+                            Đang gửi...
+                          </>
+                        ) : (
+                          <>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                            Gửi đánh giá
+                          </>
+                        )}
+                      </button>
+                      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Thank You Popup ── */}
+              {showThankPopup && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', animation: 'fadeIn 0.25s ease' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #ffffff 0%, #fefce8 100%)', borderRadius: '24px', padding: '3rem 2.5rem', maxWidth: '420px', width: '90%', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,0.2)', border: '1px solid rgba(253,230,138,0.6)', position: 'relative' }}>
+                    <button onClick={() => setShowThankPopup(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#64748b' }}>✕</button>
+                    <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⭐⭐⭐⭐⭐</div>
+                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e, #16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.2rem auto', boxShadow: '0 8px 24px rgba(34,197,94,0.4)' }}>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.6rem' }}>Cảm ơn bạn đã đánh giá!</h3>
+                    <p style={{ color: '#64748b', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.8rem' }}>Đánh giá của bạn giúp cải thiện chất lượng dịch vụ. Rất trân trọng! 🙏</p>
+                    <button onClick={() => setShowThankPopup(false)} style={{ padding: '12px 40px', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer', boxShadow: '0 4px 16px rgba(245,158,11,0.4)' }}>Đóng</button>
+                  </div>
+                  <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+                </div>
+              )}
             </section>
+
           </div>
 
           {/* RIGHT: Sidebar — Rental Request Form */}
