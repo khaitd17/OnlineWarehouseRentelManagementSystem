@@ -212,7 +212,6 @@ public async Task<Warehouse?> GetByIdAsync(
     {
         var warehouses = await _context.Warehouses
             .Include(w => w.WarehouseMedia)
-            .Include(w => w.Ratings)
             .Where(w => w.Status == "APPROVED")
             .OrderByDescending(w => w.CreatedAt)
             .Take(limit)
