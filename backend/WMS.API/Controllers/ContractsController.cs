@@ -1,0 +1,177 @@
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using WMS.Application.Features.Contracts.CancelContract;
+using WMS.Application.Features.Contracts.TerminateEarly;
+using WMS.Application.Features.Contracts.CompleteContract;
+using WMS.Application.Features.Contracts.CloseContract;
+using WMS.Application.Features.Contracts.GetContractHistory;
+using WMS.Application.Features.Contracts.GetContracts;
+
+namespace WMS.API.Controllers
+{
+    [ApiController]
+    [Authorize]
+    [Route("api/[controller]")]
+    public class ContractsController : ControllerBase
+    {
+        private readonly IMediator _mediator;
+
+        public ContractsController(IMediator mediator)
+        {
+            _mediator = mediator;
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<GetContractsResponse>> GetContracts(
+            [FromQuery] string? status = null,
+            [FromQuery] DateTime? startDateFrom = null,
+            [FromQuery] DateTime? startDateTo = null,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var query = new GetContractsQuery
+            {
+                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0"),
+                Status = status,
+                StartDateFrom = startDateFrom,
+                StartDateTo = startDateTo,
+                PageNumber = pageNumber,
+                PageSize = Math.Min(pageSize, 100) // Limit max page size
+            };
+
+            var result = await _mediator.Send(query);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/cancel")]
+        public async Task<ActionResult<CancelContractResponse>> CancelContract(int id, [FromBody] CancelContractRequest request)
+        {
+            var command = new CancelContractCommand
+            {
+                ContractId = id,
+                CancellationReason = request.CancellationReason,
+                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+            };
+
+            var result = await _mediator.Send(command);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/terminate")]
+        public async Task<ActionResult<TerminateEarlyResponse>> TerminateEarly(int id, [FromBody] TerminateEarlyRequest request)
+        {
+            var command = new TerminateEarlyCommand
+            {
+                ContractId = id,
+                TerminationReason = request.TerminationReason,
+                EarlyTerminationFee = request.EarlyTerminationFee,
+                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+            };
+
+            var result = await _mediator.Send(command);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/complete")]
+        public async Task<ActionResult<CompleteContractResponse>> CompleteContract(int id, [FromBody] CompleteContractRequest request)
+        {
+            var command = new CompleteContractCommand
+            {
+                ContractId = id,
+                Notes = request.Notes,
+                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+            };
+
+            var result = await _mediator.Send(command);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/close")]
+        public async Task<ActionResult<CloseContractResponse>> CloseContract(int id, [FromBody] CloseContractRequest request)
+        {
+            var command = new CloseContractCommand
+            {
+                ContractId = id,
+                DamageCompensation = request.DamageCompensation,
+                Notes = request.Notes,
+                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+            };
+
+            var result = await _mediator.Send(command);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        [HttpGet("{id}/history")]
+        public async Task<ActionResult<GetContractHistoryResponse>> GetContractHistory(int id)
+        {
+            var query = new GetContractHistoryQuery
+            {
+                ContractId = id,
+                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+            };
+
+            var result = await _mediator.Send(query);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+    }
+
+    // Request models
+    public class CancelContractRequest
+    {
+        public string CancellationReason { get; set; } = string.Empty;
+    }
+
+    public class TerminateEarlyRequest
+    {
+        public string TerminationReason { get; set; } = string.Empty;
+        public decimal EarlyTerminationFee { get; set; }
+    }
+
+    public class CompleteContractRequest
+    {
+        public string? Notes { get; set; }
+    }
+
+    public class CloseContractRequest
+    {
+        public decimal? DamageCompensation { get; set; }
+        public string? Notes { get; set; }
+    }
+}

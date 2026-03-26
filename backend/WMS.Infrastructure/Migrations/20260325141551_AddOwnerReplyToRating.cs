@@ -12,13 +12,13 @@ namespace WMS.Infrastructure.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<string>(
-                name: "OwnerReply",
+                name: "owner_reply",
                 table: "ratings",
                 type: "nvarchar(max)",
                 nullable: true);
 
             migrationBuilder.AddColumn<DateTime>(
-                name: "RepliedAt",
+                name: "replied_at",
                 table: "ratings",
                 type: "datetime2",
                 nullable: true);
@@ -28,11 +28,11 @@ namespace WMS.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "OwnerReply",
+                name: "owner_reply",
                 table: "ratings");
 
             migrationBuilder.DropColumn(
-                name: "RepliedAt",
+                name: "replied_at",
                 table: "ratings");
         }
     }

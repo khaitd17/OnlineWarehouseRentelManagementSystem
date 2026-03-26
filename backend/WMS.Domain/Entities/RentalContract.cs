@@ -25,9 +25,17 @@ public class RentalContract
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
+    // Additional properties for advanced contract management
+    public int? ParentContractId { get; private set; }
+    public DateTime? ReturnedAt { get; private set; }
+    public string? CancellationReason { get; private set; }
+    public DateTime? TerminatedAt { get; private set; }
+    public string? TerminationReason { get; private set; }
+
     // Navigation properties
     public RentalRequest? RentalRequest { get; set; }
     public Warehouse? Warehouse { get; set; }
+    public User? Renter { get; set; }
 
     // Factory method
     public static RentalContract CreateFromRequest(
@@ -109,6 +117,63 @@ public class RentalContract
             throw new InvalidOperationException($"Cannot terminate contract with status {Status}");
 
         Status = "TERMINATED";
+        TerminationReason = reason;
+        TerminatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void TerminateEarly(string reason, decimal? earlyTerminationFee = null)
+    {
+        if (Status != "ACTIVE")
+            throw new InvalidOperationException($"Cannot terminate contract early with status {Status}");
+
+        Status = "TERMINATED";
+        TerminationReason = reason;
+        TerminatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Cancel(string reason)
+    {
+        if (Status == "TERMINATED" || Status == "COMPLETED" || Status == "EXPIRED")
+            throw new InvalidOperationException($"Cannot cancel contract with status {Status}");
+
+        Status = "CANCELLED";
+        CancellationReason = reason;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Close(decimal? damageCompensation = null, string? returnNotes = null)
+    {
+        if (Status != "ACTIVE")
+            throw new InvalidOperationException($"Cannot close contract with status {Status}");
+
+        Status = "CLOSED";
+        ReturnedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void Complete()
+    {
+        if (Status != "ACTIVE")
+            throw new InvalidOperationException($"Cannot complete contract with status {Status}");
+
+        Status = "COMPLETED";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkPendingPayment(double expiryHours = 24)
+    {
+        if (Status != "PENDING_SIGNATURE" && Status != "ACTIVE")
+            throw new InvalidOperationException($"Cannot mark pending payment for contract with status {Status}");
+
+        Status = "PENDING_PAYMENT";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void SetParentContract(int parentContractId)
+    {
+        ParentContractId = parentContractId;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -131,9 +196,34 @@ public class RentalContract
     public bool IsPendingOwnerSignature => Status == "PENDING_OWNER_SIGNATURE";
     public bool IsPendingRenterSignature => Status == "PENDING_RENTER_SIGNATURE";
     public bool IsPendingSignature => Status == "PENDING_SIGNATURE";
+    public bool IsPendingPayment => Status == "PENDING_PAYMENT";
     public bool IsActive => Status == "ACTIVE";
     public bool IsExpired => Status == "EXPIRED";
     public bool IsTerminated => Status == "TERMINATED";
+    public bool IsOverdue => Status == "OVERDUE";
+
+    // Expiry checking properties for background jobs
+    public DateTime? PendingSignatureExpiry => IsPendingSignature ? CreatedAt.AddHours(24) : null;
+    public DateTime? PendingPaymentExpiry => IsPendingPayment ? CreatedAt.AddHours(48) : null;
+
+    // Additional methods
+    public void ActivateAfterPayment()
+    {
+        if (Status != "PENDING_PAYMENT")
+            throw new InvalidOperationException($"Cannot activate contract with status {Status}");
+
+        Status = "ACTIVE";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkOverdue()
+    {
+        if (Status != "ACTIVE")
+            throw new InvalidOperationException($"Cannot mark overdue for contract with status {Status}");
+
+        Status = "OVERDUE";
+        UpdatedAt = DateTime.UtcNow;
+    }
 
     public virtual ICollection<Equipment> IncludedEquipments { get; set; } = new List<Equipment>();
     public virtual ICollection<EquipmentHistory> EquipmentUsageLogs { get; set; } = new List<EquipmentHistory>();

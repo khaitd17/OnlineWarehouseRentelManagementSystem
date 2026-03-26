@@ -64,3 +64,16 @@ export const getOccupancyStats = async () => {
   const response = await axiosClient.get("/Warehouse/occupancy-stats");
   return response.data;
 };
+
+// ── Default Export ──────────────────────────────────────────────
+const warehouseService = {
+  getMyWarehouses,
+  getFeaturedWarehouses,
+  createWarehouse,
+  uploadWarehouseImage,
+  uploadWarehouseDocument,
+  submitWarehouse,
+  getOccupancyStats
+};
+
+export default warehouseService;

@@ -4,10 +4,17 @@ import rentalService from "../services/rentalService";
 
 const statusConfig = {
   DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
+  PENDING_OWNER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ chủ kho ký" },
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
+  SIGNED:     { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
+  PENDING_PAYMENT: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ thanh toán" },
   ACTIVE:     { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
+  COMPLETED:  { bg: "#e0e7ff", color: "#6366f1", label: "Đã hoàn thành" },
+  CLOSED:     { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
   EXPIRED:    { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
+  CANCELLED:  { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
+  OVERDUE:    { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
 };
 
 const formatDate = (dateStr) => {
@@ -26,12 +33,31 @@ const MyContracts = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userRole = (user.role || user.roleName || "").toUpperCase();
+  const isOwner = userRole === "OWNER" || userRole === "USER" || userRole === "OPERATOR";
+
   useEffect(() => {
-    rentalService.getMyContracts()
-      .then(setContracts)
-      .catch((err) => setError(err.response?.data?.message || "Không thể tải danh sách hợp đồng"))
-      .finally(() => setLoading(false));
-  }, []);
+    const fetchContracts = async () => {
+      try {
+        if (isOwner) {
+          // Owner: Lấy tất cả contracts của warehouses họ sở hữu
+          const response = await rentalService.getContractsForOwner();
+          setContracts(response);
+        } else {
+          // Renter: Lấy contracts của họ thuê
+          const response = await rentalService.getMyContracts();
+          setContracts(response);
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || "Không thể tải danh sách hợp đồng");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchContracts();
+  }, [isOwner]);
 
   return (
     <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
