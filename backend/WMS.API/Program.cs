@@ -26,6 +26,9 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
     });
 
+// Add HttpClient for SepayService
+builder.Services.AddHttpClient();
+
 // Swashbuckle/Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -94,12 +97,16 @@ builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
 builder.Services.AddScoped<IRenterAssetRepository, RenterAssetRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRatingRepository, WMS.Infrastructure.Repositories.RatingRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseReturnRepository, WMS.Infrastructure.Repositories.WarehouseReturnRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalPaymentRepository, WMS.Infrastructure.Repositories.RentalPaymentRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
 builder.Services.AddScoped<IPdfService, PdfService>();
+builder.Services.AddScoped<ISepayService, SepayService>();
 
 // SignalR
 builder.Services.AddSignalR();

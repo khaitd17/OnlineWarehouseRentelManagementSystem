@@ -91,6 +91,8 @@ public class ApplicationDbContext : DbContext
     public virtual DbSet<RenterInventory> RenterInventories { get; set; }
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
+        optionsBuilder.ConfigureWarnings(warnings =>
+            warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         // if (!optionsBuilder.IsConfigured)
         // {
         //     optionsBuilder.UseSqlServer("Server=localhost;Database=OWRMS;uid=sa;pwd=sa;Trusted_Connection=True;TrustServerCertificate=True;");
@@ -192,6 +194,98 @@ public class ApplicationDbContext : DbContext
                     j => j.HasOne<WMS.Domain.Entities.Contract>().WithMany().HasForeignKey("contract_id"),
                     j => { j.HasKey("contract_id", "equipment_id"); });
             */
+        });
+
+        modelBuilder.Entity<ContractExtension>(entity =>
+        {
+            entity.HasKey(e => e.ExtensionId);
+            entity.ToTable("contract_extensions");
+            entity.Property(e => e.ExtensionId).HasColumnName("extension_id");
+            entity.Property(e => e.OriginalContractId).HasColumnName("original_contract_id");
+            entity.Property(e => e.NewContractId).HasColumnName("new_contract_id");
+            entity.Property(e => e.RequesterId).HasColumnName("requester_id");
+            entity.Property(e => e.DurationMonths).HasColumnName("duration_months");
+            entity.Property(e => e.ProposedMonthlyPayment).HasColumnType("decimal(15, 2)").HasColumnName("proposed_monthly_payment");
+            entity.Property(e => e.Status).HasMaxLength(30).HasColumnName("status");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+            entity.Property(e => e.RequestedAt).HasColumnName("requested_at");
+            entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
+            entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasOne(d => d.OriginalContract).WithMany().HasForeignKey(d => d.OriginalContractId).OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(d => d.NewContract).WithMany().HasForeignKey(d => d.NewContractId).OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(d => d.Requester).WithMany().HasForeignKey(d => d.RequesterId).OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(d => d.Reviewer).WithMany().HasForeignKey(d => d.ReviewedBy).OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<RentalContract>(entity =>
+        {
+            entity.HasKey(e => e.ContractId);
+            entity.ToTable("rental_contracts");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.RentalRequestId).HasColumnName("rental_request_id");
+            entity.Property(e => e.ContractNumber).HasMaxLength(100).HasColumnName("contract_number");
+            entity.Property(e => e.RenterId).HasColumnName("renter_id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.StartDate).HasColumnName("start_date");
+            entity.Property(e => e.EndDate).HasColumnName("end_date");
+            entity.Property(e => e.MonthlyPayment).HasColumnType("decimal(15, 2)").HasColumnName("monthly_payment");
+            entity.Property(e => e.TotalValue).HasColumnType("decimal(15, 2)").HasColumnName("total_value");
+            entity.Property(e => e.DepositAmount).HasColumnType("decimal(15, 2)").HasColumnName("deposit_amount");
+            entity.Property(e => e.Status).HasMaxLength(50).HasColumnName("status");
+            entity.Property(e => e.Terms).HasColumnName("terms");
+            entity.Property(e => e.ContractFileUrl).HasMaxLength(500).HasColumnName("contract_file_url");
+            entity.Property(e => e.SignedFileUrl).HasMaxLength(500).HasColumnName("signed_file_url");
+            entity.Property(e => e.SignedAt).HasColumnName("signed_at");
+            entity.Property(e => e.OwnerSignedFileUrl).HasMaxLength(500).HasColumnName("owner_signed_file_url");
+            entity.Property(e => e.OwnerSignedAt).HasColumnName("owner_signed_at");
+            entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(e => e.ParentContractId).HasColumnName("parent_contract_id");
+            entity.Property(e => e.ReturnedAt).HasColumnName("returned_at");
+            entity.Property(e => e.CancellationReason).HasColumnName("cancellation_reason");
+            entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
+            entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
+            entity.HasOne(d => d.RentalRequest).WithMany().HasForeignKey(d => d.RentalRequestId).OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(d => d.Renter).WithMany().HasForeignKey(d => d.RenterId).OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<WarehouseReturn>(entity =>
+        {
+            entity.HasKey(e => e.ReturnId);
+            entity.ToTable("warehouse_returns");
+            entity.Property(e => e.ReturnId).HasColumnName("return_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.InspectorId).HasColumnName("inspector_id");
+            entity.Property(e => e.InspectionDate).HasColumnName("inspection_date");
+            entity.Property(e => e.Status).HasMaxLength(30).HasColumnName("status");
+            entity.Property(e => e.IsClean).HasColumnName("is_clean");
+            entity.Property(e => e.IsEquipmentIntact).HasColumnName("is_equipment_intact");
+            entity.Property(e => e.IsNoOutstandingDebt).HasColumnName("is_no_outstanding_debt");
+            entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.RejectionReason).HasColumnName("rejection_reason");
+            entity.Property(e => e.DamageFee).HasColumnType("decimal(15, 2)").HasColumnName("damage_fee");
+            entity.Property(e => e.PenaltyFee).HasColumnType("decimal(15, 2)").HasColumnName("penalty_fee");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.HasOne(d => d.Contract).WithMany().HasForeignKey(d => d.ContractId).OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(d => d.Inspector).WithMany().HasForeignKey(d => d.InspectorId).OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<ReturnImage>(entity =>
+        {
+            entity.HasKey(e => e.ImageId);
+            entity.ToTable("return_images");
+            entity.Property(e => e.ImageId).HasColumnName("image_id");
+            entity.Property(e => e.ReturnId).HasColumnName("return_id");
+            entity.Property(e => e.ImageUrl).HasMaxLength(500).HasColumnName("image_url");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.HasOne(d => d.Return).WithMany(p => p.Images).HasForeignKey(d => d.ReturnId).OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         modelBuilder.Entity<Equipment>(entity =>

@@ -1499,7 +1499,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseTaskId");
 
-                    b.ToTable("UnitTask");
+                    b.ToTable("UnitTask", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.User", b =>
@@ -2304,7 +2304,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("equipment_id");
 
-                    b.ToTable("rental_contract_equipments");
+                    b.ToTable("rental_contract_equipments", (string)null);
                 });
 
             modelBuilder.Entity("task_zones", b =>

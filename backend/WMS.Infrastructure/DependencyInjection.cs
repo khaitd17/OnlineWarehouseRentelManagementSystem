@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Repositories;
+using WMS.Infrastructure.Services;
 
 namespace WMS.Infrastructure;
 
@@ -19,6 +21,14 @@ public static class DependencyInjection
         services.AddScoped<IPaymentRepository, PaymentRepository>();
 
         services.AddScoped<IRatingRepository, RatingRepository>();
+
+        services.AddScoped<IWarehouseReturnRepository, WarehouseReturnRepository>();
+
+        services.AddScoped<IRentalPaymentRepository, RentalPaymentRepository>();
+
+        services.AddScoped<IContractExtensionRepository, ContractExtensionRepository>();
+
+        services.AddScoped<ISepayService, SepayService>();
 
         return services;
     }
