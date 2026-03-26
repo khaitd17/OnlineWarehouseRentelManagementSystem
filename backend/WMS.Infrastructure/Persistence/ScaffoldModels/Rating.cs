@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace WMS.Domain.Entities;
+namespace WMS.Infrastructure.Persistence.ScaffoldModels;
 
 public partial class Rating
 {

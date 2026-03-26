@@ -92,7 +92,7 @@ public class CreateInventoryRequestHandler
                 if (assetId.HasValue && assetId.Value > 0)
                 {
                     // Check renter_inventory
-                    var inventory = await _assetRepo.GetInventoryByWarehouseAsync(
+                    var inventory = await _assetRepo.GetInventoryByRenterAsync(
                         cmd.RenterId, cmd.WarehouseId, cancellationToken);
                     var ri = inventory.FirstOrDefault(x => x.AssetId == assetId.Value);
                     var available = ri?.Quantity ?? 0;

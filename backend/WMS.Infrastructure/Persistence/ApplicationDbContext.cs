@@ -396,6 +396,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Star).HasColumnName("star");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.OwnerReply).HasColumnName("owner_reply");
+            entity.Property(e => e.RepliedAt).HasColumnName("replied_at");
             entity.HasOne(d => d.Contract).WithMany(p => p.Ratings).HasForeignKey(d => d.ContractId).HasConstraintName("FK_ratings_contract");
             entity.HasOne(d => d.Renter).WithMany(p => p.Ratings).HasForeignKey(d => d.RenterId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_ratings_renter");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Ratings).HasForeignKey(d => d.WarehouseId).HasConstraintName("FK_ratings_warehouse");

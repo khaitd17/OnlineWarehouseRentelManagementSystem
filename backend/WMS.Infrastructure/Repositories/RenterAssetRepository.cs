@@ -28,6 +28,7 @@ public class RenterAssetRepository : IRenterAssetRepository
         return asset;
     }
 
+    /// <summary>API cũ: lấy tồn kho của 1 renter tại 1 warehouse</summary>
     public async Task<List<RenterInventory>> GetInventoryByWarehouseAsync(
         int renterId, int warehouseId, CancellationToken ct)
         => await _db.RenterInventories
@@ -45,10 +46,10 @@ public class RenterAssetRepository : IRenterAssetRepository
         {
             inv = new RenterInventory
             {
-                AssetId = assetId,
+                AssetId     = assetId,
                 WarehouseId = warehouseId,
-                Quantity = 0,
-                UpdatedAt = DateTime.Now
+                Quantity    = 0,
+                UpdatedAt   = DateTime.Now
             };
             _db.RenterInventories.Add(inv);
         }
@@ -58,8 +59,79 @@ public class RenterAssetRepository : IRenterAssetRepository
             throw new InvalidOperationException(
                 $"Không đủ tồn kho. Hiện có: {inv.Quantity}, yêu cầu xuất: {Math.Abs(delta)}.");
 
-        inv.Quantity = newQty;
+        inv.Quantity  = newQty;
         inv.UpdatedAt = DateTime.Now;
         await _db.SaveChangesAsync(ct);
+    }
+
+    public async Task<List<RenterInventoryRowDto>> GetInventoryByRenterAsync(
+        int renterId,
+        int? warehouseId,
+        CancellationToken cancellationToken)
+    {
+        var query = _db.RenterInventories
+            .Include(ri => ri.Asset)
+            .Include(ri => ri.Warehouse)
+            .Where(ri => ri.Asset.RenterId == renterId);
+
+        if (warehouseId.HasValue)
+            query = query.Where(ri => ri.WarehouseId == warehouseId.Value);
+
+        return await query
+            .Select(ri => new RenterInventoryRowDto
+            {
+                InventoryId   = ri.InventoryId,
+                AssetId       = ri.AssetId,
+                AssetName     = ri.Asset.AssetName,
+                Unit          = ri.Asset.Unit,
+                WeightPerUnit = ri.Asset.WeightPerUnit,
+                Description   = ri.Asset.Description,
+                WarehouseId   = ri.WarehouseId,
+                WarehouseName = ri.Warehouse.Name,
+                Quantity      = ri.Quantity,
+                UpdatedAt     = ri.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<WarehouseInventoryRowDto>> GetInventoryByWarehouseAsync(
+        int warehouseId,
+        CancellationToken cancellationToken)
+    {
+        return await _db.RenterInventories
+            .Include(ri => ri.Asset)
+                .ThenInclude(a => a.Renter)
+            .Where(ri => ri.WarehouseId == warehouseId)
+            .Select(ri => new WarehouseInventoryRowDto
+            {
+                InventoryId   = ri.InventoryId,
+                AssetId       = ri.AssetId,
+                AssetName     = ri.Asset.AssetName,
+                Unit          = ri.Asset.Unit,
+                WeightPerUnit = ri.Asset.WeightPerUnit,
+                Description   = ri.Asset.Description,
+                RenterId      = ri.Asset.RenterId,
+                RenterName    = ri.Asset.Renter.FullName,
+                RenterEmail   = ri.Asset.Renter.Email,
+                Quantity      = ri.Quantity,
+                UpdatedAt     = ri.UpdatedAt
+            })
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<string> GetHighestWarehouseRoleAsync(
+        int userId, int warehouseId, CancellationToken ct)
+    {
+        var memberships = await _db.WarehouseMemberships
+            .Include(m => m.Role)
+            .Where(m => m.UserId == userId && m.WarehouseId == warehouseId && m.IsActive)
+            .ToListAsync(ct);
+
+        foreach (var r in new[] { "OWNER", "OPERATOR", "MANAGER", "STAFF", "RENTER" })
+        {
+            if (memberships.Any(m => m.Role?.Code?.ToUpper() == r))
+                return r;
+        }
+        return "";
     }
 }
