@@ -20,6 +20,12 @@ public class RenterAssetRepository : IRenterAssetRepository
     public async Task<RenterAsset?> GetByIdAsync(int assetId, CancellationToken ct)
         => await _db.RenterAssets.FindAsync(new object[] { assetId }, ct);
 
+    public async Task<RenterAsset?> FindByNameAndRenterAsync(int renterId, string assetName, CancellationToken ct)
+        => await _db.RenterAssets
+            .Where(a => a.RenterId == renterId &&
+                        a.AssetName.ToLower() == assetName.ToLower())
+            .FirstOrDefaultAsync(ct);
+
     public async Task<RenterAsset> CreateAsync(RenterAsset asset, CancellationToken ct)
     {
         asset.CreatedAt = DateTime.Now;

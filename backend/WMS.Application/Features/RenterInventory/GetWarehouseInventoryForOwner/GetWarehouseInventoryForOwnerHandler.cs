@@ -6,7 +6,7 @@ namespace WMS.Application.Features.RenterInventory.GetWarehouseInventoryForOwner
 public class GetWarehouseInventoryForOwnerHandler
     : IRequestHandler<GetWarehouseInventoryForOwnerQuery, GetWarehouseInventoryResult>
 {
-    private static readonly string[] AllowedRoles = { "OWNER", "OPERATOR", "MANAGER" };
+    private static readonly string[] AllowedRoles = { "OWNER", "OPERATOR", "MANAGER", "STAFF" };
 
     private readonly IRenterAssetRepository _repo;
 

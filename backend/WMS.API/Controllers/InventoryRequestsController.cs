@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using WMS.Application.Features.InventoryRequests.ApproveRequest;
 using WMS.Application.Features.InventoryRequests.AssignRequest;
 using WMS.Application.Features.InventoryRequests.ConfirmRequest;
 using WMS.Application.Features.InventoryRequests.CreateRequest;
@@ -188,7 +189,26 @@ public class InventoryRequestsController : ControllerBase
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
 
-    /// <summary>Manager giao yêu cầu PENDING cho Staff (PENDING → ASSIGNED)</summary>
+    /// <summary>Manager duyệt yêu cầu PENDING (PENDING → CONFIRMED)</summary>
+    [HttpPost("{id:int}/approve")]
+    public async Task<IActionResult> Approve(int id, [FromBody] ApproveRequestBody? body = null)
+    {
+        var managerId = GetUserId();
+        try
+        {
+            var result = await _mediator.Send(new ApproveInventoryRequestCommand
+            {
+                Id        = id,
+                ManagerId = managerId,
+                Note      = body?.Note,
+            });
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    /// <summary>Manager giao yêu cầu PENDING/CONFIRMED cho Staff (→ ASSIGNED)</summary>
     [HttpPost("{id:int}/assign")]
     public async Task<IActionResult> Assign(int id, [FromBody] AssignRequestBody body)
     {
@@ -228,6 +248,7 @@ public class InventoryRequestsController : ControllerBase
     }
 }
 
-public record ConfirmRequestBody  { public string? Notes  { get; init; } }
-public record AssignRequestBody   { public int StaffId    { get; init; } public string? Note { get; init; } }
-public record RejectRequestBody   { public string? Reason  { get; init; } }
+public record ApproveRequestBody   { public string? Note    { get; init; } }
+public record ConfirmRequestBody   { public string? Notes   { get; init; } }
+public record AssignRequestBody    { public int StaffId     { get; init; } public string? Note  { get; init; } }
+public record RejectRequestBody    { public string? Reason   { get; init; } }

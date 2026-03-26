@@ -30,9 +30,9 @@ public class AssignInventoryRequestHandler
         var req = await _repo.GetByIdAsync(cmd.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Request {cmd.Id} not found.");
 
-        if (req.Status != "PENDING")
+        if (req.Status != "PENDING" && req.Status != "CONFIRMED")
             throw new InvalidOperationException(
-                $"Chỉ có thể giao yêu cầu đang ở trạng thái PENDING. Trạng thái hiện tại: '{req.Status}'.");
+                $"Chỉ có thể giao yêu cầu ở trạng thái PENDING hoặc CONFIRMED. Trạng thái hiện tại: '{req.Status}'.");
 
         req.Status          = "ASSIGNED";
         req.AssignedStaffId = cmd.AssignedStaffId;
