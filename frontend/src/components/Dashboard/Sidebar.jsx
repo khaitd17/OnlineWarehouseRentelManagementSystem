@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import authService from "../../services/authService";
 import rentalService from "../../services/rentalService";
 import ratingService from "../../services/ratingService";
+import axiosClient from "../../services/axiosClient";
 
 /* ── Menu definitions per warehouse role ── */
 const MENU_BY_ROLE = {
@@ -48,7 +49,8 @@ const MENU_BY_ROLE = {
     { icon: "schedule",                label: "Phân ca",               path: "/shift-scheduling" },
     { icon: "calendar_month",          label: "Lịch công việc",        path: "/task-scheduling" },
     { icon: "fact_check",              label: "Kiểm kê kho",           path: "/staff-audit-sessions",  section: "KHO" },
-    { icon: "inventory_2",             label: "Yêu cầu nhập / xuất kho", path: "/staff-inventory-requests" },
+    { icon: "inventory_2",             label: "Yêu cầu nhập / xuất kho", path: "/staff-inventory-requests", badgeKey: "pendingRequestCount" },
+    { icon: "inventory",               label: "Quản lí tồn kho",          path: "/staff-inventory" },
     { icon: "history",                 label: "Lịch sử nhập/ xuất kho",   path: "/transaction-history" },
     { icon: "precision_manufacturing", label: "Quản lý thiết bị",      path: "/equipment-management" },
     { icon: "settings",                label: "Cài đặt",               path: "/settings",              isBottom: true },
@@ -56,7 +58,8 @@ const MENU_BY_ROLE = {
   // Nhân viên: chỉ làm chức năng kho, không quản lý người
   STAFF: [
     { icon: "dashboard",               label: "Bảng điều khiển",          path: "/staff-dashboard" },
-    { icon: "swap_horiz",              label: "Xác nhận di chuyển",       path: "/confirm-movement",         section: "KHO" },
+    { icon: "swap_horiz",              label: "Yêu cầu nhập/xuất kho",   path: "/confirm-movement",         section: "KHO" },
+    { icon: "inventory",               label: "Quản lí tồn kho",          path: "/staff-inventory" },
     { icon: "fact_check",              label: "Kiểm kê kho",              path: "/staff-audit-sessions" },
     { icon: "calendar_month",          label: "Lịch của tôi",             path: "/my-schedule",              section: "CÁ NHÂN" },
     { icon: "precision_manufacturing", label: "Quản lý thiết bị",         path: "/equipment-management" },
@@ -68,6 +71,7 @@ const MENU_BY_ROLE = {
     { icon: "list_alt",                label: "Yêu cầu thuê kho",        path: "/my-rental-requests" },
     { icon: "add_circle",              label: "Tạo yêu cầu nhập/xuất",   path: "/create-inventory",         section: "KHO" },
     { icon: "history",                 label: "Lịch sử nhập/xuất kho",   path: "/renter-inventory-history" },
+    { icon: "inventory",               label: "Tồn kho của tôi",          path: "/renter-inventory" },
     { icon: "fact_check",              label: "Kiểm kê kho",             path: "/renter-audit-sessions" },
     { icon: "receipt_long",            label: "Lịch sử thanh toán",      path: "/payment-history",          section: "TÀI CHÍNH" },
     { icon: "star",                    label: "Đánh giá của tôi",        path: "/my-ratings",               badgeKey: "unratedCount" },
@@ -128,9 +132,10 @@ const Sidebar = () => {
   const [effectiveRole, setEffectiveRole] = useState("USER");
   const [displayName,   setDisplayName]   = useState("Người dùng");
   const [avatarSrc,     setAvatarSrc]     = useState("");
-  // Badge: số kho chưa đánh giá (Renter) / số đánh giá chưa reply (Owner)
-  const [unratedCount,    setUnratedCount]   = useState(0);
-  const [unrepliedCount,  setUnrepliedCount] = useState(0);
+  // Badge: số kho chưa đánh giá (Renter) / số đánh giá chưa reply (Owner) / số yêu cầu chờ duyệt (Manager)
+  const [unratedCount,         setUnratedCount]        = useState(0);
+  const [unrepliedCount,       setUnrepliedCount]      = useState(0);
+  const [pendingRequestCount,  setPendingRequestCount] = useState(0);
 
   const loadUserInfo = () => {
     const user = authService.getCurrentUser() || {};
@@ -176,10 +181,27 @@ const Sidebar = () => {
     }
   };
 
+  // Fetch số yêu cầu PENDING chưa duyệt (chỉ dành cho Manager)
+  // API yêu cầu type riêng nên phải gọi song song cho cả INBOUND + OUTBOUND
+  const fetchPendingRequestCount = async () => {
+    try {
+      const [inbound, outbound] = await Promise.all([
+        axiosClient.get('/InventoryRequests', { params: { type: 'INBOUND', status: 'PENDING', pageSize: 1 } }),
+        axiosClient.get('/InventoryRequests', { params: { type: 'OUTBOUND', status: 'PENDING', pageSize: 1 } }),
+      ]);
+      const countIn  = inbound.data?.totalCount  ?? (Array.isArray(inbound.data?.items)  ? inbound.data.items.length  : 0);
+      const countOut = outbound.data?.totalCount ?? (Array.isArray(outbound.data?.items) ? outbound.data.items.length : 0);
+      setPendingRequestCount(countIn + countOut);
+    } catch {
+      setPendingRequestCount(0);
+    }
+  };
+
   useEffect(() => {
     const role = loadUserInfo();
     if (role === "RENTER") fetchUnratedCount();
     if (role === "OWNER" || role === "OPERATOR") fetchUnrepliedCount();
+    if (role === "MANAGER") fetchPendingRequestCount();
   }, []);
 
   // Re-resolve when authChange fires (login/logout)
@@ -195,6 +217,11 @@ const Sidebar = () => {
         fetchUnrepliedCount();
       } else {
         setUnrepliedCount(0);
+      }
+      if (role === "MANAGER") {
+        fetchPendingRequestCount();
+      } else {
+        setPendingRequestCount(0);
       }
     };
     window.addEventListener("authChange", handler);
@@ -219,10 +246,20 @@ const Sidebar = () => {
     return () => window.removeEventListener("replyChanged", handler);
   }, [effectiveRole]);
 
+  // Cập nhật badge Manager khi có yêu cầu được duyệt/giao/thay đổi status
+  useEffect(() => {
+    const handler = () => {
+      if (effectiveRole === "MANAGER") fetchPendingRequestCount();
+    };
+    window.addEventListener("inventoryRequestUpdated", handler);
+    return () => window.removeEventListener("inventoryRequestUpdated", handler);
+  }, [effectiveRole]);
+
   // Cập nhật badge khi điều hướng trang
   useEffect(() => {
     if (effectiveRole === "RENTER") fetchUnratedCount();
     if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR") fetchUnrepliedCount();
+    if (effectiveRole === "MANAGER") fetchPendingRequestCount();
   }, [location.pathname, effectiveRole]);
 
   const handleLogout = () => {
@@ -237,7 +274,7 @@ const Sidebar = () => {
   const activeBg    = "#e0f2fe";
 
   // Badge values map
-  const badgeValues = { unratedCount, unrepliedCount };
+  const badgeValues = { unratedCount, unrepliedCount, pendingRequestCount };
 
   return (
     <div style={{

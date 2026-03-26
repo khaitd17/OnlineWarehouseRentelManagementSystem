@@ -34,8 +34,8 @@ public class RatingsController : ControllerBase
                   ?? throw new UnauthorizedAccessException());
 
     private bool IsAdmin() =>
-        User.FindFirst(ClaimTypes.Role)?.Value == "Admin"
-        || User.IsInRole("Admin");
+        string.Equals(User.FindFirst(ClaimTypes.Role)?.Value, "ADMIN", StringComparison.OrdinalIgnoreCase)
+        || User.IsInRole("ADMIN");
 
     // ── GET /api/ratings/warehouse/{warehouseId} ─────────────────── Public
     [HttpGet("warehouse/{warehouseId}")]
@@ -69,7 +69,7 @@ public class RatingsController : ControllerBase
 
     // ── GET /api/ratings/all ──────────────────────────────────────── Admin
     [HttpGet("all")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "ADMIN")]
     public async Task<IActionResult> GetAllRatings()
     {
         var result = await _mediator.Send(new GetAllRatingsQuery());

@@ -2,53 +2,55 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import inventoryService from "../../services/inventoryService";
 
-/* ── Status config ─────────────────────────────────────────────── */
+const INBOUND_COLOR = '#0ea5e9';
+const OUTBOUND_COLOR = '#f59e0b';
+
 const STATUS_MAP = {
-  PENDING:   { label: "Đang chờ", bg: "#fef3c7", color: "#92400e", dot: "#f59e0b" },
-  CONFIRMED: { label: "Đã duyệt", bg: "#d1fae5", color: "#065f46", dot: "#10b981" },
-  REJECTED:  { label: "Từ chối",  bg: "#fee2e2", color: "#991b1b", dot: "#ef4444" },
+  PENDING:   { label: "Đang chờ",  bg: "#fef3c7", color: "#92400e", dot: "#f59e0b", border: "#fde68a" },
+  CONFIRMED: { label: "Đã duyệt",  bg: "#dcfce7", color: "#166534", dot: "#22c55e", border: "#bbf7d0" },
+  COMPLETED: { label: "Hoàn thành",bg: "#dbeafe", color: "#1e40af", dot: "#3b82f6", border: "#bfdbfe" },
+  REJECTED:  { label: "Từ chối",   bg: "#fee2e2", color: "#991b1b", dot: "#ef4444", border: "#fecaca" },
 };
 
 const Badge = ({ s }) => {
-  const c = STATUS_MAP[s] || { label: s, bg: "#f3f4f6", color: "#374151", dot: "#9ca3af" };
+  const c = STATUS_MAP[s] || { label: s, bg: "#f3f4f6", color: "#374151", dot: "#9ca3af", border: "#e5e7eb" };
   return (
-    <span style={{ backgroundColor: c.bg, color: c.color, padding: "3px 10px", borderRadius: "20px", fontSize: "0.72rem", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "5px", whiteSpace: "nowrap" }}>
-      <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: c.dot, display: "inline-block" }} />{c.label}
+    <span style={{ backgroundColor: c.bg, color: c.color, border: `1px solid ${c.border}`, padding: "3px 10px", borderRadius: 20, fontSize: "0.72rem", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: c.dot, flexShrink: 0 }} />{c.label}
     </span>
   );
 };
 
-const Confirm = ({ msg, label, danger, onOk, onCancel }) => (
-  <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}>
-    <div style={{ backgroundColor: "#fff", borderRadius: "16px", width: "100%", maxWidth: "380px", padding: "28px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", textAlign: "center" }}>
-      <div style={{ width: "50px", height: "50px", borderRadius: "50%", backgroundColor: danger ? "#fee2e2" : "#e0f7fa", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-        <span className="material-symbols-outlined" style={{ color: danger ? "#ef4444" : "#00b2d6", fontSize: "26px" }}>{danger ? "warning" : "help"}</span>
-      </div>
-      <p style={{ fontSize: "0.9rem", color: "#374151", margin: "0 0 22px" }}>{msg}</p>
-      <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-        <button onClick={onCancel} style={{ padding: "9px 20px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#fff", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", color: "#64748b" }}>Không</button>
-        <button onClick={onOk} style={{ padding: "9px 20px", borderRadius: "8px", border: "none", backgroundColor: danger ? "#ef4444" : "#00b2d6", color: "#fff", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer" }}>{label}</button>
+const Confirm = ({ msg, onOk, onCancel }) => (
+  <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+    <div style={{ backgroundColor: "#fff", borderRadius: 16, width: "100%", maxWidth: 380, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.18)", textAlign: "center" }}>
+      <div style={{ width: 52, height: 52, borderRadius: "50%", backgroundColor: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: "1.5rem" }}>🗑</div>
+      <p style={{ fontSize: "0.92rem", color: "#374151", margin: "0 0 22px", lineHeight: 1.6 }}>{msg}</p>
+      <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+        <button onClick={onCancel} style={{ padding: "9px 22px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", color: "#64748b" }}>Hủy</button>
+        <button onClick={onOk} style={{ padding: "9px 22px", borderRadius: 8, border: "none", backgroundColor: "#ef4444", color: "#fff", fontWeight: 700, fontSize: "0.875rem", cursor: "pointer" }}>Xóa yêu cầu</button>
       </div>
     </div>
   </div>
 );
 
-const STATUSES = ["Tất cả", "PENDING", "CONFIRMED", "REJECTED"];
-const STATUS_LABELS = { "Tất cả": "Tất cả", PENDING: "Đang chờ", CONFIRMED: "Đã duyệt", REJECTED: "Từ chối" };
-const th = { padding: "11px 14px", textAlign: "left", fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", userSelect: "none", whiteSpace: "nowrap" };
-const td = { padding: "13px 14px", fontSize: "0.875rem", color: "#374151", borderBottom: "1px solid #f8fafc" };
+const STATUSES = ["PENDING", "CONFIRMED", "COMPLETED", "REJECTED"];
+const fmtDate = d => d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
-/* ── Tab Panel component ────────────────────────────────────────── */
-function TabPanel({ type, createPath, csvFilename, warehouseColLabel, emptyIcon }) {
+/* ── Tab Panel ──────────────────────────────────────────────────── */
+function TabPanel({ type }) {
   const location = useLocation();
+  const accent = type === "INBOUND" ? INBOUND_COLOR : OUTBOUND_COLOR;
+
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [sf, setSf] = useState("Tất cả");
+  const [statusFilter, setStatusFilter] = useState("ALL");
   const [conf, setConf] = useState(null);
+  const [expanded, setExpanded] = useState(null);
   const [successMsg, setSuccessMsg] = useState(
     location.state?.created && location.state?.type === type
-      ? (type === "INBOUND" ? "Yêu cầu nhập kho đã được tạo thành công!" : "Yêu cầu xuất kho đã được tạo thành công!")
+      ? (type === "INBOUND" ? "✅ Yêu cầu nhập kho đã được tạo!" : "✅ Yêu cầu xuất kho đã được tạo!")
       : ""
   );
 
@@ -58,265 +60,239 @@ function TabPanel({ type, createPath, csvFilename, warehouseColLabel, emptyIcon 
       const res = await inventoryService.getInventoryRequests({ type, pageSize: 100 });
       const items = res.data?.items || res.data || [];
       setData(Array.isArray(items) ? items : []);
-    } catch {
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
+    } catch { setData([]); }
+    finally { setLoading(false); }
   }, [type]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (successMsg) { const t = setTimeout(() => setSuccessMsg(""), 4000); return () => clearTimeout(t); } }, [successMsg]);
 
-  useEffect(() => {
-    if (successMsg) {
-      const t = setTimeout(() => setSuccessMsg(""), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [successMsg]);
+  const counts = Object.fromEntries(STATUSES.map(s => [s, data.filter(r => r.status === s).length]));
+  const total = data.length;
 
   const filtered = data.filter(r => {
     const q = search.toLowerCase();
-    const matchQ = !q || [
-      String(r.invReqId),
-      r.items?.[0]?.itemName || "",
-      r.warehouseName || "",
-    ].some(v => v.toLowerCase().includes(q));
-    const matchS = sf === "Tất cả" || r.status === sf;
+    const matchQ = !q || [String(r.invReqId), r.items?.[0]?.itemName || "", r.warehouseName || "", r.notes || ""].some(v => v.toLowerCase().includes(q));
+    const matchS = statusFilter === "ALL" || r.status === statusFilter;
     return matchQ && matchS;
   });
 
   const doDelete = async (id) => {
-    try {
-      await inventoryService.deleteInventoryRequest(id);
-      setData(d => d.filter(r => r.invReqId !== id));
-    } catch (err) {
-      alert(err?.response?.data?.message || "Không thể xóa yêu cầu.");
-    }
+    try { await inventoryService.deleteInventoryRequest(id); setData(d => d.filter(r => r.invReqId !== id)); }
+    catch (err) { alert(err?.response?.data?.message || "Không thể xóa."); }
     setConf(null);
   };
 
-  const counts = Object.fromEntries(
-    STATUSES.slice(1).map(s => [s, data.filter(r => r.status === s).length])
-  );
-
   const exportCSV = () => {
-    const rows = [
-      ["ID", "Kho", "Mặt hàng", "SL", "Trạng thái", "Ngày tạo"],
-      ...filtered.map(r => [
-        `#${r.invReqId}`,
-        r.warehouseName || "",
-        r.items?.[0]?.itemName || "",
-        r.items?.reduce((s, i) => s + i.quantity, 0) || 0,
-        STATUS_MAP[r.status]?.label || r.status,
-        r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : "",
-      ]),
-    ];
-    const a = document.createElement("a");
-    a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(rows.map(r => r.join(",")).join("\n"));
-    a.download = csvFilename;
-    a.click();
+    const rows = [["ID", "Kho", "Mặt hàng", "SL", "Trạng thái", "Ngày tạo"],
+      ...filtered.map(r => [`#${r.invReqId}`, r.warehouseName || "", r.items?.[0]?.itemName || "",
+        r.items?.reduce((s, i) => s + i.quantity, 0) || 0, STATUS_MAP[r.status]?.label || r.status,
+        fmtDate(r.createdAt)])];
+    const a = document.createElement("a"); a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(rows.map(r => r.join(",")).join("\n"));
+    a.download = type === "INBOUND" ? "nhap-kho.csv" : "xuat-kho.csv"; a.click();
   };
 
-  const deleteMsg = type === "INBOUND"
-    ? `Xóa yêu cầu nhập kho #${conf?.id}? Hành động này không thể hoàn tác.`
-    : `Xóa yêu cầu xuất kho #${conf?.id}? Hành động này không thể hoàn tác.`;
+  const card = { background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" };
 
   return (
-    <div style={{ fontFamily: "Inter,sans-serif" }}>
+    <div style={{ fontFamily: "Inter,sans-serif", display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Success toast */}
       {successMsg && (
-        <div style={{ backgroundColor: "#d1fae5", border: "1px solid #a7f3d0", borderRadius: "10px", padding: "12px 16px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px", color: "#065f46", fontWeight: 600, fontSize: "0.875rem" }}>
-          <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>check_circle</span>
+        <div style={{ background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 12, padding: "12px 18px", display: "flex", alignItems: "center", gap: 8, color: "#166534", fontWeight: 600, fontSize: "0.88rem" }}>
           {successMsg}
         </div>
       )}
 
-      {/* Action row */}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", flexWrap: "wrap", marginBottom: "18px" }}>
-        <button onClick={exportCSV} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "9px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#fff", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", color: "#64748b" }}>
-          <span className="material-symbols-outlined" style={{ fontSize: "17px" }}>download</span>Xuất CSV
-        </button>
-        <Link to={createPath} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "9px 16px", borderRadius: "8px", backgroundColor: "#00b2d6", color: "#fff", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none" }}>
-          <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>add</span>Tạo yêu cầu mới
-        </Link>
-      </div>
-
-      {/* Status chips */}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "18px" }}>
-        {Object.entries(counts).map(([s, n]) => {
-          const c = STATUS_MAP[s] || {};
-          return (
-            <button key={s} onClick={() => setSf(s === sf ? "Tất cả" : s)} style={{ display: "flex", alignItems: "center", gap: "5px", padding: "5px 12px", borderRadius: "20px", border: `1.5px solid ${sf === s ? (c.dot || "#00b2d6") : "#e2e8f0"}`, backgroundColor: sf === s ? (c.bg || "#e0f7fa") : "#fff", cursor: "pointer", fontWeight: 600, fontSize: "0.78rem", color: sf === s ? (c.color || "#00b2d6") : "#64748b", transition: "all 0.15s" }}>
-              <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: c.dot || "#64748b", display: "inline-block" }} />{STATUS_LABELS[s]} <strong>{n}</strong>
-            </button>
-          );
-        })}
+      {/* Stats + Actions row */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        {/* Status filter chips */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <button onClick={() => setStatusFilter("ALL")}
+            style={{ padding: "5px 14px", borderRadius: 20, border: `1.5px solid ${statusFilter === "ALL" ? accent : "#e2e8f0"}`, background: statusFilter === "ALL" ? `${accent}18` : "#fff", color: statusFilter === "ALL" ? accent : "#64748b", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer", transition: "all 0.15s" }}>
+            Tất cả <strong>{total}</strong>
+          </button>
+          {STATUSES.map(s => {
+            const c = STATUS_MAP[s]; const n = counts[s];
+            return (
+              <button key={s} onClick={() => setStatusFilter(s === statusFilter ? "ALL" : s)}
+                style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, border: `1.5px solid ${statusFilter === s ? c.dot : "#e2e8f0"}`, background: statusFilter === s ? c.bg : "#fff", color: statusFilter === s ? c.color : "#64748b", fontWeight: 600, fontSize: "0.78rem", cursor: "pointer", transition: "all 0.15s" }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.dot }} />
+                {c.label} <strong>{n}</strong>
+              </button>
+            );
+          })}
+        </div>
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={exportCSV} style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", color: "#64748b" }}>
+            ⬇ Xuất CSV
+          </button>
+          <Link to={`/create-inventory?tab=${type === "INBOUND" ? "inbound" : "outbound"}`}
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 16px", borderRadius: 10, background: `linear-gradient(135deg,${accent},${accent}cc)`, color: "#fff", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none", boxShadow: `0 4px 14px ${accent}35` }}>
+            + Tạo yêu cầu mới
+          </Link>
+        </div>
       </div>
 
       {/* Search bar */}
-      <div style={{ backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #f1f5f9", padding: "12px 14px", marginBottom: "14px", display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
-          <span className="material-symbols-outlined" style={{ position: "absolute", left: "11px", top: "50%", transform: "translateY(-50%)", fontSize: "18px", color: "#94a3b8" }}>search</span>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo ID, mặt hàng, kho..." style={{ width: "100%", padding: "9px 12px 9px 36px", borderRadius: "8px", border: "1px solid #e2e8f0", outline: "none", fontSize: "0.875rem", boxSizing: "border-box" }} />
+      <div style={{ ...card, padding: "10px 14px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
+          <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem" }}>🔍</span>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Tìm theo ID, mặt hàng, kho, ghi chú..."
+            style={{ width: "100%", padding: "9px 12px 9px 34px", borderRadius: 8, border: "1.5px solid #e2e8f0", outline: "none", fontSize: "0.875rem", boxSizing: "border-box", fontFamily: "Inter,sans-serif", transition: "border-color 0.2s" }}
+            onFocus={e => e.target.style.borderColor = accent}
+            onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
         </div>
-        <div style={{ position: "relative" }}>
-          <select value={sf} onChange={e => setSf(e.target.value)} style={{ padding: "9px 32px 9px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", outline: "none", fontSize: "0.875rem", appearance: "none", backgroundColor: "#fff", cursor: "pointer" }}>
-            {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-          </select>
-          <span className="material-symbols-outlined" style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "17px", color: "#94a3b8", pointerEvents: "none" }}>expand_more</span>
-        </div>
-        {(search || sf !== "Tất cả") && <button onClick={() => { setSearch(""); setSf("Tất cả"); }} style={{ padding: "9px 12px", borderRadius: "8px", border: "1px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>Xóa lọc</button>}
+        {(search || statusFilter !== "ALL") && (
+          <button onClick={() => { setSearch(""); setStatusFilter("ALL"); }}
+            style={{ padding: "9px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>
+            ✕ Xóa lọc
+          </button>
+        )}
       </div>
 
-      {/* Table */}
-      <div style={{ backgroundColor: "#fff", borderRadius: "12px", border: "1px solid #f1f5f9", overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-        <div style={{ overflowX: "auto" }}>
+      {/* Table card */}
+      <div style={card}>
+        {loading ? (
+          <div style={{ padding: 60, textAlign: "center", color: "#94a3b8" }}>
+            <div style={{ fontSize: "2rem", marginBottom: 8 }}>⏳</div>
+            <div style={{ fontSize: "0.88rem" }}>Đang tải dữ liệu...</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: 60, textAlign: "center", color: "#94a3b8" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: 10 }}>{type === "INBOUND" ? "📥" : "📤"}</div>
+            <div style={{ fontWeight: 600, marginBottom: 6, color: "#64748b" }}>Không tìm thấy yêu cầu nào</div>
+            <div style={{ fontSize: "0.83rem" }}>Thử thay đổi từ khóa hoặc bộ lọc</div>
+          </div>
+        ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ backgroundColor: "#f8fafc" }}>
-                <th style={th}>ID</th>
-                <th style={th}>{warehouseColLabel}</th>
-                <th style={th}>Mặt hàng</th>
-                <th style={{ ...th, textAlign: "right" }}>Số lượng</th>
-                <th style={th}>Trạng thái</th>
-                <th style={th}>Ngày tạo</th>
-                <th style={{ ...th, textAlign: "center" }}>Thao tác</th>
+              <tr style={{ background: "#f8fafc" }}>
+                {[["ID", "60px"], ["Kho hàng", "150px"], ["Mặt hàng", "auto"], ["Số lượng", "100px", "right"], ["Trạng thái", "120px"], ["Ngày tạo", "110px"], ["", "80px", "center"]].map(([h, w, align], i) => (
+                  <th key={i} style={{ padding: "11px 14px", textAlign: align || "left", fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.06em", whiteSpace: "nowrap", width: w }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr><td colSpan={7} style={{ padding: "48px", textAlign: "center", color: "#94a3b8" }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: "32px", display: "block", marginBottom: "8px" }}>sync</span>Đang tải...
-                </td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: "48px", textAlign: "center", color: "#94a3b8" }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: "40px", display: "block", marginBottom: "8px" }}>{emptyIcon}</span>Không tìm thấy yêu cầu nào
-                </td></tr>
-              ) : filtered.map(row => {
+              {filtered.map(row => {
                 const firstItem = row.items?.[0];
                 const totalQty = row.items?.reduce((s, i) => s + i.quantity, 0) || 0;
-                const unit = firstItem?.unit || "cái";
+                const unit = firstItem?.unit || "";
+                const hasMultiItems = (row.items?.length || 0) > 1;
+                const isExp = expanded === row.invReqId;
                 return (
-                  <tr key={row.invReqId} style={{ backgroundColor: "#fff" }}>
-                    <td style={{ ...td, color: "#00b2d6", fontWeight: 700 }}>#{row.invReqId}</td>
-                    <td style={{ ...td, maxWidth: "170px" }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }}>{row.warehouseName || "—"}</div></td>
-                    <td style={{ ...td, maxWidth: "200px" }}>
-                      <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "#1e293b" }}>{firstItem?.itemName || "—"}</div>
-                      {row.notes && <div style={{ fontSize: "0.73rem", color: "#94a3b8", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.notes}</div>}
-                    </td>
-                    <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{totalQty.toLocaleString()} <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: "0.8rem" }}>{unit}</span></td>
-                    <td style={td}><Badge s={row.status} /></td>
-                    <td style={{ ...td, color: "#64748b" }}>{row.createdAt ? new Date(row.createdAt).toLocaleDateString("vi-VN") : "—"}</td>
-                    <td style={{ ...td, textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
-                        {row.status === "PENDING" && (
-                          <button title="Hủy / Xóa" onClick={() => setConf({ id: row.invReqId })} style={{ padding: "5px", border: "none", background: "#fff7ed", borderRadius: "7px", cursor: "pointer", color: "#ea580c", display: "flex" }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: "17px" }}>delete</span>
+                  <React.Fragment key={row.invReqId}>
+                    <tr style={{ borderBottom: isExp ? "none" : "1px solid #f1f5f9", transition: "background 0.15s" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "#fafbff"}
+                      onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
+                      {/* ID */}
+                      <td style={{ padding: "13px 14px" }}>
+                        <span style={{ fontWeight: 800, color: accent, fontSize: "0.87rem" }}>#{row.invReqId}</span>
+                      </td>
+                      {/* Warehouse */}
+                      <td style={{ padding: "13px 14px", maxWidth: 150 }}>
+                        <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.87rem", fontWeight: 500, color: "#374151" }}>{row.warehouseName || "—"}</div>
+                      </td>
+                      {/* Items */}
+                      <td style={{ padding: "13px 14px" }}>
+                        <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.87rem" }}>{firstItem?.itemName || "—"}</div>
+                        {row.notes && <div style={{ fontSize: "0.73rem", color: "#94a3b8", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📝 {row.notes}</div>}
+                        {firstItem?.description && <div style={{ fontSize: "0.73rem", color: "#94a3b8", marginTop: 1 }}>💬 {firstItem.description}</div>}
+                        {hasMultiItems && (
+                          <button onClick={() => setExpanded(isExp ? null : row.invReqId)}
+                            style={{ marginTop: 4, fontSize: "0.72rem", color: accent, fontWeight: 700, background: `${accent}12`, border: "none", borderRadius: 6, padding: "2px 8px", cursor: "pointer" }}>
+                            {isExp ? "▲ Thu gọn" : `▼ +${row.items.length - 1} mặt hàng nữa`}
                           </button>
                         )}
-                      </div>
-                    </td>
-                  </tr>
+                      </td>
+                      {/* Qty */}
+                      <td style={{ padding: "13px 14px", textAlign: "right" }}>
+                        <span style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.9rem" }}>{totalQty.toLocaleString()}</span>
+                        {unit && <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: "0.78rem", marginLeft: 3 }}>{unit}</span>}
+                      </td>
+                      {/* Status */}
+                      <td style={{ padding: "13px 14px" }}><Badge s={row.status} /></td>
+                      {/* Date */}
+                      <td style={{ padding: "13px 14px", color: "#64748b", fontSize: "0.83rem" }}>{fmtDate(row.createdAt)}</td>
+                      {/* Actions */}
+                      <td style={{ padding: "13px 14px", textAlign: "center" }}>
+                        {row.status === "PENDING" && (
+                          <button title="Hủy yêu cầu" onClick={() => setConf({ id: row.invReqId })}
+                            style={{ width: 30, height: 30, border: "1.5px solid #fecaca", background: "#fef2f2", borderRadius: 8, cursor: "pointer", color: "#dc2626", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", transition: "all 0.15s" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                            🗑
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {/* Expanded items */}
+                    {isExp && (
+                      <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td colSpan={7} style={{ padding: "0 14px 12px 48px" }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {row.items.map((it, i) => (
+                              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px", borderRadius: 8, background: "#f8fafc", fontSize: "0.83rem" }}>
+                                <span style={{ color: "#94a3b8", fontWeight: 700, minWidth: 20 }}>{i + 1}.</span>
+                                <span style={{ fontWeight: 600, color: "#1e293b", flex: 1 }}>{it.itemName}</span>
+                                <span style={{ color: "#64748b" }}>{it.quantity.toLocaleString()} {it.unit}</span>
+                                {it.description && <span style={{ color: "#94a3b8", fontSize: "0.78rem" }}>• {it.description}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
           </table>
-        </div>
-        <div style={{ padding: "11px 14px", borderTop: "1px solid #f8fafc", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
-          <span style={{ fontSize: "0.78rem", color: "#94a3b8" }}>Hiển thị {filtered.length}/{data.length} yêu cầu</span>
-        </div>
+        )}
+        {/* Footer */}
+        {!loading && (
+          <div style={{ padding: "11px 16px", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: "0.78rem", color: "#94a3b8" }}>Hiển thị <strong style={{ color: "#64748b" }}>{filtered.length}</strong> / {data.length} yêu cầu</span>
+          </div>
+        )}
       </div>
 
-      {conf && (
-        <Confirm
-          msg={deleteMsg}
-          label="Xóa"
-          danger
-          onOk={() => doDelete(conf.id)}
-          onCancel={() => setConf(null)}
-        />
-      )}
+      {conf && <Confirm msg={`Xóa yêu cầu #${conf.id}? Hành động này không thể hoàn tác.`} onOk={() => doDelete(conf.id)} onCancel={() => setConf(null)} />}
     </div>
   );
 }
 
-/* ── Main page ─────────────────────────────────────────────────── */
+/* ── Main page ──────────────────────────────────────────────────── */
 export default function RenterInventoryHistory() {
   const location = useLocation();
-  // Allow navigating directly to a tab via ?tab=outbound
-  const params = new URLSearchParams(location.search);
-  const initialTab = params.get("tab") === "outbound" ? "outbound" : "inbound";
+  const initialTab = new URLSearchParams(location.search).get("tab") === "outbound" ? "outbound" : "inbound";
   const [activeTab, setActiveTab] = useState(initialTab);
-
-  const accentColor = "#00b2d6";
-
-  const tabStyle = (tab) => ({
-    display: "flex",
-    alignItems: "center",
-    gap: "7px",
-    padding: "10px 20px",
-    borderBottom: activeTab === tab ? `2.5px solid ${accentColor}` : "2.5px solid transparent",
-    color: activeTab === tab ? accentColor : "#64748b",
-    fontWeight: activeTab === tab ? 700 : 500,
-    fontSize: "0.92rem",
-    cursor: "pointer",
-    background: "none",
-    border: "none",
-    borderBottom: activeTab === tab ? `2.5px solid ${accentColor}` : "2.5px solid transparent",
-    transition: "all 0.18s",
-    fontFamily: "Inter,sans-serif",
-    whiteSpace: "nowrap",
-  });
+  const accent = activeTab === "inbound" ? INBOUND_COLOR : OUTBOUND_COLOR;
 
   return (
-    <div style={{ fontFamily: "Inter,sans-serif" }} className="w-full flex-1 flex flex-col min-w-0">
-      {/* Page header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "22px", flexWrap: "wrap", gap: "12px" }}>
-        <div>
-          <h1 style={{ fontSize: "1.55rem", fontWeight: 800, margin: 0, color: "#111827" }}>Lịch sử nhập/xuất kho</h1>
-          <p style={{ margin: "6px 0 0", fontSize: "0.85rem", color: "#64748b" }}>Theo dõi và quản lý tất cả các yêu cầu nhập kho và xuất kho của bạn.</p>
-        </div>
+    <div style={{ fontFamily: "Inter, sans-serif", maxWidth: 920, margin: "0 auto", paddingBottom: 60 }} className="w-full flex-1 flex flex-col min-w-0">
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: "1.7rem", fontWeight: 900, color: "#0f172a", margin: "0 0 4px" }}>Lịch sử nhập / xuất kho</h1>
+        <p style={{ color: "#64748b", fontSize: "0.88rem", margin: 0 }}>Theo dõi và quản lý tất cả các yêu cầu nhập kho và xuất kho của bạn.</p>
       </div>
 
-      {/* Tab bar */}
-      <div style={{ backgroundColor: "#fff", borderRadius: "12px 12px 0 0", border: "1px solid #f1f5f9", borderBottom: "none", display: "flex", paddingLeft: "8px", paddingRight: "8px" }}>
-        <button
-          style={tabStyle("inbound")}
-          onClick={() => setActiveTab("inbound")}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>move_to_inbox</span>
-          Nhập kho
-        </button>
-        <button
-          style={tabStyle("outbound")}
-          onClick={() => setActiveTab("outbound")}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>outbox</span>
-          Xuất kho
-        </button>
+      {/* Tab switcher — pill style đồng bộ với CreateInventoryRequest */}
+      <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderRadius: 12, background: activeTab === "inbound" ? "#e0f7fa" : "#fff8e1", border: `1.5px solid ${accent}30`, marginBottom: 20, alignItems: "center" }}>
+        <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#64748b" }}>Loại yêu cầu:</span>
+        {[{ v: "inbound", icon: "📥", label: "Nhập kho" }, { v: "outbound", icon: "📤", label: "Xuất kho" }].map(({ v, icon, label }) => (
+          <button key={v} onClick={() => setActiveTab(v)}
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 16px", borderRadius: 8, border: `1.5px solid ${activeTab === v ? accent : "#e2e8f0"}`, background: activeTab === v ? accent : "#fff", color: activeTab === v ? "#fff" : "#64748b", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.18s" }}>
+            {icon} {label}
+          </button>
+        ))}
       </div>
-
-      {/* Tab underline border */}
-      <div style={{ height: "1px", backgroundColor: "#e2e8f0", marginBottom: "20px" }} />
 
       {/* Tab content */}
-      {activeTab === "inbound" ? (
-        <TabPanel
-          type="INBOUND"
-          createPath="/create-inventory?tab=inbound"
-          csvFilename="nhap-kho.csv"
-          warehouseColLabel="Kho hàng"
-          emptyIcon="inbox"
-        />
-      ) : (
-        <TabPanel
-          type="OUTBOUND"
-          createPath="/create-inventory?tab=outbound"
-          csvFilename="xuat-kho.csv"
-          warehouseColLabel="Kho xuất"
-          emptyIcon="outbox"
-        />
-      )}
+      <TabPanel key={activeTab} type={activeTab === "inbound" ? "INBOUND" : "OUTBOUND"} />
     </div>
   );
 }
