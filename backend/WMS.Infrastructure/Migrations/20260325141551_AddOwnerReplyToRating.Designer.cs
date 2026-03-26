@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WMS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260325141551_AddOwnerReplyToRating")]
+    partial class AddOwnerReplyToRating
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1505,7 +1508,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("WarehouseTaskId");
 
-                    b.ToTable("UnitTask", (string)null);
+                    b.ToTable("UnitTask");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.User", b =>
@@ -2311,7 +2314,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("equipment_id");
 
-                    b.ToTable("rental_contract_equipments", (string)null);
+                    b.ToTable("rental_contract_equipments");
                 });
 
             modelBuilder.Entity("task_zones", b =>
