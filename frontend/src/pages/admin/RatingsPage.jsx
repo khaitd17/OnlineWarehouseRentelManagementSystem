@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ratingService from '../../services/ratingService';
 
 const PAGE_SIZE = 10;
@@ -23,18 +23,29 @@ const RatingsPage = () => {
 
   useEffect(() => { fetchRatings(); }, []);
 
+  // useRef để block double-click đồng bộ (trước khi React re-render)
+  const togglingRef = useRef(new Set());
+
   const handleToggleHide = async (id) => {
+    // Guard đồng bộ: nếu đang xử lý id này thì bỏ qua ngay
+    if (togglingRef.current.has(id)) return;
+    togglingRef.current.add(id);
     setTogglingId(id);
+    let msgTimeout;
     try {
       await ratingService.toggleHideRating(id);
-      setRatings(prev => prev.map(r => r.ratingId === id ? { ...r, isHidden: !r.isHidden } : r));
+      // Refetch để đảm bảo đồng bộ với server (tránh optimistic update sai)
+      await fetchRatings();
       setMsg({ type: 'success', text: 'Cập nhật trạng thái thành công!' });
-    } catch {
-      setMsg({ type: 'error', text: 'Lỗi khi thay đổi trạng thái' });
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || 'Lỗi khi thay đổi trạng thái';
+      setMsg({ type: 'error', text: errMsg });
     } finally {
+      togglingRef.current.delete(id);
       setTogglingId(null);
+      msgTimeout = setTimeout(() => setMsg(null), 2500);
     }
-    setTimeout(() => setMsg(null), 2500);
+    return () => clearTimeout(msgTimeout);
   };
 
   const handleDelete = async (id) => {
@@ -60,11 +71,13 @@ const RatingsPage = () => {
     if (filter.hidden === 'hidden' && !r.isHidden) return false;
     if (filter.warehouse !== 'all' && r.warehouseName !== filter.warehouse) return false;
     if (filter.search) {
-      const s = filter.search.toLowerCase();
+      const s = filter.search.toLowerCase().replace(/^#/, ''); // bỏ # nếu user gõ #rv-0015
+      const formattedId = `rv-${String(r.ratingId).padStart(4, '0')}`; // "rv-0015"
       return (r.renterName || '').toLowerCase().includes(s)
         || (r.warehouseName || '').toLowerCase().includes(s)
         || (r.comment || '').toLowerCase().includes(s)
-        || String(r.ratingId).includes(s);
+        || String(r.ratingId).includes(s)       // gõ "15"
+        || formattedId.includes(s);              // gõ "0015", "rv-0015", "rv-00"
     }
     return true;
   });
@@ -348,47 +361,75 @@ const RatingsPage = () => {
                         >Hủy</button>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        {/* Toggle hide */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        {/* Toggle Ẩn/Hiện */}
                         <button
                           onClick={() => handleToggleHide(r.ratingId)}
                           disabled={togglingId === r.ratingId}
-                          title={r.isHidden ? 'Hiện lại' : 'Ẩn đánh giá'}
+                          title={r.isHidden ? 'Nhấn để hiện lại' : 'Nhấn để ẩn'}
                           style={{
-                            width: 30, height: 30, borderRadius: 8,
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            padding: '5px 12px', borderRadius: 8, fontSize: '0.75rem', fontWeight: 700,
+                            border: `1.5px solid ${r.isHidden ? '#86efac' : '#fca5a5'}`,
                             background: r.isHidden ? '#f0fdf4' : '#fef2f2',
-                            border: `1px solid ${r.isHidden ? '#bbf7d0' : '#fecaca'}`,
                             color: r.isHidden ? '#16a34a' : '#dc2626',
                             cursor: togglingId === r.ratingId ? 'wait' : 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s',
+                            opacity: togglingId === r.ratingId ? 0.7 : 1,
+                            transition: 'all 0.2s ease',
+                            whiteSpace: 'nowrap',
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                          onMouseEnter={e => {
+                            if (togglingId !== r.ratingId) {
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.boxShadow = r.isHidden
+                                ? '0 4px 10px rgba(22,163,74,0.2)'
+                                : '0 4px 10px rgba(220,38,38,0.2)';
+                            }
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
                         >
                           {togglingId === r.ratingId ? (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ animation: 'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                            <>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: 'spin 0.7s linear infinite', flexShrink: 0 }}>
+                                <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+                              </svg>
+                              Đang xử lý...
+                            </>
                           ) : r.isHidden ? (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                              </svg>
+                              Hiện
+                            </>
                           ) : (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                            <>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                              </svg>
+                              Ẩn
+                            </>
                           )}
                         </button>
-                        {/* Delete */}
+                        {/* Xóa */}
                         <button
                           onClick={() => setDeleteConfirmId(r.ratingId)}
                           title="Xóa đánh giá"
                           style={{
-                            width: 30, height: 30, borderRadius: 8,
-                            background: '#fef2f2', border: '1px solid #fecaca',
+                            width: 32, height: 32, borderRadius: 8,
+                            background: '#fef2f2', border: '1.5px solid #fca5a5',
                             color: '#dc2626', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s',
+                            transition: 'all 0.2s ease', flexShrink: 0,
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'scale(1)'; }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(220,38,38,0.2)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
                         >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
                           </svg>
                         </button>

@@ -56,7 +56,7 @@ public class ConfirmInventoryRequestHandler
             throw new InvalidOperationException(
                 $"Chỉ có thể xác nhận yêu cầu đã được giao (ASSIGNED). Trạng thái hiện tại: '{req.Status}'.");
 
-        // 3. For each item: check/update inventory and create transaction
+        // 3. For each item: resolve AssetId, update inventory, create transaction
         foreach (var item in req.InventoryItems)
         {
             int delta = req.Type == "OUTBOUND" ? -item.Quantity : item.Quantity;
@@ -65,12 +65,47 @@ public class ConfirmInventoryRequestHandler
             await _invRepo.AdjustQuantityAsync(
                 req.WarehouseId, item.ItemName, item.Unit, delta, cancellationToken);
 
-            // Update renter_inventory (asset-based) if item has AssetId
+            // --- Resolve AssetId nếu chưa có ---
+            // Khi Renter gõ tên hàng mới (không chọn từ catalogue), AssetId = null.
+            // Lúc này ta tự động tìm hoặc tạo RenterAsset để đảm bảo renter_inventory
+            // luôn được cập nhật đầy đủ.
+            int resolvedAssetId;
+
             if (item.AssetId.HasValue && item.AssetId.Value > 0)
             {
-                await _assetRepo.AdjustRenterInventoryAsync(
-                    item.AssetId.Value, req.WarehouseId, delta, cancellationToken);
+                resolvedAssetId = item.AssetId.Value;
             }
+            else
+            {
+                // Tìm asset có cùng tên thuộc renter này
+                var existingAsset = await _assetRepo.FindByNameAndRenterAsync(
+                    req.RenterId, item.ItemName, cancellationToken);
+
+                if (existingAsset != null)
+                {
+                    resolvedAssetId = existingAsset.AssetId;
+                }
+                else
+                {
+                    // Tạo mới RenterAsset từ thông tin của InventoryItem
+                    var newAsset = await _assetRepo.CreateAsync(new RenterAsset
+                    {
+                        RenterId    = req.RenterId,
+                        AssetName   = item.ItemName,
+                        Unit        = item.Unit,
+                        WeightPerUnit = item.Weight,
+                        Description = item.Description,
+                    }, cancellationToken);
+                    resolvedAssetId = newAsset.AssetId;
+                }
+
+                // Gắn AssetId vào item để nhất quán cho lần sau
+                item.AssetId = resolvedAssetId;
+            }
+
+            // Update renter_inventory (asset-based) — luôn thực hiện với resolvedAssetId
+            await _assetRepo.AdjustRenterInventoryAsync(
+                resolvedAssetId, req.WarehouseId, delta, cancellationToken);
 
             // 4. Create transaction record per item
             await _txRepo.CreateAsync(new InventoryTransaction

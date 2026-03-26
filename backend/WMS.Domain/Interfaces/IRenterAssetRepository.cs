@@ -14,6 +14,8 @@ public interface IRenterAssetRepository
     /// </summary>
     Task<List<RenterInventory>> GetInventoryByWarehouseAsync(int renterId, int warehouseId, CancellationToken ct);
 
+    Task<RenterAsset?> FindByNameAndRenterAsync(int renterId, string assetName, CancellationToken ct);
+
     /// <summary>
     /// Upsert tồn kho: tạo mới hoặc cập nhật quantity trong renter_inventory.
     /// delta > 0 = INBOUND, delta < 0 = OUTBOUND.

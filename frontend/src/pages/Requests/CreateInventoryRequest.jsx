@@ -4,554 +4,597 @@ import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
 import renterAssetService from '../../services/renterAssetService';
 
-/* ── Shared helpers ─────────────────────────────────────────────── */
-const FIELD = ({ label, children }) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-sm font-semibold text-slate-700">{label}</label>
-    {children}
-  </div>
-);
+const INBOUND_COLOR = '#0ea5e9';
+const OUTBOUND_COLOR = '#f59e0b';
+const ALLOWED_EXT = /\.(pdf|jpg|jpeg|png|xls|xlsx|doc|docx)$/i;
+const ALLOWED_MIME = ['application/pdf','image/jpeg','image/png','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+const fmtBytes = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}KB` : `${(n/1048576).toFixed(1)}MB`;
+const fileIcon = name => { const e = name.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(e)) return '🖼️'; if(e==='pdf') return '📄'; if(['xls','xlsx'].includes(e)) return '📊'; return '📎'; };
+const newRow = () => ({ id: Date.now()+Math.random(), assetId: null, itemName: '', unit: '', qty: 1, note: '', isNew: false, availableQty: null, search: '', showDrop: false });
+const inp = (extra={}) => ({ padding:'9px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', fontSize:'0.87rem', outline:'none', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s', boxSizing:'border-box', width:'100%', ...extra });
+const UNITS = ['cái','chiếc','thùng','hộp','kg','tấn','lít','mét','m²','m³','cuộn','bao','pallet','chai','gói','bẹ'];
 
-const inputCls =
-  'w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-primary focus:ring-2 transition-all';
-
-const getFileIcon = (filename) => {
-  const ext = filename.split('.').pop().toLowerCase();
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return { icon: 'image', color: '#7c3aed' };
-  if (ext === 'pdf') return { icon: 'picture_as_pdf', color: '#dc2626' };
-  if (['xls', 'xlsx'].includes(ext)) return { icon: 'table_chart', color: '#16a34a' };
-  if (['doc', 'docx'].includes(ext)) return { icon: 'description', color: '#2563eb' };
-  return { icon: 'attach_file', color: '#64748b' };
-};
-
-const formatBytes = (bytes) => {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-/* ── Inbound tab ─────────────────────────────────────────────────── */
-function InboundTab({ warehouses, loadingWH }) {
-  const navigate = useNavigate();
-  const fileInputRef = useRef(null);
-
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [assets, setAssets] = useState([]);
-  const [loadingAssets, setLoadingAssets] = useState(false);
-  const [isNewAsset, setIsNewAsset] = useState(false);
-  const [docFiles, setDocFiles] = useState([]);
-  const [uploadingDocs, setUploadingDocs] = useState(false);
-  const [uploadedUrls, setUploadedUrls] = useState([]);
-  const [dragOver, setDragOver] = useState(false);
-
-  const [form, setForm] = useState({
-    warehouseId: '', assetId: '', qty: 1, unit: 'cái',
-    itemName: '', weightPerUnit: '', description: '', notes: '',
-  });
-
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  useEffect(() => {
-    setLoadingAssets(true);
-    renterAssetService.getMyAssets()
-      .then(res => setAssets(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setAssets([]))
-      .finally(() => setLoadingAssets(false));
-  }, []);
-
-  const handleAssetChange = (e) => {
-    const assetId = e.target.value;
-    if (assetId === '__new__') {
-      setIsNewAsset(true);
-      setForm(f => ({ ...f, assetId: '', itemName: '', unit: 'cái', weightPerUnit: '' }));
-    } else {
-      setIsNewAsset(false);
-      const asset = assets.find(a => String(a.assetId) === assetId);
-      if (asset) {
-        setForm(f => ({ ...f, assetId: String(asset.assetId), itemName: asset.assetName, unit: asset.unit || 'cái', weightPerUnit: asset.weightPerUnit ?? '' }));
-      } else {
-        setForm(f => ({ ...f, assetId: '', itemName: '' }));
-      }
-    }
-  };
-
-  const ALLOWED_TYPES = [
-    'application/pdf', 'image/jpeg', 'image/png',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  ];
-
-  const addFiles = (fileList) => {
-    const incoming = Array.from(fileList);
-    const valid = incoming.filter(f => {
-      if (!ALLOWED_TYPES.includes(f.type) && !f.name.match(/\.(pdf|jpg|jpeg|png|xls|xlsx|doc|docx)$/i)) return false;
-      if (f.size > 10 * 1024 * 1024) return false;
-      return true;
-    });
-    if (valid.length !== incoming.length) setError('Một số file không hợp lệ hoặc vượt 10MB và đã bị bỏ qua.');
-    setDocFiles(prev => [...prev, ...valid.map(f => ({ file: f, name: f.name, size: f.size }))].slice(0, 10));
-    setUploadedUrls([]);
-  };
-
-  const removeFile = (idx) => { setDocFiles(prev => prev.filter((_, i) => i !== idx)); setUploadedUrls([]); };
-
-  const uploadDocuments = async () => {
-    if (docFiles.length === 0) return [];
-    setUploadingDocs(true);
-    try {
-      const formData = new FormData();
-      docFiles.forEach(({ file }) => formData.append('files', file));
-      const res = await axiosClient.post('/upload/inventory-documents', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      const urls = res.data?.urls || [];
-      setUploadedUrls(urls);
-      return urls;
-    } catch (err) {
-      throw new Error(err?.response?.data?.message || 'Upload chứng từ thất bại.');
-    } finally {
-      setUploadingDocs(false);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!form.warehouseId) { setError('Vui lòng chọn kho hàng.'); return; }
-    if (!form.assetId && !form.itemName.trim()) { setError('Vui lòng chọn hoặc tạo tài sản mới.'); return; }
-    setSubmitting(true);
-    try {
-      let assetId = form.assetId ? Number(form.assetId) : null;
-      if (isNewAsset && form.itemName.trim()) {
-        const createRes = await renterAssetService.createAsset({
-          assetName: form.itemName.trim(), unit: form.unit,
-          weightPerUnit: form.weightPerUnit ? Number(form.weightPerUnit) : null,
-          description: form.description || null,
-        });
-        assetId = createRes.data.assetId;
-        const refreshed = await renterAssetService.getMyAssets();
-        setAssets(Array.isArray(refreshed.data) ? refreshed.data : []);
-      }
-      let documentUrls = uploadedUrls;
-      if (docFiles.length > 0 && uploadedUrls.length === 0) documentUrls = await uploadDocuments();
-      await inventoryService.createInventoryRequest({
-        warehouseId: Number(form.warehouseId), type: 'INBOUND',
-        notes: form.notes || null,
-        documentUrls: documentUrls.length > 0 ? documentUrls : null,
-        items: [{ assetId, itemName: form.itemName.trim(), quantity: Number(form.qty), unit: form.unit, weight: form.weightPerUnit ? Number(form.weightPerUnit) * Number(form.qty) : null, description: form.description || null }],
-      });
-      navigate('/renter-inventory-history?tab=inbound', { state: { created: true, type: 'INBOUND' } });
-    } catch (err) {
-      setError(err?.message || err?.response?.data?.message || 'Tạo yêu cầu thất bại. Vui lòng thử lại.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
+function UnitCombobox({ value, onChange, accent }) {
+  const [show, setShow] = useState(false);
+  const [draft, setDraft] = useState(value||'');
+  const ref = useRef(null);
+  const opts = UNITS.filter(u=>u.toLowerCase().includes(draft.toLowerCase()));
+  useEffect(()=>setDraft(value??''),[value]);
+  useEffect(()=>{
+    const fn=e=>{ if(ref.current&&!ref.current.contains(e.target)){ setShow(false); onChange(draft); } };
+    document.addEventListener('mousedown',fn);
+    return ()=>document.removeEventListener('mousedown',fn);
+  },[draft]);
   return (
-    <div>
-      {/* Info banner */}
-      <div className="flex items-start justify-between rounded-xl px-5 py-4 mb-8 gap-4" style={{ backgroundColor: '#e0f7fa', border: '1px solid #b2ebf2' }}>
-        <div className="flex items-start gap-3 flex-1">
-          <span className="material-symbols-outlined text-[20px] mt-0.5" style={{ color: '#00b2d6' }}>info</span>
-          <div>
-            <p className="text-sm font-bold" style={{ color: '#00b2d6' }}>Kiểm tra trước khi nhập kho</p>
-            <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">Chọn tài sản từ danh mục hoặc tạo mới. Hệ thống sẽ tự động cập nhật tồn kho khi yêu cầu được xác nhận.</p>
-          </div>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mb-6 rounded-lg px-4 py-3 flex items-center gap-2 text-sm font-medium" style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
-          <span className="material-symbols-outlined text-[18px]">error</span>{error}
+    <div ref={ref} style={{ position:'relative' }}>
+      <input value={draft}
+        onChange={e=>{ setDraft(e.target.value); setShow(true); }}
+        onFocus={()=>setShow(true)}
+        onBlur={()=>{ onChange(draft); }}
+        onKeyDown={e=>{ if(e.key==='Escape') setShow(false); }}
+        placeholder=""
+        style={{ ...inp(), borderColor:show?accent:'#e2e8f0', paddingRight:28 }}/>
+      <span style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize:'0.8rem', pointerEvents:'none' }}>&#9660;</span>
+      {show && (
+        <div className="unit-drop" style={{ position:'absolute', top:'calc(100% + 3px)', left:0, right:0, background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, boxShadow:'0 8px 20px rgba(0,0,0,0.1)', zIndex:300, maxHeight:220, overflowY:'auto' }}>
+          {opts.length===0
+            ? <div style={{ padding:'8px 12px', fontSize:'0.82rem', color:'#94a3b8' }}>Nhập tùy chỉnh</div>
+            : opts.map(u=>(
+              <div key={u} onMouseDown={()=>{ onChange(u); setDraft(u); setShow(false); }}
+                style={{ padding:'8px 14px', cursor:'pointer', fontSize:'0.85rem', fontWeight:600, color:'#1e293b' }}
+                onMouseEnter={e=>e.currentTarget.style.background='#f1f5f9'}
+                onMouseLeave={e=>e.currentTarget.style.background='#fff'}>{u}</div>
+            ))}
         </div>
       )}
-
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-            <div className="space-y-5">
-              <FIELD label="Chọn kho hàng">
-                <div className="relative">
-                  {loadingWH ? (
-                    <div className={inputCls + ' text-slate-400'}>Đang tải danh sách kho...</div>
-                  ) : (
-                    <select value={form.warehouseId} onChange={set('warehouseId')} className={inputCls + ' appearance-none pr-10'} required>
-                      <option value="">Chọn kho hàng đích</option>
-                      {warehouses.length > 0
-                        ? warehouses.map(w => <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>)
-                        : <option value="" disabled>Không có kho đang thuê</option>}
-                    </select>
-                  )}
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-                </div>
-              </FIELD>
-
-              <FIELD label="Chọn tài sản">
-                <div className="relative">
-                  {loadingAssets ? (
-                    <div className={inputCls + ' text-slate-400'}>Đang tải danh mục...</div>
-                  ) : (
-                    <select value={isNewAsset ? '__new__' : form.assetId} onChange={handleAssetChange} className={inputCls + ' appearance-none pr-10'}>
-                      <option value="">— Chọn từ danh mục tài sản —</option>
-                      {assets.map(a => <option key={a.assetId} value={a.assetId}>{a.assetName} ({a.unit})</option>)}
-                      <option value="__new__">➕ Tạo tài sản mới...</option>
-                    </select>
-                  )}
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-                </div>
-              </FIELD>
-
-              {isNewAsset && (
-                <FIELD label="Tên tài sản mới">
-                  <input type="text" value={form.itemName} onChange={set('itemName')} placeholder="VD: Mì tôm Hảo Hảo 75g" className={inputCls} required />
-                </FIELD>
-              )}
-
-              <FIELD label="Mô tả mặt hàng">
-                <textarea value={form.description} onChange={set('description')} placeholder="Cung cấp thêm chi tiết về mặt hàng" rows={4} className={inputCls + ' resize-none'} />
-              </FIELD>
-            </div>
-
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <FIELD label="Số lượng">
-                  <input type="number" min={1} value={form.qty} onChange={set('qty')} className={inputCls} required />
-                </FIELD>
-                <FIELD label="Đơn vị">
-                  {isNewAsset ? (
-                    <input type="text" value={form.unit} onChange={set('unit')} placeholder="cái, kg, thùng..." className={inputCls} />
-                  ) : (
-                    <div className={inputCls + ' bg-slate-100 text-slate-600'}>{form.unit || 'cái'}</div>
-                  )}
-                </FIELD>
-              </div>
-
-              {isNewAsset && (
-                <FIELD label="Khối lượng / đơn vị (kg)">
-                  <input type="number" step="0.01" min="0" value={form.weightPerUnit} onChange={set('weightPerUnit')} placeholder="Tuỳ chọn" className={inputCls} />
-                </FIELD>
-              )}
-
-              <FIELD label="Ghi chú lô hàng">
-                <textarea value={form.notes} onChange={set('notes')} placeholder="Hướng dẫn xử lý, ghi chú giao hàng, v.v." rows={4} className={inputCls + ' resize-none'} />
-              </FIELD>
-            </div>
-          </div>
-
-          {/* Document Upload */}
-          <div className="mt-8">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-[20px]" style={{ color: '#00b2d6' }}>folder_open</span>
-              <span className="text-sm font-semibold text-slate-700">Chứng từ đính kèm</span>
-              <span className="text-xs text-slate-400 font-normal">(Không bắt buộc)</span>
-            </div>
-            <p className="text-xs text-slate-500 mb-4 leading-relaxed">Upload invoice, packing list, hoặc các tài liệu liên quan đến lô hàng. Chấp nhận: PDF, JPG, PNG, Excel, Word — Tối đa 10 file, mỗi file ≤ 10MB.</p>
-            <div
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
-              onClick={() => fileInputRef.current?.click()}
-              style={{ border: `2px dashed ${dragOver ? '#00b2d6' : '#cbd5e1'}`, backgroundColor: dragOver ? '#e0f7fa' : '#f8fafc', borderRadius: '12px', padding: '28px 20px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s ease' }}
-            >
-              <span className="material-symbols-outlined text-[40px] mb-2 block" style={{ color: dragOver ? '#00b2d6' : '#94a3b8' }}>cloud_upload</span>
-              <p className="text-sm font-semibold text-slate-600">Kéo thả file vào đây hoặc <span style={{ color: '#00b2d6' }}>nhấn để chọn file</span></p>
-              <p className="text-xs text-slate-400 mt-1">PDF, ảnh, Excel, Word · Tối đa 10 file</p>
-              <input ref={fileInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx" className="hidden" onChange={(e) => addFiles(e.target.files)} />
-            </div>
-            {docFiles.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {docFiles.map((f, idx) => {
-                  const { icon, color } = getFileIcon(f.name);
-                  const isUploaded = uploadedUrls.length > 0;
-                  return (
-                    <div key={idx} className="flex items-center gap-3 rounded-lg px-4 py-3" style={{ backgroundColor: isUploaded ? '#f0fdf4' : '#f8fafc', border: `1px solid ${isUploaded ? '#bbf7d0' : '#e2e8f0'}` }}>
-                      <span className="material-symbols-outlined text-[22px]" style={{ color }}>{icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-700 truncate">{f.name}</p>
-                        <p className="text-xs text-slate-400">{formatBytes(f.size)}</p>
-                      </div>
-                      {isUploaded ? (
-                        <span className="material-symbols-outlined text-[18px]" style={{ color: '#16a34a' }}>check_circle</span>
-                      ) : (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); removeFile(idx); }} className="text-slate-400 hover:text-red-500 transition-colors">
-                          <span className="material-symbols-outlined text-[18px]">close</span>
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="border-t border-slate-100 bg-slate-50 px-8 py-5 flex flex-col sm:flex-row justify-end gap-3">
-          <button type="button" onClick={() => navigate(-1)} disabled={submitting} className="px-6 py-2.5 rounded-lg border border-slate-200 bg-white font-semibold text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50">Hủy bỏ</button>
-          <button type="submit" disabled={submitting || loadingWH || uploadingDocs} className="px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all shadow-sm hover:opacity-90 flex items-center gap-2 disabled:opacity-60" style={{ backgroundColor: '#00b2d6' }}>
-            {(submitting || uploadingDocs) && <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>}
-            {uploadingDocs ? 'Đang upload chứng từ...' : submitting ? 'Đang tạo...' : 'Tạo yêu cầu nhập kho'}
-          </button>
-        </div>
-      </form>
     </div>
   );
 }
 
-/* ── Outbound tab ────────────────────────────────────────────────── */
-function OutboundTab({ warehouses, loadingWH }) {
-  const navigate = useNavigate();
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [inventory, setInventory] = useState([]);
-  const [loadingInv, setLoadingInv] = useState(false);
-  const [availableQty, setAvailableQty] = useState(null);
+/* ── Searchable row ─────────────────────────────────────── */
+function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, onEnter, canRemove }) {
+  const ref = useRef(null);
+  const filtered = (item.search ? list.filter(a=>(a.assetName||'').toLowerCase().includes(item.search.toLowerCase())) : list).slice(0,20);
+  const isOver = type==='OUTBOUND' && item.availableQty!==null && Number(item.qty)>item.availableQty;
 
-  const [form, setForm] = useState({
-    warehouseId: '', assetId: '', itemName: '', qty: 1, unit: 'cái', destination: '', description: '', notes: '',
-  });
-
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-
-  useEffect(() => {
-    if (!form.warehouseId) { setInventory([]); return; }
-    setLoadingInv(true);
-    setForm(f => ({ ...f, assetId: '', itemName: '', unit: 'cái' }));
-    setAvailableQty(null);
-    renterAssetService.getInventoryByWarehouse(Number(form.warehouseId))
-      .then(res => setInventory((Array.isArray(res.data) ? res.data : []).filter(i => i.quantity > 0)))
-      .catch(() => setInventory([]))
-      .finally(() => setLoadingInv(false));
-  }, [form.warehouseId]);
-
-  const handleAssetChange = (e) => {
-    const assetId = e.target.value;
-    const item = inventory.find(i => String(i.assetId) === assetId);
-    if (item) {
-      setForm(f => ({ ...f, assetId: String(item.assetId), itemName: item.assetName, unit: item.unit || 'cái' }));
-      setAvailableQty(item.quantity);
-    } else {
-      setForm(f => ({ ...f, assetId: '', itemName: '', unit: 'cái' }));
-      setAvailableQty(null);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!form.warehouseId) { setError('Vui lòng chọn kho xuất hàng.'); return; }
-    if (!form.assetId) { setError('Vui lòng chọn tài sản cần xuất.'); return; }
-    if (availableQty !== null && Number(form.qty) > availableQty) { setError(`Số lượng xuất (${form.qty}) vượt quá tồn kho (${availableQty}).`); return; }
-    setSubmitting(true);
-    try {
-      await inventoryService.createInventoryRequest({
-        warehouseId: Number(form.warehouseId), type: 'OUTBOUND',
-        notes: form.notes || null,
-        items: [{ assetId: Number(form.assetId), itemName: form.itemName, quantity: Number(form.qty), unit: form.unit, description: form.description || null }],
-      });
-      navigate('/renter-inventory-history?tab=outbound', { state: { created: true, type: 'OUTBOUND' } });
-    } catch (err) {
-      setError(err?.response?.data?.message || 'Tạo yêu cầu thất bại. Vui lòng thử lại.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  useEffect(()=>{
+    const fn = e => { if(ref.current && !ref.current.contains(e.target)) onUpdate({ showDrop:false }); };
+    document.addEventListener('mousedown',fn);
+    return ()=>document.removeEventListener('mousedown',fn);
+  },[]);
 
   return (
-    <div>
-      {/* Info banner */}
-      <div className="flex items-start justify-between rounded-xl px-5 py-4 mb-8 gap-4" style={{ backgroundColor: '#fff8e1', border: '1px solid #ffe082' }}>
-        <div className="flex items-start gap-3 flex-1">
-          <span className="material-symbols-outlined text-[20px] mt-0.5 text-amber-500">info</span>
-          <div>
-            <p className="text-sm font-bold text-amber-700">Kiểm tra trước khi xuất kho</p>
-            <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">Chỉ những tài sản có tồn kho tại warehouse đã chọn mới hiện trong danh sách. Số lượng xuất không được vượt quá tồn kho hiện có.</p>
-          </div>
-        </div>
-      </div>
+    <tr style={{ borderBottom:'1px solid #f1f5f9' }}>
+      <td style={{ padding:'10px 14px', color:'#94a3b8', fontSize:'0.8rem', fontWeight:700, width:36 }}>{idx+1}</td>
 
-      {error && (
-        <div className="mb-6 rounded-lg px-4 py-3 flex items-center gap-2 text-sm font-medium" style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
-          <span className="material-symbols-outlined text-[18px]">error</span>{error}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-            <div className="space-y-5">
-              <FIELD label="Chọn kho xuất hàng">
-                <div className="relative">
-                  {loadingWH ? (
-                    <div className={inputCls + ' text-slate-400'}>Đang tải danh sách kho...</div>
-                  ) : (
-                    <select value={form.warehouseId} onChange={set('warehouseId')} className={inputCls + ' appearance-none pr-10'} required>
-                      <option value="">Chọn kho xuất hàng</option>
-                      {warehouses.length > 0
-                        ? warehouses.map(w => <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>)
-                        : <option value="" disabled>Không có kho đang thuê</option>}
-                    </select>
-                  )}
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-                </div>
-              </FIELD>
-
-              <FIELD label="Chọn tài sản xuất kho">
-                <div className="relative">
-                  {loadingInv ? (
-                    <div className={inputCls + ' text-slate-400'}>Đang tải tồn kho...</div>
-                  ) : !form.warehouseId ? (
-                    <div className={inputCls + ' text-slate-400'}>Vui lòng chọn kho trước</div>
-                  ) : inventory.length === 0 ? (
-                    <div className={inputCls + ' text-slate-400'}>Không có tài sản tồn kho tại kho này</div>
-                  ) : (
-                    <select value={form.assetId} onChange={handleAssetChange} className={inputCls + ' appearance-none pr-10'} required>
-                      <option value="">— Chọn tài sản —</option>
-                      {inventory.map(i => <option key={i.assetId} value={i.assetId}>{i.assetName} — Tồn: {i.quantity} {i.unit}</option>)}
-                    </select>
-                  )}
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
-                </div>
-                {availableQty !== null && (
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[14px]" style={{ color: '#16a34a' }}>inventory_2</span>
-                    <span className="text-xs font-medium" style={{ color: '#16a34a' }}>Tồn kho: {availableQty} {form.unit}</span>
+      {/* Asset combobox */}
+      <td style={{ padding:'6px 8px', minWidth:220 }}>
+        <div ref={ref} style={{ position:'relative' }}>
+          <input value={item.search||item.itemName}
+            onChange={e=>{ const v=e.target.value; onUpdate({ search:v, itemName:v, assetId:null, isNew:false, showDrop:true }); }}
+            onFocus={()=>onUpdate({ showDrop:true })}
+            onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEnter(); } }}
+            placeholder={type==='INBOUND'?'Tìm hoặc gõ tên hàng...':'Chọn hàng hóa...'}
+            style={{ ...inp(), borderColor: item.showDrop ? accent : '#e2e8f0' }}
+          />
+          {item.isNew && <span style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', fontSize:'0.7rem', color:accent, fontWeight:700, background:`${accent}15`, padding:'2px 6px', borderRadius:8 }}>MỚI</span>}
+          {item.showDrop && (
+            <div style={{ position:'absolute', top:'calc(100% + 4px)', left:0, right:0, background:'#fff', border:'1px solid #e2e8f0', borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.1)', zIndex:200, maxHeight:200, overflowY:'auto' }}>
+              {loading ? <div style={{ padding:12, color:'#94a3b8', fontSize:'0.83rem', textAlign:'center' }}>Đang tải...</div>
+              : filtered.length===0 && !item.search ? <div style={{ padding:12, color:'#94a3b8', fontSize:'0.83rem', textAlign:'center' }}>Gõ để tìm kiếm</div>
+              : <>
+                {filtered.map(a=>(
+                  <div key={a.assetId} onMouseDown={()=>onUpdate({ assetId:a.assetId, itemName:a.assetName, unit:a.unit||'cái', search:a.assetName, availableQty:a.quantity??null, isNew:false, showDrop:false })}
+                    style={{ padding:'9px 14px', cursor:'pointer', fontSize:'0.85rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}
+                    onMouseEnter={e=>e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+                    <span style={{ fontWeight:600, color:'#1e293b' }}>{a.assetName}</span>
+                    {type==='OUTBOUND' ? <span style={{ fontSize:'0.73rem', background:'#f0fdf4', color:'#16a34a', border:'1px solid #bbf7d0', padding:'2px 8px', borderRadius:20, fontWeight:700 }}>Tồn: {a.quantity} {a.unit}</span>
+                    : <span style={{ fontSize:'0.75rem', color:'#94a3b8' }}>{a.unit}</span>}
+                  </div>
+                ))}
+                {type==='INBOUND' && item.search && !filtered.find(a=>a.assetName.toLowerCase()===item.search.toLowerCase()) && (
+                  <div onMouseDown={()=>onUpdate({ assetId:null, itemName:item.search, isNew:true, showDrop:false, unit:'cái' })}
+                    style={{ padding:'9px 14px', cursor:'pointer', fontSize:'0.85rem', color:accent, fontWeight:700, borderTop:'1px solid #f1f5f9' }}
+                    onMouseEnter={e=>e.currentTarget.style.background=`${accent}10`} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+                    ➕ Tạo mới: "{item.search}"
                   </div>
                 )}
-              </FIELD>
-
-              <FIELD label="Mô tả hàng hóa">
-                <textarea value={form.description} onChange={set('description')} placeholder="Mô tả chi tiết về lô hàng xuất kho" rows={4} className={inputCls + ' resize-none'} />
-              </FIELD>
+              </>}
             </div>
+          )}
+        </div>
+      </td>
 
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <FIELD label="Số lượng">
-                  <input type="number" min={1} max={availableQty ?? undefined} value={form.qty}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      setForm(f => ({ ...f, qty: e.target.value }));
-                      if (availableQty !== null && val > availableQty) setError(`Vượt quá tồn kho (${availableQty}).`);
-                      else setError('');
-                    }}
-                    className={inputCls} required />
-                  {availableQty !== null && Number(form.qty) > availableQty && <p className="text-xs text-red-500 mt-1">Vượt quá tồn kho!</p>}
-                </FIELD>
-                <FIELD label="Đơn vị">
-                  <div className={inputCls + ' bg-slate-100 text-slate-600'}>{form.unit || 'cái'}</div>
-                </FIELD>
+      {/* Unit combobox - áp dụng cho cả new asset và existing */}
+      <td style={{ padding:'6px 8px', width:100 }}>
+        <UnitCombobox value={item.unit} onChange={v=>onUpdate({ unit:v })} accent={accent}/>
+      </td>
+
+      {/* Qty */}
+      <td style={{ padding:'6px 8px', width:100 }}>
+        <input type="number" min={1} max={type==='OUTBOUND'&&item.availableQty?item.availableQty:undefined}
+          value={item.qty} onChange={e=>onUpdate({ qty:e.target.value })}
+          onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEnter(); }}}
+          style={{ ...inp(), borderColor: isOver?'#fca5a5':'#e2e8f0', color: isOver?'#dc2626':'#1e293b', fontWeight:700 }} />
+      </td>
+
+      {/* Note / Lưu ý */}
+      <td style={{ padding:'6px 8px', minWidth:160 }}>
+        <input value={item.note||''} onChange={e=>onUpdate({ note:e.target.value })}
+          placeholder="VD: Dễ vỡ, bảo quản lạnh, hàng nặng..."
+          style={{ ...inp(), fontSize:'0.82rem', color:'#475569' }}/>
+      </td>
+
+      {/* Available (outbound) */}
+      {type==='OUTBOUND' && (
+        <td style={{ padding:'6px 8px', width:90 }}>
+          {item.availableQty!==null
+            ? <span style={{ fontSize:'0.8rem', fontWeight:700, color:isOver?'#dc2626':'#16a34a', background:isOver?'#fef2f2':'#f0fdf4', padding:'4px 10px', borderRadius:20, border:`1px solid ${isOver?'#fecaca':'#bbf7d0'}`, whiteSpace:'nowrap' }}>{isOver?'⚠️ ':'✓ '}{item.availableQty}</span>
+            : <span style={{ color:'#cbd5e1', fontSize:'0.82rem' }}>—</span>}
+        </td>
+      )}
+
+      {/* Delete */}
+      <td style={{ padding:'6px 8px', width:44 }}>
+        <button onClick={onRemove} disabled={!canRemove} title="Xóa dòng"
+          style={{ width:32, height:32, borderRadius:8, border:`1px solid ${canRemove?'#fecaca':'#f1f5f9'}`, background:canRemove?'#fef2f2':'transparent', color:canRemove?'#dc2626':'#e2e8f0', cursor:canRemove?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
+          🗑
+        </button>
+      </td>
+    </tr>
+  );
+}
+
+/* ── Document upload ────────────────────────────────────── */
+function DocUpload({ docFiles, setDocFiles, uploadedUrls, accent }) {
+  const ref = useRef(null);
+  const [drag, setDrag] = useState(false);
+
+  const add = files => {
+    const valid = Array.from(files).filter(f=>(ALLOWED_MIME.includes(f.type)||ALLOWED_EXT.test(f.name))&&f.size<=10*1024*1024);
+    setDocFiles(prev=>[...prev,...valid.map(f=>({ file:f, name:f.name, size:f.size }))].slice(0,10));
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize:'0.82rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>
+        📎 Chứng từ đính kèm <span style={{ textTransform:'none', fontWeight:400, color:'#94a3b8' }}>(tuỳ chọn)</span>
+      </p>
+      <div onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)}
+        onDrop={e=>{e.preventDefault();setDrag(false);add(e.dataTransfer.files);}}
+        onClick={()=>ref.current?.click()}
+        style={{ border:`2px dashed ${drag?accent:'#cbd5e1'}`, borderRadius:12, padding:'18px 14px', textAlign:'center', cursor:'pointer', background:drag?`${accent}10`:'#fafbff', transition:'all 0.2s' }}>
+        <div style={{ fontSize:'1.7rem', marginBottom:4 }}>📁</div>
+        <p style={{ fontSize:'0.83rem', fontWeight:600, color:'#475569', margin:0 }}>Kéo thả file vào đây</p>
+        <p style={{ fontSize:'0.73rem', color:'#94a3b8', marginTop:4 }}>PDF, ảnh, Excel, Word · Tối đa 10 file, mỗi file ≤ 10MB</p>
+        <input ref={ref} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx" style={{ display:'none' }} onChange={e=>add(e.target.files)} />
+      </div>
+      {docFiles.length>0 && (
+        <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:5 }}>
+          {docFiles.map((f,i)=>(
+            <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', borderRadius:8, background:uploadedUrls.length?'#f0fdf4':'#f8fafc', border:`1px solid ${uploadedUrls.length?'#bbf7d0':'#e2e8f0'}` }}>
+              <span style={{ fontSize:'1rem' }}>{fileIcon(f.name)}</span>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ margin:0, fontSize:'0.78rem', fontWeight:600, color:'#1e293b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</p>
+                <p style={{ margin:0, fontSize:'0.72rem', color:'#94a3b8' }}>{fmtBytes(f.size)}</p>
               </div>
-
-              <FIELD label="Địa chỉ điểm đến">
-                <div className="relative">
-                  <input type="text" value={form.destination} onChange={set('destination')} placeholder="Nhập địa chỉ đường phố, thành phố, mã bưu chính" className={inputCls + ' pr-10'} />
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">location_on</span>
-                </div>
-              </FIELD>
-
-              <FIELD label="Ghi chú vận chuyển">
-                <textarea value={form.notes} onChange={set('notes')} placeholder="Hướng dẫn xử lý, mức độ khẩn cấp hoặc thông tin cổng ra vào..." rows={3} className={inputCls + ' resize-none'} />
-              </FIELD>
+              {uploadedUrls.length ? <span>✅</span>
+                : <button onClick={e=>{e.stopPropagation();setDocFiles(p=>p.filter((_,j)=>j!==i));}} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:'1rem', lineHeight:1, padding:0 }}>✕</button>}
             </div>
-          </div>
+          ))}
         </div>
-
-        <div className="border-t border-slate-100 bg-slate-50 px-8 py-5 flex flex-col sm:flex-row justify-end gap-3">
-          <button type="button" onClick={() => navigate(-1)} disabled={submitting} className="px-6 py-2.5 rounded-lg border border-slate-200 bg-white font-semibold text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50">Hủy bỏ</button>
-          <button type="submit" disabled={submitting || loadingWH || (availableQty !== null && Number(form.qty) > availableQty)} className="px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all shadow-sm hover:opacity-90 flex items-center gap-2 disabled:opacity-60" style={{ backgroundColor: '#00b2d6' }}>
-            {submitting && <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>}
-            <span className="material-symbols-outlined text-[18px]">send</span>
-            {submitting ? 'Đang tạo...' : 'Tạo yêu cầu xuất kho'}
-          </button>
-        </div>
-      </form>
+      )}
     </div>
   );
 }
 
-/* ── Main page ─────────────────────────────────────────────────── */
+/* ── Main page ──────────────────────────────────────────── */
 export default function CreateInventoryRequest() {
+  const navigate = useNavigate();
   const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  const initialTab = params.get("tab") === "outbound" ? "outbound" : "inbound";
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const initType = new URLSearchParams(location.search).get('tab')==='outbound' ? 'OUTBOUND' : 'INBOUND';
 
+  const [step, setStep] = useState(1);
+  const [type, setType] = useState(initType);
   const [warehouses, setWarehouses] = useState([]);
   const [loadingWH, setLoadingWH] = useState(true);
+  const [warehouseId, setWarehouseId] = useState(null);
+  const [assets, setAssets] = useState([]);
+  const [loadingAssets, setLoadingAssets] = useState(false);
+  const [inventory, setInventory] = useState([]);
+  const [loadingInv, setLoadingInv] = useState(false);
+  const [items, setItems] = useState([newRow()]);
+  const [docFiles, setDocFiles] = useState([]);
+  const [uploadedUrls, setUploadedUrls] = useState([]);
+  const [notes, setNotes] = useState('');
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const [error, setError] = useState('');
+  const [draftSaved, setDraftSaved] = useState(false);   // toast "Đã lưu"
+  const [hasDraft, setHasDraft] = useState(false);       // banner restore
+  const DRAFT_KEY = 'inv_req_draft';
 
-  const accentColor = "#00b2d6";
+  // Auto-load draft khi mở trang
+  useEffect(()=>{
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if(raw){ const d=JSON.parse(raw); if(d?.items?.length) setHasDraft(true); }
+    } catch{}
+  },[]);
 
-  useEffect(() => {
+  const saveDraft = () => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        type, warehouseId, step, items, notes, scheduledDate,
+        savedAt: new Date().toISOString()
+      }));
+      setDraftSaved(true);
+      setTimeout(()=>setDraftSaved(false), 2500);
+    } catch{ alert('Không thể lưu nháp.'); }
+  };
+
+  const loadDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if(!raw) return;
+      const d = JSON.parse(raw);
+      if(d.type)       setType(d.type);
+      if(d.warehouseId) setWarehouseId(d.warehouseId);
+      if(d.items?.length) setItems(d.items.map(i=>({...newRow(),...i,id:Date.now()+Math.random()})));
+      if(d.notes)      setNotes(d.notes);
+      if(d.scheduledDate) setScheduledDate(d.scheduledDate);
+      if(d.step)       setStep(d.step);
+      setHasDraft(false);
+    } catch{ alert('Không thể phục hồi nháp.'); }
+  };
+
+  const clearDraft = () => { localStorage.removeItem(DRAFT_KEY); setHasDraft(false); };
+
+  const accent = type==='INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
+  const selectedWH = warehouses.find(w=>w.warehouseId===warehouseId);
+
+  // Load warehouses
+  useEffect(()=>{
     axiosClient.get('/rental-contracts/my-contracts')
-      .then(res => {
-        const contracts = Array.isArray(res.data) ? res.data : [];
-        const seen = new Set();
-        const whs = contracts.reduce((acc, c) => {
-          if (c.warehouseId && !seen.has(c.warehouseId)) {
-            seen.add(c.warehouseId);
-            acc.push({ warehouseId: c.warehouseId, name: c.warehouseName || `Kho #${c.warehouseId}` });
-          }
+      .then(res=>{
+        const contracts = Array.isArray(res.data)?res.data:[];
+        const seen=new Set();
+        const whs = contracts.filter(c=>c.status==='ACTIVE'||c.status==='EXPIRED').reduce((acc,c)=>{
+          if(c.warehouseId&&!seen.has(c.warehouseId)){ seen.add(c.warehouseId); acc.push({ warehouseId:c.warehouseId, name:c.warehouseName||`Kho #${c.warehouseId}`, status:c.status, contractNumber:c.contractNumber }); }
           return acc;
-        }, []);
+        },[]);
         setWarehouses(whs);
+        // Pre-select nếu chỉ có 1 kho, nhưng KHÔNG auto-skip Step 1
+        // vì user vẫn cần chọn loại (Nhập/Xuất)
+        if(whs.length===1){ setWarehouseId(whs[0].warehouseId); }
       })
-      .catch(() => setWarehouses([]))
-      .finally(() => setLoadingWH(false));
-  }, []);
+      .catch(()=>setWarehouses([]))
+      .finally(()=>setLoadingWH(false));
+  },[]);
 
-  const tabStyle = (tab) => ({
-    display: "flex",
-    alignItems: "center",
-    gap: "7px",
-    padding: "10px 20px",
-    color: activeTab === tab ? accentColor : "#64748b",
-    fontWeight: activeTab === tab ? 700 : 500,
-    fontSize: "0.92rem",
-    cursor: "pointer",
-    background: "none",
-    border: "none",
-    borderBottom: activeTab === tab ? `2.5px solid ${accentColor}` : "2.5px solid transparent",
-    transition: "all 0.18s",
-    fontFamily: "Inter,sans-serif",
-    whiteSpace: "nowrap",
-  });
+  // Load assets for inbound
+  useEffect(()=>{
+    if(type!=='INBOUND') return;
+    setLoadingAssets(true);
+    renterAssetService.getMyAssets()
+      .then(res=>setAssets(Array.isArray(res.data)?res.data:[]))
+      .catch(()=>setAssets([]))
+      .finally(()=>setLoadingAssets(false));
+  },[type]);
+
+  // Load inventory for outbound
+  useEffect(()=>{
+    if(type!=='OUTBOUND'||!warehouseId) return;
+    setLoadingInv(true);
+    renterAssetService.getInventoryByWarehouse(Number(warehouseId))
+      .then(res=>setInventory((Array.isArray(res.data)?res.data:[]).filter(i=>i.quantity>0)))
+      .catch(()=>setInventory([]))
+      .finally(()=>setLoadingInv(false));
+  },[type,warehouseId]);
+
+  const updateItem = (id,patch) => setItems(prev=>prev.map(i=>i.id===id?{...i,...patch}:i));
+  const addRow = () => setItems(prev=>[...prev,newRow()]);
+  const removeRow = id => setItems(prev=>prev.length>1?prev.filter(i=>i.id!==id):prev);
+
+  const handleProceed = ()=>{ if(!warehouseId){setError('Vui lòng chọn kho.');return;} setError(''); setItems([newRow()]); setStep(2); };
+
+  const uploadDocuments = async ()=>{
+    if(!docFiles.length) return [];
+    setUploadingDocs(true);
+    try {
+      const fd=new FormData(); docFiles.forEach(({file})=>fd.append('files',file));
+      const res=await axiosClient.post('/upload/inventory-documents',fd,{headers:{'Content-Type':'multipart/form-data'}});
+      const urls=res.data?.urls||[]; setUploadedUrls(urls); return urls;
+    } catch(err){ throw new Error(err?.response?.data?.message||'Upload chứng từ thất bại.'); }
+    finally{ setUploadingDocs(false); }
+  };
+
+  const handleSubmit = async ()=>{
+    setError('');
+    const valid=items.filter(i=>i.itemName.trim()||i.assetId);
+    if(!valid.length){setError('Vui lòng thêm ít nhất 1 mặt hàng.');return;}
+    for(const it of valid){
+      if(!it.itemName.trim()){setError('Vui lòng nhập tên hàng hóa.');return;}
+      if(!it.qty||Number(it.qty)<1){setError('Số lượng phải >= 1.');return;}
+      if(type==='OUTBOUND'&&it.availableQty!==null&&Number(it.qty)>it.availableQty){setError(`"${it.itemName}": Số lượng xuất vượt tồn kho (${it.availableQty}).`);return;}
+    }
+    setSubmitting(true);
+    try {
+      let docUrls=uploadedUrls;
+      if(docFiles.length&&!uploadedUrls.length) docUrls=await uploadDocuments();
+      const processed=[];
+      for(const it of valid){
+        let assetId=it.assetId;
+        if(it.isNew&&it.itemName.trim()){
+          const r=await renterAssetService.createAsset({assetName:it.itemName.trim(),unit:it.unit,weightPerUnit:null});
+          assetId=r.data.assetId;
+        }
+        processed.push({ assetId, itemName:it.itemName.trim(), quantity:Number(it.qty), unit:it.unit, description:it.note||null });
+      }
+      await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type, notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed });
+      clearDraft();
+      navigate(`/renter-inventory-history?tab=${type==='INBOUND'?'inbound':'outbound'}`,{state:{created:true,type}});
+    } catch(err){ setError(err?.message||err?.response?.data?.message||'Tạo yêu cầu thất bại.'); }
+    finally{ setSubmitting(false); }
+  };
+
+  const card = { background:'#fff', borderRadius:16, border:'1px solid #e2e8f0', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' };
 
   return (
-    <div className="w-full flex-1 flex flex-col min-w-0" style={{ fontFamily: 'Inter, sans-serif' }}>
-      {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Tạo yêu cầu nhập/xuất kho</h1>
-        <p className="mt-1 text-sm text-slate-500">Đăng ký yêu cầu nhập hoặc xuất hàng mới vào hệ thống quản lý kho.</p>
+    <div style={{ fontFamily:'Inter, sans-serif', maxWidth:920, margin:'0 auto', paddingBottom:60 }}>
+
+      {/* ── Banner phục hồi nháp ── */}
+      {hasDraft && (
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderRadius:12, background:'#fffbeb', border:'1.5px solid #fde68a', marginBottom:18 }}>
+          <span style={{ fontSize:'1.1rem' }}>📝</span>
+          <span style={{ flex:1, fontSize:'0.87rem', color:'#92400e', fontWeight:600 }}>Bạn có một bản nháp chưa hoàn thành. Muốn tiếp tục?</span>
+          <button onClick={loadDraft} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', fontWeight:700, fontSize:'0.82rem', cursor:'pointer' }}>Phục hồi nháp</button>
+          <button onClick={clearDraft} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #fde68a', background:'#fff', color:'#92400e', fontWeight:600, fontSize:'0.82rem', cursor:'pointer' }}>Bỏ qua</button>
+        </div>
+      )}
+      {/* Header */}
+      <div style={{ marginBottom:28 }}>
+        <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>
+          {step===1 ? 'Tạo yêu cầu nhập / xuất kho' : `${type==='INBOUND'?'📥 Nhập kho':'📤 Xuất kho'} — ${selectedWH?.name||''}`}
+        </h1>
+        <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>
+          {step===1 ? 'Chọn loại yêu cầu và kho hàng để tiếp tục.' : 'Thêm hàng hóa, chứng từ và ghi chú cho yêu cầu.'}
+        </p>
+        {/* Step indicator */}
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:16 }}>
+          {[1,2].map(s=>(
+            <React.Fragment key={s}>
+              <div style={{ width:28, height:28, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.8rem', fontWeight:800, background:step>=s?accent:'#e2e8f0', color:step>=s?'#fff':'#94a3b8', transition:'all 0.3s', flexShrink:0 }}>
+                {step>s?'✓':s}
+              </div>
+              <span style={{ fontSize:'0.82rem', color:step===s?'#0f172a':'#94a3b8', fontWeight:step===s?700:400 }}>
+                {s===1?'Chọn kho & loại':'Thêm hàng hóa'}
+              </span>
+              {s<2&&<div style={{ flex:1, height:2, background:step>s?accent:'#e2e8f0', borderRadius:2, maxWidth:60, transition:'all 0.3s' }}/>}
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
-      {/* Tab bar */}
-      <div style={{ backgroundColor: "#fff", borderRadius: "12px 12px 0 0", border: "1px solid #f1f5f9", borderBottom: "none", display: "flex", paddingLeft: "8px", paddingRight: "8px" }}>
-        <button style={tabStyle("inbound")} onClick={() => setActiveTab("inbound")}>
-          <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>move_to_inbox</span>
-          Tạo yêu cầu nhập
-        </button>
-        <button style={tabStyle("outbound")} onClick={() => setActiveTab("outbound")}>
-          <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>outbox</span>
-          Tạo yêu cầu xuất
-        </button>
-      </div>
+      {/* Error */}
+      {error&&<div style={{ padding:'11px 16px', borderRadius:10, marginBottom:18, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.87rem', fontWeight:600 }}>⚠️ {error}</div>}
 
-      {/* Tab underline */}
-      <div style={{ height: "1px", backgroundColor: "#e2e8f0", marginBottom: "24px" }} />
+      {/* ── STEP 1 ── */}
+      {step===1&&(
+        <div style={{ ...card, padding:32 }}>
+          {/* Type toggle */}
+          <div style={{ marginBottom:28 }}>
+            <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>Loại yêu cầu</p>
+            <div style={{ display:'flex', gap:12 }}>
+              {[{v:'INBOUND',icon:'📥',label:'Nhập kho',desc:'Nhập hàng hóa vào kho lưu trữ',color:INBOUND_COLOR,bg:'#e0f7fa'},
+                {v:'OUTBOUND',icon:'📤',label:'Xuất kho',desc:'Lấy hàng ra khỏi kho',color:OUTBOUND_COLOR,bg:'#fff8e1'}].map(({v,icon,label,desc,color,bg})=>(
+                <button key={v} onClick={()=>setType(v)} style={{ flex:1, padding:'18px 20px', borderRadius:14, cursor:'pointer', textAlign:'left', border:`2px solid ${type===v?color:'#e2e8f0'}`, background:type===v?bg:'#fafbff', transition:'all 0.2s', boxShadow:type===v?`0 4px 16px ${color}30`:'none' }}>
+                  <div style={{ fontSize:'1.6rem', marginBottom:6 }}>{icon}</div>
+                  <div style={{ fontWeight:800, fontSize:'1rem', color:type===v?color:'#1e293b' }}>{label}</div>
+                  <div style={{ fontSize:'0.78rem', color:'#64748b', marginTop:3 }}>{desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Tab content */}
-      {activeTab === "inbound"
-        ? <InboundTab warehouses={warehouses} loadingWH={loadingWH} />
-        : <OutboundTab warehouses={warehouses} loadingWH={loadingWH} />}
+          {/* Warehouse radio cards */}
+          <div>
+            <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>Kho hàng</p>
+            {loadingWH ? <div style={{ padding:20, textAlign:'center', color:'#94a3b8' }}>Đang tải...</div>
+            : warehouses.length===0 ? <div style={{ padding:16, borderRadius:12, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.87rem' }}>Bạn chưa có hợp đồng thuê kho nào đang hoạt động.</div>
+            : <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              {warehouses.map(wh=>(
+                <label key={wh.warehouseId} className="wh-card" style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', borderRadius:12, cursor:'pointer', border:`2px solid ${warehouseId===wh.warehouseId?accent:'#e2e8f0'}`, background:warehouseId===wh.warehouseId?(type==='INBOUND'?'#e0f7fa':'#fff8e1'):'#fafbff', transition:'all 0.15s' }}>
+                  <input type="radio" name="wh" value={wh.warehouseId} checked={warehouseId===wh.warehouseId} onChange={()=>setWarehouseId(wh.warehouseId)} style={{ accentColor:accent, width:18, height:18, flexShrink:0, cursor:'pointer' }}/>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1e293b' }}>{wh.name}</div>
+                    {wh.contractNumber&&<div style={{ fontSize:'0.77rem', color:'#64748b', marginTop:2 }}>HĐ: {wh.contractNumber}</div>}
+                  </div>
+                  {wh.status==='ACTIVE' ? (
+                    <span className="badge-active" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:'#f0fdf4', color:'#16a34a', border:'1px solid #bbf7d0', boxShadow:'0 0 0 0 rgba(34,197,94,0.4)' }}>
+                      <span className="pulse-dot" style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', flexShrink:0 }}/>
+                      Đang hiệu lực
+                    </span>
+                  ) : (
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:'#fef3c7', color:'#d97706', border:'1px solid #fde68a' }}>
+                      <span style={{ width:7, height:7, borderRadius:'50%', background:'#f59e0b', flexShrink:0 }}/>
+                      Đã hết hạn
+                    </span>
+                  )}
+                </label>
+              ))}
+            </div>}
+          </div>
 
-      {/* Footer help */}
-      <p className="mt-10 text-center text-sm text-slate-400 flex items-center justify-center gap-1.5">
-        <span className="material-symbols-outlined text-[16px]">support_agent</span>
-        Cần hỗ trợ lập lịch?{' '}
-        <a href="#" className="font-semibold hover:underline" style={{ color: '#00b2d6' }}>Liên hệ với Bàn hỗ trợ</a>.
-      </p>
+          <div style={{ marginTop:28, display:'flex', justifyContent:'flex-end' }}>
+            <button onClick={handleProceed} disabled={!warehouseId||loadingWH}
+              style={{ padding:'12px 28px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.95rem', cursor:warehouseId?'pointer':'not-allowed', color:'#fff', background:warehouseId?`linear-gradient(135deg,${accent},${accent}bb)`:'#e2e8f0', boxShadow:warehouseId?`0 4px 16px ${accent}40`:'none', transition:'all 0.2s' }}>
+              Tiếp theo →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP 2 ── */}
+      {step===2&&(
+        <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+          {/* Type info bar - chỉ hiện loại đã chọn, không cho đổi trong step 2 */}
+          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 18px', borderRadius:12, background: type==='INBOUND'?'#e0f7fa':'#fff8e1', border:`1.5px solid ${accent}30` }}>
+            <span style={{ fontSize:'1.1rem' }}>{type==='INBOUND'?'📥':'📤'}</span>
+            <span style={{ fontWeight:700, fontSize:'0.9rem', color: accent }}>
+              {type==='INBOUND'?'Nhập kho':'Xuất kho'}
+            </span>
+            <span style={{ fontSize:'0.82rem', color:'#94a3b8', marginLeft:4 }}>—</span>
+            <span style={{ fontSize:'0.82rem', color:'#64748b' }}>Kho: <strong style={{color:'#1e293b'}}>{selectedWH?.name}</strong></span>
+            <span style={{ marginLeft:'auto', fontSize:'0.78rem', color:'#94a3b8', fontStyle:'italic' }}>
+              Muốn đổi loại? ← Quay lại bước 1
+            </span>
+          </div>
+
+          {/* Items table card */}
+          <div style={card}>
+            <div style={{ padding:'16px 22px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontWeight:800, fontSize:'0.97rem', color:'#0f172a' }}>📋 Danh sách hàng hóa</span>
+            </div>
+            <div>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead>
+                  <tr style={{ background:'#f8fafc' }}>
+                    {['#', type==='INBOUND'?'Hàng hóa / Tài sản':'Hàng hóa', 'Đơn vị', 'Số lượng', 'Ghi chú', ...(type==='OUTBOUND'?['Tồn kho']:[]), ''].map((h,i)=>(
+                      <th key={i} style={{ padding:'10px 14px', fontSize:'0.7rem', fontWeight:700, color:'#94a3b8', textAlign:'left', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item,idx)=>(
+                    <ItemRow key={item.id} item={item} idx={idx} type={type}
+                      list={type==='INBOUND'?assets:inventory}
+                      loading={type==='INBOUND'?loadingAssets:loadingInv}
+                      accent={accent}
+                      onUpdate={patch=>updateItem(item.id,patch)}
+                      onRemove={()=>removeRow(item.id)}
+                      onEnter={addRow}
+                      canRemove={items.length>1}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ padding:'12px 22px', borderTop:'1px solid #f1f5f9' }}>
+              <button onClick={addRow}
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:`1.5px dashed ${accent}`, background:'transparent', color:accent, fontWeight:600, fontSize:'0.83rem', cursor:'pointer', transition:'all 0.15s' }}
+                onMouseEnter={e=>e.currentTarget.style.background=`${accent}10`}
+                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                + Thêm dòng hàng hóa
+              </button>
+            </div>
+          </div>
+
+          {/* Docs + Notes card */}
+          <div style={{ ...card, padding:24 }}>
+            {/* Ngày dự kiến - đặt trước doc/note, full width */}
+            <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:22, paddingBottom:18, borderBottom:'1px solid #f1f5f9' }}>
+              <div style={{ flex:'0 0 auto' }}>
+                <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 8px' }}>
+                  {type==='INBOUND'?'📅 Ngày dự kiến nhập kho':'📅 Ngày dự kiến xuất kho'}
+                </p>
+                <input type="date" value={scheduledDate} min={new Date().toISOString().split('T')[0]}
+                  onChange={e=>setScheduledDate(e.target.value)}
+                  style={{ ...inp(), width:200, cursor:'pointer', colorScheme:'light',
+                    borderColor: scheduledDate ? accent : '#e2e8f0',
+                    background: scheduledDate ? `${accent}08` : '#fff' }}
+                  onFocus={e=>e.target.style.borderColor=accent}
+                  onBlur={e=>e.target.style.borderColor=scheduledDate?accent:'#e2e8f0'}/>
+              </div>
+              {scheduledDate && (
+                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:10, background:`${accent}10`, border:`1px solid ${accent}25` }}>
+                  <span style={{ fontSize:'1rem' }}>🗓</span>
+                  <span style={{ fontSize:'0.83rem', fontWeight:600, color:accent }}>
+                    {new Date(scheduledDate).toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' })}
+                  </span>
+                </div>
+              )}
+              {!scheduledDate && (
+                <span style={{ fontSize:'0.8rem', color:'#94a3b8', fontStyle:'italic' }}>Tùy chọn — để trống nếu chưa xác định</span>
+              )}
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:28 }}>
+              <DocUpload docFiles={docFiles} setDocFiles={setDocFiles} uploadedUrls={uploadedUrls} accent={accent} />
+              <div>
+                <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>📝 Ghi chú yêu cầu</p>
+                <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={6}
+                  placeholder={type==='INBOUND'?'Hướng dẫn nhập kho, số xe giao hàng, điều kiện bảo quản...':'Hướng dẫn xuất kho, đơn vị nhận hàng, mức độ khẩn cấp...'}
+                  style={{ ...inp(), minHeight:130, resize:'vertical' }}
+                  onFocus={e=>e.target.style.borderColor=accent}
+                  onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0' }}>
+            <button onClick={()=>{ setStep(1); setError(''); }} disabled={submitting}
+              style={{ padding:'11px 20px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', color:'#64748b', fontWeight:600, fontSize:'0.88rem', cursor:'pointer', transition:'all 0.15s' }}
+              onMouseEnter={e=>e.currentTarget.style.background='#f8fafc'}
+              onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
+              ← Quay lại
+            </button>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              {/* Toast lưu nháp */}
+              {draftSaved && (
+                <span style={{ fontSize:'0.8rem', color:'#16a34a', fontWeight:600, background:'#dcfce7', border:'1px solid #bbf7d0', borderRadius:8, padding:'5px 12px', display:'flex', alignItems:'center', gap:5 }}>
+                  ✔ Đã lưu nháp
+                </span>
+              )}
+              <span style={{ fontSize:'0.82rem', color:'#94a3b8' }}>
+                {items.filter(i=>i.itemName.trim()).length} mặt hàng
+              </span>
+              {/* Nút Lưu Nháp */}
+              <button onClick={saveDraft} disabled={submitting}
+                style={{ padding:'11px 18px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontWeight:600, fontSize:'0.88rem', cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}
+                onMouseEnter={e=>{ e.currentTarget.style.background='#f1f5f9'; e.currentTarget.style.borderColor='#cbd5e1'; }}
+                onMouseLeave={e=>{ e.currentTarget.style.background='#f8fafc'; e.currentTarget.style.borderColor='#e2e8f0'; }}>
+                💾 Lưu nháp
+              </button>
+              <button onClick={handleSubmit} disabled={submitting||uploadingDocs}
+                style={{ padding:'12px 28px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.95rem', cursor: submitting?'wait':'pointer', color:'#fff', background:`linear-gradient(135deg,${accent},${accent}bb)`, boxShadow:`0 4px 16px ${accent}40`, opacity:submitting?0.75:1, transition:'all 0.2s', display:'flex', alignItems:'center', gap:8 }}>
+                {(submitting||uploadingDocs)&&<span style={{ display:'inline-block', width:15, height:15, border:'2px solid rgba(255,255,255,0.35)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite' }}/>}
+                {uploadingDocs?'Đang upload...':submitting?'Đang gửi...':'Gửi yêu cầu ✓'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes spin{to{transform:rotate(360deg);}}
+        .unit-drop::-webkit-scrollbar{display:none;}
+        .unit-drop{scrollbar-width:none;-ms-overflow-style:none;}
+
+        /* Pulsing dot - badge Đang hiệu lực */
+        @keyframes pulse-ring {
+          0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+          70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
+          100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        }
+        @keyframes dot-beat {
+          0%,100% { transform: scale(1); opacity:1; }
+          50%      { transform: scale(1.35); opacity:0.8; }
+        }
+        .pulse-dot { animation: dot-beat 1.6s ease-in-out infinite; }
+        .badge-active { animation: pulse-ring 2.2s ease-in-out infinite; }
+
+        /* Slide-in cho warehouse cards */
+        @keyframes slide-in {
+          from { opacity:0; transform:translateY(8px); }
+          to   { opacity:1; transform:translateY(0); }
+        }
+        .wh-card { animation: slide-in 0.25s ease both; }
+        .wh-card:nth-child(2) { animation-delay: 0.06s; }
+        .wh-card:nth-child(3) { animation-delay: 0.12s; }
+        .wh-card:nth-child(4) { animation-delay: 0.18s; }
+      `}</style>
     </div>
   );
 }

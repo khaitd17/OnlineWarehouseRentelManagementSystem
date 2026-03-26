@@ -32,6 +32,6 @@ public class ToggleHideRatingHandler : IRequestHandler<ToggleHideRatingCommand, 
         rating.UpdatedAt = DateTime.UtcNow;
 
         await _ratingRepository.UpdateAsync(rating, cancellationToken);
-        return rating.IsHidden ?? false;
+        return true; // luôn trả true để báo hiệu thành công, không phụ thuộc giá trị IsHidden
     }
 }

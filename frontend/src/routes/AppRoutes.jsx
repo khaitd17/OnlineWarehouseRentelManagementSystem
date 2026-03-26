@@ -51,6 +51,7 @@ import PaymentHistory from "../pages/Requests/PaymentHistory";
 import CreateInventoryRequest from "../pages/Requests/CreateInventoryRequest";
 import RenterInventoryPage from "../pages/RenterInventoryPage";
 import OwnerInventoryPage from "../pages/OwnerInventoryPage";
+import StaffInventoryPage from "../pages/StaffInventoryPage";
 
 // Audit session pages
 import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
@@ -165,6 +166,7 @@ function AppRoutes() {
             <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
             <Route path="/outbound-requests" element={<OutboundRequestsList />} />
             <Route path="/confirm-movement" element={<ConfirmMovement />} />
+            <Route path="/staff-inventory" element={<StaffInventoryPage />} />
             <Route path="/transaction-history" element={<TransactionHistory />} />
             <Route path="/my-schedule" element={<MySchedulePage />} />
             <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
