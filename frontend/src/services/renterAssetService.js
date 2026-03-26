@@ -8,11 +8,26 @@ const renterAssetService = {
   createAsset: (data) => axiosClient.post('/renter-assets', data),
 
   /**
-   * Lấy tồn kho tại 1 warehouse cụ thể.
-   * Trả về danh sách asset có qty > 0 tại warehouse đó.
+   * Lấy tồn kho tại 1 warehouse cụ thể (API cũ).
    */
   getInventoryByWarehouse: (warehouseId) =>
     axiosClient.get(`/renter-assets/inventory?warehouseId=${warehouseId}`),
+
+  /**
+   * Renter xem tồn kho của mình (tất cả kho hoặc lọc theo warehouseId).
+   */
+  getMyInventory: (warehouseId) => {
+    const url = warehouseId
+      ? `/renter-assets/my-inventory?warehouseId=${warehouseId}`
+      : '/renter-assets/my-inventory';
+    return axiosClient.get(url);
+  },
+
+  /**
+   * Owner / Operator / Manager xem tồn kho của tất cả renter trong 1 kho.
+   */
+  getWarehouseInventory: (warehouseId) =>
+    axiosClient.get(`/renter-assets/warehouse-inventory?warehouseId=${warehouseId}`),
 };
 
 export default renterAssetService;

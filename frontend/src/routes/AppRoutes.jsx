@@ -49,6 +49,8 @@ import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
 import StaffInventoryRequests from "../pages/Requests/StaffInventoryRequests";
 import PaymentHistory from "../pages/Requests/PaymentHistory";
 import CreateInventoryRequest from "../pages/Requests/CreateInventoryRequest";
+import RenterInventoryPage from "../pages/RenterInventoryPage";
+import OwnerInventoryPage from "../pages/OwnerInventoryPage";
 
 // Audit session pages
 import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
@@ -140,6 +142,7 @@ function AppRoutes() {
             <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
             <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
             <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
+            <Route path="/owner-inventory" element={<OwnerInventoryPage />} />
           </Route>
         </Route>
 
@@ -180,6 +183,7 @@ function AppRoutes() {
             <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
             <Route path="/renter-audit-sessions" element={<RenterAuditSessionsPage />} />
             <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
+            <Route path="/renter-inventory" element={<RenterInventoryPage />} />
             <Route path="/my-ratings" element={<MyRatingsPage />} />
           </Route>
         </Route>
