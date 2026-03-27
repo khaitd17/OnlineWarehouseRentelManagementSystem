@@ -72,6 +72,7 @@ import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
 import ReportsPage from "../pages/admin/ReportsPage";
 import RatingsPage from "../pages/admin/RatingsPage";
 import AdminProfilePage from "../pages/admin/AdminProfilePage";
+import AdminPendingWarehousesPage from "../pages/admin/AdminPendingWarehousesPage";
 
 import EquipmentManagement from "../pages/EquipmentManagement";
 import MyRatingsPage from "../pages/MyRatingsPage";
@@ -215,6 +216,7 @@ function AppRoutes() {
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/accounts" element={<AccountsPage />} />
+            <Route path="/admin/pending-warehouses" element={<AdminPendingWarehousesPage />} />
             <Route path="/admin/warehouses" element={<WarehousesPage />} />
             <Route path="/admin/warehouses/:id" element={<WarehouseDetailPage />} />
             <Route path="/admin/audit-sessions" element={<AuditSessionsPage />} />

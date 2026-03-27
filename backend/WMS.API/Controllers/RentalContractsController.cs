@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using WMS.Application.Features.RentalContracts.GetRentalContractById;
 using WMS.Application.Features.RentalContracts.GetMyRentalContracts;
@@ -11,6 +12,7 @@ using WMS.Application.Features.RentalContracts.SignContract;
 using WMS.Application.Features.RentalContracts.GetContractLogs;
 using WMS.Application.Features.RentalContracts.OwnerSignContract;
 using WMS.Domain.Interfaces;
+using WMS.Infrastructure.Persistence;
 
 namespace WMS.API.Controllers;
 
@@ -22,12 +24,14 @@ public class RentalContractsController : ControllerBase
     private readonly IMediator _mediator;
     private readonly IRentalContractRepository _contractRepo;
     private readonly IWebHostEnvironment _env;
+    private readonly ApplicationDbContext _db;
 
-    public RentalContractsController(IMediator mediator, IRentalContractRepository contractRepo, IWebHostEnvironment env)
+    public RentalContractsController(IMediator mediator, IRentalContractRepository contractRepo, IWebHostEnvironment env, ApplicationDbContext db)
     {
         _mediator = mediator;
         _contractRepo = contractRepo;
         _env = env;
+        _db = db;
     }
 
     private int GetUserId()
@@ -76,6 +80,46 @@ public class RentalContractsController : ControllerBase
             var userId = GetUserId();
             var result = await _mediator.Send(new GetMyRentalContractsQuery { UserId = userId });
             return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    /// <summary>Tất cả hợp đồng thuê kho của Owner (gom từ mọi kho họ sở hữu)</summary>
+    [HttpGet("owner-contracts")]
+    public async Task<IActionResult> GetOwnerContracts()
+    {
+        try
+        {
+            var ownerId = GetUserId();
+            var contracts = await _db.RentalContracts
+                .Include(c => c.Warehouse)
+                .Include(c => c.Renter)
+                .Where(c => c.Warehouse != null && c.Warehouse.OwnerId == ownerId)
+                .OrderByDescending(c => c.CreatedAt)
+                .Select(c => new
+                {
+                    c.ContractId,
+                    c.ContractNumber,
+                    c.Status,
+                    c.StartDate,
+                    c.EndDate,
+                    c.MonthlyPayment,
+                    c.TotalValue,
+                    c.CreatedAt,
+                    WarehouseId   = c.Warehouse!.WarehouseId,
+                    WarehouseName = c.Warehouse.Name,
+                    WarehouseAddress = c.Warehouse.Address,
+                    RenterId  = c.Renter != null ? c.Renter.UserId : 0,
+                    RenterName  = c.Renter != null ? c.Renter.FullName  : "—",
+                    RenterEmail = c.Renter != null ? c.Renter.Email     : "—",
+                    RenterPhone = c.Renter != null ? c.Renter.Phone     : null,
+                })
+                .ToListAsync();
+
+            return Ok(contracts);
         }
         catch (Exception ex)
         {

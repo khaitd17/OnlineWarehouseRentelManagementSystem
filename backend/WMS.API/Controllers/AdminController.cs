@@ -11,6 +11,7 @@ using WMS.Application.Features.Admin.GetSystemReports;
 using WMS.Application.Features.Admin.GetWarehouseDetail;
 using WMS.Application.Features.Admin.GetWarehousesByOwner;
 using WMS.Application.Features.Admin.GetWarehousesLookup;
+using WMS.Application.Features.Admin.GetPendingWarehouses;
 using WMS.Application.Features.Admin.ManageListing;
 using WMS.Application.Features.Admin.UpdateAccountStatus;
 
@@ -48,9 +49,19 @@ public class AdminController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Lấy danh sách kho (cho bộ lọc phiên kiểm kê)</summary>
+    /// <summary>Lấy tất cả kho (có filter, sort, page) — không phân biệt chủ kho</summary>
     [HttpGet("warehouses")]
-    public async Task<IActionResult> GetWarehouses()
+    public async Task<IActionResult> GetAllWarehouses([FromQuery] GetWarehousesByOwnerQuery query)
+    {
+        query.OwnerId = null; // all owners
+        var result = await _mediator.Send(query);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    /// <summary>Lookup kho đơn giản (dùng cho phiên kiểm kê)</summary>
+    [HttpGet("warehouses/lookup")]
+    public async Task<IActionResult> GetWarehousesLookup()
     {
         var result = await _mediator.Send(new GetWarehousesLookupQuery());
         return Ok(result);
@@ -90,6 +101,15 @@ public class AdminController : ControllerBase
     // ==============================
     // WAREHOUSE MANAGEMENT
     // ==============================
+
+    /// <summary>Lấy tất cả kho đang chờ duyệt (PENDING) — không phân biệt chủ kho</summary>
+    [HttpGet("warehouses/pending")]
+    public async Task<IActionResult> GetPendingWarehouses([FromQuery] GetPendingWarehousesQuery query)
+    {
+        var result = await _mediator.Send(query);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
 
     /// <summary>Xem danh sách kho theo chủ sở hữu</summary>
     [HttpGet("owners/{ownerId}/warehouses")]
