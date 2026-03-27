@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/axiosClient";
 import { uploadWarehouseImage } from "../services/warehouseService";
@@ -36,10 +36,13 @@ const EditWarehouse = () => {
     legalStatus: "",
     width: "",
     length: "",
-    totalArea: ""
+    totalArea: "",
+    pricePerM2: ""
   });
 
   const [uploadLoading, setUploadLoading] = useState(false);
+  // Track the original price to detect changes that require re-approval
+  const originalPricePerM2 = useRef(null);
 
   const loadWarehouse = async () => {
 
@@ -73,8 +76,11 @@ const EditWarehouse = () => {
       legalStatus: res.data.mainDoorDirection || "",
       width: res.data.width ?? res.data.Width ?? "",
       length: res.data.length ?? res.data.Length ?? "",
-      totalArea: res.data.totalArea ?? res.data.TotalArea ?? ""
+      totalArea: res.data.totalArea ?? res.data.TotalArea ?? "",
+      pricePerM2: res.data.pricePerM2 ?? res.data.PricePerM2 ?? ""
     });
+    // Snapshot original price after load
+    originalPricePerM2.current = String(res.data.pricePerM2 ?? res.data.PricePerM2 ?? "");
   };
 
   useEffect(() => {
@@ -117,12 +123,12 @@ const EditWarehouse = () => {
       mainDoorDirection: formData.legalStatus,
       totalArea: parseFloat(formData.totalArea) || 0,
       width: formData.width ? parseFloat(formData.width) : null,
-      length: formData.length ? parseFloat(formData.length) : null
+      length: formData.length ? parseFloat(formData.length) : null,
+      pricePerM2: formData.pricePerM2 ? parseFloat(String(formData.pricePerM2).replace(/\./g, "")) : null
     };
 
     await api.put(`/Warehouse/${id}`, payload);
-    alert("Cập nhật thông tin kho thành công");
-    loadWarehouse();
+    navigate("/my-warehouses");
   };
 
   const handleImageUpload = async (e) => {
@@ -271,6 +277,69 @@ const EditWarehouse = () => {
                   <label style={labelStyle}>Tổng diện tích (m²)</label>
                   <input name="totalArea" type="number" value={formData.totalArea} readOnly style={{ ...inputStyle, backgroundColor: "#f1f5f9" }} />
                 </div>
+              </div>
+
+              {/* Giá thuê/m² */}
+              <div style={groupStyle}>
+                {/* Re-approval warning – shown only when APPROVED warehouse price changes */}
+                {(() => {
+                  const currentRaw = String(formData.pricePerM2 ?? "");
+                  const original   = String(originalPricePerM2.current ?? "");
+                  const show =
+                    formData.status?.toUpperCase() === "APPROVED" &&
+                    currentRaw !== "" &&
+                    currentRaw !== original;
+                  return show ? (
+                    <div style={{
+                      display: "flex", alignItems: "flex-start", gap: 10,
+                      background: "linear-gradient(135deg,#fffbeb,#fef3c7)",
+                      border: "1.5px solid #f59e0b", borderRadius: 14,
+                      padding: "12px 14px", marginBottom: 10,
+                    }}>
+                      <span className="material-symbols-outlined" style={{ color: "#d97706", fontSize: 22, flexShrink: 0, marginTop: 1 }}>warning</span>
+                      <div>
+                        <div style={{ fontWeight: 800, color: "#92400e", fontSize: "0.92rem", marginBottom: 3 }}>
+                          Thay đổi giá yêu cầu duyệt lại
+                        </div>
+                        <div style={{ color: "#b45309", fontSize: "0.82rem", lineHeight: 1.6 }}>
+                          Bạn đang thay đổi giá thuê của kho đã được phê duyệt. Sau khi lưu,
+                          kho sẽ chuyển về trạng thái <strong>"Chờ duyệt"</strong> và tạm thời
+                          ẩn khỏi kết quả tìm kiếm cho đến khi admin phê duyệt lại.
+                        </div>
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+                <label style={labelStyle}>
+                  💰 Giá thuê/m² (VNĐ/tháng) <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <div style={{ position: "relative" }}>
+                  <input
+                    name="pricePerM2"
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.pricePerM2
+                      ? new Intl.NumberFormat("vi-VN").format(formData.pricePerM2)
+                      : ""}
+                    placeholder="VD: 150.000"
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[\.,\s]/g, "");
+                      if (raw === "" || /^\d+$/.test(raw)) {
+                        setFormData(prev => ({ ...prev, pricePerM2: raw }));
+                      }
+                    }}
+                    style={{ ...inputStyle, paddingRight: "60px" }}
+                  />
+                  <span style={{
+                    position: "absolute", right: "18px", top: "50%", transform: "translateY(-50%)",
+                    fontSize: "0.85rem", fontWeight: 700, color: "#64748b", pointerEvents: "none"
+                  }}>₫/m²</span>
+                </div>
+                {formData.pricePerM2 && formData.totalArea && (
+                  <div style={{ fontSize: "0.82rem", color: "#0095c7", fontWeight: 600, marginTop: 2 }}>
+                    ≈ {new Intl.NumberFormat("vi-VN").format(Number(formData.pricePerM2) * Number(formData.totalArea))} ₫/tháng (toàn bộ kho)
+                  </div>
+                )}
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>

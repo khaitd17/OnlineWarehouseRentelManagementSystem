@@ -620,12 +620,51 @@ const OwnerWarehouseDetailPage = () => {
               </div>
 
               <div style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", border: "1px solid #e2e8f0" }}>
-                <h4 style={{ margin: "0 0 1rem 0", fontWeight: 700, color: "#0f172a" }}>Trạng thái kho</h4>
+                <h4 style={{ margin: "0 0 1rem 0", fontWeight: 700, color: "#0f172a" }}>Trạng thái phê duyệt</h4>
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#f8fafc", borderRadius: 8 }}>
-                    <span style={{ fontSize: "0.875rem", color: "#475569" }}>Phê duyệt</span>
+                    <span style={{ fontSize: "0.875rem", color: "#475569" }}>Trạng thái hiện tại</span>
                     {getStatusBadge(warehouse.status)}
                   </div>
+
+                  {warehouse.status?.toUpperCase() === "PENDING" && (
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "12px 14px", background: "linear-gradient(135deg,#fffbeb,#fef3c7)", border: "1px solid #fde68a", borderRadius: 10 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#d97706", flexShrink: 0 }}>schedule</span>
+                      <div>
+                        <div style={{ fontWeight: 700, color: "#92400e", fontSize: "0.85rem", marginBottom: 2 }}>Đang chờ Admin xét duyệt</div>
+                        <div style={{ color: "#b45309", fontSize: "0.8rem" }}>Vui lòng chờ phản hồi từ hệ thống.</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {warehouse.status?.toUpperCase() === "REJECTED" && (
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "12px 14px", background: "linear-gradient(135deg,#fff1f2,#fee2e2)", border: "1px solid #fecaca", borderRadius: 10 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#dc2626", flexShrink: 0 }}>cancel</span>
+                      <div>
+                        <div style={{ fontWeight: 700, color: "#991b1b", fontSize: "0.85rem", marginBottom: 2 }}>Kho bị từ chối</div>
+                        <div style={{ color: "#b91c1c", fontSize: "0.8rem", lineHeight: 1.5 }}>
+                          {warehouse.rejectionReason
+                            ? <><strong>Lý do:</strong> {warehouse.rejectionReason}</>
+                            : "Vui lòng kiểm tra và chỉnh sửa kho, sau đó nộp lại."}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {warehouse.status?.toUpperCase() === "APPROVED" && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "linear-gradient(135deg,#f0fdf4,#dcfce7)", border: "1px solid #bbf7d0", borderRadius: 10 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#16a34a" }}>verified</span>
+                      <div style={{ fontWeight: 600, color: "#15803d", fontSize: "0.85rem" }}>Kho đã được phê duyệt</div>
+                    </div>
+                  )}
+
+                  {warehouse.approvedAt && (
+                    <div style={{ padding: "10px 14px", background: "#f8fafc", borderRadius: 8 }}>
+                      <div style={{ fontSize: "0.78rem", color: "#94a3b8", fontWeight: 600, marginBottom: 2, textTransform: "uppercase" }}>Ngày duyệt</div>
+                      <div style={{ fontSize: "0.875rem", color: "#1e293b", fontWeight: 500 }}>{new Date(warehouse.approvedAt).toLocaleDateString("vi-VN")}</div>
+                    </div>
+                  )}
+
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "#f8fafc", borderRadius: 8 }}>
                     <span style={{ fontSize: "0.875rem", color: "#475569" }}>Tài liệu pháp lý</span>
                     <span style={{ fontSize: "0.82rem", fontWeight: 700, color: warehouse.documentStatus === "APPROVED" ? "#166534" : "#854d0e" }}>

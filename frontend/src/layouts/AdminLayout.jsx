@@ -1,10 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
   Warehouse,
-  ClipboardList,
+  ClipboardCheck,
   BarChart3,
   Settings,
   LogOut,
@@ -16,8 +16,8 @@ import "../styles/admin.css";
 const NAV_ITEMS = [
   { label: "Tổng quan", path: "/admin", icon: LayoutDashboard, end: true },
   { label: "Tài khoản", path: "/admin/accounts", icon: Users },
+  { label: "Duyệt kho", path: "/admin/pending-warehouses", icon: ClipboardCheck, badgeKey: "pending" },
   { label: "Kho bãi", path: "/admin/warehouses", icon: Warehouse },
-  // { label: "Kiểm kê", path: "/admin/audit-sessions", icon: ClipboardList },
   { label: "Báo cáo", path: "/admin/reports", icon: BarChart3 },
   { label: "Đánh giá", path: "/admin/ratings", icon: Star },
 ];
@@ -25,6 +25,27 @@ const NAV_ITEMS = [
 export default function AdminLayout() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPending = async () => {
+      try {
+        const { default: adminService } = await import("../services/adminService");
+        const res = await adminService.getPendingWarehouses({ page: 1, pageSize: 1 });
+        if (res.data.success) setPendingCount(res.data.data.totalCount || 0);
+      } catch { /* silent */ }
+    };
+    fetchPending();
+    const interval = setInterval(fetchPending, 60000);
+    // Refresh badge immediately after any approve/reject action
+    window.addEventListener("pendingWarehousesChanged", fetchPending);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("pendingWarehousesChanged", fetchPending);
+    };
+  }, []);
+
+  const badges = { pending: pendingCount };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -60,6 +81,17 @@ export default function AdminLayout() {
               >
                 <item.icon size={18} />
                 {item.label}
+                {item.badgeKey && badges[item.badgeKey] > 0 && (
+                  <span style={{
+                    marginLeft: "auto", minWidth: 20, height: 20,
+                    background: "#f59e0b", color: "#fff",
+                    borderRadius: 10, fontSize: 11, fontWeight: 700,
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    padding: "0 6px", animation: "pulseBadge 2s ease infinite",
+                  }}>
+                    {badges[item.badgeKey] > 99 ? "99+" : badges[item.badgeKey]}
+                  </span>
+                )}
               </NavLink>
             ))}
           </nav>

@@ -68,11 +68,14 @@ public class GetWarehouseDetailHandler : IRequestHandler<GetWarehouseDetailQuery
         var dto = new WarehouseDetailDto(
             warehouse.WarehouseId, warehouse.Name, warehouse.Address,
             warehouse.Lat, warehouse.Lng, warehouse.Description,
-            warehouse.TotalArea, warehouse.AvailableArea,
+            warehouse.TotalArea, warehouse.AvailableArea, warehouse.PricePerM2,
             warehouse.OperatingHours, warehouse.Status,
             warehouse.CreatedAt, warehouse.UpdatedAt, warehouse.ApprovedAt,
             warehouse.ApprovedByNavigation?.FullName, warehouse.RejectionReason,
+            warehouse.SubmissionType ?? "NEW",
+            warehouse.PendingChangeNote,
             ownerInfo, media, documents, ratingSummary);
+
 
         return ApiResponse<WarehouseDetailDto>.SuccessResponse(dto, "Lấy chi tiết kho thành công.");
     }

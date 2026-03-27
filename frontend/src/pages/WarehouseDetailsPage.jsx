@@ -307,12 +307,19 @@ const WarehouseDetailsPage = () => {
 
           {/* LEFT: Content */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
               {[
                 { label: "TỔNG DIỆN TÍCH", value: `${warehouse.area} m²`, icon: "📐" },
                 { label: "CÒN TRỐNG", value: `${warehouse.availableArea} m²`, icon: "📦" },
                 { label: "GIỜ HOẠT ĐỘNG", value: warehouse.operatingHours || 'Không rõ', icon: "🕐" },
-                { label: "TRẠNG THÁI", value: warehouse.status, icon: "✅" }
+                { label: "TRẠNG THÁI", value: warehouse.status, icon: "✅" },
+                {
+                  label: "GIÁ THUÊ/M²/THÁNG",
+                  value: warehouseData?.pricePerM2
+                    ? `${Number(warehouseData.pricePerM2).toLocaleString('vi-VN')} ₫`
+                    : 'Liên hệ',
+                  icon: "💰"
+                }
               ].map((stat, i) => (
                 <div key={i} style={{ backgroundColor: '#f8fafc', padding: '1.2rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #f1f5f9' }}>
                   <div style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{stat.icon}</div>

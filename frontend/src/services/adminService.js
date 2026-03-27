@@ -4,13 +4,15 @@ const adminService = {
     // === LOOKUP ===
     getRoles: () => axiosClient.get("/admin/roles"),
     getOwners: () => axiosClient.get("/admin/owners"),
-    getWarehousesLookup: () => axiosClient.get("/admin/warehouses"),
+    getWarehousesLookup: () => axiosClient.get("/admin/warehouses/lookup"),
 
     // === ACCOUNTS ===
     getAccounts: (params) => axiosClient.get("/admin/accounts",{ params }),
     updateAccountStatus: (id,status) => axiosClient.put(`/admin/accounts/${id}/status`,{ status }),
 
     // === WAREHOUSES ===
+    getPendingWarehouses: (params) => axiosClient.get("/admin/warehouses/pending", { params }),
+    getAllWarehouses: (params) => axiosClient.get("/admin/warehouses", { params }),
     getWarehousesByOwner: (ownerId,params) => axiosClient.get(`/admin/owners/${ownerId}/warehouses`,{ params }),
     getWarehouseDetail: (id) => axiosClient.get(`/admin/warehouses/${id}`),
     manageListing: (id,action) => axiosClient.put(`/admin/warehouses/${id}/listing`,{ action }),

@@ -30,4 +30,5 @@ public class UpdateWarehouseCommand : IRequest
     public double? Length { get; set; }
     public string? MainDoorDirection { get; set; }
     public string? Status { get; set; }
+    public decimal? PricePerM2 { get; set; }
 }

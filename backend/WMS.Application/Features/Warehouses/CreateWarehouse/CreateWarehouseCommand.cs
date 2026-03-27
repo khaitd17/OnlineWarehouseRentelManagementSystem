@@ -31,4 +31,5 @@ public class CreateWarehouseCommand : IRequest<int>
     public TimeSpan? CloseTime { get; set; }
     public string? MainDoorDirection { get; set; }
     public string? Status { get; set; }
+    public decimal? PricePerM2 { get; set; }
 }

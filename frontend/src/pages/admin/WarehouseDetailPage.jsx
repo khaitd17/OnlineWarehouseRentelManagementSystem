@@ -16,6 +16,13 @@ const DOC_TYPE_LABELS = {
   OTHER: "Khác",
 };
 
+const API_BASE = "http://localhost:5276";
+const resolveUrl = (url) => {
+  if (!url) return null;
+  if (url.startsWith("http")) return url;
+  return `${API_BASE}${url.startsWith("/") ? url : "/" + url}`;
+};
+
 export default function WarehouseDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -91,6 +98,22 @@ export default function WarehouseDetailPage() {
                 <div className="admin-detail-item"><div className="admin-detail-label">Trạng thái</div><StatusBadge status={wh.status} /></div>
                 <div className="admin-detail-item"><div className="admin-detail-label">Diện tích tổng</div><div className="admin-detail-value">{wh.totalArea} m²</div></div>
                 <div className="admin-detail-item"><div className="admin-detail-label">Diện tích khả dụng</div><div className="admin-detail-value">{wh.availableArea} m²</div></div>
+                <div className="admin-detail-item">
+                  <div className="admin-detail-label">Giá thuê/m² (VNĐ/tháng)</div>
+                  <div className="admin-detail-value">
+                    {wh.pricePerM2 ? (
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 4,
+                        background: "linear-gradient(135deg,#ecfdf5,#d1fae5)",
+                        color: "#065f46", fontWeight: 800, fontSize: 14,
+                        padding: "4px 10px", borderRadius: 8,
+                        border: "1px solid #a7f3d0"
+                      }}>
+                        💰 {new Intl.NumberFormat("vi-VN").format(wh.pricePerM2)} ₫/m²
+                      </span>
+                    ) : <span style={{ color: "#9ca3af" }}>Chưa cập nhật</span>}
+                  </div>
+                </div>
                 <div className="admin-detail-item"><div className="admin-detail-label">Tỷ lệ lấp đầy</div>
                   <div className="admin-detail-value">
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -129,9 +152,14 @@ export default function WarehouseDetailPage() {
                   {wh.media.map(m => (
                     <div key={m.mediaId} style={{ border: "1px solid #e5e7eb", borderRadius: 4, overflow: "hidden", position: "relative" }}>
                       {m.mediaType === "VIDEO" ? (
-                        <video src={m.mediaUrl} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover" }} controls />
+                        <video src={resolveUrl(m.mediaUrl)} style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover" }} controls />
                       ) : (
-                        <img src={m.mediaUrl} alt="" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover" }} onError={(e) => { e.target.style.display = "none"; }} />
+                        <img
+                          src={resolveUrl(m.mediaUrl)}
+                          alt=""
+                          style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", background: "#f3f4f6" }}
+                          onError={e => { e.target.src = ""; e.target.style.display = "none"; }}
+                        />
                       )}
                       {m.isPrimary && (
                         <span style={{ position: "absolute", top: 4, left: 4, background: "#0095c7", color: "#fff", fontSize: 10, padding: "2px 6px", borderRadius: 3 }}>Chính</span>

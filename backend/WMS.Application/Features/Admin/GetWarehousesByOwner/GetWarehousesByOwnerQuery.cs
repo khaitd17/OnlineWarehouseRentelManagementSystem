@@ -7,7 +7,7 @@ namespace WMS.Application.Features.Admin.GetWarehousesByOwner;
 public class GetWarehousesByOwnerQuery : IRequest<ApiResponse<PagedResult<OwnerWarehouseDto>>>
 {
     [JsonIgnore]
-    public int OwnerId { get; set; }
+    public int? OwnerId { get; set; }  // null or 0 = all owners
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 10;
     public string? SortBy { get; set; }
@@ -26,5 +26,7 @@ public record OwnerWarehouseDto(
     string? Status,
     string? OperatingHours,
     DateTime? CreatedAt,
-    DateTime? ApprovedAt
+    DateTime? ApprovedAt,
+    string? OwnerName,
+    string? OwnerEmail
 );

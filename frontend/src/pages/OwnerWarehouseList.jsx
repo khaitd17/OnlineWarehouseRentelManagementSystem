@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 const OwnerWarehouseList = () => {
 
   const [warehouses, setWarehouses] = useState([]);
+  const [deleteModal, setDeleteModal] = useState({ open: false, warehouseId: null, warehouseName: "", loading: false });
+  const [toast, setToast] = useState(null);
   const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem("user"));
@@ -19,15 +21,21 @@ const OwnerWarehouseList = () => {
     }
   };
 
-  const handleDelete = async (warehouseId) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa kho này không? Hành động này không thể hoàn tác.")) {
-      try {
-        await api.delete(`/Warehouse/${warehouseId}`);
-        alert("Xóa kho thành công!");
-        loadWarehouses(); // Refresh list after deletion
-      } catch (err) {
-        alert("Có lỗi khi xóa kho: " + (err.response?.data?.message || err.message));
-      }
+  const showToast = (msg, type = "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleDelete = async () => {
+    setDeleteModal(p => ({ ...p, loading: true }));
+    try {
+      await api.delete(`/Warehouse/${deleteModal.warehouseId}`);
+      setDeleteModal({ open: false, warehouseId: null, warehouseName: "", loading: false });
+      showToast("Xóa kho thành công!", "success");
+      loadWarehouses();
+    } catch (err) {
+      setDeleteModal(p => ({ ...p, loading: false }));
+      showToast("Lỗi: " + (err.response?.data?.message || err.message), "error");
     }
   };
 
@@ -156,13 +164,60 @@ const OwnerWarehouseList = () => {
 
             {/* Body Info */}
             <div style={{ padding: "24px", flex: 1, display: "flex", flexDirection: "column", gap: "16px" }}>
-              
+
+              {/* Status banners */}
+              {w.status?.toUpperCase() === "PENDING" && (
+                <div style={{
+                  display: "flex", alignItems: "flex-start", gap: 10,
+                  background: "linear-gradient(135deg,#fffbeb,#fef3c7)",
+                  border: "1px solid #fde68a", borderRadius: "12px",
+                  padding: "12px 14px",
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#d97706", flexShrink: 0 }}>schedule</span>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#92400e", fontSize: "0.9rem", marginBottom: 2 }}>Đang chờ Admin xét duyệt</div>
+                    <div style={{ color: "#b45309", fontSize: "0.82rem" }}>Kho của bạn đã được nộp và đang trong hàng đợi xét duyệt. Vui lòng chờ phản hồi từ hệ thống.</div>
+                  </div>
+                </div>
+              )}
+
+              {w.status?.toUpperCase() === "REJECTED" && (
+                <div style={{
+                  display: "flex", alignItems: "flex-start", gap: 10,
+                  background: "linear-gradient(135deg,#fff1f2,#fee2e2)",
+                  border: "1px solid #fecaca", borderRadius: "12px",
+                  padding: "12px 14px",
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#dc2626", flexShrink: 0 }}>cancel</span>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#991b1b", fontSize: "0.9rem", marginBottom: 2 }}>Kho bị từ chối</div>
+                    <div style={{ color: "#b91c1c", fontSize: "0.82rem", lineHeight: 1.5 }}>
+                      {w.rejectionReason
+                        ? <><strong>Lý do:</strong> {w.rejectionReason}</>
+                        : "Kho không đáp ứng yêu cầu. Vui lòng chỉnh sửa và nộp lại."}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {w.status?.toUpperCase() === "APPROVED" && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  background: "linear-gradient(135deg,#f0fdf4,#dcfce7)",
+                  border: "1px solid #bbf7d0", borderRadius: "12px",
+                  padding: "10px 14px",
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#16a34a" }}>verified</span>
+                  <div style={{ fontWeight: 600, color: "#15803d", fontSize: "0.88rem" }}>Kho đã được phê duyệt và hiển thị công khai</div>
+                </div>
+              )}
+
               <div style={{ display: "flex", gap: "12px", alignItems: "flex-start", color: "#475569" }}>
                 <span className="material-symbols-outlined" style={{ color: "#94a3b8", fontSize: "20px" }}>location_on</span>
                 <span style={{ fontSize: "0.95rem", lineHeight: "1.4" }}>{w.address}</span>
               </div>
 
-              <div style={{ display: "flex", gap: "16px", marginTop: "4px" }}>
+              <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
                 <div style={{ flex: 1, backgroundColor: "#f8fafc", padding: "12px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
                   <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "4px", fontWeight: 600 }}>TỔNG DIỆN TÍCH</div>
                   <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1e293b" }}>{w.totalArea} <span style={{ fontSize: "0.9rem", color: "#94a3b8" }}>m²</span></div>
@@ -172,6 +227,38 @@ const OwnerWarehouseList = () => {
                   <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#15803d" }}>{w.availableArea} <span style={{ fontSize: "0.9rem", color: "#86efac" }}>m²</span></div>
                 </div>
               </div>
+
+              {/* Giá thuê/m² */}
+              <div style={{
+                padding: "12px 14px", borderRadius: "12px",
+                background: w.pricePerM2
+                  ? "linear-gradient(135deg,#f0fdf4,#dcfce7)"
+                  : "#f8fafc",
+                border: w.pricePerM2 ? "1px solid #bbf7d0" : "1px solid #e2e8f0",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}>
+                <div>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: w.pricePerM2 ? "#166534" : "#94a3b8", marginBottom: 3, textTransform: "uppercase" }}>
+                    💰 Giá thuê / m² / tháng
+                  </div>
+                  {w.pricePerM2 ? (
+                    <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#15803d" }}>
+                      {new Intl.NumberFormat("vi-VN").format(w.pricePerM2)} <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#16a34a" }}>₫/m²</span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: "0.88rem", color: "#94a3b8", fontWeight: 500 }}>Chưa cập nhật giá</div>
+                  )}
+                </div>
+                {w.pricePerM2 && w.totalArea && (
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: "0.7rem", color: "#16a34a", fontWeight: 600 }}>≈ tổng/tháng</div>
+                    <div style={{ fontSize: "0.88rem", fontWeight: 800, color: "#15803d" }}>
+                      {new Intl.NumberFormat("vi-VN").format(w.pricePerM2 * w.totalArea)} ₫
+                    </div>
+                  </div>
+                )}
+              </div>
+
 
             </div>
 
@@ -266,7 +353,7 @@ const OwnerWarehouseList = () => {
                 title="Xóa Kho"
                 onMouseEnter={(e) => e.currentTarget.style.background = "#fecaca"}
                 onMouseLeave={(e) => e.currentTarget.style.background = "#fee2e2"}
-                onClick={() => handleDelete(w.warehouseId)}
+                onClick={() => setDeleteModal({ open: true, warehouseId: w.warehouseId, warehouseName: w.name, loading: false })}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>delete</span>
               </button>
@@ -282,6 +369,121 @@ const OwnerWarehouseList = () => {
           <p style={{ margin: 0, color: "#94a3b8" }}>Hãy bắt đầu thêm kho trên hệ thống để chia sẻ không gian ngay thôi!</p>
         </div>
       )}
+
+      {/* ── Toast notification ── */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 28, right: 28, zIndex: 9999,
+          padding: "14px 22px", borderRadius: 14,
+          background: toast.type === "success" ? "linear-gradient(135deg,#10b981,#059669)" : "linear-gradient(135deg,#ef4444,#dc2626)",
+          color: "#fff", fontWeight: 700, fontSize: 14,
+          boxShadow: "0 8px 30px rgba(0,0,0,0.18)",
+          display: "flex", alignItems: "center", gap: 10,
+          animation: "fadeInUp 0.3s ease",
+        }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+            {toast.type === "success" ? "check_circle" : "cancel"}
+          </span>
+          {toast.msg}
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteModal.open && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {/* Backdrop */}
+          <div
+            onClick={() => !deleteModal.loading && setDeleteModal({ open: false, warehouseId: null, warehouseName: "", loading: false })}
+            style={{ position: "absolute", inset: 0, background: "rgba(15,23,42,0.55)", backdropFilter: "blur(6px)" }}
+          />
+          {/* Modal Card */}
+          <div style={{
+            position: "relative", zIndex: 1,
+            background: "#fff", borderRadius: 24, padding: "36px 32px",
+            width: "min(440px, 94vw)",
+            boxShadow: "0 25px 60px rgba(0,0,0,0.2)",
+            animation: "popIn 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+          }}>
+            {/* Icon */}
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: "50%",
+                background: "linear-gradient(135deg,#fee2e2,#fecaca)",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 8px 20px rgba(239,68,68,0.25)",
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 32, color: "#ef4444" }}>delete_forever</span>
+              </div>
+            </div>
+
+            <h2 style={{ textAlign: "center", margin: "0 0 8px", fontSize: 20, fontWeight: 900, color: "#0f172a" }}>
+              Xác nhận xóa kho
+            </h2>
+            <p style={{ textAlign: "center", color: "#64748b", fontSize: 14, margin: "0 0 8px", lineHeight: 1.6 }}>
+              Bạn có chắc chắn muốn xóa kho
+            </p>
+            <p style={{ textAlign: "center", fontWeight: 800, fontSize: 15, color: "#0f172a", margin: "0 0 6px" }}>
+              "{deleteModal.warehouseName}"
+            </p>
+            <div style={{
+              margin: "0 0 24px",
+              background: "linear-gradient(135deg,#fff1f2,#fee2e2)",
+              border: "1px solid #fecaca", borderRadius: 12, padding: "10px 14px",
+              display: "flex", alignItems: "center", gap: 8,
+            }}>
+              <span className="material-symbols-outlined" style={{ color: "#dc2626", fontSize: 18 }}>warning</span>
+              <span style={{ fontSize: 13, color: "#991b1b", fontWeight: 600 }}>Hành động này không thể hoàn tác!</span>
+            </div>
+
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={() => setDeleteModal({ open: false, warehouseId: null, warehouseName: "", loading: false })}
+                disabled={deleteModal.loading}
+                style={{
+                  flex: 1, padding: "13px", borderRadius: 14,
+                  border: "1.5px solid #e2e8f0", background: "#f8fafc",
+                  color: "#475569", fontWeight: 700, fontSize: 14,
+                  cursor: "pointer", transition: "all 0.2s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = "#e2e8f0"}
+                onMouseLeave={e => e.currentTarget.style.background = "#f8fafc"}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleteModal.loading}
+                style={{
+                  flex: 1, padding: "13px", borderRadius: 14,
+                  border: "none",
+                  background: deleteModal.loading ? "#fca5a5" : "linear-gradient(135deg,#ef4444,#dc2626)",
+                  color: "#fff", fontWeight: 800, fontSize: 14,
+                  cursor: deleteModal.loading ? "not-allowed" : "pointer",
+                  boxShadow: "0 8px 20px rgba(239,68,68,0.3)",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  transition: "all 0.2s",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                  {deleteModal.loading ? "hourglass_empty" : "delete_forever"}
+                </span>
+                {deleteModal.loading ? "Đang xóa..." : "Xóa kho"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes popIn {
+          from { transform: scale(0.85); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes fadeInUp {
+          from { transform: translateY(16px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
 
     </div>
   );
