@@ -76,6 +76,7 @@ import AdminPendingWarehousesPage from "../pages/admin/AdminPendingWarehousesPag
 
 import EquipmentManagement from "../pages/EquipmentManagement";
 import MyRatingsPage from "../pages/MyRatingsPage";
+import FavoritesPage from "../pages/FavoritesPage";
 
 import authService from "../services/authService";
 
@@ -188,6 +189,7 @@ function AppRoutes() {
             <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
             <Route path="/renter-inventory" element={<RenterInventoryPage />} />
             <Route path="/my-ratings" element={<MyRatingsPage />} />
+            <Route path="/my-favorites" element={<FavoritesPage />} />
           </Route>
         </Route>
 

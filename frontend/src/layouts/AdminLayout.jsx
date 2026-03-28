@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -9,6 +9,8 @@ import {
   Settings,
   LogOut,
   Star,
+  Menu,
+  X,
 } from "lucide-react";
 import { ToastProvider } from "../components/Toast";
 import "../styles/admin.css";
@@ -24,8 +26,19 @@ const NAV_ITEMS = [
 
 export default function AdminLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const [pendingCount, setPendingCount] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+
+  const isMobile = windowWidth < 900;
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchPending = async () => {
@@ -37,13 +50,27 @@ export default function AdminLayout() {
     };
     fetchPending();
     const interval = setInterval(fetchPending, 60000);
-    // Refresh badge immediately after any approve/reject action
     window.addEventListener("pendingWarehousesChanged", fetchPending);
     return () => {
       clearInterval(interval);
       window.removeEventListener("pendingWarehousesChanged", fetchPending);
     };
   }, []);
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll when drawer open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [sidebarOpen]);
 
   const badges = { pending: pendingCount };
 
@@ -62,11 +89,33 @@ export default function AdminLayout() {
   return (
     <ToastProvider>
       <div className="admin-layout">
+        {/* ── Mobile Sidebar Overlay ── */}
+        <div
+          className={`admin-sidebar-overlay${sidebarOpen ? ' open' : ''}`}
+          onClick={() => setSidebarOpen(false)}
+        />
+
         {/* ── Sidebar ── */}
-        <aside className="admin-sidebar">
-          <div className="admin-sidebar-logo">
-            <Settings size={20} />
-            <span>OWRMS Admin</span>
+        <aside className={`admin-sidebar${sidebarOpen ? ' open' : ''}`}>
+          <div className="admin-sidebar-logo" style={{ justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Settings size={20} />
+              <span>OWRMS Admin</span>
+            </div>
+            {/* Mobile close button */}
+            <button
+              onClick={() => setSidebarOpen(false)}
+              style={{
+                display: isMobile ? 'flex' : 'none',
+                background: 'none', border: 'none',
+                color: '#8892a4', cursor: 'pointer',
+                padding: '4px', borderRadius: '6px',
+                alignItems: 'center', justifyContent: 'center',
+              }}
+              className="admin-sidebar-close-btn"
+            >
+              <X size={18} />
+            </button>
           </div>
           <nav className="admin-sidebar-nav">
             <div className="admin-sidebar-section">Menu</div>
@@ -120,6 +169,16 @@ export default function AdminLayout() {
 
           {/* ── Top Bar ── */}
           <header className="admin-topbar">
+            {/* Hamburger (mobile only) */}
+            <button
+              className="admin-hamburger-btn"
+              onClick={() => setSidebarOpen(true)}
+              title="Mở menu"
+              style={{ display: isMobile ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <Menu size={20} />
+            </button>
+
             <div className="admin-topbar-left" />
 
             <div className="admin-topbar-right">
@@ -179,6 +238,15 @@ export default function AdminLayout() {
           </div>
         </div>
       </div>
+
+      {/* Mobile sidebar close button style */}
+      <style>{`
+        @media (max-width: 768px) {
+          .admin-sidebar-close-btn {
+            display: block !important;
+          }
+        }
+      `}</style>
     </ToastProvider>
   );
 }
