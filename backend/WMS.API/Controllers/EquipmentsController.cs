@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using WMS.Application.Features.Equipments.AddEquipment;
 using WMS.Application.Features.Equipments.ControlEquipment;
@@ -8,6 +9,7 @@ using WMS.Application.Features.Equipments.DeleteEquipment;
 using WMS.Application.Features.Equipments.GetEquipments;
 using WMS.Application.Features.Equipments.UpdateEquipment;
 using WMS.Application.Features.Equipments.UpdateEquipmentStatus;
+using WMS.Infrastructure.Persistence;
 
 namespace WMS.API.Controllers;
 
@@ -17,10 +19,12 @@ namespace WMS.API.Controllers;
 public class EquipmentsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly ApplicationDbContext _db;
 
-    public EquipmentsController(IMediator mediator)
+    public EquipmentsController(IMediator mediator, ApplicationDbContext db)
     {
         _mediator = mediator;
+        _db = db;
     }
 
     private int GetCurrentUserId()
@@ -215,6 +219,73 @@ public class EquipmentsController : ControllerBase
                 stackTrace = ex.StackTrace,
                 type = ex.GetType().Name
             });
+        }
+    }
+
+    /// <summary>
+    /// Sync trạng thái thiết bị Dùng Chung của kho:
+    /// - Nếu kho có hợp đồng đang Active (ACTIVE/PENDING_PAYMENT) → thiết bị chung = IN_USE
+    /// - Nếu không có hợp đồng nào đang hoạt động → thiết bị chung = AVAILABLE
+    /// </summary>
+    [HttpPost("sync-shared/{warehouseId}")]
+    public async Task<IActionResult> SyncSharedEquipmentStatus(int warehouseId)
+    {
+        try
+        {
+            // Kiểm tra kho có hợp đồng đang kích hoạt không
+            var hasActiveContract = await _db.Contracts
+                .AnyAsync(c => c.WarehouseId == warehouseId &&
+                               (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT"));
+
+            // Lấy thiết bị chung của kho (RentalAreaId == null, không bị DELETED/RETIRED/BROKEN/MAINTENANCE)
+            var sharedEquipments = await _db.Equipments
+                .Where(e => e.WarehouseId == warehouseId &&
+                            e.RentalAreaId == null &&
+                            e.Status != "DELETED" &&
+                            e.Status != "RETIRED" &&
+                            e.Status != "BROKEN" &&
+                            e.Status != "MAINTENANCE")
+                .ToListAsync();
+
+            var targetStatus = hasActiveContract ? "IN_USE" : "AVAILABLE";
+            var updatedCount = 0;
+
+            foreach (var eq in sharedEquipments)
+            {
+                if (eq.Status != targetStatus)
+                {
+                    var previousStatus = eq.Status;
+                    eq.Status = targetStatus;
+                    eq.UpdatedAt = DateTime.UtcNow;
+
+                    _db.EquipmentHistories.Add(new WMS.Domain.Entities.EquipmentHistory
+                    {
+                        EquipmentId = eq.EquipmentId,
+                        PreviousStatus = previousStatus,
+                        NewStatus = targetStatus,
+                        Note = hasActiveContract
+                            ? "Tự động chuyển IN_USE: Kho có hợp đồng đang hoạt động"
+                            : "Tự động chuyển AVAILABLE: Kho không còn hợp đồng nào hoạt động"
+                    });
+                    updatedCount++;
+                }
+            }
+
+            if (updatedCount > 0)
+                await _db.SaveChangesAsync();
+
+            return Ok(new
+            {
+                warehouseId,
+                hasActiveContract,
+                targetStatus,
+                updatedCount,
+                message = $"Đã cập nhật {updatedCount} thiết bị chung sang trạng thái {targetStatus}"
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message });
         }
     }
 }
