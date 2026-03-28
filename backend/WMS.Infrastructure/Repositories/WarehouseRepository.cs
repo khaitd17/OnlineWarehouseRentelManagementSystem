@@ -87,6 +87,11 @@ public async Task<Warehouse?> GetByIdAsync(
         PricePerM2 = entity.PricePerM2,
         Status = entity.Status ?? "UNKNOWN",
         CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
+        ApprovedAt = entity.ApprovedAt,         // ← required for re-approval detection
+        ApprovedBy = entity.ApprovedBy,
+        RejectionReason = entity.RejectionReason,
+        SubmissionType = entity.SubmissionType ?? "NEW",
+        PendingChangeNote = entity.PendingChangeNote,
         WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
         {
             MediaId = m.MediaId,
@@ -169,9 +174,12 @@ public async Task<Warehouse?> GetByIdAsync(
         entity.Is24HoursAccess = warehouse.Is24HoursAccess;
         entity.OpenTime = warehouse.OpenTime;
         entity.CloseTime = warehouse.CloseTime;
-        entity.MainDoorDirection = warehouse.MainDoorDirection;
-        entity.Status = warehouse.Status ?? entity.Status;
-        entity.UpdatedAt = DateTime.UtcNow;
+        entity.MainDoorDirection    = warehouse.MainDoorDirection;
+        entity.PricePerM2           = warehouse.PricePerM2;
+        entity.Status               = warehouse.Status ?? entity.Status;
+        entity.SubmissionType       = warehouse.SubmissionType ?? "NEW";
+        entity.PendingChangeNote    = warehouse.PendingChangeNote;
+        entity.UpdatedAt            = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
     }
