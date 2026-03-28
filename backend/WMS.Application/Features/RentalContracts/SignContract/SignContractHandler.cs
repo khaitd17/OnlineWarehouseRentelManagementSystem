@@ -51,7 +51,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         if (contract.RenterId != request.UserId)
             throw new UnauthorizedAccessException("Only the renter can sign the contract");
 
-        if (contract.Status != "PENDING_SIGNATURE")
+        if (contract.Status != "PENDING_RENTER_SIGNATURE")
             throw new InvalidOperationException($"Cannot sign contract with status {contract.Status}");
 
         // Verify OTP was completed

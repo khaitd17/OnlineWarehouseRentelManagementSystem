@@ -76,6 +76,11 @@ import AdminProfilePage from "../pages/admin/AdminProfilePage";
 import EquipmentManagement from "../pages/EquipmentManagement";
 import MyRatingsPage from "../pages/MyRatingsPage";
 
+// Contract Extension Pages
+import RenterExtensionPage from "../pages/RenterExtensionPage.jsx";
+import OwnerExtensionPage from "../pages/OwnerExtensionPage.jsx";
+import ContractSigningWrapper from "../components/contract/ContractSigningWrapper.jsx";
+
 import authService from "../services/authService";
 
 // Inline redirect: reads warehouseContext and sends user to their dashboard
@@ -123,6 +128,8 @@ function AppRoutes() {
             <Route path="/my-rental-requests" element={<MyRentalRequests />} />
             <Route path="/my-contracts" element={<MyContracts />} />
             <Route path="/contracts/:id" element={<ContractDetail />} />
+            <Route path="/sign-contract/:contractId" element={<ContractSigningWrapper userRole="RENTER" />} />
+            <Route path="/sign-contract/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="RENTER" />} />
             <Route path="/settings" element={<ProfilePage />} />
             <Route path="/create-warehouse" element={<CreateWarehouse />} />
             <Route path="/post-warehouse" element={<PostWarehousePage />} />
@@ -142,6 +149,9 @@ function AppRoutes() {
             <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
             <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
             <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
+            <Route path="/contract-extensions" element={<OwnerExtensionPage />} />
+            <Route path="/sign-contract-owner/:contractId" element={<ContractSigningWrapper userRole="OWNER" />} />
+            <Route path="/sign-contract-owner/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="OWNER" />} />
             <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
             <Route path="/owner-inventory" element={<OwnerInventoryPage />} />
           </Route>
@@ -178,6 +188,7 @@ function AppRoutes() {
         <Route element={<RoleBasedRoute allowedRoles={['RENTER', 'USER', 'ADMIN']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/renter-dashboard" element={<RenterDashboard />} />
+            <Route path="/contract-extensions-renter" element={<RenterExtensionPage />} />
             {/* Merged history page (2 tabs) */}
             <Route path="/renter-inventory-history" element={<RenterInventoryHistory />} />
             {/* Keep old routes for backward compatibility */}

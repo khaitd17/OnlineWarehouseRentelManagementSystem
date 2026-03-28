@@ -12,6 +12,7 @@ const MENU_BY_ROLE = {
     { icon: "dashboard",               label: "Tổng quan",           path: "/owner-dashboard" },
     { icon: "donut_large",             label: "Biểu đồ công suất",   path: "/occupancy-dashboard" },
     { icon: "warehouse",               label: "Kho của tôi",         path: "/my-warehouses" },
+    { icon: "update",                  label: "Duyệt gia hạn",       path: "/contract-extensions",    section: "HỢP ĐỒNG" },
     { icon: "inventory_2",             label: "Yêu cầu nhập/xuất",   path: "/owner-inventory-requests", section: "YÊU CẦU" },
     { icon: "inventory",               label: "Tồn kho hàng thuê",   path: "/owner-inventory" },
     { icon: "fact_check",              label: "Kiểm kê kho",         path: "/owner-audit-sessions" },
@@ -29,6 +30,7 @@ const MENU_BY_ROLE = {
     { icon: "dashboard",               label: "Tổng quan",           path: "/owner-dashboard" },
     { icon: "donut_large",             label: "Biểu đồ công suất",   path: "/occupancy-dashboard" },
     { icon: "warehouse",               label: "Kho của tôi",         path: "/my-warehouses" },
+    { icon: "update",                  label: "Duyệt gia hạn",       path: "/contract-extensions",    section: "HỢP ĐỒNG" },
     { icon: "inventory_2",             label: "Yêu cầu nhập/xuất",   path: "/owner-inventory-requests", section: "YÊU CẦU" },
     { icon: "inventory",               label: "Tồn kho hàng thuê",   path: "/owner-inventory" },
     { icon: "fact_check",              label: "Kiểm kê kho",         path: "/owner-audit-sessions" },
@@ -68,6 +70,7 @@ const MENU_BY_ROLE = {
   // Người thuê kho
   RENTER: [
     { icon: "description",             label: "Hợp đồng của tôi",       path: "/my-contracts" },
+    { icon: "access_time",             label: "Gia hạn hợp đồng",       path: "/contract-extensions-renter" },
     { icon: "list_alt",                label: "Yêu cầu thuê kho",        path: "/my-rental-requests" },
     { icon: "add_circle",              label: "Tạo yêu cầu nhập/xuất",   path: "/create-inventory",         section: "KHO" },
     { icon: "history",                 label: "Lịch sử nhập/xuất kho",   path: "/renter-inventory-history" },

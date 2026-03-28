@@ -13,7 +13,7 @@ public static class RentalContractStatus
     // Existing
     public const string Draft = "DRAFT";
     public const string PendingOwnerSignature = "PENDING_OWNER_SIGNATURE";
-    public const string PendingSignature = "PENDING_SIGNATURE";
+    public const string PendingRenterSignature = "PENDING_RENTER_SIGNATURE";
     public const string Active = "ACTIVE";
     public const string Expired = "EXPIRED";
     public const string Terminated = "TERMINATED";

@@ -145,6 +145,69 @@ namespace WMS.API.Controllers
         }
 
         /// <summary>
+        /// Get approved extensions with new contracts pending owner signature
+        /// </summary>
+        [HttpGet("pending-signature")]
+        public async Task<IActionResult> GetExtensionsPendingOwnerSignature()
+        {
+            try
+            {
+                var userId = GetUserId();
+
+                // Get warehouses owned by current user
+                var warehouses = await _warehouseRepo.GetByOwnerIdAsync(userId, CancellationToken.None);
+                var warehouseIds = warehouses.Select(w => w.WarehouseId).ToList();
+
+                // Get approved extensions where new contract is pending owner signature
+                var extensions = await _extensionRepo.GetApprovedPendingSignatureByWarehouseIdsAsync(warehouseIds);
+
+                var result = extensions.Select(e => new
+                {
+                    extensionId = e.ExtensionId,
+                    originalContractId = e.OriginalContractId,
+                    newContractId = e.NewContractId,
+                    durationMonths = e.DurationMonths,
+                    status = e.Status,
+                    requestedAt = e.RequestedAt,
+                    approvedAt = e.ReviewedAt,
+                    requester = e.Requester != null ? new
+                    {
+                        userId = e.Requester.UserId,
+                        fullName = e.Requester.FullName,
+                        email = e.Requester.Email
+                    } : null,
+                    originalContract = e.OriginalContract != null ? new
+                    {
+                        contractId = e.OriginalContract.ContractId,
+                        contractNumber = e.OriginalContract.ContractNumber,
+                        warehouseId = e.OriginalContract.WarehouseId,
+                        endDate = e.OriginalContract.EndDate,
+                        monthlyPayment = e.OriginalContract.MonthlyPayment
+                    } : null,
+                    newContract = e.NewContract != null ? new
+                    {
+                        contractId = e.NewContract.ContractId,
+                        contractNumber = e.NewContract.ContractNumber,
+                        startDate = e.NewContract.StartDate,
+                        endDate = e.NewContract.EndDate,
+                        monthlyPayment = e.NewContract.MonthlyPayment,
+                        status = e.NewContract.Status
+                    } : null
+                });
+
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get current user's extensions
         /// </summary>
         [HttpGet("my-extensions")]

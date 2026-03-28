@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
+using WMS.Domain.Enums;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
@@ -110,6 +111,23 @@ namespace WMS.Infrastructure.Repositories
             return await _context.ContractExtensions
                 .Include(e => e.Requester)
                 .FirstOrDefaultAsync(e => e.OriginalContractId == contractId && e.Status == "PENDING");
+        }
+
+        public async Task<IEnumerable<ContractExtension>> GetApprovedPendingSignatureByWarehouseIdsAsync(
+            IEnumerable<int> warehouseIds)
+        {
+            return await _context.ContractExtensions
+                .Include(e => e.OriginalContract)
+                .Include(e => e.NewContract)
+                .Include(e => e.Requester)
+                .Where(e => e.Status == ContractExtensionStatus.Approved
+                            && e.NewContractId.HasValue
+                            && e.OriginalContract != null
+                            && warehouseIds.Contains(e.OriginalContract.WarehouseId)
+                            && e.NewContract != null
+                            && e.NewContract.Status == RentalContractStatus.PendingOwnerSignature)
+                .OrderByDescending(e => e.ReviewedAt)
+                .ToListAsync();
         }
     }
 }
