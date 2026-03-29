@@ -10,28 +10,27 @@ namespace WMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Bỏ qua do rác từ Model Snapshot, DB không thực sự có constraint/cột này
-            // migrationBuilder.DropForeignKey("FK_equipment_histories_rental_contracts_RentalContractContractId", "equipment_histories");
-            // migrationBuilder.DropForeignKey("FK_equipments_rental_contracts_RentalContractContractId", "equipments");
-            // migrationBuilder.DropIndex("IX_equipments_RentalContractContractId", "equipments");
-            // migrationBuilder.DropIndex("IX_equipment_histories_RentalContractContractId", "equipment_histories");
-            // migrationBuilder.DropColumn("RentalContractContractId", "equipments");
-            // migrationBuilder.DropColumn("RentalContractContractId", "equipment_histories");
+            // Thêm cột pending_change_note nếu chưa tồn tại
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_NAME = 'warehouses' AND COLUMN_NAME = 'pending_change_note'
+                )
+                BEGIN
+                    ALTER TABLE [warehouses] ADD [pending_change_note] nvarchar(500) NULL;
+                END
+            ");
 
-            migrationBuilder.AddColumn<string>(
-                name: "pending_change_note",
-                table: "warehouses",
-                type: "nvarchar(500)",
-                maxLength: 500,
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "submission_type",
-                table: "warehouses",
-                type: "nvarchar(20)",
-                maxLength: 20,
-                nullable: false,
-                defaultValue: "NEW");
+            // Thêm cột submission_type nếu chưa tồn tại
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (
+                    SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS 
+                    WHERE TABLE_NAME = 'warehouses' AND COLUMN_NAME = 'submission_type'
+                )
+                BEGIN
+                    ALTER TABLE [warehouses] ADD [submission_type] nvarchar(20) NOT NULL DEFAULT 'NEW';
+                END
+            ");
         }
 
         /// <inheritdoc />

@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { ToastProvider } from "../components/Toast";
+import OWRMSLogo from "../components/OWRMSLogo";
 import "../styles/admin.css";
 
 const NAV_ITEMS = [
@@ -98,8 +99,8 @@ export default function AdminLayout() {
         {/* ── Sidebar ── */}
         <aside className={`admin-sidebar${sidebarOpen ? ' open' : ''}`}>
           <div className="admin-sidebar-logo" style={{ justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Settings size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <OWRMSLogo size={32} variant="mini" />
               <span>OWRMS Admin</span>
             </div>
             {/* Mobile close button */}
