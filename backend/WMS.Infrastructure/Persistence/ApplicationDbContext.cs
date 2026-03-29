@@ -253,6 +253,9 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.RentalRequest).WithMany().HasForeignKey(d => d.RentalRequestId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Renter).WithMany().HasForeignKey(d => d.RenterId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull);
+            // Ignore unmapped navigation collections to prevent EF Core from generating phantom FK columns
+            entity.Ignore(e => e.IncludedEquipments);
+            entity.Ignore(e => e.EquipmentUsageLogs);
         });
 
         modelBuilder.Entity<WarehouseReturn>(entity =>
@@ -775,6 +778,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.OpenTime).HasColumnName("open_time");
             entity.Property(e => e.CloseTime).HasColumnName("close_time");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
+            entity.Property(e => e.SubmissionType).HasMaxLength(20).HasDefaultValue("NEW").HasColumnName("submission_type");
+            entity.Property(e => e.PendingChangeNote).HasMaxLength(500).HasColumnName("pending_change_note");
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.WarehouseApprovedByNavigations).HasForeignKey(d => d.ApprovedBy).HasConstraintName("FK_warehouses_approver");
             entity.HasOne(d => d.Owner).WithMany(p => p.WarehouseOwners).HasForeignKey(d => d.OwnerId).HasConstraintName("FK_warehouses_owner");
         });

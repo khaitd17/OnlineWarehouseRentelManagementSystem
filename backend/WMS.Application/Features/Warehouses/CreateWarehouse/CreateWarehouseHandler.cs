@@ -36,7 +36,8 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             OpenTime = request.OpenTime,
             CloseTime = request.CloseTime,
             MainDoorDirection = request.MainDoorDirection,
-            Status = request.Status ?? "HIDDEN"
+            Status = request.Status ?? "HIDDEN",
+            PricePerM2 = request.PricePerM2
         };
 
         var warehouseId = await _repository.CreateAsync(warehouse, cancellationToken);

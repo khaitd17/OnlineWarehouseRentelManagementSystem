@@ -365,9 +365,12 @@ export default function MySchedulePage() {
         ) : error ? (
           <div style={{ padding:20, color:'#dc2626', background:'#fef2f2', fontSize:'0.88rem' }}>{error}</div>
         ) : (
-          viewMode === 'week'
-            ? <WeekTable monday={monday} shifts={schedule?.shifts} />
-            : <MonthTable year={currentDate.getFullYear()} month={currentDate.getMonth()} shifts={schedule?.shifts} />
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            {viewMode === 'week'
+              ? <WeekTable monday={monday} shifts={schedule?.shifts} />
+              : <MonthTable year={currentDate.getFullYear()} month={currentDate.getMonth()} shifts={schedule?.shifts} />
+            }
+          </div>
         )}
 
         {/* No data notice */}

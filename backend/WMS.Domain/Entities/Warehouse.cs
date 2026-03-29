@@ -52,6 +52,13 @@ public partial class Warehouse
 
     public string? RejectionReason { get; set; }
 
+    /// <summary>Loại yêu cầu: "NEW" khi tạo mới, "PRICE_UPDATE" khi thay đổi giá.</summary>
+    public string SubmissionType { get; set; } = "NEW";
+
+    /// <summary>Ghi chú thay đổi tự động, ví dụ: "Thay đổi giá: 100.000 → 250.000 ₫/m²"</summary>
+    public string? PendingChangeNote { get; set; }
+
+
     public bool IsCurrentlyAccessible()
     {
         if (Is24HoursAccess) return true;

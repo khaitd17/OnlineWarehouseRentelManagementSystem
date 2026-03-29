@@ -216,6 +216,33 @@
   margin: 0 10px;
 }
 
+/* Hamburger button (mobile only - hidden by default) */
+.admin-hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #374151;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.admin-hamburger-btn:hover {
+  background: #f3f4f6;
+}
+
+/* Overlay for admin sidebar drawer */
+.admin-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 999;
+  backdrop-filter: blur(2px);
+}
+
 .admin-topbar-user {
   display: flex;
   align-items: center;
@@ -584,6 +611,11 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+@keyframes pulseBadge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.8; transform: scale(1.1); }
 }
 
 /* Pagination */
@@ -1223,9 +1255,132 @@
 }
 
 @media (max-width: 900px) {
-
   .admin-grid-2,
   .admin-grid-3-1 {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================
+   ADMIN MOBILE RESPONSIVE — Breakpoint 768px
+   ============================================ */
+
+/* Sidebar: hidden by default on mobile, overlay drawer */
+.admin-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* Hamburger button in topbar (hidden on desktop) */
+.admin-hamburger-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  color: #6b7280;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  padding: 0;
+}
+.admin-hamburger-btn:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+@media (max-width: 900px) {
+  /* Sidebar: slide-in drawer from left */
+  .admin-sidebar {
+    transform: translateX(-100%);
+    z-index: 1000;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  }
+  .admin-sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+  }
+  .admin-sidebar-overlay.open {
+    display: block;
+  }
+
+  /* Main: full width (no margin-left) */
+  .admin-main {
+    margin-left: 0 !important;
+  }
+
+  /* Topbar: show hamburger, compact */
+  .admin-topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .admin-topbar-left {
+    display: none;
+  }
+  .admin-hamburger-btn {
+    display: flex;
+  }
+
+  /* Hide user text in topbar (only show avatar on small screens) */
+  .admin-topbar-user-text {
+    display: none;
+  }
+  .admin-topbar-divider {
+    display: none;
+  }
+
+  /* Table horizontal scroll */
+  .admin-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Content padding */
+  .admin-content {
+    padding: 12px;
+  }
+
+  /* Stats grid: 2 columns on tablet, 1 on phone */
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Filter bar: wrap */
+  .admin-filter-bar {
+    flex-wrap: wrap;
+  }
+  .admin-filter-bar .search-input {
+    min-width: 100%;
+  }
+
+  /* Modal: full width on small screens */
+  .admin-modal {
+    width: 95%;
+    max-width: 100%;
+    margin: 8px;
+  }
+
+  /* Pagination: stack on mobile */
+  .admin-pagination {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .admin-btn-group {
+    flex-wrap: wrap;
+  }
+}

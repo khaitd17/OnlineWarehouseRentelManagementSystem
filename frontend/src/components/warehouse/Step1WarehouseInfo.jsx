@@ -147,16 +147,54 @@ const Step1WarehouseInfo = ({
         </div>
       </div>
 
-      {/* Diện tích */}
-      <div style={groupStyle}>
-        <label style={labelStyle}>Tổng diện tích mặt sàn (m²)</label>
-        <input
-          name="totalArea"
-          value={formData.totalArea || ""}
-          placeholder="Tự động tính bằng Chiều rộng x Chiều dài"
-          readOnly
-          style={{ ...inputStyle, backgroundColor: "#e2e8f0", color: "#475569", cursor: "not-allowed", fontWeight: 700 }}
-        />
+      {/* Diện tích + Giá thuê/m² */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+        <div style={groupStyle}>
+          <label style={labelStyle}>Tổng diện tích mặt sàn (m²)</label>
+          <input
+            name="totalArea"
+            value={formData.totalArea || ""}
+            placeholder="Tự động tính bằng Chiều rộng x Chiều dài"
+            readOnly
+            style={{ ...inputStyle, backgroundColor: "#e2e8f0", color: "#475569", cursor: "not-allowed", fontWeight: 700 }}
+          />
+        </div>
+
+        <div style={groupStyle}>
+          <label style={labelStyle}>
+            Giá thuê/m² (VNĐ/tháng) <span style={{ color: "#ef4444" }}>*</span>
+          </label>
+          <div style={{ position: "relative" }}>
+            <input
+              name="pricePerM2"
+              type="text"
+              inputMode="numeric"
+              value={formData.pricePerM2
+                ? new Intl.NumberFormat("vi-VN").format(formData.pricePerM2)
+                : ""}
+              placeholder="VD: 150.000"
+              onChange={(e) => {
+                // Strip all dots/commas/whitespace, keep digits only
+                const raw = e.target.value.replace(/[\.\,\s]/g, "");
+                if (raw === "" || /^\d+$/.test(raw)) {
+                  handleChange({ target: { name: "pricePerM2", value: raw, type: "text" } });
+                }
+              }}
+              required
+              style={{ ...inputStyle, paddingRight: "60px" }}
+            />
+            <span style={{
+              position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)",
+              fontSize: "0.8rem", fontWeight: 700, color: "#64748b", pointerEvents: "none"
+            }}>₫/m²</span>
+          </div>
+          {formData.pricePerM2 && formData.totalArea && (
+            <div style={{ fontSize: "0.78rem", color: "#0095c7", fontWeight: 600, marginTop: 2 }}>
+              ≈ {new Intl.NumberFormat("vi-VN").format(Number(formData.pricePerM2) * Number(formData.totalArea))}&nbsp;₫/tháng (toàn bộ kho)
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* 24/7 Access Toggle */}

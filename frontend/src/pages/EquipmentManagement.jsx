@@ -76,6 +76,8 @@ const EquipmentManagement = () => {
     if (!selectedWarehouseId) return;
     setLoading(true);
     try {
+      // Sync trạng thái thiết bị chung theo hợp đồng active trước
+      await axiosClient.post(`/Equipments/sync-shared/${selectedWarehouseId}`).catch(() => {});
       const data = await equipmentService.getEquipmentsByWarehouse(selectedWarehouseId);
       setEquipments(data);
     } catch (err) {
