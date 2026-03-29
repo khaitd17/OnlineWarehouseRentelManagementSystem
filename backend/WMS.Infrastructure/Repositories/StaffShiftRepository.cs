@@ -96,30 +96,51 @@ public class StaffShiftRepository : IStaffShiftRepository
             .Where(s => memberIds.Contains(s.MembershipId) && s.ShiftDate >= from && s.ShiftDate <= to)
             .ToListAsync(ct);
 
-        // Load tasks assigned to these members within the date range
-        var taskAssignments = await _db.TaskAssignments
-            .Where(a => memberIds.Contains(a.MembershipId))
-            .Include(a => a.Task)
-                .ThenInclude(t => t.TaskType)
-            .Where(a => a.Task.ScheduledAt.HasValue
-                     && DateOnly.FromDateTime(a.Task.ScheduledAt.Value) >= from
-                     && DateOnly.FromDateTime(a.Task.ScheduledAt.Value) <= to)
+        // Load tasks for these members via zone overlap (no assignment table)
+        var memberZoneIds = await _db.WarehouseMemberships
+            .Where(m => memberIds.Contains(m.Id))
+            .SelectMany(m => m.Zones.Select(z => z.Id))
+            .Distinct()
+            .ToListAsync(ct);
+
+        var warehouseTasks = await _db.WarehouseTasks
+            .Where(t => t.WarehouseId == warehouseId
+                     && t.ScheduledAt.HasValue
+                     && DateOnly.FromDateTime(t.ScheduledAt.Value) >= from
+                     && DateOnly.FromDateTime(t.ScheduledAt.Value) <= to
+                     && (t.IsAllZone || t.Zones.Any(z => memberZoneIds.Contains(z.Id))))
+            .Include(t => t.TaskType)
+            .Include(t => t.Zones)
+            .ToListAsync(ct);
+
+        // Map tasks to each member whose zones intersect
+        var memberZoneMap = await _db.WarehouseMemberships
+            .Where(m => memberIds.Contains(m.Id))
+            .Select(m => new { m.Id, ZoneIds = m.Zones.Select(z => z.Id).ToList(), m.IsAllZone })
             .ToListAsync(ct);
 
         // Group tasks by (membershipId, date)
-        var taskMap = taskAssignments
-            .GroupBy(a => (a.MembershipId, DateOnly.FromDateTime(a.Task.ScheduledAt!.Value).ToString("yyyy-MM-dd")))
-            .ToDictionary(
-                g => g.Key,
-                g => g.Select(a => new TaskSlotDto
+        var taskMap = new Dictionary<(int, string), List<TaskSlotDto>>();
+        foreach (var member in memberZoneMap)
+        {
+            foreach (var t in warehouseTasks)
+            {
+                if (!t.IsAllZone && !member.IsAllZone && !t.Zones.Any(z => member.ZoneIds.Contains(z.Id)))
+                    continue;
+                var dateKey = DateOnly.FromDateTime(t.ScheduledAt!.Value).ToString("yyyy-MM-dd");
+                var key = (member.Id, dateKey);
+                if (!taskMap.ContainsKey(key)) taskMap[key] = new List<TaskSlotDto>();
+                taskMap[key].Add(new TaskSlotDto
                 {
-                    TaskId       = a.TaskId,
-                    TaskTypeName = a.Task.TaskType.Name,
-                    TaskTypeCode = a.Task.TaskType.Code,
-                    Status       = a.Task.Status,
-                    Note         = a.Task.Note,
-                    ScheduledAt  = a.Task.ScheduledAt?.ToString("yyyy-MM-ddTHH:mm"),
-                }).ToList());
+                    TaskId       = t.Id,
+                    TaskTypeName = t.TaskType.Name,
+                    TaskTypeCode = t.TaskType.Code,
+                    Status       = t.Status,
+                    Note         = t.Note,
+                    ScheduledAt  = t.ScheduledAt?.ToString("yyyy-MM-ddTHH:mm"),
+                });
+            }
+        }
 
         var shiftMap = shifts
             .GroupBy(s => s.MembershipId)
@@ -177,29 +198,30 @@ public class StaffShiftRepository : IStaffShiftRepository
             .Where(s => s.MembershipId == membership.Id && s.ShiftDate >= from && s.ShiftDate <= to)
             .ToListAsync(ct);
 
-        // Load tasks assigned to this member within the date range
-        var taskAssignments = await _db.TaskAssignments
-            .Where(a => a.MembershipId == membership.Id)
-            .Include(a => a.Task)
-                .ThenInclude(t => t.TaskType)
-            .Where(a => a.Task.ScheduledAt.HasValue
-                     && DateOnly.FromDateTime(a.Task.ScheduledAt.Value) >= from
-                     && DateOnly.FromDateTime(a.Task.ScheduledAt.Value) <= to)
+        // Load tasks for this member
+        var memberZoneIds = membership.Zones.Select(z => z.Id).ToList();
+        var myTasks = await _db.WarehouseTasks
+            .Where(t => t.WarehouseId == warehouseId
+                     && t.ScheduledAt.HasValue
+                     && DateOnly.FromDateTime(t.ScheduledAt.Value) >= from
+                     && DateOnly.FromDateTime(t.ScheduledAt.Value) <= to
+                     && (t.IsAllZone || membership.IsAllZone || t.Zones.Any(z => memberZoneIds.Contains(z.Id))))
+            .Include(t => t.TaskType)
             .ToListAsync(ct);
 
         // Group tasks by date
-        var taskByDate = taskAssignments
-            .GroupBy(a => DateOnly.FromDateTime(a.Task.ScheduledAt!.Value).ToString("yyyy-MM-dd"))
+        var taskByDate = myTasks
+            .GroupBy(t => DateOnly.FromDateTime(t.ScheduledAt!.Value).ToString("yyyy-MM-dd"))
             .ToDictionary(
                 g => g.Key,
-                g => g.Select(a => new TaskSlotDto
+                g => g.Select(t => new TaskSlotDto
                 {
-                    TaskId       = a.TaskId,
-                    TaskTypeName = a.Task.TaskType.Name,
-                    TaskTypeCode = a.Task.TaskType.Code,
-                    Status       = a.Task.Status,
-                    Note         = a.Task.Note,
-                    ScheduledAt  = a.Task.ScheduledAt?.ToString("yyyy-MM-ddTHH:mm"),
+                    TaskId       = t.Id,
+                    TaskTypeName = t.TaskType.Name,
+                    TaskTypeCode = t.TaskType.Code,
+                    Status       = t.Status,
+                    Note         = t.Note,
+                    ScheduledAt  = t.ScheduledAt?.ToString("yyyy-MM-ddTHH:mm"),
                 }).ToList());
 
         // Build shift map – even dates with no shift but with tasks should appear

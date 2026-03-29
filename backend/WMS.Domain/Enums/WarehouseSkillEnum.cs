@@ -1,28 +1,27 @@
 namespace WMS.Domain.Enums;
 
 /// <summary>
-/// Các bộ phận nghiệp vụ trong kho hàng.
-/// Chỉ có 3 giá trị hợp lệ.
+/// Loại nhân viên kho — 3 loại hợp lệ.
 /// </summary>
 public enum WarehouseSkill
 {
-    /// <summary>Kiểm tra đơn hàng</summary>
-    CHECK_ORDER,
+    /// <summary>Kiểm tra đơn hàng, nhận hàng, xuất hàng (Inbound / Outbound)</summary>
+    CHECKER,
 
-    /// <summary>Cất hàng vào vị trí</summary>
-    PUTAWAY,
+    /// <summary>Sắp xếp vị trí, xử lý kiểm kê</summary>
+    INVENTORY_OPERATOR,
 
-    /// <summary>Kiểm kê tồn kho</summary>
-    INVENTORY_COUNT
+    /// <summary>Nhân viên phổ thông — chỉ quản lý ca (Shift)</summary>
+    WAREHOUSE_WORKER,
 }
 
 public static class WarehouseSkillExtensions
 {
     public static readonly string[] AllCodes = new[]
     {
-        nameof(WarehouseSkill.CHECK_ORDER),
-        nameof(WarehouseSkill.PUTAWAY),
-        nameof(WarehouseSkill.INVENTORY_COUNT),
+        nameof(WarehouseSkill.CHECKER),
+        nameof(WarehouseSkill.INVENTORY_OPERATOR),
+        nameof(WarehouseSkill.WAREHOUSE_WORKER),
     };
 
     public static bool IsValid(string? code)
@@ -30,9 +29,9 @@ public static class WarehouseSkillExtensions
 
     public static string ToName(WarehouseSkill skill) => skill switch
     {
-        WarehouseSkill.CHECK_ORDER     => "Kiểm tra đơn hàng",
-        WarehouseSkill.PUTAWAY         => "Cất hàng vào vị trí",
-        WarehouseSkill.INVENTORY_COUNT => "Kiểm kê tồn kho",
-        _                              => skill.ToString()
+        WarehouseSkill.CHECKER            => "Kiểm tra / Nhận & Xuất hàng",
+        WarehouseSkill.INVENTORY_OPERATOR => "Vận hành kho",
+        WarehouseSkill.WAREHOUSE_WORKER   => "Nhân viên phổ thông",
+        _                                 => skill.ToString()
     };
 }

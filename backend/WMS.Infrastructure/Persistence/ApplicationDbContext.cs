@@ -50,8 +50,6 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<TaskType> TaskTypes { get; set; }
 
-    public virtual DbSet<TaskAssignment> TaskAssignments { get; set; }
-
     public virtual DbSet<WarehouseTask> WarehouseTasks { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
@@ -89,6 +87,9 @@ public class ApplicationDbContext : DbContext
     public virtual DbSet<RenterAsset> RenterAssets { get; set; }
 
     public virtual DbSet<RenterInventory> RenterInventories { get; set; }
+
+    public virtual DbSet<UnitTask> UnitTasks { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.ConfigureWarnings(warnings =>
@@ -551,8 +552,27 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ScheduledAt).HasColumnName("scheduled_at").IsRequired(false);
             entity.Property(e => e.Note).HasColumnName("note").IsRequired(false);
             entity.Property(e => e.IsAllZone).HasColumnName("is_all_zone").HasDefaultValue(false);
+            entity.Property(e => e.RefType).HasMaxLength(20).HasColumnName("ref_type").IsRequired(false);
+            entity.Property(e => e.RefId).HasColumnName("ref_id").IsRequired(false);
             entity.HasOne(e => e.Warehouse).WithMany(p => p.Tasks).HasForeignKey(e => e.WarehouseId);
             entity.HasOne(e => e.TaskType).WithMany(t => t.Tasks).HasForeignKey(e => e.TaskTypeId);
+        });
+
+        modelBuilder.Entity<UnitTask>(entity =>
+        {
+            entity.ToTable("unit_tasks");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("unit_task_id");
+            entity.Property(e => e.WarehouseTaskId).HasColumnName("warehouse_task_id");
+            entity.Property(e => e.UnitTaskTypeCode).HasMaxLength(50).HasColumnName("unit_task_type_code").IsRequired(false);
+            entity.Property(e => e.Order).HasColumnName("order").HasDefaultValue(0);
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("Pending").HasColumnName("status");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.CompletedAt).HasColumnName("completed_at").IsRequired(false);
+            entity.Property(e => e.CompletedBy).HasColumnName("completed_by").IsRequired(false);
+            entity.HasOne(e => e.WarehouseTask).WithMany(t => t.UnitTasks).HasForeignKey(e => e.WarehouseTaskId);
+            entity.HasOne(e => e.CompletedByUser).WithMany().HasForeignKey(e => e.CompletedBy).IsRequired(false);
         });
 
         modelBuilder.Entity<WarehouseMembership>(entity =>
@@ -624,19 +644,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
             entity.Property(e => e.SkillId).HasColumnName("skill_id").IsRequired(false);
             entity.HasOne(e => e.Skill).WithMany().HasForeignKey(e => e.SkillId).IsRequired(false);
-        });
-
-        modelBuilder.Entity<TaskAssignment>(entity =>
-        {
-            entity.ToTable("task_assignments");
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Id).HasColumnName("assignment_id");
-            entity.Property(e => e.TaskId).HasColumnName("task_id");
-            entity.Property(e => e.MembershipId).HasColumnName("membership_id");
-            entity.Property(e => e.AssignedAt).HasDefaultValueSql("(getdate())").HasColumnName("assigned_at");
-            entity.Property(e => e.CompletedAt).HasColumnName("completed_at");
-            entity.HasOne(e => e.Task).WithMany(t => t.Assignments).HasForeignKey(e => e.TaskId);
-            entity.HasOne(e => e.Membership).WithMany(m => m.TaskAssignments).HasForeignKey(e => e.MembershipId);
         });
 
         modelBuilder.Entity<WarehouseMembership>()

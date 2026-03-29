@@ -161,23 +161,30 @@ namespace WMS.Infrastructure.Persistence
                 context.SaveChanges();
             }
 
-            // Skills = bộ phận/phòng ban trong kho
+            // Skills = loại nhân viên theo chức năng (3 loại chuẩn)
             var skills = new[]
             {
-                new Skill { Code = "INBOUND",   Name = "Nhận hàng" },
-                new Skill { Code = "PUTAWAY",   Name = "Cất hàng vào vị trí" },
-                new Skill { Code = "PICKING",   Name = "Lấy hàng" },
-                new Skill { Code = "PACKING",   Name = "Đóng gói" },
-                new Skill { Code = "OUTBOUND",  Name = "Xuất hàng" },
-                new Skill { Code = "INVENTORY", Name = "Kiểm kê" },
-                new Skill { Code = "FORKLIFT",  Name = "Vận hành xe nâng" }
+                new Skill { Code = "CHECKER",            Name = "Kiểm tra / Nhận & Xuất hàng" },
+                new Skill { Code = "INVENTORY_OPERATOR", Name = "Vận hành kho (Vị trí & Kiểm kê)" },
+                new Skill { Code = "WAREHOUSE_WORKER",   Name = "Nhân viên phổ thông" }
             };
+            // Xoá skill cũ nếu còn tồn tại (migration từ 7 skills → 3 skills)
+            var oldCodes = new[] { "INBOUND", "PUTAWAY", "PICKING", "PACKING", "OUTBOUND", "INVENTORY", "FORKLIFT", "CHECK_ORDER", "INVENTORY_COUNT" };
+            var oldSkillIds = context.Skills.Where(s => oldCodes.Contains(s.Code)).Select(s => s.Id).ToList();
+            if (oldSkillIds.Any())
+            {
+                // Xoá join table rows trước để tránh FK violation (DeleteBehavior.NoAction)
+                var idList = string.Join(",", oldSkillIds);
+                context.Database.ExecuteSqlRaw($"DELETE FROM warehouse_membership_skills WHERE skill_id IN ({idList})");
+                context.Database.ExecuteSqlRaw($"UPDATE task_types SET skill_id = NULL WHERE skill_id IN ({idList})");
+                foreach (var old in context.Skills.Where(s => oldCodes.Contains(s.Code)).ToList())
+                    context.Skills.Remove(old);
+                context.SaveChanges();
+            }
             foreach (var skill in skills)
             {
                 if (!context.Skills.Any(s => s.Code == skill.Code))
-                {
                     context.Skills.Add(skill);
-                }
             }
             context.SaveChanges();
 
@@ -201,24 +208,88 @@ namespace WMS.Infrastructure.Persistence
             }
             context.SaveChanges();
 
-            var skInbound   = context.Skills.FirstOrDefault(s => s.Code == "INBOUND");
-            var skOutbound  = context.Skills.FirstOrDefault(s => s.Code == "OUTBOUND");
-            var skInventory = context.Skills.FirstOrDefault(s => s.Code == "INVENTORY");
-            var skForklift  = context.Skills.FirstOrDefault(s => s.Code == "FORKLIFT");
-            var skPicking   = context.Skills.FirstOrDefault(s => s.Code == "PICKING");
-            var skPacking   = context.Skills.FirstOrDefault(s => s.Code == "PACKING");
-            var skPutaway   = context.Skills.FirstOrDefault(s => s.Code == "PUTAWAY");
+            var skChecker   = context.Skills.FirstOrDefault(s => s.Code == "CHECKER");
+            var skInvOp     = context.Skills.FirstOrDefault(s => s.Code == "INVENTORY_OPERATOR");
+            var skWwWorker  = context.Skills.FirstOrDefault(s => s.Code == "WAREHOUSE_WORKER");
 
             var ttInbound  = context.TaskTypes.First(t => t.Code == "INBOUND");
             var ttOutbound = context.TaskTypes.First(t => t.Code == "OUTBOUND");
             var ttAudit    = context.TaskTypes.First(t => t.Code == "AUDIT");
             var ttEquip    = context.TaskTypes.First(t => t.Code == "EQUIP_MAINT");
 
-            if (ttInbound.SkillId  == null) { ttInbound.SkillId  = skInbound?.Id; }
-            if (ttOutbound.SkillId == null) { ttOutbound.SkillId = skOutbound?.Id; }
-            if (ttAudit.SkillId    == null) { ttAudit.SkillId    = skInventory?.Id; }
-            if (ttEquip.SkillId    == null) { ttEquip.SkillId    = skForklift?.Id; }
+            if (ttInbound.SkillId  == null) { ttInbound.SkillId  = skChecker?.Id; }
+            if (ttOutbound.SkillId == null) { ttOutbound.SkillId = skChecker?.Id; }
+            if (ttAudit.SkillId    == null) { ttAudit.SkillId    = skInvOp?.Id; }
+            if (ttEquip.SkillId    == null) { ttEquip.SkillId    = skWwWorker?.Id; }
             context.SaveChanges();
+
+            // ══════════════════════════════════════════════════
+            // 6b. SAMPLE TASKS + UNIT TASKS (for demo UI)
+            // ══════════════════════════════════════════════════
+            if (!context.WarehouseTasks.Any(t => t.WarehouseId == warehouse.WarehouseId))
+            {
+                var today = DateTime.UtcNow.Date;
+                var sampleTasks = new[]
+                {
+                    new { TypeId = ttInbound.Id,  TypeCode = "INBOUND",  Date = today, Note = "Nhập lô hàng điện tử từ nhà cung cấp ABC" },
+                    new { TypeId = ttOutbound.Id, TypeCode = "OUTBOUND", Date = today.AddDays(1), Note = "Xuất kho đơn hàng #2025-032 cho khách Nguyễn" },
+                    new { TypeId = ttAudit.Id,    TypeCode = "AUDIT",    Date = today.AddDays(2), Note = "Kiểm kê định kỳ quý I/2025" },
+                    new { TypeId = ttInbound.Id,  TypeCode = "INBOUND",  Date = today.AddDays(3), Note = "Nhập thêm hàng tiêu dùng từ kho B" },
+                    new { TypeId = ttOutbound.Id, TypeCode = "OUTBOUND", Date = today.AddDays(5), Note = "Xuất kho đơn hàng #2025-087" },
+                };
+
+                var unitSteps = new Dictionary<string, (string Code, string Desc, int Order)[]>
+                {
+                    ["INBOUND"]  = new[] {
+                        ("INBOUND_APPROVE",  "Duyệt đơn nhập kho",            1),
+                        ("INBOUND_RECEIVE",  "Tiếp nhận & xác nhận nhập kho", 2),
+                        ("INBOUND_PUTAWAY",  "Đặt hàng vào vị trí",           3),
+                    },
+                    ["OUTBOUND"] = new[] {
+                        ("OUTBOUND_APPROVE",  "Duyệt đơn xuất kho",           1),
+                        ("OUTBOUND_PICK",     "Lấy hàng từ vị trí (Picking)", 2),
+                        ("OUTBOUND_DISPATCH", "Xác nhận xuất kho",             3),
+                    },
+                    ["AUDIT"]    = new[] {
+                        ("AUDIT_OPEN",  "Mở phiên kiểm kê",       1),
+                        ("AUDIT_COUNT", "Nhập kết quả kiểm đếm",  2),
+                        ("AUDIT_CLOSE", "Đóng phiên kiểm kê",     3),
+                    },
+                };
+
+                foreach (var s in sampleTasks)
+                {
+                    var t = new WarehouseTask
+                    {
+                        WarehouseId = warehouse.WarehouseId,
+                        TaskTypeId  = s.TypeId,
+                        IsAllZone   = true,
+                        Note        = s.Note,
+                        ScheduledAt = s.Date.AddHours(8),
+                        Status      = "Pending",
+                        CreatedAt   = DateTime.UtcNow,
+                    };
+                    context.WarehouseTasks.Add(t);
+                    context.SaveChanges();
+
+                    if (unitSteps.TryGetValue(s.TypeCode, out var steps))
+                    {
+                        foreach (var (code, desc, order) in steps)
+                        {
+                            context.UnitTasks.Add(new UnitTask
+                            {
+                                WarehouseTaskId  = t.Id,
+                                UnitTaskTypeCode = code,
+                                Description      = desc,
+                                Order            = order,
+                                Status           = "Pending",
+                                CreatedAt        = DateTime.UtcNow,
+                            });
+                        }
+                        context.SaveChanges();
+                    }
+                }
+            }
 
             // ══════════════════════════════════════════════════
             // 7. WAREHOUSE ROLES
@@ -243,9 +314,9 @@ namespace WMS.Infrastructure.Persistence
             var staffWhRole    = context.WarehouseRoles.First(r => r.Code == "STAFF");
             var managerWhRole  = context.WarehouseRoles.First(r => r.Code == "MANAGER");
             var renterWhRole   = context.WarehouseRoles.First(r => r.Code == "RENTER");
-            var checkOrderSkill    = context.Skills.FirstOrDefault(s => s.Code == "CHECK_ORDER");
-            var putawaySkill       = context.Skills.FirstOrDefault(s => s.Code == "PUTAWAY");
-            var inventoryCountSkill = context.Skills.FirstOrDefault(s => s.Code == "INVENTORY_COUNT");
+            var checkerSkill      = context.Skills.FirstOrDefault(s => s.Code == "CHECKER");
+            var invOpSkill        = context.Skills.FirstOrDefault(s => s.Code == "INVENTORY_OPERATOR");
+            var wwSkill           = context.Skills.FirstOrDefault(s => s.Code == "WAREHOUSE_WORKER");
             var zoneAEntity    = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-A");
             var zoneBEntity    = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-B");
 
@@ -288,8 +359,7 @@ namespace WMS.Infrastructure.Persistence
             context.Entry(staffMembership).Collection(m => m.Zones).Load();
             if (!staffMembership.Skills.Any())
             {
-                if (skInbound != null)  staffMembership.Skills.Add(skInbound);
-                if (skForklift != null) staffMembership.Skills.Add(skForklift);
+                if (checkerSkill != null) staffMembership.Skills.Add(checkerSkill);
                 context.SaveChanges();
             }
             if (!staffMembership.Zones.Any())
@@ -577,7 +647,7 @@ namespace WMS.Infrastructure.Persistence
                     IsAllSkill        = false,
                     CreatedAt         = DateTime.UtcNow
                 };
-                if (putawaySkill != null) membership.Skills.Add(putawaySkill);
+                if (checkerSkill != null) membership.Skills.Add(checkerSkill);
                 context.WarehouseMemberships.Add(membership);
                 context.SaveChanges();
             }
@@ -819,51 +889,51 @@ namespace WMS.Infrastructure.Persistence
                 context.SaveChanges();
             }
             // ─── 30 nhân viên STAFF cho Kho Hà Nội ─────────────────────────────────────
-            // Skills chỉ gồm 3 giá trị chuẩn: CHECK_ORDER, PUTAWAY, INVENTORY_COUNT
+            // Skills: CHECKER, INVENTORY_OPERATOR, WAREHOUSE_WORKER
             var allSkills = context.Skills.ToList();
             var skillMap  = allSkills.ToDictionary(s => s.Code, s => s);
 
             var thirtyStaff = new[]
             {
-                // Nhân viên không có skill (general staff)
-                ("Nguyễn Thị Hương",   "staff01@owrms.com", "0901000001", new string[]{}),
-                ("Trần Văn Minh",      "staff02@owrms.com", "0901000002", new string[]{}),
-                // Nhân viên CHECK_ORDER
-                ("Lê Thị Lan",         "staff03@owrms.com", "0901000003", new[]{"CHECK_ORDER"}),
-                ("Phạm Đức Thắng",     "staff04@owrms.com", "0901000004", new[]{"CHECK_ORDER"}),
-                ("Hoàng Thị Thu",      "staff05@owrms.com", "0901000005", new[]{"CHECK_ORDER"}),
-                // Nhân viên PUTAWAY
-                ("Vũ Minh Tuấn",       "staff06@owrms.com", "0901000006", new[]{"PUTAWAY"}),
-                ("Đặng Thị Nga",       "staff07@owrms.com", "0901000007", new[]{"PUTAWAY"}),
-                ("Bùi Văn Hải",        "staff08@owrms.com", "0901000008", new[]{"PUTAWAY"}),
-                // Nhân viên INVENTORY_COUNT
-                ("Dương Thị Bích",     "staff09@owrms.com", "0901000009", new[]{"INVENTORY_COUNT"}),
-                ("Ngô Văn Khánh",      "staff10@owrms.com", "0901000010", new[]{"INVENTORY_COUNT"}),
-                ("Trịnh Thị Mai",      "staff11@owrms.com", "0901000011", new[]{"INVENTORY_COUNT"}),
-                // Nhân viên CHECK_ORDER + PUTAWAY
-                ("Đinh Văn Hùng",      "staff12@owrms.com", "0901000012", new[]{"CHECK_ORDER","PUTAWAY"}),
-                ("Lý Thị Quỳnh",       "staff13@owrms.com", "0901000013", new[]{"CHECK_ORDER","PUTAWAY"}),
-                ("Tăng Văn Phúc",      "staff14@owrms.com", "0901000014", new[]{"CHECK_ORDER","PUTAWAY"}),
-                // Nhân viên CHECK_ORDER + INVENTORY_COUNT
-                ("Cao Thị Hà",         "staff15@owrms.com", "0901000015", new[]{"CHECK_ORDER","INVENTORY_COUNT"}),
-                ("Phan Văn Đạt",       "staff16@owrms.com", "0901000016", new[]{"CHECK_ORDER","INVENTORY_COUNT"}),
-                ("Mai Thị Liên",       "staff17@owrms.com", "0901000017", new[]{"CHECK_ORDER","INVENTORY_COUNT"}),
-                // Nhân viên PUTAWAY + INVENTORY_COUNT
-                ("Lưu Văn Toàn",       "staff18@owrms.com", "0901000018", new[]{"PUTAWAY","INVENTORY_COUNT"}),
-                ("Đỗ Thị Phượng",      "staff19@owrms.com", "0901000019", new[]{"PUTAWAY","INVENTORY_COUNT"}),
-                ("Hồ Văn Long",        "staff20@owrms.com", "0901000020", new[]{"PUTAWAY","INVENTORY_COUNT"}),
-                // Nhân viên toàn skill
-                ("Từ Thị Nhung",       "staff21@owrms.com", "0901000021", new[]{"CHECK_ORDER","PUTAWAY","INVENTORY_COUNT"}),
-                ("Trương Văn Bình",    "staff22@owrms.com", "0901000022", new[]{"CHECK_ORDER","PUTAWAY","INVENTORY_COUNT"}),
-                ("Lâm Thị Kim",        "staff23@owrms.com", "0901000023", new[]{"CHECK_ORDER","PUTAWAY","INVENTORY_COUNT"}),
+                // Nhân viên không có skill (phổ thông)
+                ("Nguyễn Thị Hương",   "staff01@owrms.com", "0901000001", new[]{"WAREHOUSE_WORKER"}),
+                ("Trần Văn Minh",      "staff02@owrms.com", "0901000002", new[]{"WAREHOUSE_WORKER"}),
+                // Checker (Inbound / Outbound)
+                ("Lê Thị Lan",         "staff03@owrms.com", "0901000003", new[]{"CHECKER"}),
+                ("Phạm Đức Thắng",     "staff04@owrms.com", "0901000004", new[]{"CHECKER"}),
+                ("Hoàng Thị Thu",      "staff05@owrms.com", "0901000005", new[]{"CHECKER"}),
+                // Inventory Operator (Vị trí & Kiểm kê)
+                ("Vũ Minh Tuấn",       "staff06@owrms.com", "0901000006", new[]{"INVENTORY_OPERATOR"}),
+                ("Đặng Thị Nga",       "staff07@owrms.com", "0901000007", new[]{"INVENTORY_OPERATOR"}),
+                ("Bùi Văn Hải",        "staff08@owrms.com", "0901000008", new[]{"INVENTORY_OPERATOR"}),
+                // Warehouse Worker
+                ("Dương Thị Bích",     "staff09@owrms.com", "0901000009", new[]{"WAREHOUSE_WORKER"}),
+                ("Ngô Văn Khánh",      "staff10@owrms.com", "0901000010", new[]{"WAREHOUSE_WORKER"}),
+                ("Trịnh Thị Mai",      "staff11@owrms.com", "0901000011", new[]{"WAREHOUSE_WORKER"}),
+                // Checker + Inventory Operator
+                ("Đinh Văn Hùng",      "staff12@owrms.com", "0901000012", new[]{"CHECKER","INVENTORY_OPERATOR"}),
+                ("Lý Thị Quỳnh",       "staff13@owrms.com", "0901000013", new[]{"CHECKER","INVENTORY_OPERATOR"}),
+                ("Tăng Văn Phúc",      "staff14@owrms.com", "0901000014", new[]{"CHECKER","INVENTORY_OPERATOR"}),
+                // Checker + Warehouse Worker
+                ("Cao Thị Hà",         "staff15@owrms.com", "0901000015", new[]{"CHECKER","WAREHOUSE_WORKER"}),
+                ("Phan Văn Đạt",       "staff16@owrms.com", "0901000016", new[]{"CHECKER","WAREHOUSE_WORKER"}),
+                ("Mai Thị Liên",       "staff17@owrms.com", "0901000017", new[]{"CHECKER","WAREHOUSE_WORKER"}),
+                // Inventory Operator + Warehouse Worker
+                ("Lưu Văn Toàn",       "staff18@owrms.com", "0901000018", new[]{"INVENTORY_OPERATOR","WAREHOUSE_WORKER"}),
+                ("Đỗ Thị Phượng",      "staff19@owrms.com", "0901000019", new[]{"INVENTORY_OPERATOR","WAREHOUSE_WORKER"}),
+                ("Hồ Văn Long",        "staff20@owrms.com", "0901000020", new[]{"INVENTORY_OPERATOR","WAREHOUSE_WORKER"}),
+                // Toàn bộ
+                ("Từ Thị Nhung",       "staff21@owrms.com", "0901000021", new[]{"CHECKER","INVENTORY_OPERATOR","WAREHOUSE_WORKER"}),
+                ("Trương Văn Bình",    "staff22@owrms.com", "0901000022", new[]{"CHECKER","INVENTORY_OPERATOR","WAREHOUSE_WORKER"}),
+                ("Lâm Thị Kim",        "staff23@owrms.com", "0901000023", new[]{"CHECKER","INVENTORY_OPERATOR","WAREHOUSE_WORKER"}),
                 // Mix
-                ("Kiều Văn Sơn",       "staff24@owrms.com", "0901000024", new[]{"PUTAWAY"}),
-                ("Tô Thị Diệu",        "staff25@owrms.com", "0901000025", new[]{"CHECK_ORDER"}),
-                ("Ông Văn Thành",      "staff26@owrms.com", "0901000026", new[]{"INVENTORY_COUNT"}),
-                ("Mạc Thị Hồng",       "staff27@owrms.com", "0901000027", new string[]{}),
-                ("Ninh Văn Cường",     "staff28@owrms.com", "0901000028", new[]{"CHECK_ORDER","PUTAWAY"}),
-                ("Châu Thị Xuân",      "staff29@owrms.com", "0901000029", new[]{"PUTAWAY","INVENTORY_COUNT"}),
-                ("Quách Văn Nam",      "staff30@owrms.com", "0901000030", new[]{"CHECK_ORDER","INVENTORY_COUNT"}),
+                ("Kiều Văn Sơn",       "staff24@owrms.com", "0901000024", new[]{"INVENTORY_OPERATOR"}),
+                ("Tô Thị Diệu",        "staff25@owrms.com", "0901000025", new[]{"CHECKER"}),
+                ("Ông Văn Thành",      "staff26@owrms.com", "0901000026", new[]{"WAREHOUSE_WORKER"}),
+                ("Mạc Thị Hồng",       "staff27@owrms.com", "0901000027", new[]{"WAREHOUSE_WORKER"}),
+                ("Ninh Văn Cường",     "staff28@owrms.com", "0901000028", new[]{"CHECKER","INVENTORY_OPERATOR"}),
+                ("Châu Thị Xuân",      "staff29@owrms.com", "0901000029", new[]{"INVENTORY_OPERATOR","WAREHOUSE_WORKER"}),
+                ("Quách Văn Nam",      "staff30@owrms.com", "0901000030", new[]{"CHECKER","WAREHOUSE_WORKER"}),
             };
 
             foreach (var (fullName, email, phone, skillCodes) in thirtyStaff)

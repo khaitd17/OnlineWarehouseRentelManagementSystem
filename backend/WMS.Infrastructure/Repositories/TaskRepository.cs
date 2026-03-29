@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
+using WMS.Domain.Enums;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
@@ -12,43 +13,26 @@ public class TaskRepository : ITaskRepository
 
     public TaskRepository(ApplicationDbContext db) => _db = db;
 
-    public async Task<TaskListResult> GetTasksAsync(int warehouseId, int callerId, DateTime? weekStart, CancellationToken ct = default)
+    // ─── Get tasks by date range ───────────────────────────────────────────────
+    public async Task<List<TaskDto>> GetTasksAsync(
+        int warehouseId, DateTime startDate, DateTime endDate, CancellationToken ct = default)
     {
-        var caller = await _db.WarehouseMemberships
-            .Where(m => m.UserId == callerId && m.WarehouseId == warehouseId && m.IsActive)
-            .Include(m => m.Zones)
-            .FirstOrDefaultAsync(ct);
-
-        var q = _db.WarehouseTasks
-            .Where(t => t.WarehouseId == warehouseId)
+        var tasks = await _db.WarehouseTasks
+            .Where(t => t.WarehouseId == warehouseId
+                     && t.ScheduledAt.HasValue
+                     && t.ScheduledAt.Value >= startDate
+                     && t.ScheduledAt.Value <= endDate)
             .Include(t => t.TaskType)
             .Include(t => t.Zones)
-            .Include(t => t.Assignments).ThenInclude(a => a.Membership).ThenInclude(m => m!.User)
-            .AsQueryable();
+            .Include(t => t.UnitTasks)
+                .ThenInclude(u => u.CompletedByUser)
+            .OrderBy(t => t.ScheduledAt)
+            .ToListAsync(ct);
 
-        if (caller != null && !caller.IsAllZone)
-        {
-            var callerZoneIds = caller.Zones.Select(z => z.Id).ToList();
-            q = q.Where(t => t.IsAllZone || t.Zones.Any(z => callerZoneIds.Contains(z.Id)));
-        }
-
-        if (weekStart.HasValue)
-        {
-            var weekEnd = weekStart.Value.AddDays(7);
-            q = q.Where(t => t.ScheduledAt == null ||
-                (t.ScheduledAt >= weekStart.Value && t.ScheduledAt < weekEnd));
-        }
-
-        var tasks = await q.OrderBy(t => t.ScheduledAt).ToListAsync(ct);
-        var dtos = tasks.Select(MapToDto).ToList();
-
-        return new TaskListResult
-        {
-            Scheduled   = dtos.Where(t => t.ScheduledAt.HasValue).ToList(),
-            Unscheduled = dtos.Where(t => !t.ScheduledAt.HasValue).ToList(),
-        };
+        return tasks.Select(MapToDto).ToList();
     }
 
+    // ─── Get task types ────────────────────────────────────────────────────────
     public async Task<List<TaskTypeDto>> GetTaskTypesAsync(CancellationToken ct = default)
         => await _db.TaskTypes
             .Select(t => new TaskTypeDto
@@ -61,6 +45,7 @@ public class TaskRepository : ITaskRepository
             })
             .ToListAsync(ct);
 
+    // ─── Create task + auto-create UnitTasks ───────────────────────────────────
     public async Task<int> CreateTaskAsync(CreateTaskDto dto, CancellationToken ct = default)
     {
         var task = new WarehouseTask
@@ -70,7 +55,7 @@ public class TaskRepository : ITaskRepository
             IsAllZone   = dto.IsAllZone,
             Note        = dto.Note,
             ScheduledAt = dto.ScheduledAt,
-            Status      = "Pending",
+            Status      = nameof(WarehouseTaskStatus.Pending),
             CreatedAt   = DateTime.UtcNow,
         };
 
@@ -84,132 +69,173 @@ public class TaskRepository : ITaskRepository
 
         _db.WarehouseTasks.Add(task);
         await _db.SaveChangesAsync(ct);
+
+        // Auto-create UnitTasks based on TaskType.Code
+        var taskType = await _db.TaskTypes.FindAsync(new object[] { dto.TaskTypeId }, ct);
+        if (taskType != null)
+        {
+            var unitTypeCode = taskType.Code?.ToUpperInvariant();
+            var steps = GetUnitTaskSteps(unitTypeCode);
+            foreach (var (code, desc, order) in steps)
+            {
+                _db.UnitTasks.Add(new UnitTask
+                {
+                    WarehouseTaskId  = task.Id,
+                    UnitTaskTypeCode = code,
+                    Description      = desc,
+                    Order            = order,
+                    Status           = nameof(UnitTaskStatus.Pending),
+                    CreatedAt        = DateTime.UtcNow,
+                });
+            }
+            await _db.SaveChangesAsync(ct);
+        }
+
         return task.Id;
     }
 
+    // ─── Get warehouse id for a task ──────────────────────────────────────────
     public async Task<int?> GetTaskWarehouseIdAsync(int taskId, CancellationToken ct = default)
         => await _db.WarehouseTasks
             .Where(t => t.Id == taskId)
             .Select(t => (int?)t.WarehouseId)
             .FirstOrDefaultAsync(ct);
 
-    public async Task ScheduleAsync(int taskId, DateTime scheduledAt, CancellationToken ct = default)
+    // ─── Create workflow task from a business event ────────────────────────────
+    public async Task<int> CreateWorkflowTaskAsync(
+        string refType, int refId, int warehouseId, DateTime? scheduledAt = null, CancellationToken ct = default)
     {
-        var task = await _db.WarehouseTasks.FindAsync(new object[] { taskId }, ct)
-            ?? throw new KeyNotFoundException($"Task {taskId} không tồn tại.");
-        task.ScheduledAt = scheduledAt;
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task UnscheduleAsync(int taskId, CancellationToken ct = default)
-    {
-        var task = await _db.WarehouseTasks.FindAsync(new object[] { taskId }, ct)
-            ?? throw new KeyNotFoundException($"Task {taskId} không tồn tại.");
-        task.ScheduledAt = null;
-        await _db.SaveChangesAsync(ct);
-    }
-
-    public async Task AssignStaffAsync(int taskId, List<int> membershipIds, CancellationToken ct = default)
-    {
-        var task = await _db.WarehouseTasks
-            .Include(t => t.Assignments)
-            .FirstOrDefaultAsync(t => t.Id == taskId, ct)
-            ?? throw new KeyNotFoundException($"Task {taskId} không tồn tại.");
-
-        _db.TaskAssignments.RemoveRange(task.Assignments);
-        foreach (var id in membershipIds)
+        // Map refType → TaskType
+        var typeCode = refType.ToUpperInvariant() switch
         {
-            _db.TaskAssignments.Add(new TaskAssignment
+            "INBOUND"  => "INBOUND",
+            "OUTBOUND" => "OUTBOUND",
+            "AUDIT"    => "AUDIT",
+            _          => throw new ArgumentException($"Unknown refType: {refType}")
+        };
+
+        var taskType = await _db.TaskTypes
+            .FirstOrDefaultAsync(t => t.Code == typeCode, ct)
+            ?? throw new InvalidOperationException($"TaskType '{typeCode}' không tồn tại trong DB.");
+
+        var task = new WarehouseTask
+        {
+            WarehouseId = warehouseId,
+            TaskTypeId  = taskType.Id,
+            RefType     = refType.ToUpperInvariant(),
+            RefId       = refId,
+            IsAllZone   = true,
+            ScheduledAt = scheduledAt ?? DateTime.UtcNow,
+            Status      = nameof(WarehouseTaskStatus.Pending),
+            CreatedAt   = DateTime.UtcNow,
+        };
+
+        _db.WarehouseTasks.Add(task);
+        await _db.SaveChangesAsync(ct);
+
+        // Auto-create all UnitTasks for this workflow type
+        var steps = GetUnitTaskSteps(typeCode);
+        foreach (var (code, desc, order) in steps)
+        {
+            _db.UnitTasks.Add(new UnitTask
             {
-                TaskId       = taskId,
-                MembershipId = id,
-                AssignedAt   = DateTime.UtcNow,
-                Status       = "Assigned",
+                WarehouseTaskId  = task.Id,
+                UnitTaskTypeCode = code,
+                Description      = desc,
+                Order            = order,
+                Status           = nameof(UnitTaskStatus.Pending),
+                CreatedAt        = DateTime.UtcNow,
             });
         }
         await _db.SaveChangesAsync(ct);
+
+        return task.Id;
     }
 
-    public async Task<List<EligibleStaffDto>> GetEligibleStaffAsync(int taskId, int? callerId = null, CancellationToken ct = default)
+    // ─── Complete a UnitTask from a business screen ────────────────────────────
+    public async Task CompleteUnitTaskAsync(
+        string refType, int refId, string unitTaskTypeCode, int performedById, CancellationToken ct = default)
     {
         var task = await _db.WarehouseTasks
-            .Include(t => t.TaskType)
-            .FirstOrDefaultAsync(t => t.Id == taskId, ct)
-            ?? throw new KeyNotFoundException($"Task {taskId} không tồn tại.");
+            .Include(t => t.UnitTasks)
+            .FirstOrDefaultAsync(
+                t => t.RefType == refType.ToUpperInvariant() && t.RefId == refId, ct)
+            ?? throw new KeyNotFoundException(
+                $"Không tìm thấy WarehouseTask cho refType='{refType}', refId={refId}.");
 
-        var q = _db.WarehouseMemberships
-            .Where(m => m.WarehouseId == task.WarehouseId && m.IsActive && m.Role.Code == "STAFF")
-            .Include(m => m.User)
-            .Include(m => m.Skills)
-            .Include(m => m.Zones)
-            .Include(m => m.Role)
-            .AsQueryable();
+        var unitTask = task.UnitTasks
+            .FirstOrDefault(u => u.UnitTaskTypeCode == unitTaskTypeCode)
+            ?? throw new KeyNotFoundException(
+                $"Không tìm thấy UnitTask '{unitTaskTypeCode}' trong task #{task.Id}.");
 
-        if (!task.TaskType.IsAllSkill && task.TaskType.SkillId.HasValue)
-        {
-            var requiredSkillId = task.TaskType.SkillId.Value;
-            q = q.Where(m => m.IsAllSkill || m.Skills.Any(s => s.Id == requiredSkillId));
-        }
+        unitTask.Status      = nameof(UnitTaskStatus.Done);
+        unitTask.CompletedAt = DateTime.UtcNow;
+        unitTask.CompletedBy = performedById;
 
-        if (callerId.HasValue)
-        {
-            var caller = await _db.WarehouseMemberships
-                .Where(m => m.UserId == callerId.Value && m.WarehouseId == task.WarehouseId && m.IsActive)
-                .Include(m => m.Role)
-                .Include(m => m.Skills)
-                .Include(m => m.Zones)
-                .FirstOrDefaultAsync(ct);
+        // Cập nhật status của WarehouseTask = bước vừa hoàn thành
+        // Nếu toàn bộ UnitTask đã Done → đánh dấu task tổng là Done
+        var allDone = task.UnitTasks.All(u =>
+            u.UnitTaskTypeCode == unitTaskTypeCode
+            || u.Status == nameof(UnitTaskStatus.Done));
 
-            if (caller != null && caller.Role.Code == "MANAGER")
-            {
-                var callerSkillIds = caller.Skills.Select(s => s.Id).ToList();
-                var callerZoneIds  = caller.Zones.Select(z => z.Id).ToList();
-                bool allSkill = caller.IsAllSkill;
-                bool allZone  = caller.IsAllZone;
+        task.Status = allDone
+            ? nameof(WarehouseTaskStatus.Done)
+            : unitTaskTypeCode;
 
-                q = q.Where(m =>
-                    (allSkill && allZone) ||
-                    (allSkill  && (m.IsAllZone  || m.Zones.Any(z  => callerZoneIds.Contains(z.Id))))  ||
-                    (allZone   && (m.IsAllSkill || m.Skills.Any(s => callerSkillIds.Contains(s.Id)))) ||
-                    (!allSkill && !allZone && (
-                        m.Skills.Any(s => callerSkillIds.Contains(s.Id)) ||
-                        m.Zones.Any(z  => callerZoneIds.Contains(z.Id))
-                    ))
-                );
-            }
-        }
-
-        return await q.Select(m => new EligibleStaffDto
-        {
-            MembershipId = m.Id,
-            FullName     = m.User!.FullName,
-            Email        = m.User.Email,
-            RoleCode     = m.Role.Code,
-            Skills       = m.Skills.Select(s => s.Name).ToList(),
-        }).ToListAsync(ct);
+        await _db.SaveChangesAsync(ct);
     }
 
+    // ─── Helper: unit task step definitions ───────────────────────────────────
+    private static List<(string Code, string Desc, int Order)> GetUnitTaskSteps(string? typeCode)
+        => typeCode switch
+        {
+            "INBOUND" =>
+            [
+                (nameof(UnitTaskTypeCode.INBOUND_APPROVE),  "Duyệt đơn nhập kho",            1),
+                (nameof(UnitTaskTypeCode.INBOUND_RECEIVE),  "Tiếp nhận & xác nhận nhập kho", 2),
+                (nameof(UnitTaskTypeCode.INBOUND_PUTAWAY),  "Đặt hàng vào vị trí",           3),
+            ],
+            "OUTBOUND" =>
+            [
+                (nameof(UnitTaskTypeCode.OUTBOUND_APPROVE),  "Duyệt đơn xuất kho",             1),
+                (nameof(UnitTaskTypeCode.OUTBOUND_PICK),     "Lấy hàng từ vị trí (Picking)",   2),
+                (nameof(UnitTaskTypeCode.OUTBOUND_DISPATCH), "Xác nhận xuất kho",               3),
+            ],
+            "AUDIT" =>
+            [
+                (nameof(UnitTaskTypeCode.AUDIT_OPEN),  "Mở phiên kiểm kê",       1),
+                (nameof(UnitTaskTypeCode.AUDIT_COUNT), "Nhập kết quả kiểm đếm",  2),
+                (nameof(UnitTaskTypeCode.AUDIT_CLOSE), "Đóng phiên kiểm kê",     3),
+            ],
+            _ => []
+        };
+
+    // ─── Mapping ───────────────────────────────────────────────────────────────
     private static TaskDto MapToDto(WarehouseTask t) => new()
     {
-        Id                 = t.Id,
-        WarehouseId        = t.WarehouseId,
-        TaskTypeId         = t.TaskTypeId,
-        TaskTypeCode       = t.TaskType.Code,
-        TaskTypeName       = t.TaskType.Name,
-        TaskTypeIsAllSkill = t.TaskType.IsAllSkill,
-        Status             = t.Status,
-        ScheduledAt        = t.ScheduledAt,
-        Note               = t.Note,
-        IsAllZone          = t.IsAllZone,
-        CreatedAt          = t.CreatedAt,
-        Zones = t.Zones.Select(z => new ZoneItemDto { Id = z.Id, Code = z.Code, Name = z.Name }).ToList(),
-        Assignments = t.Assignments.Select(a => new AssignmentDto
+        Id           = t.Id,
+        WarehouseId  = t.WarehouseId,
+        TaskTypeId   = t.TaskTypeId,
+        TaskTypeCode = t.TaskType.Code,
+        TaskTypeName = t.TaskType.Name,
+        Status       = t.Status,
+        RefType      = t.RefType,
+        RefId        = t.RefId,
+        ScheduledAt  = t.ScheduledAt,
+        Note         = t.Note,
+        IsAllZone    = t.IsAllZone,
+        CreatedAt    = t.CreatedAt,
+        Zones        = t.Zones.Select(z => new ZoneItemDto { Id = z.Id, Code = z.Code, Name = z.Name }).ToList(),
+        UnitTasks    = t.UnitTasks.OrderBy(u => u.Order).Select(u => new UnitTaskDto
         {
-            AssignmentId = a.Id,
-            MembershipId = a.MembershipId,
-            UserFullName = a.Membership?.User?.FullName ?? "",
-            UserEmail    = a.Membership?.User?.Email    ?? "",
-            Status       = a.Status,
+            Id               = u.Id,
+            UnitTaskTypeCode = u.UnitTaskTypeCode,
+            Order            = u.Order,
+            Description      = u.Description,
+            Status           = u.Status,
+            CompletedAt      = u.CompletedAt,
+            CompletedById    = u.CompletedBy,
+            CompletedByName  = u.CompletedByUser?.FullName,
         }).ToList(),
     };
 }

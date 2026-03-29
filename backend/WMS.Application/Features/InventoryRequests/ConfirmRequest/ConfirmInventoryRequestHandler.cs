@@ -20,19 +20,22 @@ public class ConfirmInventoryRequestHandler
     private readonly IInventoryTransactionRepository _txRepo;
     private readonly IWarehouseRepository _warehouseRepo;
     private readonly IRenterAssetRepository _assetRepo;
+    private readonly ITaskRepository _taskRepo;
 
     public ConfirmInventoryRequestHandler(
         IInventoryRequestRepository repo,
         IWarehouseInventoryRepository invRepo,
         IInventoryTransactionRepository txRepo,
         IWarehouseRepository warehouseRepo,
-        IRenterAssetRepository assetRepo)
+        IRenterAssetRepository assetRepo,
+        ITaskRepository taskRepo)
     {
         _repo          = repo;
         _invRepo       = invRepo;
         _txRepo        = txRepo;
         _warehouseRepo = warehouseRepo;
         _assetRepo     = assetRepo;
+        _taskRepo      = taskRepo;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -127,6 +130,16 @@ public class ConfirmInventoryRequestHandler
         req.ConfirmedAt = DateTime.Now;
         req.UpdatedAt   = DateTime.Now;
         await _repo.UpdateAsync(req, cancellationToken);
+
+        // Đóng UnitTask bước tiếp nhận hàng. Bước putaway/dispatch là màn hình riêng biệt.
+        if (req.Type == "INBOUND")
+        {
+            try { await _taskRepo.CompleteUnitTaskAsync("INBOUND", req.InvReqId, "INBOUND_RECEIVE", cmd.StaffId, cancellationToken); } catch { }
+        }
+        else if (req.Type == "OUTBOUND")
+        {
+            try { await _taskRepo.CompleteUnitTaskAsync("OUTBOUND", req.InvReqId, "OUTBOUND_PICK", cmd.StaffId, cancellationToken); } catch { }
+        }
 
         var updated = await _repo.GetByIdAsync(req.InvReqId, cancellationToken);
         return InventoryRequestMapper.ToDto(updated!);
