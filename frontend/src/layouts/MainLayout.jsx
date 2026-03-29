@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import favoritesService from '../services/favoritesService';
+import OWRMSLogo from '../components/OWRMSLogo';
 
 const DASHBOARD_PATHS = [
   '/dashboard', '/my-warehouses', '/post-warehouse', '/create-warehouse',
@@ -43,15 +44,39 @@ const NAV_STYLES = `
     border-bottom: 1px solid rgba(255,255,255,0.08);
   }
 
-  .nav-logo img {
-    height: 72px;
-    width: 72px;
-    object-fit: contain;
-    filter: drop-shadow(0 0 8px rgba(0, 180, 255, 0.25));
-    transition: filter 0.3s ease;
+  .nav-logo {
+    cursor: pointer;
   }
-  .nav-logo img:hover {
-    filter: drop-shadow(0 0 14px rgba(0, 200, 255, 0.5));
+  .owrms-logo-svg {
+    height: 64px;
+    width: 64px;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+  .owrms-logo-svg:hover .logo-ring-1 {
+    filter: drop-shadow(0 0 6px #00d2ff);
+  }
+  @keyframes logo-spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes logo-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  @keyframes logo-pulse-glow {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+  .logo-ring-rotate {
+    transform-origin: 50% 50%;
+    animation: logo-spin 8s linear infinite;
+  }
+  .logo-icon-float {
+    transform-origin: 50% 65%;
+    animation: logo-float 3.5s ease-in-out infinite;
+  }
+  .logo-glow-pulse {
+    animation: logo-pulse-glow 2.8s ease-in-out infinite;
   }
 
   .nav-links {
@@ -495,15 +520,9 @@ const MainLayout = () => {
           </button>
         </div>
 
-        {/* Logo */}
+        {/* Logo (mobile drawer) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
-          <div style={{
-            width: '36px', height: '36px',
-            background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
-            borderRadius: '10px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.1rem', flexShrink: 0,
-          }}>🏭</div>
+          <OWRMSLogo size={40} variant="mini" />
           <span style={{ fontSize: '1.1rem', fontWeight: 800, background: 'linear-gradient(90deg, #fff, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>OWRMS</span>
         </div>
 
@@ -547,7 +566,7 @@ const MainLayout = () => {
         {/* Left: Logo + Desktop Nav Links */}
         <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
           <Link to="/" className="nav-logo" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-            <img src="/owrms-logo.png" alt="OWRMS" />
+            <OWRMSLogo size={64} variant="mini" />
           </Link>
           <div className="nav-links">
             <Link to="/" className={`nav-link${isActive('/') ? ' active' : ''}`}>Trang chủ</Link>
@@ -614,13 +633,7 @@ const MainLayout = () => {
         <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '3rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <div style={{
-                width: '36px', height: '36px',
-                background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
-                borderRadius: '10px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.1rem',
-              }}>🏭</div>
+              <OWRMSLogo size={40} variant="mini" />
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, background: 'linear-gradient(90deg, #fff, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>OWRMS</h3>
             </div>
             <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.88rem', lineHeight: '1.65', margin: 0 }}>
