@@ -116,6 +116,30 @@ namespace WMS.Application.Features.Staff.CreateStaff
                 );
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);
+
+                // Gửi email mật khẩu tạm — bọc try/catch để lỗi email không block luồng chính
+                try
+                {
+                    var subject = "[OWRMS] Tài khoản nhân viên đã được tạo";
+                    var htmlBody = $@"
+<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e2e8f0;border-radius:12px;border-top:4px solid #4f46e5'>
+  <h2 style='color:#1a1a2e'>Chào mừng, {request.FullName}!</h2>
+  <p style='color:#374151'>Tài khoản nhân viên của bạn trên hệ thống <strong>OWRMS</strong> đã được tạo thành công.</p>
+  <div style='background:#f5f3ff;padding:16px 20px;border-radius:8px;margin:20px 0;border-left:4px solid #4f46e5'>
+    <p style='margin:0 0 8px;color:#6b7280;font-size:13px;text-transform:uppercase;letter-spacing:.04em'>Thông tin đăng nhập</p>
+    <p style='margin:0 0 4px'><strong>Email:</strong> {request.Email}</p>
+    <p style='margin:0'><strong>Mật khẩu tạm:</strong> <span style='font-family:monospace;font-size:16px;color:#4f46e5'>{rawPassword}</span></p>
+  </div>
+  <p style='color:#ef4444;font-size:13px'>⚠️ Vui lòng đổi mật khẩu ngay sau lần đăng nhập đầu tiên.</p>
+  <hr style='border:none;border-top:1px solid #f1f5f9;margin:20px 0'>
+  <p style='color:#94a3b8;font-size:12px'>© 2024 Online Warehouse Rental Management System (OWRMS)</p>
+</div>";
+                    await _emailService.SendInfo(request.Email, request.FullName, subject, htmlBody);
+                }
+                catch
+                {
+                    // Email gửi thất bại: không block tạo nhân viên, ghi log nếu cần
+                }
             }
             else
             {

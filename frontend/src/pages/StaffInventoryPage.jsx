@@ -142,7 +142,7 @@ const StaffInventoryPage = () => {
           </div>
           {whName && (
             <span style={{ padding:'6px 16px', borderRadius:20, background:'#e0f7fa', color:'#0ea5e9', fontWeight:700, fontSize:'0.82rem', border:'1.5px solid #b2ebf2', alignSelf:'flex-start' }}>
-              🏪 {whName}
+              {whName}
             </span>
           )}
         </div>
@@ -154,7 +154,7 @@ const StaffInventoryPage = () => {
           {warehouses.map(w => (
             <button key={w.id} onClick={() => { setSelectedWh(w.id); setSearchItem(''); setSearchRenter(''); }}
               style={{ padding:'7px 18px', borderRadius:20, border:`1.5px solid ${selectedWh===w.id?ACCENT:'#e2e8f0'}`, background:selectedWh===w.id?ACCENT:'#fff', color:selectedWh===w.id?'#fff':'#64748b', fontWeight:700, fontSize:'0.83rem', cursor:'pointer', transition:'all 0.15s' }}>
-              🏪 {w.name}
+              {w.name}
             </button>
           ))}
         </div>
@@ -163,12 +163,14 @@ const StaffInventoryPage = () => {
       {/* ── Stat Cards ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:24 }}>
         {[
-          { emoji:'👥', label:'Người thuê',    val: renterSet.size,                    color:'#8b5cf6' },
-          { emoji:'📦', label:'Loại hàng hóa', val: filtered.length,                  color:ACCENT },
-          { emoji:'🔢', label:'Tổng số lượng', val: totalQty.toLocaleString('vi-VN'), color:'#22c55e' },
-        ].map(({emoji,label,val,color})=>(
+          { label:'Người thuê',    val: renterSet.size,                    color:'#8b5cf6' },
+          { label:'Loại hàng hóa', val: filtered.length,                  color:ACCENT },
+          { label:'Tổng số lượng', val: totalQty.toLocaleString('vi-VN'), color:'#22c55e' },
+        ].map(({label,val,color})=>(
           <div key={label} style={{ ...card, padding:'18px 22px', display:'flex', alignItems:'center', gap:14 }}>
-            <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.3rem', flexShrink:0 }}>{emoji}</div>
+            <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <div style={{ width:10, height:10, borderRadius:'50%', background:color }} />
+            </div>
             <div>
               <p style={{ margin:0, fontSize:'0.75rem', color:'#64748b', fontWeight:500 }}>{label}</p>
               <p style={{ margin:0, fontSize:'1.75rem', fontWeight:900, color:'#0f172a', lineHeight:1.1 }}>{val}</p>
@@ -181,13 +183,13 @@ const StaffInventoryPage = () => {
       <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', flex:1 }}>
           <div style={{ position:'relative', flex:'1 1 200px', maxWidth:280 }}>
-            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}>📦</span>
+            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize:'0.8rem' }}>H</span>
             <input value={searchItem} onChange={e=>setSearchItem(e.target.value)} placeholder="Tìm theo tên hàng..."
               style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px 9px 32px', borderRadius:10, border:'1.5px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s' }}
               onFocus={e=>e.target.style.borderColor=ACCENT} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
           </div>
           <div style={{ position:'relative', flex:'1 1 200px', maxWidth:280 }}>
-            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}>👤</span>
+            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize:'0.8rem' }}>N</span>
             <input value={searchRenter} onChange={e=>setSearchRenter(e.target.value)} placeholder="Tìm theo người thuê..."
               style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px 9px 32px', borderRadius:10, border:'1.5px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s' }}
               onFocus={e=>e.target.style.borderColor=ACCENT} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
@@ -204,7 +206,7 @@ const StaffInventoryPage = () => {
             style={{ padding:'9px 16px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', color:'#64748b', fontSize:'0.83rem', fontWeight:600, display:'flex', alignItems:'center', gap:5, transition:'all 0.15s', flexShrink:0 }}
             onMouseEnter={e=>{e.currentTarget.style.background='#f1f5f9';e.currentTarget.style.borderColor='#cbd5e1';}}
             onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.borderColor='#e2e8f0';}}>
-            🔄 Làm mới
+            Làm mới
           </button>
         </div>
       </div>
@@ -218,12 +220,10 @@ const StaffInventoryPage = () => {
           </div>
         ) : loading ? (
           <div style={{ padding:64, textAlign:'center', color:'#94a3b8' }}>
-            <div style={{ fontSize:'2rem', marginBottom:10, animation:'spin 1.2s linear infinite', display:'inline-block' }}>⏳</div>
             <div style={{ fontWeight:500 }}>Đang tải dữ liệu...</div>
           </div>
         ) : error ? (
           <div style={{ padding:64, textAlign:'center' }}>
-            <div style={{ fontSize:'2.5rem', marginBottom:10 }}>⚠️</div>
             <p style={{ fontWeight:600, color:'#dc2626', margin:'0 0 12px' }}>{error}</p>
             <button onClick={fetchInventory}
               style={{ padding:'9px 22px', borderRadius:10, border:'none', background:'#dc2626', color:'#fff', fontWeight:700, cursor:'pointer' }}>
@@ -232,7 +232,6 @@ const StaffInventoryPage = () => {
           </div>
         ) : sorted.length === 0 ? (
           <div style={{ padding:72, textAlign:'center' }}>
-            <div style={{ fontSize:'3rem', marginBottom:12 }}>📦</div>
             <p style={{ fontWeight:700, color:'#0f172a', margin:'0 0 6px', fontSize:'1rem' }}>Kho chưa có hàng hoá</p>
             <p style={{ color:'#94a3b8', fontSize:'0.87rem', margin:0 }}>
               Chưa có yêu cầu nào được hoàn thành hoặc kho chưa có hàng lưu trữ.
@@ -268,7 +267,9 @@ const StaffInventoryPage = () => {
                     {/* Người thuê */}
                     <td style={{ padding:'13px 16px' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <div style={{ width:32, height:32, borderRadius:'50%', background:'#ede9fe', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:'0.9rem' }}>👤</div>
+                        <div style={{ width:32, height:32, borderRadius:'50%', background:'#ede9fe', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:'0.75rem', fontWeight:700, color:'#7c3aed' }}>
+                          {(row.renterName||'?')[0].toUpperCase()}
+                        </div>
                         <div>
                           <div style={{ fontSize:'0.85rem', fontWeight:600, color:'#1e293b' }}>{row.renterName}</div>
                           <div style={{ fontSize:'0.72rem', color:'#94a3b8' }}>{row.renterEmail}</div>
@@ -294,7 +295,7 @@ const StaffInventoryPage = () => {
                 tổng <strong style={{ color:'#64748b' }}>{totalQty.toLocaleString('vi-VN')}</strong>
               </span>
               {outOfStock > 0 && (
-                <span style={{ fontSize:'0.75rem', color:'#dc2626', fontWeight:600 }}>⚠ {outOfStock} loại hết hàng</span>
+                <span style={{ fontSize:'0.75rem', color:'#dc2626', fontWeight:600 }}>{outOfStock} loại hết hàng</span>
               )}
             </div>
           </>

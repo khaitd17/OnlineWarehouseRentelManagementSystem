@@ -17,9 +17,15 @@ public class ApproveInventoryRequestHandler
     : IRequestHandler<ApproveInventoryRequestCommand, InventoryRequestDto>
 {
     private readonly IInventoryRequestRepository _repo;
+    private readonly ITaskRepository _taskRepo;
 
-    public ApproveInventoryRequestHandler(IInventoryRequestRepository repo)
-        => _repo = repo;
+    public ApproveInventoryRequestHandler(
+        IInventoryRequestRepository repo,
+        ITaskRepository taskRepo)
+    {
+        _repo     = repo;
+        _taskRepo = taskRepo;
+    }
 
     public async Task<InventoryRequestDto> Handle(
         ApproveInventoryRequestCommand cmd, CancellationToken cancellationToken)
@@ -41,6 +47,13 @@ public class ApproveInventoryRequestHandler
                 : $"[ĐÃ DUYỆT] {cmd.Note}\n{req.Notes}";
 
         await _repo.UpdateAsync(req, cancellationToken);
+
+        // Đóng UnitTask tương ứng với bước duyệt đơn
+        var approveCode = req.Type == "OUTBOUND"
+            ? "OUTBOUND_APPROVE"
+            : "INBOUND_APPROVE";
+        try { await _taskRepo.CompleteUnitTaskAsync(req.Type, req.InvReqId, approveCode, cmd.ManagerId, cancellationToken); }
+        catch { /* Task không tìm thấy — không chặn nghiệp vụ */ }
 
         var updated = await _repo.GetByIdAsync(req.InvReqId, cancellationToken);
         return InventoryRequestMapper.ToDto(updated!);

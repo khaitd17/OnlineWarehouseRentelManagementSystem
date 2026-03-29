@@ -37,17 +37,20 @@ public class CreateInventoryRequestHandler
     private readonly IWarehouseInventoryRepository _invRepo;
     private readonly IWarehouseRepository _warehouseRepo;
     private readonly IRenterAssetRepository _assetRepo;
+    private readonly ITaskRepository _taskRepo;
 
     public CreateInventoryRequestHandler(
         IInventoryRequestRepository repo,
         IWarehouseInventoryRepository invRepo,
         IWarehouseRepository warehouseRepo,
-        IRenterAssetRepository assetRepo)
+        IRenterAssetRepository assetRepo,
+        ITaskRepository taskRepo)
     {
         _repo          = repo;
         _invRepo       = invRepo;
         _warehouseRepo = warehouseRepo;
         _assetRepo     = assetRepo;
+        _taskRepo      = taskRepo;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -136,7 +139,16 @@ public class CreateInventoryRequestHandler
         };
 
         var created = await _repo.CreateAsync(request, cancellationToken);
-        var full    = await _repo.GetByIdAsync(created.InvReqId, cancellationToken);
+
+        // Tự động tạo WarehouseTask + UnitTasks phản chiếu luồng nghiệp vụ
+        await _taskRepo.CreateWorkflowTaskAsync(
+            cmd.Type.ToUpper(),
+            created.InvReqId,
+            cmd.WarehouseId,
+            created.CreatedAt,          // ScheduledAt gắn với ngày tạo đơn
+            cancellationToken);
+
+        var full = await _repo.GetByIdAsync(created.InvReqId, cancellationToken);
         return InventoryRequestMapper.ToDto(full!);
     }
 }

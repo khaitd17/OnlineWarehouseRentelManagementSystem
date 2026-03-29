@@ -4,7 +4,7 @@ using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Tasks.GetTasks;
 
-public class GetTasksHandler : IRequestHandler<GetTasksQuery, TaskListResult>
+public class GetTasksHandler : IRequestHandler<GetTasksQuery, List<TaskDto>>
 {
     private readonly ITaskRepository _repo;
     private readonly IStaffMembershipRepository _membershipRepo;
@@ -15,7 +15,7 @@ public class GetTasksHandler : IRequestHandler<GetTasksQuery, TaskListResult>
         _membershipRepo = membershipRepo;
     }
 
-    public async Task<TaskListResult> Handle(GetTasksQuery request, CancellationToken ct)
+    public async Task<List<TaskDto>> Handle(GetTasksQuery request, CancellationToken ct)
     {
         var caller = await _membershipRepo.GetCallerMembershipAsync(request.CallerId, request.WarehouseId, ct)
             ?? throw new UnauthorizedAccessException("Bạn không có quyền trong kho này.");
@@ -24,6 +24,6 @@ public class GetTasksHandler : IRequestHandler<GetTasksQuery, TaskListResult>
         if (!allowedRoles.Contains(caller.RoleCode))
             throw new UnauthorizedAccessException("Chỉ Manager/Operator mới có quyền xem task.");
 
-        return await _repo.GetTasksAsync(request.WarehouseId, request.CallerId, request.WeekStart, ct);
+        return await _repo.GetTasksAsync(request.WarehouseId, request.StartDate, request.EndDate, ct);
     }
 }

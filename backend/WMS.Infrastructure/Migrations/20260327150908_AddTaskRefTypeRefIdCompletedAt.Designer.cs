@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WMS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260327150908_AddTaskRefTypeRefIdCompletedAt")]
+    partial class AddTaskRefTypeRefIdCompletedAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1793,10 +1796,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("completed_at");
 
-                    b.Property<int?>("CompletedBy")
-                        .HasColumnType("int")
-                        .HasColumnName("completed_by");
-
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -1832,8 +1831,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("warehouse_task_id");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CompletedBy");
 
                     b.HasIndex("WarehouseTaskId");
 
@@ -3229,18 +3226,11 @@ namespace WMS.Infrastructure.Migrations
 
             modelBuilder.Entity("WMS.Domain.Entities.UnitTask", b =>
                 {
-                    b.HasOne("WMS.Domain.Entities.User", "CompletedByUser")
-                        .WithMany()
-                        .HasForeignKey("CompletedBy")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("WMS.Domain.Entities.WarehouseTask", "WarehouseTask")
                         .WithMany("UnitTasks")
                         .HasForeignKey("WarehouseTaskId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
-
-                    b.Navigation("CompletedByUser");
 
                     b.Navigation("WarehouseTask");
                 });
