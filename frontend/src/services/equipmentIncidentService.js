@@ -35,6 +35,17 @@ const equipmentIncidentService = {
       content
     });
     return res.data;
+  },
+
+  uploadAttachments: async (files) => {
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+      formData.append('files', files[i]);
+    }
+    const res = await axiosClient.post('/Upload/incident-attachments', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data.attachments; // [{ fileUrl, fileType }]
   }
 };
 
