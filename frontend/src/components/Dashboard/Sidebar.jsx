@@ -71,6 +71,7 @@ const MENU_BY_ROLE = {
     { icon: "history",                 label: "Lịch sử nhập/xuất kho",   path: "/renter-inventory-history" },
     { icon: "inventory",               label: "Tồn kho của tôi",          path: "/renter-inventory" },
     { icon: "fact_check",              label: "Kiểm kê kho",             path: "/renter-audit-sessions" },
+    { icon: "precision_manufacturing", label: "Quản lý thiết bị",        path: "/equipment-management" },
     { icon: "receipt_long",            label: "Lịch sử thanh toán",      path: "/payment-history",          section: "TÀI CHÍNH" },
     { icon: "star",                    label: "Đánh giá của tôi",        path: "/my-ratings",               badgeKey: "unratedCount" },
     { icon: "settings",                label: "Cài đặt",                 path: "/settings",                 isBottom: true },
