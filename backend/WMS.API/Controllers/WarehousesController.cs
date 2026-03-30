@@ -56,20 +56,30 @@ public class WarehouseController : ControllerBase
     [HttpGet("approved/search")]
     [AllowAnonymous]
     public async Task<IActionResult> SearchWarehouses(
-        [FromQuery] string? province,
-        [FromQuery] string? warehouseType,
-        [FromQuery] double? minArea,
-        [FromQuery] double? maxArea,
-        [FromQuery] string? sortBy = "newest",
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 12)
+        [FromQuery] string?  province,
+        [FromQuery] string?  district,
+        [FromQuery] string?  warehouseType,
+        [FromQuery] double?  minArea,
+        [FromQuery] double?  maxArea,
+        [FromQuery] decimal? minPrice,
+        [FromQuery] decimal? maxPrice,
+        [FromQuery] bool?    is24Hours,
+        [FromQuery] double?  minRating,
+        [FromQuery] string?  sortBy   = "newest",
+        [FromQuery] int      page     = 1,
+        [FromQuery] int      pageSize = 12)
     {
         var result = await _mediator.Send(new SearchWarehousesQuery
         {
             Province      = province,
+            District      = district,
             WarehouseType = warehouseType,
             MinArea       = minArea,
             MaxArea       = maxArea,
+            MinPrice      = minPrice,
+            MaxPrice      = maxPrice,
+            Is24Hours     = is24Hours,
+            MinRating     = minRating,
             SortBy        = sortBy,
             Page          = page,
             PageSize      = pageSize

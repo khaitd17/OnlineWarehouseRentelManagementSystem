@@ -17,18 +17,28 @@ export const getFeaturedWarehouses = async (limit = 6) => {
 
 export const searchWarehouses = async ({
   province = '',
+  district = '',
   warehouseType = '',
   minArea,
   maxArea,
+  minPrice,
+  maxPrice,
+  is24Hours,
+  minRating,
   sortBy = 'newest',
   page = 1,
   pageSize = 12
 } = {}) => {
   const params = { sortBy, page, pageSize };
-  if (province)       params.province      = province;
-  if (warehouseType)  params.warehouseType = warehouseType;
-  if (minArea != null) params.minArea      = minArea;
-  if (maxArea != null) params.maxArea      = maxArea;
+  if (province)           params.province      = province;
+  if (district)           params.district      = district;
+  if (warehouseType)      params.warehouseType = warehouseType;
+  if (minArea != null)    params.minArea       = minArea;
+  if (maxArea != null)    params.maxArea       = maxArea;
+  if (minPrice != null)   params.minPrice      = minPrice;
+  if (maxPrice != null)   params.maxPrice      = maxPrice;
+  if (is24Hours === true) params.is24Hours     = true;
+  if (minRating != null)  params.minRating     = minRating;
 
   const response = await axiosClient.get("/Warehouse/approved/search", { params });
   return response.data; // { total, page, pageSize, items }

@@ -67,21 +67,33 @@ function Chip({ label, color = C.sub, bg = "#f1f5f9", onClick, active }) {
 }
 
 /* ─── Reassign Modal ────────────────────────────────────────────────────── */
+const ROLE_TYPES = [
+  { code:"CHECKER",            label:"Checker",            desc:"Nhận hàng & Xuất hàng (Inbound / Outbound)", color:"#4f46e5", bg:"#eff0ff" },
+  { code:"INVENTORY_OPERATOR", label:"Inventory Operator", desc:"Sắp xếp vị trí & Xử lý kiểm kê",            color:"#0369a1", bg:"#e0f2fe" },
+  { code:"WAREHOUSE_WORKER",   label:"Warehouse Worker",   desc:"Nhân viên phổ thông — quản lý ca (Shift)",   color:"#15803d", bg:"#dcfce7" },
+];
+
 function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions, onClose, onSuccess }) {
   const isOperator = callerMembership?.roleCode === "OPERATOR";
-  const availSkills = isOperator ? warehouseOptions.skills
-    : warehouseOptions.skills.filter(s => callerMembership?.skillIds?.includes(s.id));
+
+  // Determine current skill code from staff's skills list
+  const currentSkillCode = staff.skills?.find(s => ROLE_TYPES.some(r => r.code === s.code))?.code ?? null;
 
   const [form, setForm] = useState({
     targetRoleCode: staff.roleCode === "MANAGER" || staff.roleCode === "STAFF" ? staff.roleCode : "STAFF",
     skillIds: staff.skills?.map(s => s.id).filter(Boolean) ?? [],
-    isAllSkill: staff.isAllSkill || false,
+    isAllSkill: false,
+    selectedSkillCode: currentSkillCode,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
 
-  const toggleArr = (field, id) =>
-    setForm(p => ({ ...p, [field]: p[field].includes(id) ? p[field].filter(x=>x!==id) : [...p[field], id] }));
+  const getSkillIdByCode = (code) => warehouseOptions.skills?.find(s => s.code === code)?.id ?? null;
+
+  const selectRoleType = (code) => {
+    const id = getSkillIdByCode(code);
+    setForm(f => ({ ...f, selectedSkillCode: code, skillIds: id ? [id] : [], isAllSkill: false }));
+  };
 
   const handleSubmit = async () => {
     setError(""); setSaving(true);
@@ -89,8 +101,8 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
       await staffService.reassignMembership({
         targetMembershipId: staff.membershipId,
         targetRoleCode: form.targetRoleCode,
-        skillIds:  form.isAllSkill ? [] : form.skillIds,
-        isAllSkill: form.isAllSkill,
+        skillIds:  form.skillIds,
+        isAllSkill: false,
       });
       onSuccess();
     } catch(e) {
@@ -103,9 +115,9 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
       style={{ position:"fixed", inset:0, background:C.overlay, zIndex:999,
         display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ background:C.surface, borderRadius:16, padding:"24px 28px",
-        width:"100%", maxWidth:500, border:`1px solid ${C.border}`,
+        width:"100%", maxWidth:520, border:`1px solid ${C.border}`,
         maxHeight:"90vh", overflowY:"auto", boxShadow:C.shadowM }}>
-        <div style={{ fontSize:16, fontWeight:700, color:C.text, marginBottom:3 }}>Phan quyen lai</div>
+        <div style={{ fontSize:16, fontWeight:700, color:C.text, marginBottom:3 }}>Phân quyền lại</div>
         <div style={{ fontSize:12, color:C.sub, marginBottom:18 }}>{staff.fullName} — {staff.email}</div>
 
         {error && <div style={{ background:C.redBg, color:C.red, border:`1px solid ${C.red}`,
@@ -118,55 +130,46 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
           <div style={{ display:"flex", gap:8, marginBottom:18 }}>
             {["STAFF","MANAGER"].map(r => (
               <button key={r} type="button"
-                onClick={() => setForm(f => ({
-                  ...f,
-                  targetRoleCode: r,
-                  skillIds: [],
-                  // Manager mặc định allSkill; Staff mặc định không skill
-                  isAllSkill: r === "MANAGER",
-                }))}
+                onClick={() => setForm(f => ({ ...f, targetRoleCode: r, skillIds: [], selectedSkillCode: null, isAllSkill: false }))}
                 style={{ padding:"7px 16px", borderRadius:20, fontWeight:600, fontSize:12, cursor:"pointer",
                   background: form.targetRoleCode === r ? C.accent : "transparent",
                   color:      form.targetRoleCode === r ? "#fff"   : C.sub,
                   border:    `1.5px solid ${form.targetRoleCode === r ? C.accent : C.border}`,
                   transition:"all .15s" }}>
-                {r === "STAFF" ? "Nhan vien" : "Quan ly"}
+                {r === "STAFF" ? "Nhân viên" : "Quản lý"}
               </button>
             ))}
           </div>
         ) : (
           <div style={{ marginBottom:18, padding:"8px 13px", background:C.card,
             borderRadius:8, border:`1px solid ${C.border}`, color:C.text, fontSize:12 }}>
-            Nhan vien (STAFF)
+            Nhân viên (STAFF)
             <span style={{ color:C.sub, fontSize:11, marginLeft:8 }}>— Manager chỉ phân quyền cấp STAFF</span>
           </div>
         )}
 
-        {/* Skills */}
+        {/* Loại nhân viên — 3 chip cố định */}
         <label style={{ fontSize:11, fontWeight:700, color:C.sub, textTransform:"uppercase",
-          letterSpacing:".6px", marginBottom:6, display:"block" }}>Bộ phận phụ trách</label>
-        {isOperator && (
-          <label style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8, fontSize:12, color:C.text }}>
-            <input type="checkbox" checked={form.isAllSkill}
-              onChange={e => setForm(f => ({ ...f, isAllSkill:e.target.checked, skillIds:[] }))}
-              style={{ accentColor:C.accent }} />
-            Tất cả bộ phận
-          </label>
-        )}
-        {!form.isAllSkill && (
-          <div style={{ display:"flex", flexWrap:"wrap", padding:"8px 10px",
-            border:`1px solid ${C.border}`, borderRadius:10, minHeight:40,
-            marginBottom:8, background:C.card }}>
-            {availSkills.length === 0
-              ? <span style={{ fontSize:11, color:C.subL }}>Không có skill</span>
-              : availSkills.map(s => (
-                  <Chip key={s.id} label={s.name||s.code} active={form.skillIds.includes(s.id)}
-                    color="#4f46e5" bg="#eff0ff"
-                    onClick={() => toggleArr("skillIds", s.id)} />
-                ))
-            }
-          </div>
-        )}
+          letterSpacing:".6px", marginBottom:8, display:"block" }}>Loại nhân viên</label>
+        <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
+          {ROLE_TYPES.map(rt => {
+            const active = form.selectedSkillCode === rt.code;
+            return (
+              <div key={rt.code} onClick={() => selectRoleType(rt.code)} style={{
+                display:"flex", alignItems:"center", gap:10, padding:"10px 14px",
+                borderRadius:10, cursor:"pointer",
+                border:`1.5px solid ${active ? rt.color : C.border}`,
+                background: active ? rt.bg : C.card, transition:"all .15s",
+              }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontWeight:700, fontSize:12, color: active ? rt.color : C.text }}>{rt.label}</div>
+                  <div style={{ fontSize:11, color:C.sub }}>{rt.desc}</div>
+                </div>
+                {active && <span style={{ fontSize:13, fontWeight:700, color:rt.color }}>OK</span>}
+              </div>
+            );
+          })}
+        </div>
 
         <div style={{ display:"flex", gap:10, marginTop:22 }}>
           <button onClick={onClose}
@@ -178,13 +181,14 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
             style={{ flex:1, padding:"9px 0", background:C.accent, color:"#fff",
               border:"none", borderRadius:10, fontWeight:700, cursor:saving?"not-allowed":"pointer",
               fontSize:13, opacity:saving?.7:1 }}>
-            {saving ? "Dang luu..." : "Luu phan quyen"}
+            {saving ? "Đang lưu..." : "Lưu phân quyền"}
           </button>
         </div>
       </div>
     </div>
   );
 }
+
 
 /* ─── Staff Card ────────────────────────────────────────────────────────── */
 function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onRefresh }) {

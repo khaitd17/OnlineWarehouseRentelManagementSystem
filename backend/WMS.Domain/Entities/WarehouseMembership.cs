@@ -34,8 +34,6 @@ public class WarehouseMembership
 
     public ICollection<Zone> Zones { get; set; } = new List<Zone>();
 
-    public ICollection<TaskAssignment> TaskAssignments { get; set; } = new List<TaskAssignment>();
-
     public ICollection<StaffShift> StaffShifts { get; set; } = new List<StaffShift>();
 
     public WarehouseShift? WarehouseShift { get; set; }
