@@ -124,12 +124,21 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [pendingRequestCount,  setPendingRequestCount] = useState(0);
   const [favoritesCount,       setFavoritesCount]      = useState(() => favoritesService.count());
 
-  const loadUserInfo = () => {
+  const loadUserInfo = async () => {
     const user = authService.getCurrentUser() || {};
-    const ctx = authService.getWarehouseContext() || {};
-    const systemRole = (ctx.systemRole || user.role || user.roleName || "user").toLowerCase();
+    let ctx = authService.getWarehouseContext();
+
+    // If warehouseContext is completely missing (e.g., previous login had 500 error), try once to refresh
+    if (!ctx && localStorage.getItem('token')) {
+      const refreshed = await authService.refreshWarehouseContext();
+      ctx = refreshed || {};
+    } else {
+      ctx = ctx || {};
+    }
+
+    const systemRole = (ctx.systemRole || user.role || user.roleName || 'user').toLowerCase();
     const warehouses = ctx.warehouses || [];
-    const name = user.fullName || user.FullName || ctx.name || "Người dùng";
+    const name = user.fullName || user.FullName || ctx.name || 'Người dùng';
     const avatar = user.avatarUrl || user.AvatarUrl ||
       `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00b2d6&color=fff`;
 
@@ -181,21 +190,23 @@ const Sidebar = ({ isOpen, onClose }) => {
   };
 
   useEffect(() => {
-    const role = loadUserInfo();
-    if (role === "RENTER") fetchUnratedCount();
-    if (role === "OWNER" || role === "OPERATOR") fetchUnrepliedCount();
-    if (role === "MANAGER") fetchPendingRequestCount();
+    loadUserInfo().then(role => {
+      if (role === 'RENTER') fetchUnratedCount();
+      if (role === 'OWNER' || role === 'OPERATOR') fetchUnrepliedCount();
+      if (role === 'MANAGER') fetchPendingRequestCount();
+    });
   }, []);
 
   useEffect(() => {
     const handler = () => {
-      const role = loadUserInfo();
-      if (role === "RENTER") { fetchUnratedCount(); } else { setUnratedCount(0); }
-      if (role === "OWNER" || role === "OPERATOR") { fetchUnrepliedCount(); } else { setUnrepliedCount(0); }
-      if (role === "MANAGER") { fetchPendingRequestCount(); } else { setPendingRequestCount(0); }
+      loadUserInfo().then(role => {
+        if (role === 'RENTER') { fetchUnratedCount(); } else { setUnratedCount(0); }
+        if (role === 'OWNER' || role === 'OPERATOR') { fetchUnrepliedCount(); } else { setUnrepliedCount(0); }
+        if (role === 'MANAGER') { fetchPendingRequestCount(); } else { setPendingRequestCount(0); }
+      });
     };
-    window.addEventListener("authChange", handler);
-    return () => window.removeEventListener("authChange", handler);
+    window.addEventListener('authChange', handler);
+    return () => window.removeEventListener('authChange', handler);
   }, []);
 
   useEffect(() => {
