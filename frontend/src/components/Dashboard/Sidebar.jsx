@@ -118,27 +118,18 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const [effectiveRole, setEffectiveRole] = useState("USER");
   const [displayName,   setDisplayName]   = useState("Người dùng");
-  const [avatarSrc,     setAvatarSrc]     = useState("");
+  const [avatarSrc,     setAvatarSrc]     = useState(null);
   const [unratedCount,         setUnratedCount]        = useState(0);
   const [unrepliedCount,       setUnrepliedCount]      = useState(0);
   const [pendingRequestCount,  setPendingRequestCount] = useState(0);
   const [favoritesCount,       setFavoritesCount]      = useState(() => favoritesService.count());
 
-  const loadUserInfo = async () => {
+  const loadUserInfo = () => {
     const user = authService.getCurrentUser() || {};
-    let ctx = authService.getWarehouseContext();
-
-    // If warehouseContext is completely missing (e.g., previous login had 500 error), try once to refresh
-    if (!ctx && localStorage.getItem('token')) {
-      const refreshed = await authService.refreshWarehouseContext();
-      ctx = refreshed || {};
-    } else {
-      ctx = ctx || {};
-    }
-
-    const systemRole = (ctx.systemRole || user.role || user.roleName || 'user').toLowerCase();
+    const ctx = authService.getWarehouseContext() || {};
+    const systemRole = (ctx.systemRole || user.role || user.roleName || "user").toLowerCase();
     const warehouses = ctx.warehouses || [];
-    const name = user.fullName || user.FullName || ctx.name || 'Người dùng';
+    const name = user.fullName || user.FullName || ctx.name || "Người dùng";
     const avatar = user.avatarUrl || user.AvatarUrl ||
       `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00b2d6&color=fff`;
 
@@ -190,23 +181,21 @@ const Sidebar = ({ isOpen, onClose }) => {
   };
 
   useEffect(() => {
-    loadUserInfo().then(role => {
-      if (role === 'RENTER') fetchUnratedCount();
-      if (role === 'OWNER' || role === 'OPERATOR') fetchUnrepliedCount();
-      if (role === 'MANAGER') fetchPendingRequestCount();
-    });
+    const role = loadUserInfo();
+    if (role === "RENTER") fetchUnratedCount();
+    if (role === "OWNER" || role === "OPERATOR") fetchUnrepliedCount();
+    if (role === "MANAGER") fetchPendingRequestCount();
   }, []);
 
   useEffect(() => {
     const handler = () => {
-      loadUserInfo().then(role => {
-        if (role === 'RENTER') { fetchUnratedCount(); } else { setUnratedCount(0); }
-        if (role === 'OWNER' || role === 'OPERATOR') { fetchUnrepliedCount(); } else { setUnrepliedCount(0); }
-        if (role === 'MANAGER') { fetchPendingRequestCount(); } else { setPendingRequestCount(0); }
-      });
+      const role = loadUserInfo();
+      if (role === "RENTER") { fetchUnratedCount(); } else { setUnratedCount(0); }
+      if (role === "OWNER" || role === "OPERATOR") { fetchUnrepliedCount(); } else { setUnrepliedCount(0); }
+      if (role === "MANAGER") { fetchPendingRequestCount(); } else { setPendingRequestCount(0); }
     };
-    window.addEventListener('authChange', handler);
-    return () => window.removeEventListener('authChange', handler);
+    window.addEventListener("authChange", handler);
+    return () => window.removeEventListener("authChange", handler);
   }, []);
 
   useEffect(() => {
@@ -238,7 +227,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   // Auto-close sidebar on route change (mobile)
   useEffect(() => {
     if (onClose) onClose();
-  }, [location.pathname]);
+  }, [location.pathname, onClose]);
 
   // Lock body scroll when drawer is open on mobile
   useEffect(() => {
@@ -497,7 +486,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                 border: '2px solid rgba(0,210,255,.35)',
                 boxShadow: '0 0 8px rgba(0,180,255,.25)',
               }}>
-                <img src={avatarSrc} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {avatarSrc && <img src={avatarSrc} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
               </div>
               <div style={{ flex: 1, overflow: 'hidden' }}>
                 <p style={{
