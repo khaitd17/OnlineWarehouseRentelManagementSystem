@@ -51,11 +51,13 @@ const EquipmentManagement = () => {
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [newComment, setNewComment] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [reportData, setReportData] = useState({
     title: '',
     description: '',
     severity: 'MEDIUM',
-    attachments: [] // simplified for now
+    attachments: [],
+    selectedFiles: [] // Temporary local files
   });
 
   // Modals state
@@ -220,16 +222,25 @@ const EquipmentManagement = () => {
   const handleReportSubmit = async (e) => {
     e.preventDefault();
     try {
+      setIsUploading(true);
+      let finalAttachments = [];
+      if (reportData.selectedFiles && reportData.selectedFiles.length > 0) {
+        finalAttachments = await equipmentIncidentService.uploadAttachments(reportData.selectedFiles);
+      }
+
       await equipmentIncidentService.reportIncident({
         ...reportData,
+        attachments: finalAttachments,
         equipmentId: currentEquipment.equipmentId
       });
       setShowReportModal(false);
-      setReportData({ title: '', description: '', severity: 'MEDIUM', attachments: [] });
+      setReportData({ title: '', description: '', severity: 'MEDIUM', attachments: [], selectedFiles: [] });
       fetchIncidents();
       alert('Đã gửi báo cáo sự cố thành công.');
     } catch (err) {
       alert('Gửi báo cáo thất bại: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -793,9 +804,60 @@ const EquipmentManagement = () => {
                 <textarea required rows="4" placeholder="Mô tả hiện trạng và nguyên nhân (nếu biết)..."
                   value={reportData.description} onChange={e => setReportData({ ...reportData, description: e.target.value })} style={inputStyle} />
               </div>
+
+              <div>
+                <label style={labelStyle}>HÌNH ẢNH / VIDEO MINH HỌA</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  {reportData.selectedFiles.map((file, idx) => (
+                    <div key={idx} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '8px', border: `1px solid ${COLORS.border}`, overflow: 'hidden' }}>
+                      {file.type.startsWith('image/') ? (
+                        <img src={URL.createObjectURL(file)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="preview" />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9' }}>
+                          <span className="material-symbols-outlined" style={{ color: COLORS.primary }}>movie</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setReportData(prev => ({ ...prev, selectedFiles: prev.selectedFiles.filter((_, i) => i !== idx) }))}
+                        style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(239, 68, 68, 0.8)', color: '#fff', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>close</span>
+                      </button>
+                    </div>
+                  ))}
+                  {reportData.selectedFiles.length < 5 && (
+                    <label style={{
+                      width: '60px', height: '60px', borderRadius: '8px', border: `2px dashed ${COLORS.border}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: COLORS.textLight
+                    }}>
+                      <span className="material-symbols-outlined">add_a_photo</span>
+                      <input
+                        type="file" multiple accept="image/*,video/*" hidden
+                        onChange={e => {
+                          const files = Array.from(e.target.files);
+                          setReportData(prev => ({ ...prev, selectedFiles: [...prev.selectedFiles, ...files].slice(0, 5) }));
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
+                <p style={{ fontSize: '11px', color: COLORS.textLight, margin: 0 }}>Tối đa 5 tệp (Ảnh/Video). Mỗi tệp tối đa 50MB.</p>
+              </div>
+
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                 <button type="button" onClick={() => setShowReportModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: `1px solid ${COLORS.border}`, background: '#fff', fontWeight: 700, cursor: 'pointer' }}>Hủy</button>
-                <button type="submit" style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none', background: COLORS.danger, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>Gửi báo cáo</button>
+                <button
+                  type="submit"
+                  disabled={isUploading}
+                  style={{
+                    flex: 2, padding: '12px', borderRadius: '10px', border: 'none',
+                    background: isUploading ? COLORS.textLight : COLORS.danger, color: '#fff',
+                    fontWeight: 700, cursor: isUploading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {isUploading ? 'Đanh tải tệp...' : 'Gửi báo cáo'}
+                </button>
               </div>
             </form>
           </div>
@@ -825,6 +887,27 @@ const EquipmentManagement = () => {
               <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '24px' }}>
                 <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '8px' }}>Mô tả từ {selectedIncident.reportedBy}:</div>
                 <div style={{ fontSize: '14px', color: COLORS.text, lineHeight: 1.6 }}>{selectedIncident.description}</div>
+                {selectedIncident.attachments && selectedIncident.attachments.length > 0 && (
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginTop: '16px' }}>
+                    {selectedIncident.attachments.map((att, idx) => {
+                      const fullUrl = att.url.startsWith('http') ? att.url : `http://localhost:5276${att.url}`;
+                      return (
+                        <div key={idx} style={{ borderRadius: '8px', overflow: 'hidden', border: `1px solid ${COLORS.border}`, backgroundColor: '#fff' }}>
+                          {att.fileType.toUpperCase() === 'IMAGE' ? (
+                            <a href={fullUrl} target="_blank" rel="noreferrer">
+                              <img src={fullUrl} style={{ width: '120px', height: '80px', objectFit: 'cover' }} alt="att" />
+                            </a>
+                          ) : (
+                            <a href={fullUrl} target="_blank" rel="noreferrer" style={{ width: '120px', height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', color: COLORS.text }}>
+                              <span className="material-symbols-outlined" style={{ fontSize: '32px' }}>play_circle</span>
+                              <span style={{ fontSize: '10px', fontWeight: 700 }}>XEM VIDEO</span>
+                            </a>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div style={{ flex: 1, borderTop: `1px solid ${COLORS.border}`, paddingTop: '20px', display: 'flex', flexDirection: 'column' }}>
