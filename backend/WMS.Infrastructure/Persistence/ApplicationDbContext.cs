@@ -19,6 +19,9 @@ public class ApplicationDbContext : DbContext
     public virtual DbSet<Equipment> Equipments { get; set; }
     public virtual DbSet<EquipmentHistory> EquipmentHistories { get; set; }
     public virtual DbSet<EquipmentMaintenanceRecord> EquipmentMaintenanceRecords { get; set; }
+    public virtual DbSet<EquipmentIncident> EquipmentIncidents { get; set; }
+    public virtual DbSet<EquipmentIncidentComment> EquipmentIncidentComments { get; set; }
+    public virtual DbSet<EquipmentIncidentAttachment> EquipmentIncidentAttachments { get; set; }
 
     public virtual DbSet<InventoryItem> InventoryItems { get; set; }
 
@@ -341,6 +344,36 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.TotalCost).HasColumnType("decimal(15, 2)");
             entity.HasOne(d => d.Equipment).WithMany(p => p.MaintenanceRecords).HasForeignKey(d => d.EquipmentId);
+        });
+
+        modelBuilder.Entity<EquipmentIncident>(entity =>
+        {
+            entity.ToTable("equipment_incidents");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.Severity).HasMaxLength(20);
+            entity.HasOne(d => d.Equipment).WithMany().HasForeignKey(d => d.EquipmentId);
+            entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId);
+            entity.HasOne(d => d.ReportedBy).WithMany().HasForeignKey(d => d.ReportedById);
+        });
+
+        modelBuilder.Entity<EquipmentIncidentComment>(entity =>
+        {
+            entity.ToTable("equipment_incident_comments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.HasOne(d => d.Incident).WithMany(p => p.Comments).HasForeignKey(d => d.IncidentId);
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId);
+        });
+
+        modelBuilder.Entity<EquipmentIncidentAttachment>(entity =>
+        {
+            entity.ToTable("equipment_incident_attachments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.HasOne(d => d.Incident).WithMany(p => p.Attachments).HasForeignKey(d => d.IncidentId);
         });
 
         modelBuilder.Entity<InventoryItem>(entity =>
