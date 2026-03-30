@@ -131,16 +131,6 @@ export default function OwnerAuditSessionsPage() {
           <h1 className="text-2xl font-black tracking-tight text-slate-900">Kiểm kê kho</h1>
           <p className="text-slate-500 text-sm mt-1">Quản lý phiên kiểm kê cho các kho bạn sở hữu</p>
         </div>
-        <button
-          onClick={() => setCreateModal({ ...defaultCreateModal, open: true })}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm text-white shadow-sm transition-all"
-          style={{ backgroundColor: accentColor }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = "#009bbf"}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = accentColor}
-        >
-          <span className="material-symbols-outlined text-lg">add_circle</span>
-          Tạo phiên kiểm kê
-        </button>
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
