@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   Layout,
   Row,
@@ -71,7 +71,7 @@ const RenterExtensionPage: React.FC = () => {
       setContracts(contractsData);
       setExtensions(extensionsData);
     } catch (error: any) {
-      message.error('Không thể tải dữ liệu: ' + (error.message || 'Lỗi không xác định'));
+      message.error('Kh├┤ng thß╗â tß║úi dß╗» liß╗çu: ' + (error.message || 'Lß╗ùi kh├┤ng x├íc ─æß╗ïnh'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -106,7 +106,7 @@ const RenterExtensionPage: React.FC = () => {
 
   const handleExtensionSuccess = useCallback(() => {
     loadData(true);
-    message.success('Yêu cầu gia hạn đã được gửi thành công!');
+    message.success('Y├¬u cß║ºu gia hß║ín ─æ├ú ─æ╞░ß╗úc gß╗¡i th├ánh c├┤ng!');
   }, [loadData]);
 
   // Get pending extensions count
@@ -139,15 +139,15 @@ const RenterExtensionPage: React.FC = () => {
           <Row justify="space-between" align="middle">
             <Col>
               <Title level={3} style={{ margin: '0 0 8px 0', color: '#0f172a' }}>
-                <ContainerOutlined /> Quản lý hợp đồng
+                <ContainerOutlined /> Quß║ún l├╜ hß╗úp ─æß╗ông
               </Title>
-              <Text type="secondary">Quản lý hợp đồng thuê kho và yêu cầu gia hạn</Text>
+              <Text type="secondary">Quß║ún l├╜ hß╗úp ─æß╗ông thu├¬ kho v├á y├¬u cß║ºu gia hß║ín</Text>
             </Col>
             <Col>
               <Space>
                 <Badge count={contractsNeedingAttention} showZero={false}>
                   <Card size="small" style={{ textAlign: 'center', minWidth: '80px' }}>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>Sắp hết hạn</Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>Sß║»p hß║┐t hß║ín</Text>
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fa8c16' }}>
                       {contractsNeedingAttention}
                     </div>
@@ -155,7 +155,7 @@ const RenterExtensionPage: React.FC = () => {
                 </Badge>
                 <Badge count={pendingExtensionsCount} showZero={false}>
                   <Card size="small" style={{ textAlign: 'center', minWidth: '80px' }}>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>Chờ duyệt</Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>Chß╗¥ duyß╗çt</Text>
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1677ff' }}>
                       {pendingExtensionsCount}
                     </div>
@@ -178,7 +178,7 @@ const RenterExtensionPage: React.FC = () => {
             tab={
               <Space>
                 <ContainerOutlined />
-                <span>Hợp đồng của tôi</span>
+                <span>Hß╗úp ─æß╗ông cß╗ºa t├┤i</span>
                 <Badge count={contracts.length} showZero style={{ backgroundColor: '#108ee9' }} />
               </Space>
             }
@@ -189,7 +189,7 @@ const RenterExtensionPage: React.FC = () => {
               <Row gutter={16} style={{ marginBottom: 20 }}>
                 <Col xs={24} sm={12} md={8} lg={6}>
                   <Input
-                    placeholder="Tìm kiếm theo mã hợp đồng hoặc tên kho"
+                    placeholder="T├¼m kiß║┐m theo m├ú hß╗úp ─æß╗ông hoß║╖c t├¬n kho"
                     prefix={<SearchOutlined />}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -198,19 +198,19 @@ const RenterExtensionPage: React.FC = () => {
                 </Col>
                 <Col xs={24} sm={12} md={8} lg={6}>
                   <Select
-                    placeholder="Lọc theo trạng thái"
+                    placeholder="Lß╗ìc theo trß║íng th├íi"
                     value={statusFilter}
                     onChange={setStatusFilter}
                     allowClear
                     style={{ width: '100%' }}
                     suffixIcon={<FilterOutlined />}
                   >
-                    <Option value="ACTIVE">Đang hoạt động</Option>
-                    <Option value="PENDING_OWNER_SIGNATURE">Chờ chủ kho ký</Option>
-                    <Option value="PENDING_RENTER_SIGNATURE">Chờ người thuê ký</Option>
-                    <Option value="PENDING_PAYMENT">Chờ thanh toán</Option>
-                    <Option value="CANCELLED">Đã hủy</Option>
-                    <Option value="EXPIRED">Hết hạn</Option>
+                    <Option value="ACTIVE">─Éang hoß║ít ─æß╗Öng</Option>
+                    <Option value="PENDING_OWNER_SIGNATURE">Chß╗¥ chß╗º kho k├╜</Option>
+                    <Option value="PENDING_RENTER_SIGNATURE">Chß╗¥ ng╞░ß╗¥i thu├¬ k├╜</Option>
+                    <Option value="PENDING_PAYMENT">Chß╗¥ thanh to├ín</Option>
+                    <Option value="CANCELLED">─É├ú hß╗ºy</Option>
+                    <Option value="EXPIRED">Hß║┐t hß║ín</Option>
                   </Select>
                 </Col>
                 <Col flex="auto" style={{ textAlign: 'right' }}>
@@ -219,7 +219,7 @@ const RenterExtensionPage: React.FC = () => {
                     onClick={() => loadData(true)}
                     loading={refreshing}
                   >
-                    Làm mới
+                    L├ám mß╗¢i
                   </Button>
                 </Col>
               </Row>
@@ -228,7 +228,7 @@ const RenterExtensionPage: React.FC = () => {
               {filteredContracts.length === 0 ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Không tìm thấy hợp đồng nào"
+                  description="Kh├┤ng t├¼m thß║Ñy hß╗úp ─æß╗ông n├áo"
                 />
               ) : (
                 <Row gutter={[16, 16]}>
@@ -251,7 +251,7 @@ const RenterExtensionPage: React.FC = () => {
             tab={
               <Space>
                 <ClockCircleOutlined />
-                <span>Yêu cầu gia hạn</span>
+                <span>Y├¬u cß║ºu gia hß║ín</span>
                 <Badge count={extensions.length} showZero style={{ backgroundColor: '#52c41a' }} />
               </Space>
             }
@@ -261,14 +261,14 @@ const RenterExtensionPage: React.FC = () => {
               {extensions.length === 0 ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Chưa có yêu cầu gia hạn nào"
+                  description="Ch╞░a c├│ y├¬u cß║ºu gia hß║ín n├áo"
                 />
               ) : (
                 <Row gutter={[16, 16]}>
                   {extensions.map((extension) => (
                     <Col xs={24} sm={12} lg={8} xl={6} key={extension.extensionId}>
                       <Card
-                        title={`Gia hạn ${extension.originalContract?.contractNumber || 'N/A'}`}
+                        title={`Gia hß║ín ${extension.originalContract?.contractNumber || 'N/A'}`}
                         extra={
                           <Badge
                             status={
@@ -282,20 +282,20 @@ const RenterExtensionPage: React.FC = () => {
                       >
                         <Space direction="vertical" size="small" style={{ width: '100%' }}>
                           <div>
-                            <Text type="secondary">Thời gian:</Text>
+                            <Text type="secondary">Thß╗¥i gian:</Text>
                             <Text style={{ float: 'right' }}>
                               {contractExtensionService.formatDuration(extension.durationMonths)}
                             </Text>
                           </div>
                           <div>
-                            <Text type="secondary">Ngày yêu cầu:</Text>
+                            <Text type="secondary">Ng├áy y├¬u cß║ºu:</Text>
                             <Text style={{ float: 'right' }}>
                               {contractExtensionService.formatDate(extension.requestedAt)}
                             </Text>
                           </div>
                           {extension.reviewedAt && (
                             <div>
-                              <Text type="secondary">Ngày duyệt:</Text>
+                              <Text type="secondary">Ng├áy duyß╗çt:</Text>
                               <Text style={{ float: 'right' }}>
                                 {contractExtensionService.formatDate(extension.reviewedAt)}
                               </Text>
@@ -304,7 +304,7 @@ const RenterExtensionPage: React.FC = () => {
                           {extension.reviewNotes && (
                             <div>
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Ghi chú: {extension.reviewNotes}
+                                Ghi ch├║: {extension.reviewNotes}
                               </Text>
                             </div>
                           )}

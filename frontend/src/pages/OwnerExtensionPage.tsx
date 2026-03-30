@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import {
   Layout,
   Row,
@@ -79,7 +79,7 @@ const OwnerExtensionPage: React.FC = () => {
       setPendingExtensions(pendingData);
       setPendingSignatureExtensions(signatureData);
     } catch (error: any) {
-      message.error('Không thể tải dữ liệu: ' + (error.message || 'Lỗi không xác định'));
+      message.error('Kh├┤ng thß╗â tß║úi dß╗» liß╗çu: ' + (error.message || 'Lß╗ùi kh├┤ng x├íc ─æß╗ïnh'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -105,11 +105,11 @@ const OwnerExtensionPage: React.FC = () => {
     try {
       setActionLoading(true);
       await contractExtensionService.approveExtension(extension.extensionId, data);
-      message.success('Đã phê duyệt yêu cầu gia hạn');
+      message.success('─É├ú ph├¬ duyß╗çt y├¬u cß║ºu gia hß║ín');
       loadData(true);
       setReviewModalVisible(false);
     } catch (error: any) {
-      message.error('Lỗi: ' + (error.response?.data?.message || error.message));
+      message.error('Lß╗ùi: ' + (error.response?.data?.message || error.message));
     } finally {
       setActionLoading(false);
     }
@@ -120,11 +120,11 @@ const OwnerExtensionPage: React.FC = () => {
     try {
       setActionLoading(true);
       await contractExtensionService.rejectExtension(extension.extensionId, { reason });
-      message.success('Đã từ chối yêu cầu gia hạn');
+      message.success('─É├ú tß╗½ chß╗æi y├¬u cß║ºu gia hß║ín');
       loadData(true);
       setReviewModalVisible(false);
     } catch (error: any) {
-      message.error('Lỗi: ' + (error.response?.data?.message || error.message));
+      message.error('Lß╗ùi: ' + (error.response?.data?.message || error.message));
     } finally {
       setActionLoading(false);
     }
@@ -158,7 +158,7 @@ const OwnerExtensionPage: React.FC = () => {
       });
     } else {
       if (!values.reason) {
-        message.error('Vui lòng nhập lý do từ chối');
+        message.error('Vui l├▓ng nhß║¡p l├╜ do tß╗½ chß╗æi');
         return;
       }
       await handleReject(selectedExtension, values.reason);
@@ -188,7 +188,7 @@ const OwnerExtensionPage: React.FC = () => {
               onClick={() => showDetailModal(extension)}
               size="small"
             >
-              Chi tiết
+              Chi tiß║┐t
             </Button>
             {showActions && (
               <Button
@@ -197,7 +197,7 @@ const OwnerExtensionPage: React.FC = () => {
                 onClick={() => showReviewModal(extension)}
                 size="small"
               >
-                Duyệt
+                Duyß╗çt
               </Button>
             )}
           </Space>
@@ -209,13 +209,13 @@ const OwnerExtensionPage: React.FC = () => {
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
               <div>
                 <Text type="secondary">
-                  <UserOutlined /> Người yêu cầu:
+                  <UserOutlined /> Ng╞░ß╗¥i y├¬u cß║ºu:
                 </Text>
                 <Text style={{ float: 'right' }}>{extension.requester?.fullName || 'N/A'}</Text>
               </div>
               <div>
                 <Text type="secondary">
-                  <CalendarOutlined /> Ngày yêu cầu:
+                  <CalendarOutlined /> Ng├áy y├¬u cß║ºu:
                 </Text>
                 <Text style={{ float: 'right' }}>
                   {contractExtensionService.formatDate(extension.requestedAt)}
@@ -223,7 +223,7 @@ const OwnerExtensionPage: React.FC = () => {
               </div>
               <div>
                 <Text type="secondary">
-                  <DollarOutlined /> Chi phí hiện tại:
+                  <DollarOutlined /> Chi ph├¡ hiß╗çn tß║íi:
                 </Text>
                 <Text style={{ float: 'right' }}>
                   {contractExtensionService.formatCurrency(contract.monthlyPayment)}
@@ -234,17 +234,17 @@ const OwnerExtensionPage: React.FC = () => {
           <Col span={12}>
             <Space direction="vertical" size="small" style={{ width: '100%' }}>
               <div>
-                <Text type="secondary">Thời hạn hiện tại:</Text>
+                <Text type="secondary">Thß╗¥i hß║ín hiß╗çn tß║íi:</Text>
                 <Text style={{ float: 'right' }}>{summary.currentEndDate}</Text>
               </div>
               <div>
-                <Text type="secondary">Thời hạn mới:</Text>
+                <Text type="secondary">Thß╗¥i hß║ín mß╗¢i:</Text>
                 <Text style={{ float: 'right', color: '#52c41a', fontWeight: 'bold' }}>
                   {summary.newEndDate}
                 </Text>
               </div>
               <div>
-                <Text type="secondary">Chi phí gia hạn:</Text>
+                <Text type="secondary">Chi ph├¡ gia hß║ín:</Text>
                 <Text style={{ float: 'right', fontSize: '14px', fontWeight: 'bold' }}>
                   {summary.formattedCost}
                 </Text>
@@ -255,7 +255,7 @@ const OwnerExtensionPage: React.FC = () => {
 
         {extension.reason && (
           <div style={{ marginTop: 12, padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
-            <Text type="secondary" style={{ fontSize: '12px' }}>Lý do:</Text>
+            <Text type="secondary" style={{ fontSize: '12px' }}>L├╜ do:</Text>
             <Paragraph style={{ margin: 0, fontSize: '13px' }}>{extension.reason}</Paragraph>
           </div>
         )}
@@ -281,15 +281,15 @@ const OwnerExtensionPage: React.FC = () => {
           <Row justify="space-between" align="middle">
             <Col>
               <Title level={3} style={{ margin: '0 0 8px 0', color: '#0f172a' }}>
-                <ClockCircleOutlined /> Quản lý gia hạn hợp đồng
+                <ClockCircleOutlined /> Quß║ún l├╜ gia hß║ín hß╗úp ─æß╗ông
               </Title>
-              <Text type="secondary">Duyệt yêu cầu gia hạn từ người thuê kho</Text>
+              <Text type="secondary">Duyß╗çt y├¬u cß║ºu gia hß║ín tß╗½ ng╞░ß╗¥i thu├¬ kho</Text>
             </Col>
             <Col>
               <Space>
                 <Badge count={pendingExtensions.length} showZero={false}>
                   <Card size="small" style={{ textAlign: 'center', minWidth: '80px' }}>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>Chờ duyệt</Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>Chß╗¥ duyß╗çt</Text>
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fa8c16' }}>
                       {pendingExtensions.length}
                     </div>
@@ -297,7 +297,7 @@ const OwnerExtensionPage: React.FC = () => {
                 </Badge>
                 <Badge count={pendingSignatureExtensions.length} showZero={false}>
                   <Card size="small" style={{ textAlign: 'center', minWidth: '80px' }}>
-                    <Text type="secondary" style={{ fontSize: '12px' }}>Chờ ký</Text>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>Chß╗¥ k├╜</Text>
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1677ff' }}>
                       {pendingSignatureExtensions.length}
                     </div>
@@ -315,7 +315,7 @@ const OwnerExtensionPage: React.FC = () => {
             <Row gutter={16} align="middle">
               <Col flex="auto">
                 <Input
-                  placeholder="Tìm kiếm theo mã hợp đồng, tên người thuê..."
+                  placeholder="T├¼m kiß║┐m theo m├ú hß╗úp ─æß╗ông, t├¬n ng╞░ß╗¥i thu├¬..."
                   prefix={<SearchOutlined />}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -330,7 +330,7 @@ const OwnerExtensionPage: React.FC = () => {
                   loading={refreshing}
                   size="large"
                 >
-                  Làm mới
+                  L├ám mß╗¢i
                 </Button>
               </Col>
             </Row>
@@ -346,7 +346,7 @@ const OwnerExtensionPage: React.FC = () => {
               tab={
                 <Space>
                   <ClockCircleOutlined />
-                  <span>Chờ duyệt</span>
+                  <span>Chß╗¥ duyß╗çt</span>
                   <Badge count={pendingExtensions.length} showZero style={{ backgroundColor: '#fa8c16' }} />
                 </Space>
               }
@@ -356,7 +356,7 @@ const OwnerExtensionPage: React.FC = () => {
                 {filterExtensions(pendingExtensions).length === 0 ? (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="Không có yêu cầu gia hạn nào cần duyệt"
+                    description="Kh├┤ng c├│ y├¬u cß║ºu gia hß║ín n├áo cß║ºn duyß╗çt"
                   />
                 ) : (
                   filterExtensions(pendingExtensions).map(extension => renderExtensionCard(extension, true))
@@ -368,7 +368,7 @@ const OwnerExtensionPage: React.FC = () => {
               tab={
                 <Space>
                   <EditOutlined />
-                  <span>Chờ ký hợp đồng</span>
+                  <span>Chß╗¥ k├╜ hß╗úp ─æß╗ông</span>
                   <Badge count={pendingSignatureExtensions.length} showZero style={{ backgroundColor: '#1677ff' }} />
                 </Space>
               }
@@ -378,7 +378,7 @@ const OwnerExtensionPage: React.FC = () => {
                 {filterExtensions(pendingSignatureExtensions).length === 0 ? (
                   <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description="Không có hợp đồng gia hạn nào cần ký"
+                    description="Kh├┤ng c├│ hß╗úp ─æß╗ông gia hß║ín n├áo cß║ºn k├╜"
                   />
                 ) : (
                   filterExtensions(pendingSignatureExtensions).map(extension => renderExtensionCard(extension, false))
@@ -390,7 +390,7 @@ const OwnerExtensionPage: React.FC = () => {
 
         {/* Review Modal */}
         <Modal
-          title="Duyệt yêu cầu gia hạn hợp đồng"
+          title="Duyß╗çt y├¬u cß║ºu gia hß║ín hß╗úp ─æß╗ông"
           open={reviewModalVisible}
           onCancel={() => setReviewModalVisible(false)}
           footer={null}
@@ -405,13 +405,13 @@ const OwnerExtensionPage: React.FC = () => {
               newMonthlyPayment: selectedExtension?.originalContract?.monthlyPayment
             }}
           >
-            <Form.Item name="status" label="Quyết định">
+            <Form.Item name="status" label="Quyß║┐t ─æß╗ïnh">
               <Select size="large">
                 <Option value="APPROVED">
-                  <CheckCircleOutlined style={{ color: '#52c41a' }} /> Phê duyệt
+                  <CheckCircleOutlined style={{ color: '#52c41a' }} /> Ph├¬ duyß╗çt
                 </Option>
                 <Option value="REJECTED">
-                  <CloseCircleOutlined style={{ color: '#ff4d4f' }} /> Từ chối
+                  <CloseCircleOutlined style={{ color: '#ff4d4f' }} /> Tß╗½ chß╗æi
                 </Option>
               </Select>
             </Form.Item>
@@ -425,8 +425,8 @@ const OwnerExtensionPage: React.FC = () => {
                   <>
                     <Form.Item
                       name="newMonthlyPayment"
-                      label="Giá thuê mới (VND/tháng)"
-                      rules={[{ required: true, message: 'Vui lòng nhập giá thuê' }]}
+                      label="Gi├í thu├¬ mß╗¢i (VND/th├íng)"
+                      rules={[{ required: true, message: 'Vui l├▓ng nhß║¡p gi├í thu├¬' }]}
                     >
                       <InputNumber
                         style={{ width: '100%' }}
@@ -437,10 +437,10 @@ const OwnerExtensionPage: React.FC = () => {
                       />
                     </Form.Item>
 
-                    <Form.Item name="reviewNotes" label="Ghi chú (không bắt buộc)">
+                    <Form.Item name="reviewNotes" label="Ghi ch├║ (kh├┤ng bß║»t buß╗Öc)">
                       <TextArea
                         rows={3}
-                        placeholder="Nhập ghi chú cho yêu cầu gia hạn..."
+                        placeholder="Nhß║¡p ghi ch├║ cho y├¬u cß║ºu gia hß║ín..."
                         size="large"
                       />
                     </Form.Item>
@@ -448,12 +448,12 @@ const OwnerExtensionPage: React.FC = () => {
                 ) : (
                   <Form.Item
                     name="reason"
-                    label="Lý do từ chối"
-                    rules={[{ required: true, message: 'Vui lòng nhập lý do từ chối' }]}
+                    label="L├╜ do tß╗½ chß╗æi"
+                    rules={[{ required: true, message: 'Vui l├▓ng nhß║¡p l├╜ do tß╗½ chß╗æi' }]}
                   >
                     <TextArea
                       rows={4}
-                      placeholder="Nhập lý do từ chối yêu cầu gia hạn..."
+                      placeholder="Nhß║¡p l├╜ do tß╗½ chß╗æi y├¬u cß║ºu gia hß║ín..."
                       size="large"
                     />
                   </Form.Item>
@@ -464,7 +464,7 @@ const OwnerExtensionPage: React.FC = () => {
             <Form.Item style={{ marginBottom: 0, marginTop: 24 }}>
               <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
                 <Button onClick={() => setReviewModalVisible(false)} disabled={actionLoading}>
-                  Hủy
+                  Hß╗ºy
                 </Button>
                 <Button
                   type="primary"
@@ -472,7 +472,7 @@ const OwnerExtensionPage: React.FC = () => {
                   loading={actionLoading}
                   size="large"
                 >
-                  {actionLoading ? 'Đang xử lý...' : 'Xác nhận'}
+                  {actionLoading ? '─Éang xß╗¡ l├╜...' : 'X├íc nhß║¡n'}
                 </Button>
               </Space>
             </Form.Item>
@@ -481,7 +481,7 @@ const OwnerExtensionPage: React.FC = () => {
 
         {/* Detail Modal */}
         <Modal
-          title="Chi tiết yêu cầu gia hạn"
+          title="Chi tiß║┐t y├¬u cß║ºu gia hß║ín"
           open={detailModalVisible}
           onCancel={() => setDetailModalVisible(false)}
           footer={null}
@@ -489,25 +489,25 @@ const OwnerExtensionPage: React.FC = () => {
         >
           {selectedExtension && selectedExtension.originalContract && (
             <Descriptions column={2} bordered>
-              <Descriptions.Item label="Mã hợp đồng" span={2}>
+              <Descriptions.Item label="M├ú hß╗úp ─æß╗ông" span={2}>
                 {selectedExtension.originalContract.contractNumber}
               </Descriptions.Item>
-              <Descriptions.Item label="Người yêu cầu">
+              <Descriptions.Item label="Ng╞░ß╗¥i y├¬u cß║ºu">
                 {selectedExtension.requester?.fullName || 'N/A'}
               </Descriptions.Item>
               <Descriptions.Item label="Email">
                 {selectedExtension.requester?.email || 'N/A'}
               </Descriptions.Item>
-              <Descriptions.Item label="Thời gian gia hạn">
+              <Descriptions.Item label="Thß╗¥i gian gia hß║ín">
                 {contractExtensionService.formatDuration(selectedExtension.durationMonths)}
               </Descriptions.Item>
-              <Descriptions.Item label="Ngày yêu cầu">
+              <Descriptions.Item label="Ng├áy y├¬u cß║ºu">
                 {contractExtensionService.formatDate(selectedExtension.requestedAt)}
               </Descriptions.Item>
-              <Descriptions.Item label="Tiền thuê hiện tại">
+              <Descriptions.Item label="Tiß╗ün thu├¬ hiß╗çn tß║íi">
                 {contractExtensionService.formatCurrency(selectedExtension.originalContract.monthlyPayment)}
               </Descriptions.Item>
-              <Descriptions.Item label="Chi phí gia hạn">
+              <Descriptions.Item label="Chi ph├¡ gia hß║ín">
                 {contractExtensionService.formatCurrency(
                   contractExtensionService.calculateAdditionalCost(
                     selectedExtension.originalContract.monthlyPayment,
@@ -515,7 +515,7 @@ const OwnerExtensionPage: React.FC = () => {
                   )
                 )}
               </Descriptions.Item>
-              <Descriptions.Item label="Lý do gia hạn" span={2}>
+              <Descriptions.Item label="L├╜ do gia hß║ín" span={2}>
                 <Paragraph>{selectedExtension.reason}</Paragraph>
               </Descriptions.Item>
             </Descriptions>
