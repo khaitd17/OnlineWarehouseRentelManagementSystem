@@ -12,8 +12,9 @@ public class UpdateEquipmentStatusHandler : BaseEquipmentHandler, IRequestHandle
     public UpdateEquipmentStatusHandler(
         IWarehouseRepository warehouseRepository,
         IStaffMembershipRepository membershipRepository,
+        IRentalContractRepository contractRepository,
         IEquipmentRepository equipmentRepository) 
-        : base(warehouseRepository, membershipRepository)
+        : base(warehouseRepository, membershipRepository, contractRepository)
     {
         _equipmentRepository = equipmentRepository;
     }
@@ -46,22 +47,24 @@ public class UpdateEquipmentStatusHandler : BaseEquipmentHandler, IRequestHandle
         switch (currentStatus)
         {
             case "AVAILABLE":
-                isValid = true; // Can go anywhere from Available
+                // Available -> In Use, Maintenance, Broken, Retired
+                isValid = true;
                 break;
             case "IN_USE":
-                // In Use -> Available (Rental end), Broken
-                if (newStatus == "AVAILABLE" || newStatus == "BROKEN") isValid = true;
-                break;
-            case "MAINTENANCE":
-                // Maintenance -> Available, Broken
-                if (newStatus == "AVAILABLE" || newStatus == "BROKEN") isValid = true;
+                // In Use -> Available (Returned), Broken, Maintenance
+                if (newStatus == "AVAILABLE" || newStatus == "BROKEN" || newStatus == "MAINTENANCE") isValid = true;
                 break;
             case "BROKEN":
-                // Broken -> Maintenance, Retired
+                // Broken -> Maintenance (Repair), Retired (Discard)
                 if (newStatus == "MAINTENANCE" || newStatus == "RETIRED") isValid = true;
                 break;
+            case "MAINTENANCE":
+                // Maintenance -> Available (Fixed), Broken (Fail), Retired (Unrepairable)
+                if (newStatus == "AVAILABLE" || newStatus == "BROKEN" || newStatus == "RETIRED") isValid = true;
+                break;
             case "RETIRED":
-                isValid = false; // Cannot transition from Retired
+                // Retired -> Maintenance (Re-activate flow: must be checked before use)
+                if (newStatus == "MAINTENANCE") isValid = true;
                 break;
         }
 

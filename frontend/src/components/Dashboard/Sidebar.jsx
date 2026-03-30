@@ -9,97 +9,98 @@ import axiosClient from "../../services/axiosClient";
 const MENU_BY_ROLE = {
   // Chủ kho / Điều phối viên: quản lý toàn bộ kho
   OWNER: [
-    { icon: "dashboard",               label: "Tổng quan",           path: "/owner-dashboard" },
-    { icon: "donut_large",             label: "Biểu đồ công suất",   path: "/occupancy-dashboard" },
-    { icon: "warehouse",               label: "Kho của tôi",         path: "/my-warehouses" },
-    { icon: "inventory_2",             label: "Yêu cầu nhập/xuất",   path: "/owner-inventory-requests", section: "YÊU CẦU" },
-    { icon: "inventory",               label: "Tồn kho hàng thuê",   path: "/owner-inventory" },
-    { icon: "fact_check",              label: "Kiểm kê kho",         path: "/owner-audit-sessions" },
-    { icon: "pending_actions",         label: "Yêu cầu thuê kho",    path: "/pending-rental-requests" },
-    { icon: "receipt_long",            label: "Lịch sử thanh toán",  path: "/payment-history",       section: "TÀI CHÍNH" },
-    { icon: "group",                   label: "Quản lý nhân viên",   path: "/list-staff",            section: "NHÂN SỰ" },
-    { icon: "person_add",              label: "Thêm nhân viên",      path: "/create-staff" },
-    { icon: "schedule",                label: "Phân ca",             path: "/shift-scheduling",      section: "VẬN HÀNH" },
-    { icon: "calendar_month",          label: "Lịch công việc",      path: "/task-scheduling" },
-    { icon: "precision_manufacturing", label: "Quản lý thiết bị",    path: "/equipment-management" },
-    { icon: "settings",                label: "Cài đặt",             path: "/settings",              isBottom: true },
+    { icon: "dashboard", label: "Tổng quan", path: "/owner-dashboard" },
+    { icon: "donut_large", label: "Biểu đồ công suất", path: "/occupancy-dashboard" },
+    { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
+    { icon: "inventory_2", label: "Yêu cầu nhập/xuất", path: "/owner-inventory-requests", section: "YÊU CẦU" },
+    { icon: "inventory", label: "Tồn kho hàng thuê", path: "/owner-inventory" },
+    { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions" },
+    { icon: "pending_actions", label: "Yêu cầu thuê kho", path: "/pending-rental-requests" },
+    { icon: "receipt_long", label: "Lịch sử thanh toán", path: "/payment-history", section: "TÀI CHÍNH" },
+    { icon: "group", label: "Quản lý nhân viên", path: "/list-staff", section: "NHÂN SỰ" },
+    { icon: "person_add", label: "Thêm nhân viên", path: "/create-staff" },
+    { icon: "schedule", label: "Phân ca", path: "/shift-scheduling", section: "VẬN HÀNH" },
+    { icon: "calendar_month", label: "Lịch công việc", path: "/task-scheduling" },
+    { icon: "precision_manufacturing", label: "Quản lý thiết bị", path: "/equipment-management" },
+    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
   ],
   // Quản lý kho / Điều phối viên dùng cùng menu với OWNER (có quản lý nhân viên)
   OPERATOR: [
-    { icon: "dashboard",               label: "Tổng quan",           path: "/owner-dashboard" },
-    { icon: "donut_large",             label: "Biểu đồ công suất",   path: "/occupancy-dashboard" },
-    { icon: "warehouse",               label: "Kho của tôi",         path: "/my-warehouses" },
-    { icon: "inventory_2",             label: "Yêu cầu nhập/xuất",   path: "/owner-inventory-requests", section: "YÊU CẦU" },
-    { icon: "inventory",               label: "Tồn kho hàng thuê",   path: "/owner-inventory" },
-    { icon: "fact_check",              label: "Kiểm kê kho",         path: "/owner-audit-sessions" },
-    { icon: "pending_actions",         label: "Yêu cầu thuê kho",    path: "/pending-rental-requests" },
-    { icon: "receipt_long",            label: "Lịch sử thanh toán",  path: "/payment-history",       section: "TÀI CHÍNH" },
-    { icon: "group",                   label: "Quản lý nhân viên",   path: "/list-staff",            section: "NHÂN SỰ" },
-    { icon: "person_add",              label: "Thêm nhân viên",      path: "/create-staff" },
-    { icon: "schedule",                label: "Phân ca",             path: "/shift-scheduling",      section: "VẬN HÀNH" },
-    { icon: "calendar_month",          label: "Lịch công việc",      path: "/task-scheduling" },
-    { icon: "precision_manufacturing", label: "Quản lý thiết bị",    path: "/equipment-management" },
-    { icon: "settings",                label: "Cài đặt",             path: "/settings",              isBottom: true },
+    { icon: "dashboard", label: "Tổng quan", path: "/owner-dashboard" },
+    { icon: "donut_large", label: "Biểu đồ công suất", path: "/occupancy-dashboard" },
+    { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
+    { icon: "inventory_2", label: "Yêu cầu nhập/xuất", path: "/owner-inventory-requests", section: "YÊU CẦU" },
+    { icon: "inventory", label: "Tồn kho hàng thuê", path: "/owner-inventory" },
+    { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions" },
+    { icon: "pending_actions", label: "Yêu cầu thuê kho", path: "/pending-rental-requests" },
+    { icon: "receipt_long", label: "Lịch sử thanh toán", path: "/payment-history", section: "TÀI CHÍNH" },
+    { icon: "group", label: "Quản lý nhân viên", path: "/list-staff", section: "NHÂN SỰ" },
+    { icon: "person_add", label: "Thêm nhân viên", path: "/create-staff" },
+    { icon: "schedule", label: "Phân ca", path: "/shift-scheduling", section: "VẬN HÀNH" },
+    { icon: "calendar_month", label: "Lịch công việc", path: "/task-scheduling" },
+    { icon: "precision_manufacturing", label: "Quản lý thiết bị", path: "/equipment-management" },
+    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
   ],
   // Quản lý: có quản lý nhân viên + làm việc kho
   MANAGER: [
-    { icon: "dashboard",               label: "Bảng điều khiển",       path: "/staff-dashboard" },
-    { icon: "group",                   label: "Quản lý nhân viên",     path: "/list-staff",            section: "NHÂN SỰ" },
-    { icon: "person_add",              label: "Thêm nhân viên",        path: "/create-staff" },
-    { icon: "schedule",                label: "Phân ca",               path: "/shift-scheduling" },
-    { icon: "calendar_month",          label: "Lịch công việc",        path: "/task-scheduling" },
-    { icon: "fact_check",              label: "Kiểm kê kho",           path: "/staff-audit-sessions",  section: "KHO" },
-    { icon: "inventory_2",             label: "Yêu cầu nhập / xuất kho", path: "/staff-inventory-requests", badgeKey: "pendingRequestCount" },
-    { icon: "inventory",               label: "Quản lí tồn kho",          path: "/staff-inventory" },
-    { icon: "history",                 label: "Lịch sử nhập/ xuất kho",   path: "/transaction-history" },
-    { icon: "precision_manufacturing", label: "Quản lý thiết bị",      path: "/equipment-management" },
-    { icon: "settings",                label: "Cài đặt",               path: "/settings",              isBottom: true },
+    { icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" },
+    { icon: "group", label: "Quản lý nhân viên", path: "/list-staff", section: "NHÂN SỰ" },
+    { icon: "person_add", label: "Thêm nhân viên", path: "/create-staff" },
+    { icon: "schedule", label: "Phân ca", path: "/shift-scheduling" },
+    { icon: "calendar_month", label: "Lịch công việc", path: "/task-scheduling" },
+    { icon: "fact_check", label: "Kiểm kê kho", path: "/staff-audit-sessions", section: "KHO" },
+    { icon: "inventory_2", label: "Yêu cầu nhập / xuất kho", path: "/staff-inventory-requests", badgeKey: "pendingRequestCount" },
+    { icon: "inventory", label: "Quản lí tồn kho", path: "/staff-inventory" },
+    { icon: "history", label: "Lịch sử nhập/ xuất kho", path: "/transaction-history" },
+    { icon: "precision_manufacturing", label: "Quản lý thiết bị", path: "/equipment-management" },
+    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
   ],
   // Nhân viên: chỉ làm chức năng kho, không quản lý người
   STAFF: [
-    { icon: "dashboard",               label: "Bảng điều khiển",          path: "/staff-dashboard" },
-    { icon: "swap_horiz",              label: "Yêu cầu nhập/xuất kho",   path: "/confirm-movement",         section: "KHO" },
-    { icon: "inventory",               label: "Quản lí tồn kho",          path: "/staff-inventory" },
-    { icon: "fact_check",              label: "Kiểm kê kho",              path: "/staff-audit-sessions" },
-    { icon: "calendar_month",          label: "Lịch của tôi",             path: "/my-schedule",              section: "CÁ NHÂN" },
-    { icon: "precision_manufacturing", label: "Quản lý thiết bị",         path: "/equipment-management" },
-    { icon: "settings",                label: "Cài đặt",                  path: "/settings",                 isBottom: true },
+    { icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" },
+    { icon: "swap_horiz", label: "Yêu cầu nhập/xuất kho", path: "/confirm-movement", section: "KHO" },
+    { icon: "inventory", label: "Quản lí tồn kho", path: "/staff-inventory" },
+    { icon: "fact_check", label: "Kiểm kê kho", path: "/staff-audit-sessions" },
+    { icon: "calendar_month", label: "Lịch của tôi", path: "/my-schedule", section: "CÁ NHÂN" },
+    { icon: "precision_manufacturing", label: "Quản lý thiết bị", path: "/equipment-management" },
+    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
   ],
   // Người thuê kho
   RENTER: [
-    { icon: "description",             label: "Hợp đồng của tôi",       path: "/my-contracts" },
-    { icon: "list_alt",                label: "Yêu cầu thuê kho",        path: "/my-rental-requests" },
-    { icon: "add_circle",              label: "Tạo yêu cầu nhập/xuất",   path: "/create-inventory",         section: "KHO" },
-    { icon: "history",                 label: "Lịch sử nhập/xuất kho",   path: "/renter-inventory-history" },
-    { icon: "inventory",               label: "Tồn kho của tôi",          path: "/renter-inventory" },
-    { icon: "fact_check",              label: "Kiểm kê kho",             path: "/renter-audit-sessions" },
-    { icon: "receipt_long",            label: "Lịch sử thanh toán",      path: "/payment-history",          section: "TÀI CHÍNH" },
-    { icon: "star",                    label: "Đánh giá của tôi",        path: "/my-ratings",               badgeKey: "unratedCount" },
-    { icon: "settings",                label: "Cài đặt",                 path: "/settings",                 isBottom: true },
+    { icon: "description", label: "Hợp đồng của tôi", path: "/my-contracts" },
+    { icon: "list_alt", label: "Yêu cầu thuê kho", path: "/my-rental-requests" },
+    { icon: "add_circle", label: "Tạo yêu cầu nhập/xuất", path: "/create-inventory", section: "KHO" },
+    { icon: "history", label: "Lịch sử nhập/xuất kho", path: "/renter-inventory-history" },
+    { icon: "inventory", label: "Tồn kho của tôi", path: "/renter-inventory" },
+    { icon: "fact_check", label: "Kiểm kê kho", path: "/renter-audit-sessions" },
+    { icon: "receipt_long", label: "Lịch sử thanh toán", path: "/payment-history", section: "TÀI CHÍNH" },
+    { icon: "star", label: "Đánh giá của tôi", path: "/my-ratings", badgeKey: "unratedCount" },
+    { icon: "precision_manufacturing", label: "Quản lý thiết bị", path: "/equipment-management" },
+    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
   ],
   // Người dùng thường chưa có kho
   USER: [
-    { icon: "search",                  label: "Tìm kho thuê",        path: "/search" },
-    { icon: "description",             label: "Hợp đồng của tôi",    path: "/my-contracts" },
-    { icon: "list_alt",                label: "Yêu cầu thuê",        path: "/my-rental-requests" },
-    { icon: "settings",                label: "Cài đặt",             path: "/settings",              isBottom: true },
+    { icon: "search", label: "Tìm kho thuê", path: "/search" },
+    { icon: "description", label: "Hợp đồng của tôi", path: "/my-contracts" },
+    { icon: "list_alt", label: "Yêu cầu thuê", path: "/my-rental-requests" },
+    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
   ],
   // Admin hệ thống
   ADMIN: [
-    { icon: "admin_panel_settings",    label: "Quản trị viên",       path: "/admin" },
-    { icon: "star",                     label: "Quản lý đánh giá",    path: "/admin/ratings" },
-    { icon: "settings",                label: "Cài đặt",             path: "/settings",              isBottom: true },
+    { icon: "admin_panel_settings", label: "Quản trị viên", path: "/admin" },
+    { icon: "star", label: "Quản lý đánh giá", path: "/admin/ratings" },
+    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
   ],
 };
 
 const ROLE_LABEL = {
-  OWNER:    "Chủ kho",
+  OWNER: "Chủ kho",
   OPERATOR: "Điều phối viên",
-  MANAGER:  "Quản lý kho",
-  STAFF:    "Nhân viên kho",
-  RENTER:   "Người thuê kho",
-  ADMIN:    "Quản trị viên",
-  USER:     "Người dùng",
+  MANAGER: "Quản lý kho",
+  STAFF: "Nhân viên kho",
+  RENTER: "Người thuê kho",
+  ADMIN: "Quản trị viên",
+  USER: "Người dùng",
 };
 
 // Priority: who gets which menu when user has multiple warehouse roles
@@ -126,24 +127,24 @@ function resolveEffectiveRole(systemRole, warehouses) {
 }
 
 const Sidebar = () => {
-  const location  = useLocation();
-  const navigate  = useNavigate();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [effectiveRole, setEffectiveRole] = useState("USER");
-  const [displayName,   setDisplayName]   = useState("Người dùng");
-  const [avatarSrc,     setAvatarSrc]     = useState("");
+  const [displayName, setDisplayName] = useState("Người dùng");
+  const [avatarSrc, setAvatarSrc] = useState("");
   // Badge: số kho chưa đánh giá (Renter) / số đánh giá chưa reply (Owner) / số yêu cầu chờ duyệt (Manager)
-  const [unratedCount,         setUnratedCount]        = useState(0);
-  const [unrepliedCount,       setUnrepliedCount]      = useState(0);
-  const [pendingRequestCount,  setPendingRequestCount] = useState(0);
+  const [unratedCount, setUnratedCount] = useState(0);
+  const [unrepliedCount, setUnrepliedCount] = useState(0);
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
 
   const loadUserInfo = () => {
     const user = authService.getCurrentUser() || {};
-    const ctx  = authService.getWarehouseContext() || {};
-    const systemRole  = (ctx.systemRole || user.role || user.roleName || "user").toLowerCase();
-    const warehouses  = ctx.warehouses || [];
-    const name        = user.fullName || user.FullName || ctx.name || "Người dùng";
-    const avatar      = user.avatarUrl || user.AvatarUrl ||
+    const ctx = authService.getWarehouseContext() || {};
+    const systemRole = (ctx.systemRole || user.role || user.roleName || "user").toLowerCase();
+    const warehouses = ctx.warehouses || [];
+    const name = user.fullName || user.FullName || ctx.name || "Người dùng";
+    const avatar = user.avatarUrl || user.AvatarUrl ||
       `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00b2d6&color=fff`;
 
     const role = resolveEffectiveRole(systemRole, warehouses);
@@ -189,7 +190,7 @@ const Sidebar = () => {
         axiosClient.get('/InventoryRequests', { params: { type: 'INBOUND', status: 'PENDING', pageSize: 1 } }),
         axiosClient.get('/InventoryRequests', { params: { type: 'OUTBOUND', status: 'PENDING', pageSize: 1 } }),
       ]);
-      const countIn  = inbound.data?.totalCount  ?? (Array.isArray(inbound.data?.items)  ? inbound.data.items.length  : 0);
+      const countIn = inbound.data?.totalCount ?? (Array.isArray(inbound.data?.items) ? inbound.data.items.length : 0);
       const countOut = outbound.data?.totalCount ?? (Array.isArray(outbound.data?.items) ? outbound.data.items.length : 0);
       setPendingRequestCount(countIn + countOut);
     } catch {
@@ -268,10 +269,10 @@ const Sidebar = () => {
     navigate("/auth");
   };
 
-  const menuItems   = MENU_BY_ROLE[effectiveRole] || MENU_BY_ROLE["USER"];
+  const menuItems = MENU_BY_ROLE[effectiveRole] || MENU_BY_ROLE["USER"];
   const displayRole = ROLE_LABEL[effectiveRole] || effectiveRole;
   const accentColor = "#00b2d6";
-  const activeBg    = "#e0f2fe";
+  const activeBg = "#e0f2fe";
 
   // Badge values map
   const badgeValues = { unratedCount, unrepliedCount, pendingRequestCount };
