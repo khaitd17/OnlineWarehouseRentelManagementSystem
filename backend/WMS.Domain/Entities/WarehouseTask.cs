@@ -13,10 +13,11 @@ public class WarehouseTask
     public DateTime? ScheduledAt { get; set; }
     public string? Note { get; set; }
     public bool IsAllZone { get; set; } = true;
+
+    public string? RefType { get; set; }
+    public int? RefId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
     public TaskType TaskType { get; set; } = null!;
-    public int referenceId { get; set; }
     public ICollection<Zone> Zones { get; set; } = new List<Zone>();
-    public ICollection<TaskAssignment> Assignments { get; set; } = new List<TaskAssignment>();
     public ICollection<UnitTask> UnitTasks { get; set; } = new List<UnitTask>();
 }

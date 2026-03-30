@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import authService from '../services/authService';
+import OWRMSLogo from '../components/OWRMSLogo';
 
 /* ─── Keyframe injection ─────────────────────────────────────── */
 const STYLES = `
@@ -162,14 +163,10 @@ const STYLES = `
   .auth-tab.inactive:hover { color: #94a3b8; }
 
   .logo-badge {
-    width: 80px; height: 80px;
+    width: 96px; height: 96px;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
-    box-shadow: 0 8px 32px rgba(99,102,241,0.4), 0 0 0 3px rgba(255,255,255,0.08);
-    animation: pulse-ring 2.5s infinite;
     margin: 0 auto 16px;
-    background: #fff;
   }
 
   .forgot-link {
@@ -360,7 +357,7 @@ const AuthPage = () => {
           {/* ── Logo + Brand ── */}
           <div style={{ textAlign:'center', marginBottom:'28px' }}>
             <div className="logo-badge">
-              <img src="/owrms-logo.png" alt="OWRMS Logo" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+              <OWRMSLogo size={96} variant="auth" />
             </div>
             <h1 style={{ margin:'0 0 4px', fontSize:'1.5rem', fontWeight:800, color:'#f1f5f9', letterSpacing:'-0.02em' }}>
               OWRMS

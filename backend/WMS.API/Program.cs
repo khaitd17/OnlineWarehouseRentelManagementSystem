@@ -103,6 +103,7 @@ builder.Services.AddScoped<IRenterAssetRepository, RenterAssetRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRatingRepository, WMS.Infrastructure.Repositories.RatingRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseReturnRepository, WMS.Infrastructure.Repositories.WarehouseReturnRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalPaymentRepository, WMS.Infrastructure.Repositories.RentalPaymentRepository>();
+builder.Services.AddScoped<IEquipmentIncidentRepository, EquipmentIncidentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
 
 // Services
@@ -198,6 +199,15 @@ using (var scope = app.Services.CreateScope())
     {
         // 1. Apply any pending migrations automatically
         context.Database.Migrate();
+
+        // 1.1 Patch: Manually ensure termination columns exist (workaround for empty migration history)
+        try {
+            context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'terminated_at') ALTER TABLE contracts ADD terminated_at datetime2 NULL;");
+            context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_reason') ALTER TABLE contracts ADD termination_reason nvarchar(max) NULL;");
+            context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'terminated_at') ALTER TABLE rental_contracts ADD terminated_at datetime2 NULL;");
+            context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'termination_reason') ALTER TABLE rental_contracts ADD termination_reason nvarchar(max) NULL;");
+        } catch { /* ignore if already exists or fails */ }
+
         logger.LogInformation("Database migrations applied successfully.");
 
         // 2. Seed the database

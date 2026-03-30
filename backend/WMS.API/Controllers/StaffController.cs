@@ -61,6 +61,27 @@ public class StaffController : ControllerBase
     }
 
     /// <summary>
+    /// Kiểm tra xem email đã tồn tại trong hệ thống chưa.
+    /// Trả về thông tin cơ bản nếu tìm thấy, để frontend bỏ qua bước nhập thông tin cá nhân.
+    /// </summary>
+    [HttpGet("check-email")]
+    public async Task<IActionResult> CheckEmail([FromQuery] string email, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return BadRequest(new { message = "Email không được để trống." });
+
+        var user = await _db.Users
+            .Where(u => u.Email.ToLower() == email.Trim().ToLower())
+            .Select(u => new { u.UserId, u.FullName, u.Email, u.Phone })
+            .FirstOrDefaultAsync(ct);
+
+        if (user == null)
+            return Ok(new { exists = false });
+
+        return Ok(new { exists = true, userId = user.UserId, fullName = user.FullName, email = user.Email, phone = user.Phone });
+    }
+
+    /// <summary>
     /// Lấy danh sách nhân viên theo kho, tự động lọc theo scope của caller (role).
     /// </summary>
     [HttpGet("list")]

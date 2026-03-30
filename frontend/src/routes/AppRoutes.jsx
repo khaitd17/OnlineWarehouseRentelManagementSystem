@@ -80,6 +80,7 @@ import AdminPendingWarehousesPage from "../pages/admin/AdminPendingWarehousesPag
 
 import EquipmentManagement from "../pages/EquipmentManagement";
 import MyRatingsPage from "../pages/MyRatingsPage";
+import FavoritesPage from "../pages/FavoritesPage";
 
 // Contract Extension Pages
 import RenterExtensionPage from "../pages/RenterExtensionPage.jsx";
@@ -173,12 +174,11 @@ function AppRoutes() {
             <Route path="/list-staff" element={<ListStaff />} />
             <Route path="/shift-scheduling" element={<ShiftSchedulingPage />} />
             <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
-            <Route path="/equipment-management" element={<EquipmentManagement />} />
           </Route>
         </Route>
 
-        {/* ── STAFF / MANAGER / OPERATOR / OWNER ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'ADMIN']} />}>
+        {/* ── Warehouse members (Staff, Manager, Operator, Owner, Renter) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'RENTER', 'ADMIN']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/staff-dashboard" element={<StaffDashboard />} />
             <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
@@ -190,6 +190,7 @@ function AppRoutes() {
             <Route path="/my-schedule" element={<MySchedulePage />} />
             <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
             <Route path="/staff-audit-sessions/:id" element={<StaffAuditSessionDetailPage />} />
+            <Route path="/equipment-management" element={<EquipmentManagement />} />
           </Route>
         </Route>
 
@@ -207,6 +208,7 @@ function AppRoutes() {
             <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
             <Route path="/renter-inventory" element={<RenterInventoryPage />} />
             <Route path="/my-ratings" element={<MyRatingsPage />} />
+            <Route path="/my-favorites" element={<FavoritesPage />} />
           </Route>
         </Route>
 

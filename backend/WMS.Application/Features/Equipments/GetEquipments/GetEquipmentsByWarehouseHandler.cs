@@ -11,8 +11,9 @@ public class GetEquipmentsByWarehouseHandler : BaseEquipmentHandler, IRequestHan
     public GetEquipmentsByWarehouseHandler(
         IWarehouseRepository warehouseRepository,
         IStaffMembershipRepository membershipRepository,
+        IRentalContractRepository contractRepository,
         IEquipmentRepository equipmentRepository) 
-        : base(warehouseRepository, membershipRepository)
+        : base(warehouseRepository, membershipRepository, contractRepository)
     {
         _equipmentRepository = equipmentRepository;
     }

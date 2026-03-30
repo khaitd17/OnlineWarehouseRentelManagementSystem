@@ -109,15 +109,19 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         var rentalRequest = await _rentalRequestRepo.GetByIdAsync(contract.RentalRequestId);
         if (rentalRequest != null)
         {
-            List<Equipment> autoEquipments;
+            var autoEquipments = new List<Equipment>();
+            
+            // Lấy thiết bị của khu vực thuê (nếu có)
             if (rentalRequest.RentalAreaId.HasValue)
             {
-                autoEquipments = await _equipmentRepo.GetByRentalAreaIdAsync(rentalRequest.RentalAreaId.Value, cancellationToken);
+                var areaEquipments = await _equipmentRepo.GetByRentalAreaIdAsync(rentalRequest.RentalAreaId.Value, cancellationToken);
+                autoEquipments.AddRange(areaEquipments);
             }
-            else
-            {
-                autoEquipments = await _equipmentRepo.GetByWarehouseIdAsync(contract.WarehouseId, cancellationToken);
-            }
+
+            // Lấy thêm các thiết bị Dùng Chung Toàn Kho (RentalAreaId == null)
+            var warehouseEquipments = await _equipmentRepo.GetByWarehouseIdAsync(contract.WarehouseId, cancellationToken);
+            var sharedEquipments = warehouseEquipments.Where(e => e.RentalAreaId == null);
+            autoEquipments.AddRange(sharedEquipments);
 
             foreach (var e in autoEquipments)
             {

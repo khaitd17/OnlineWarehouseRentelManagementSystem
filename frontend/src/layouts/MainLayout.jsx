@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import favoritesService from '../services/favoritesService';
+import OWRMSLogo from '../components/OWRMSLogo';
 
 const DASHBOARD_PATHS = [
   '/dashboard', '/my-warehouses', '/post-warehouse', '/create-warehouse',
@@ -9,7 +11,7 @@ const DASHBOARD_PATHS = [
   '/owner-audit-sessions', '/staff-audit-sessions', '/renter-audit-sessions',
   '/staff-dashboard', '/inbound-requests', '/outbound-requests',
   '/confirm-movement', '/create-inbound', '/create-outbound',
-  '/renter-dashboard', '/my-rental-requests', '/my-ratings', '/renter-inbound-requests', '/renter-outbound-requests',
+  '/renter-dashboard', '/my-rental-requests', '/my-ratings', '/my-favorites', '/renter-inbound-requests', '/renter-outbound-requests',
   '/transaction-history', '/payment-history', '/profile',
 ];
 
@@ -42,15 +44,39 @@ const NAV_STYLES = `
     border-bottom: 1px solid rgba(255,255,255,0.08);
   }
 
-  .nav-logo img {
-    height: 72px;
-    width: 72px;
-    object-fit: contain;
-    filter: drop-shadow(0 0 8px rgba(0, 180, 255, 0.25));
-    transition: filter 0.3s ease;
+  .nav-logo {
+    cursor: pointer;
   }
-  .nav-logo img:hover {
-    filter: drop-shadow(0 0 14px rgba(0, 200, 255, 0.5));
+  .owrms-logo-svg {
+    height: 64px;
+    width: 64px;
+    flex-shrink: 0;
+    overflow: visible;
+  }
+  .owrms-logo-svg:hover .logo-ring-1 {
+    filter: drop-shadow(0 0 6px #00d2ff);
+  }
+  @keyframes logo-spin {
+    to { transform: rotate(360deg); }
+  }
+  @keyframes logo-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  @keyframes logo-pulse-glow {
+    0%, 100% { opacity: 0.55; }
+    50% { opacity: 1; }
+  }
+  .logo-ring-rotate {
+    transform-origin: 50% 50%;
+    animation: logo-spin 8s linear infinite;
+  }
+  .logo-icon-float {
+    transform-origin: 50% 65%;
+    animation: logo-float 3.5s ease-in-out infinite;
+  }
+  .logo-glow-pulse {
+    animation: logo-pulse-glow 2.8s ease-in-out infinite;
   }
 
   .nav-links {
@@ -70,6 +96,7 @@ const NAV_STYLES = `
     border-radius: 8px;
     transition: color 0.2s ease, background 0.2s ease;
     letter-spacing: 0.01em;
+    white-space: nowrap;
   }
   .nav-link:hover {
     color: #fff;
@@ -103,10 +130,43 @@ const NAV_STYLES = `
     padding: 0.45rem 0.9rem;
     border-radius: 8px;
     transition: color 0.2s ease, background 0.2s ease;
+    white-space: nowrap;
   }
   .nav-dashboard-link:hover {
     color: #38bdf8;
     background: rgba(56, 189, 248, 0.1);
+  }
+
+  .nav-favorites-link {
+    text-decoration: none;
+    color: #fb7185;
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 8px;
+    border: 1.5px solid rgba(251,113,133,0.3);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    position: relative;
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    white-space: nowrap;
+  }
+  .nav-favorites-link:hover {
+    background: rgba(251,113,133,0.1);
+    border-color: rgba(251,113,133,0.6);
+    color: #f43f5e;
+  }
+  .nav-favorites-badge {
+    background: #fb7185;
+    color: #fff;
+    border-radius: 9px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    min-width: 16px;
+    text-align: center;
+    line-height: 1.4;
   }
 
   .btn-post {
@@ -154,6 +214,7 @@ const NAV_STYLES = `
     cursor: pointer;
     transition: all 0.25s ease;
     font-family: 'Inter', sans-serif;
+    white-space: nowrap;
   }
   .btn-login:hover {
     background: rgba(255,255,255,0.1);
@@ -172,6 +233,7 @@ const NAV_STYLES = `
     cursor: pointer;
     transition: all 0.25s ease;
     font-family: 'Inter', sans-serif;
+    white-space: nowrap;
   }
   .btn-logout:hover {
     background: rgba(239, 68, 68, 0.1);
@@ -188,6 +250,7 @@ const NAV_STYLES = `
     cursor: pointer;
     transition: border-color 0.2s ease, transform 0.2s ease;
     background: #1e3a5f;
+    flex-shrink: 0;
   }
   .nav-avatar:hover {
     border-color: #38bdf8;
@@ -227,6 +290,139 @@ const NAV_STYLES = `
   .footer-link:hover {
     color: #38bdf8;
   }
+
+  /* ── Nav Hamburger (Mobile) ── */
+  .nav-hamburger {
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    color: rgba(255,255,255,0.8);
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+  }
+  .nav-hamburger:hover {
+    background: rgba(255,255,255,0.08);
+  }
+  .nav-hamburger .material-symbols-outlined {
+    font-size: 26px;
+  }
+
+  /* ── Mobile Drawer Overlay ── */
+  .mobile-nav-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    z-index: 1998;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+  .mobile-nav-overlay.open {
+    display: block;
+  }
+
+  /* ── Mobile Drawer Panel ── */
+  .mobile-nav-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 280px;
+    max-width: 85vw;
+    background: linear-gradient(180deg, #0a1628 0%, #0d1e3a 100%);
+    z-index: 1999;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
+  .mobile-nav-drawer.open {
+    transform: translateX(0);
+    box-shadow: -8px 0 32px rgba(0,0,0,0.4);
+  }
+  .mobile-nav-drawer .drawer-close {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.5rem;
+  }
+  .mobile-nav-drawer .drawer-close button {
+    background: rgba(255,255,255,0.08);
+    border: none;
+    border-radius: 8px;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .mobile-nav-drawer .drawer-close button:hover {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+  }
+  .mobile-nav-drawer .drawer-nav-link {
+    display: block;
+    text-decoration: none;
+    color: rgba(255,255,255,0.75);
+    font-weight: 500;
+    font-size: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    transition: color 0.2s, background 0.2s;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .mobile-nav-drawer .drawer-nav-link:hover,
+  .mobile-nav-drawer .drawer-nav-link.active {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+  }
+  .mobile-nav-drawer .drawer-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.08);
+    margin: 1rem 0;
+  }
+  .mobile-nav-drawer .drawer-actions {
+    margin-top: auto;
+    padding-top: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* ── Responsive Breakpoints ── */
+  @media (max-width: 900px) {
+    .main-nav {
+      padding: 0 1rem;
+      min-height: 60px;
+    }
+    .nav-links {
+      display: none;
+    }
+    .nav-hamburger {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-right-desktop {
+      display: none;
+    }
+    .nav-logo img {
+      height: 52px;
+      width: 52px;
+    }
+  }
+  @media (min-width: 901px) {
+    .mobile-nav-overlay,
+    .mobile-nav-drawer {
+      display: none !important;
+    }
+  }
 `;
 
 const MainLayout = () => {
@@ -235,7 +431,25 @@ const MainLayout = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || {});
   const [scrolled, setScrolled] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const navigate = useNavigate();
+  const [favoritesCount, setFavoritesCount] = useState(() => favoritesService.count());
+
+  // Track window width for responsive behavior
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isMobile = windowWidth < 900;
+
+  useEffect(() => {
+    const handler = () => setFavoritesCount(favoritesService.count());
+    window.addEventListener('favoritesChanged', handler);
+    return () => window.removeEventListener('favoritesChanged', handler);
+  }, []);
 
   useEffect(() => {
     const handleAuthChange = () => {
@@ -255,6 +469,21 @@ const MainLayout = () => {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // Close mobile nav on route change
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  // Lock body scroll when mobile nav is open
+  useEffect(() => {
+    if (mobileNavOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileNavOpen]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -277,11 +506,67 @@ const MainLayout = () => {
     <div className="nav-root" style={{ fontFamily: "'Inter', sans-serif", color: '#fff', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <style>{NAV_STYLES}</style>
 
-      {/* Navbar */}
+      {/* === Mobile Nav Overlay === */}
+      <div
+        className={`mobile-nav-overlay${mobileNavOpen ? ' open' : ''}`}
+        onClick={() => setMobileNavOpen(false)}
+      />
+
+      {/* === Mobile Nav Drawer === */}
+      <div className={`mobile-nav-drawer${mobileNavOpen ? ' open' : ''}`}>
+        <div className="drawer-close">
+          <button onClick={() => setMobileNavOpen(false)}>
+            <span className="material-symbols-outlined" style={{ fontSize: '22px' }}>close</span>
+          </button>
+        </div>
+
+        {/* Logo (mobile drawer) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.5rem' }}>
+          <OWRMSLogo size={40} variant="mini" />
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, background: 'linear-gradient(90deg, #fff, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>OWRMS</span>
+        </div>
+
+        {/* Nav links */}
+        <Link to="/" className={`drawer-nav-link${isActive('/') ? ' active' : ''}`}>🏠 Trang chủ</Link>
+        <Link to="/search" className={`drawer-nav-link${isActive('/search') ? ' active' : ''}`}>🔍 Tìm kiếm kho</Link>
+        <Link to="/about" className={`drawer-nav-link${isActive('/about') ? ' active' : ''}`}>ℹ️ Về chúng tôi</Link>
+
+        <div className="drawer-divider" />
+
+        {isAuthenticated ? (
+          <>
+            <Link to={dashboardPath} className="drawer-nav-link">📊 Dashboard</Link>
+            {dashboardPath === '/renter-dashboard' && (
+              <Link to="/my-favorites" className="drawer-nav-link" style={{ color: '#fb7185' }}>
+                ❤️ Yêu thích {favoritesCount > 0 && `(${favoritesCount})`}
+              </Link>
+            )}
+            <Link to="/profile" className="drawer-nav-link">👤 Trang cá nhân</Link>
+            <div className="drawer-divider" />
+            <div className="drawer-actions">
+              <button
+                className="btn-logout"
+                style={{ width: '100%', textAlign: 'center', justifyContent: 'center', display: 'flex', alignItems: 'center' }}
+                onClick={handleLogout}
+              >
+                Đăng xuất
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="drawer-actions">
+            <Link to="/post-warehouse" className="btn-post" style={{ textAlign: 'center', display: 'block' }}>Đăng tin cho thuê</Link>
+            <button className="btn-login" style={{ width: '100%' }} onClick={() => navigate('/auth', { state: { mode: 'login' } })}>Đăng nhập</button>
+          </div>
+        )}
+      </div>
+
+      {/* === Navbar === */}
       <nav className={`main-nav${scrolled ? ' scrolled' : ''}`}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Link to="/" className="nav-logo" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
-            <img src="/owrms-logo.png" alt="OWRMS" />
+        {/* Left: Logo + Desktop Nav Links */}
+        <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+          <Link to="/" className="nav-logo" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <OWRMSLogo size={64} variant="mini" />
           </Link>
           <div className="nav-links">
             <Link to="/" className={`nav-link${isActive('/') ? ' active' : ''}`}>Trang chủ</Link>
@@ -290,11 +575,23 @@ const MainLayout = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        {/* Right Desktop: Auth buttons (hidden on mobile) */}
+        <div
+          className="nav-right-desktop"
+          style={{ display: isMobile ? 'none' : 'flex', gap: '0.75rem', alignItems: 'center' }}
+        >
           {isAuthenticated ? (
             <>
               {user && (
                 <Link to={dashboardPath} className="nav-dashboard-link">Dashboard</Link>
+              )}
+              {user && dashboardPath === '/renter-dashboard' && (
+                <Link to="/my-favorites" className="nav-favorites-link">
+                  ❤️ Yêu thích
+                  {favoritesCount > 0 && (
+                    <span className="nav-favorites-badge">{favoritesCount}</span>
+                  )}
+                </Link>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <Link to="/profile" title="Trang cá nhân">
@@ -314,6 +611,16 @@ const MainLayout = () => {
             </>
           )}
         </div>
+
+        {/* Right Mobile: Hamburger (only on mobile) */}
+        <button
+          className="nav-hamburger"
+          onClick={() => setMobileNavOpen(true)}
+          aria-label="Mở menu"
+          style={{ display: isMobile ? 'flex' : 'none' }}
+        >
+          <span className="material-symbols-outlined">menu</span>
+        </button>
       </nav>
 
       {/* Main Content */}
@@ -323,16 +630,10 @@ const MainLayout = () => {
 
       {/* Footer */}
       <footer className="main-footer">
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '3rem' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '3rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
-              <div style={{
-                width: '36px', height: '36px',
-                background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
-                borderRadius: '10px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.1rem'
-              }}>🏭</div>
+              <OWRMSLogo size={40} variant="mini" />
               <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, background: 'linear-gradient(90deg, #fff, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>OWRMS</h3>
             </div>
             <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.88rem', lineHeight: '1.65', margin: 0 }}>

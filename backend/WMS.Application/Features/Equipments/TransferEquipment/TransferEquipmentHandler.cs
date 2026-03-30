@@ -12,8 +12,9 @@ public class TransferEquipmentHandler : BaseEquipmentHandler, IRequestHandler<Tr
     public TransferEquipmentHandler(
         IWarehouseRepository warehouseRepository,
         IStaffMembershipRepository membershipRepository,
+        IRentalContractRepository contractRepository,
         IEquipmentRepository equipmentRepository) 
-        : base(warehouseRepository, membershipRepository)
+        : base(warehouseRepository, membershipRepository, contractRepository)
     {
         _equipmentRepository = equipmentRepository;
     }

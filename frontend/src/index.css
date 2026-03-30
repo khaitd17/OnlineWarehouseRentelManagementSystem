@@ -1,3 +1,8 @@
+/* ── Box Sizing Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -5,6 +10,7 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 code {
@@ -30,4 +36,208 @@ code {
   -webkit-font-smoothing: antialiased;
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
+
+/* ── Responsive Utility Classes ── */
+.hide-on-mobile { display: block; }
+.show-on-mobile { display: none; }
+
+/* Mobile breakpoint: 900px covers browser emulation at 390px device pixels */
+@media (max-width: 900px) {
+  .hide-on-mobile { display: none !important; }
+  .show-on-mobile { display: block !important; }
+  .show-on-mobile-flex { display: flex !important; }
+}
+
+/* ── Responsive Table Wrapper ── */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Responsive Grid Helpers ── */
+.responsive-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+.responsive-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.responsive-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .responsive-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .responsive-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 900px) {
+  .responsive-grid-4,
+  .responsive-grid-3,
+  .responsive-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ── Mobile-friendly touch targets ── */
+@media (max-width: 900px) {
+  button, a, [role="button"] {
+    min-height: 40px;
+  }
+}
+
+/* ── Dashboard Layout Mobile ── */
+/* Hamburger button: hidden on desktop, shown on mobile */
+.hamburger-btn {
+  display: none !important;
+}
+@media (max-width: 900px) {
+  .hamburger-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Main content area: remove sidebar margin */
+  .dashboard-main-area {
+    margin-left: 0 !important;
+  }
+  /* Hide search bar on very small screens */
+  .topbar-search {
+    display: none;
+  }
+}
+
+/* ── Admin Layout Mobile ── */
+@media (max-width: 900px) {
+  .admin-hamburger-btn {
+    display: flex !important;
+  }
+  .admin-main {
+    margin-left: 0 !important;
+  }
+  .admin-sidebar {
+    transform: translateX(-100%);
+    z-index: 1000;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .admin-sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+  }
+  .admin-sidebar-overlay.open {
+    display: block;
+  }
+  .admin-content {
+    padding: 12px;
+  }
+  .admin-topbar {
+    padding: 0 12px;
+  }
+  .admin-topbar-left {
+    display: none;
+  }
+  .admin-topbar-user-text {
+    display: none;
+  }
+  .admin-topbar-divider {
+    display: none;
+  }
+}
+
+/* ── Prevent horizontal overflow everywhere ── */
+img, video, iframe {
+  max-width: 100%;
+}
+
+
+/* ══════════════════════════════════════
+   GLOBAL MOBILE RESPONSIVE RULES
+   Applies to all pages automatically
+   ══════════════════════════════════════ */
+
+/* Make all tables horizontally scrollable on mobile */
+@media (max-width: 900px) {
+  /* Universal: any element containing a table scrolls horizontally */
+  div:has(> table),
+  section:has(> table) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure tables have minimum width to be readable */
+  div > table,
+  section > table {
+    min-width: 500px;
+  }
+
+  /* Common table wrapper patterns */
+  [style*="overflow: hidden"] > table,
+  [style*="overflow:hidden"] > table {
+    min-width: 500px;
+  }
+
+
+  /* Fluid page containers */
+  [style*="maxWidth: 900px"],
+  [style*="maxWidth: 1000px"],
+  [style*="maxWidth: 1100px"],
+  [style*="maxWidth: 1200px"],
+  [style*="maxWidth: 1300px"],
+  [style*="maxWidth:'900px'"],
+  [style*="maxWidth:'1000px'"],
+  [style*="maxWidth:'1100px'"],
+  [style*="maxWidth:'1200px'"] {
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Common inline grid patterns → single column */
+  [style*="display: grid"][style*="repeat(3"],
+  [style*="display: grid"][style*="repeat(4"],
+  [style*="display:grid"][style*="repeat(3"],
+  [style*="display:grid"][style*="repeat(4"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  [style*="display: grid"][style*="repeat(2"],
+  [style*="display:grid"][style*="repeat(2"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Remove excessive horizontal padding on small screens */
+  [style*="padding: 40px"],
+  [style*="padding:40px"],
+  [style*="padding: 32px"],
+  [style*="padding: 3rem"] {
+    padding: 16px !important;
+  }
+
+  /* Modals full width */
+  [style*="maxWidth: 600px"],
+  [style*="maxWidth: 700px"],
+  [style*="maxWidth: 800px"],
+  [style*="maxWidth:'600px'"],
+  [style*="maxWidth:'700px'"],
+  [style*="maxWidth:'800px'"] {
+    max-width: calc(100vw - 32px) !important;
+    margin: 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  [style*="display: grid"][style*="repeat(2"],
+  [style*="display:grid"][style*="repeat(2"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Font size adjustments for very small screens */
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.25rem !important; }
+}
+
 

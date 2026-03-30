@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import axiosClient from '../services/axiosClient';
 import scheduleService from '../services/scheduleService';
-import { getWeekTasks } from '../services/taskSchedulingService';
+import { getTasks } from '../services/taskSchedulingService';
 
 /* ─── Helpers ─────────────────────────────────────────────── */
 const pad   = n => String(n).padStart(2,'0');
@@ -250,12 +250,12 @@ export default function MySchedulePage() {
       // API 1: ca lam viec
       const shiftData = await scheduleService.getMySchedule(warehouseId, from, to);
       // API 2: task duoc gan
-      let taskData = { scheduled: [], unscheduled: [] };
-      try { taskData = await getWeekTasks(warehouseId, viewMode==='week' ? new Date(from) : undefined); } catch {}
+      let taskData = [];
+      try { taskData = await getTasks(warehouseId, `${from}T00:00:00Z`, `${to}T23:59:59Z`); } catch {}
 
       // Merge tasks vao slots theo ngay
       const merged = { ...(shiftData?.shifts || {}) };
-      const allTasks = [...(taskData.scheduled||[]), ...(taskData.unscheduled||[])];
+      const allTasks = Array.isArray(taskData) ? taskData : [];
       allTasks.forEach(t => {
         if (!t.scheduledAt) return;
         const d   = new Date(t.scheduledAt);
@@ -365,9 +365,12 @@ export default function MySchedulePage() {
         ) : error ? (
           <div style={{ padding:20, color:'#dc2626', background:'#fef2f2', fontSize:'0.88rem' }}>{error}</div>
         ) : (
-          viewMode === 'week'
-            ? <WeekTable monday={monday} shifts={schedule?.shifts} />
-            : <MonthTable year={currentDate.getFullYear()} month={currentDate.getMonth()} shifts={schedule?.shifts} />
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            {viewMode === 'week'
+              ? <WeekTable monday={monday} shifts={schedule?.shifts} />
+              : <MonthTable year={currentDate.getFullYear()} month={currentDate.getMonth()} shifts={schedule?.shifts} />
+            }
+          </div>
         )}
 
         {/* No data notice */}

@@ -34,11 +34,11 @@ const ApproveModal = ({ req, onClose, onApprove, loading }) => {
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:460, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.5rem' }}>✅</div>
+          <div style={{ width:48, height:48, borderRadius:14, background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'1.1rem', color:'#166534' }}>OK</div>
           <div>
             <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Duyệt yêu cầu</h2>
             <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>
-              #{req.invReqId} · {req.type==='INBOUND'?'📥 Nhập kho':'📤 Xuất kho'} · {req.warehouseName}
+              #{req.invReqId} · {req.type==='INBOUND'?'Nhập kho':'Xuất kho'} · {req.warehouseName}
             </p>
           </div>
         </div>
@@ -68,7 +68,7 @@ const ApproveModal = ({ req, onClose, onApprove, loading }) => {
           <button onClick={()=>onApprove(req.invReqId, note)} disabled={loading}
             style={{ padding:'10px 24px', borderRadius:10, border:'none', background:'linear-gradient(135deg,#22c55e,#16a34a)', color:'#fff', cursor:loading?'wait':'pointer', fontWeight:700, fontSize:'0.875rem', display:'flex', alignItems:'center', gap:8, boxShadow:'0 4px 14px rgba(34,197,94,0.35)' }}>
             {loading && <span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }}/>}
-            {loading ? 'Đang duyệt...' : '✅ Xác nhận duyệt'}
+            {loading ? 'Đang duyệt...' : 'Xác nhận duyệt'}
           </button>
         </div>
       </div>
@@ -86,7 +86,7 @@ const AssignModal = ({ req, staffList, staffLoading, onClose, onAssign, loading 
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:480, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:'#dbeafe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.5rem' }}>👷</div>
+          <div style={{ width:48, height:48, borderRadius:14, background:'#dbeafe', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'1.1rem', color:'#1d4ed8' }}>NV</div>
           <div>
             <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Giao nhiệm vụ cho Staff</h2>
             <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>#{req.invReqId} · {req.warehouseName}</p>
@@ -98,12 +98,12 @@ const AssignModal = ({ req, staffList, staffLoading, onClose, onAssign, loading 
           <select value={selectedStaffId} onChange={e=>setSelectedStaffId(e.target.value)}
             style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid #e2e8f0', fontSize:'0.9rem', outline:'none', background:'#f8fafc', cursor:'pointer', fontFamily:'Inter,sans-serif' }}
             disabled={staffLoading}>
-            <option value="">{staffLoading ? '⏳ Đang tải...' : '-- Chọn nhân viên --'}</option>
+            <option value="">{staffLoading ? 'Đang tải...' : '-- Chọn nhân viên --'}</option>
             {!staffLoading && staffList.map(s=>(
               <option key={s.userId} value={s.userId}>{s.fullName} — {s.email}</option>
             ))}
           </select>
-          {!staffLoading && staffList.length===0 && <p style={{ margin:'6px 0 0', fontSize:'0.78rem', color:'#f59e0b' }}>⚠ Không tìm thấy nhân viên thuộc kho này.</p>}
+          {!staffLoading && staffList.length===0 && <p style={{ margin:'6px 0 0', fontSize:'0.78rem', color:'#f59e0b' }}>Không tìm thấy nhân viên thuộc kho này.</p>}
         </div>
 
         <div style={{ marginBottom:24 }}>
@@ -120,7 +120,7 @@ const AssignModal = ({ req, staffList, staffLoading, onClose, onAssign, loading 
             disabled={loading||!selectedStaffId}
             style={{ padding:'10px 24px', borderRadius:10, border:'none', background:loading||!selectedStaffId?'#e2e8f0':`linear-gradient(135deg,${accent},${accent}cc)`, color:loading||!selectedStaffId?'#94a3b8':'#fff', cursor:loading||!selectedStaffId?'not-allowed':'pointer', fontWeight:700, fontSize:'0.875rem', display:'flex', alignItems:'center', gap:8, boxShadow:selectedStaffId?`0 4px 14px ${accent}35`:'none', transition:'all 0.2s' }}>
             {loading && <span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }}/>}
-            {loading ? 'Đang giao...' : '✓ Xác nhận giao việc'}
+            {loading ? 'Đang giao...' : 'Xác nhận giao việc'}
           </button>
         </div>
       </div>
@@ -136,7 +136,7 @@ const RejectModal = ({ req, onClose, onReject, loading }) => {
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:440, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.5rem' }}>❌</div>
+          <div style={{ width:48, height:48, borderRadius:14, background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'1.1rem', color:'#dc2626' }}>X</div>
           <div>
             <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#dc2626' }}>Từ chối yêu cầu</h2>
             <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>Yêu cầu #{req.invReqId} từ {req.renterName}</p>
@@ -172,15 +172,14 @@ const DetailModal = ({ req, onClose }) => {
         <div style={{ padding:'24px 28px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'flex-start', justifyContent:'space-between', position:'sticky', top:0, background:'#fff', zIndex:10 }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-              <span style={{ fontSize:'1.2rem' }}>{req.type==='INBOUND'?'📥':'📤'}</span>
-              <span style={{ fontSize:'1rem', fontWeight:800, color:'#0f172a' }}>
+              <span style={{ fontSize:'1rem', fontWeight:800, color:accent }}>
                 {req.type==='INBOUND'?'Nhập kho':'Xuất kho'} · #{req.invReqId}
               </span>
               <StatusBadge status={req.status}/>
             </div>
             <p style={{ margin:0, fontSize:'0.83rem', color:'#64748b' }}>{req.warehouseName}</p>
           </div>
-          <button onClick={onClose} style={{ background:'#f1f5f9', border:'none', cursor:'pointer', padding:6, borderRadius:8, display:'flex' }}>✕</button>
+          <button onClick={onClose} style={{ background:'#f1f5f9', border:'none', cursor:'pointer', padding:6, borderRadius:8, display:'flex' }}>×</button>
         </div>
 
         <div style={{ padding:'20px 28px' }}>
@@ -198,14 +197,14 @@ const DetailModal = ({ req, onClose }) => {
 
           {req.notes && (
             <div style={{ background:'#fffbeb', border:'1px solid #fde68a', borderRadius:10, padding:'12px 14px', marginBottom:16 }}>
-              <p style={{ margin:'0 0 4px', fontSize:'0.68rem', color:'#92400e', fontWeight:700, textTransform:'uppercase' }}>📝 Ghi chú yêu cầu</p>
+              <p style={{ margin:'0 0 4px', fontSize:'0.68rem', color:'#92400e', fontWeight:700, textTransform:'uppercase' }}>Ghi chú yêu cầu</p>
               <p style={{ margin:0, fontSize:'0.87rem', color:'#78350f' }}>{req.notes}</p>
             </div>
           )}
 
           {req.assignedStaffName && (
             <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:10, padding:'12px 14px', marginBottom:16 }}>
-              <p style={{ margin:'0 0 4px', fontSize:'0.68rem', color:'#1d4ed8', fontWeight:700, textTransform:'uppercase' }}>👷 Đã giao cho</p>
+              <p style={{ margin:'0 0 4px', fontSize:'0.68rem', color:'#1d4ed8', fontWeight:700, textTransform:'uppercase' }}>Đã giao cho</p>
               <p style={{ margin:'0 0 2px', fontSize:'0.9rem', color:'#1e40af', fontWeight:700 }}>{req.assignedStaffName}</p>
               {req.assignedNote && <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#4b5563' }}>{req.assignedNote}</p>}
               <p style={{ margin:'4px 0 0', fontSize:'0.72rem', color:'#6b7280' }}>{req.assignedAt ? new Date(req.assignedAt).toLocaleString('vi-VN') : ''}</p>
@@ -221,7 +220,7 @@ const DetailModal = ({ req, onClose }) => {
               <div key={i} style={{ border:'1px solid #e2e8f0', borderRadius:10, padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
                   <p style={{ margin:0, fontSize:'0.875rem', fontWeight:600, color:'#1e293b' }}>{item.itemName}</p>
-                  {item.description && <p style={{ margin:'3px 0 0', fontSize:'0.75rem', color:'#94a3b8' }}>💬 {item.description}</p>}
+                  {item.description && <p style={{ margin:'3px 0 0', fontSize:'0.75rem', color:'#94a3b8' }}>{item.description}</p>}
                 </div>
                 <span style={{ fontWeight:700, color:accent, fontSize:'0.9rem', flexShrink:0, marginLeft:12 }}>{item.quantity?.toLocaleString()} <span style={{ color:'#94a3b8', fontWeight:400, fontSize:'0.78rem' }}>{item.unit}</span></span>
               </div>
@@ -361,7 +360,7 @@ const ManagerInventoryRequests = () => {
       {/* Toast */}
       {toast && (
         <div style={{ marginBottom:16, padding:'12px 18px', borderRadius:12, background:toast.isError?'#fee2e2':'#dcfce7', border:`1px solid ${toast.isError?'#fecaca':'#bbf7d0'}`, display:'flex', alignItems:'center', gap:10, animation:'slide-in 0.25s ease' }}>
-          <span style={{ fontSize:'1rem' }}>{toast.isError?'❌':'✅'}</span>
+          <span style={{ fontSize:'1rem', fontWeight:700, color:toast.isError?'#991b1b':'#166534' }}>{toast.isError?'X':'+'}  </span>
           <span style={{ fontSize:'0.87rem', fontWeight:600, color:toast.isError?'#991b1b':'#166534' }}>{toast.msg}</span>
         </div>
       )}
@@ -369,13 +368,15 @@ const ManagerInventoryRequests = () => {
       {/* Stat Cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
         {[
-          { emoji:'📋', label:'Tổng yêu cầu',   val:counts.total,     color:'#0ea5e9' },
-          { emoji:'⏳', label:'Chờ duyệt',       val:counts.pending,   color:'#f59e0b' },
-          { emoji:'👷', label:'Đã giao Staff',   val:counts.assigned,  color:'#3b82f6' },
-          { emoji:'✅', label:'Hoàn thành',      val:counts.completed, color:'#22c55e' },
-        ].map(({emoji,label,val,color})=>(
+          { label:'Tổng yêu cầu',   val:counts.total,     color:'#0ea5e9' },
+          { label:'Chờ duyệt',       val:counts.pending,   color:'#f59e0b' },
+          { label:'Đã giao Staff',   val:counts.assigned,  color:'#3b82f6' },
+          { label:'Hoàn thành',      val:counts.completed, color:'#22c55e' },
+        ].map(({label,val,color})=>(
           <div key={label} style={{ ...card, padding:'18px 22px', display:'flex', alignItems:'center', gap:14 }}>
-            <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.3rem', flexShrink:0 }}>{emoji}</div>
+            <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <div style={{ width:10, height:10, borderRadius:'50%', background:color }} />
+            </div>
             <div>
               <p style={{ margin:0, fontSize:'0.75rem', color:'#64748b', fontWeight:500 }}>{label}</p>
               <p style={{ margin:0, fontSize:'1.75rem', fontWeight:900, color:'#0f172a', lineHeight:1.1 }}>{val}</p>
@@ -387,10 +388,10 @@ const ManagerInventoryRequests = () => {
       {/* Tab Switcher — pill style đồng bộ */}
       <div style={{ display:'flex', gap:8, padding:'11px 16px', borderRadius:12, background:activeTab==='INBOUND'?'#e0f7fa':'#fff8e1', border:`1.5px solid ${accent}30`, marginBottom:20, alignItems:'center' }}>
         <span style={{ fontSize:'0.82rem', fontWeight:600, color:'#64748b' }}>Loại yêu cầu:</span>
-        {[{v:'INBOUND',icon:'📥',label:'Nhập kho'},{v:'OUTBOUND',icon:'📤',label:'Xuất kho'}].map(({v,icon,label})=>(
+        {[{v:'INBOUND',label:'Nhập kho'},{v:'OUTBOUND',label:'Xuất kho'}].map(({v,label})=>(
           <button key={v} onClick={()=>{ setActiveTab(v); setPage(1); setSearch(''); setStatusFilter(''); }}
             style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 16px', borderRadius:8, border:`1.5px solid ${activeTab===v?accent:'#e2e8f0'}`, background:activeTab===v?accent:'#fff', color:activeTab===v?'#fff':'#64748b', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', transition:'all 0.18s' }}>
-            {icon} {label}
+            {label}
           </button>
         ))}
       </div>
@@ -409,7 +410,7 @@ const ManagerInventoryRequests = () => {
         </div>
         {/* Search */}
         <div style={{ position:'relative', minWidth:240 }}>
-          <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize:'1rem' }}>🔍</span>
+          <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize:'0.8rem' }}>T</span>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Mã YC, tên khách, kho..."
             style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px 9px 34px', borderRadius:10, border:'1.5px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s' }}
             onFocus={e=>e.target.style.borderColor=accent} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
@@ -420,12 +421,10 @@ const ManagerInventoryRequests = () => {
       <div style={card}>
         {loading ? (
           <div style={{ padding:60, textAlign:'center', color:'#94a3b8' }}>
-            <div style={{ fontSize:'2rem', marginBottom:8, animation:'spin 1.2s linear infinite', display:'inline-block' }}>⏳</div>
             <div style={{ fontSize:'0.88rem' }}>Đang tải dữ liệu...</div>
           </div>
         ) : filtered.length===0 ? (
           <div style={{ padding:60, textAlign:'center', color:'#94a3b8' }}>
-            <div style={{ fontSize:'2.5rem', marginBottom:10 }}>{activeTab==='INBOUND'?'📥':'📤'}</div>
             <div style={{ fontWeight:600, color:'#64748b', marginBottom:4 }}>Không có yêu cầu nào</div>
             <div style={{ fontSize:'0.83rem' }}>Thử thay đổi bộ lọc hoặc từ khóa</div>
           </div>
@@ -491,7 +490,7 @@ const ManagerInventoryRequests = () => {
                             style={{ padding:'5px 10px', border:'1.5px solid #bbf7d0', background:'#dcfce7', borderRadius:8, cursor:'pointer', color:'#166534', fontSize:'0.78rem', fontWeight:700, display:'flex', alignItems:'center', gap:4, transition:'all 0.15s' }}
                             onMouseEnter={e=>{e.currentTarget.style.background='#bbf7d0';}}
                             onMouseLeave={e=>{e.currentTarget.style.background='#dcfce7';}}>
-                            ✅ Duyệt
+                            Duyệt
                           </button>
                         )}
                         {/* Giao Staff (CONFIRMED) */}
@@ -500,7 +499,7 @@ const ManagerInventoryRequests = () => {
                             style={{ padding:'5px 10px', border:'1.5px solid #bfdbfe', background:'#dbeafe', borderRadius:8, cursor:'pointer', color:'#1d4ed8', fontSize:'0.78rem', fontWeight:700, display:'flex', alignItems:'center', gap:4, transition:'all 0.15s' }}
                             onMouseEnter={e=>{e.currentTarget.style.background='#bfdbfe';}}
                             onMouseLeave={e=>{e.currentTarget.style.background='#dbeafe';}}>
-                            👷 Giao
+                            Giao
                           </button>
                         )}
                         {/* Từ chối (PENDING or CONFIRMED) */}
@@ -509,7 +508,7 @@ const ManagerInventoryRequests = () => {
                             style={{ width:30, height:30, border:'1.5px solid #fecaca', background:'#fef2f2', borderRadius:8, cursor:'pointer', color:'#dc2626', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.9rem', transition:'all 0.15s' }}
                             onMouseEnter={e=>{e.currentTarget.style.background='#fee2e2';}}
                             onMouseLeave={e=>{e.currentTarget.style.background='#fef2f2';}}>
-                            ✕
+                            ×
                           </button>
                         )}
                       </div>
