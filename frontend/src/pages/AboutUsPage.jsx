@@ -1,4 +1,5 @@
 import React from 'react';
+import OWRMSLogo from '../components/OWRMSLogo';
 
 /* ── Small reusable helpers ─────────────────────────────────── */
 const Tag = ({ children }) => (
@@ -295,33 +296,80 @@ const AboutUsPage = () => {
       {/* ── LOGO MEANING ───────────────────────────────────── */}
       <section style={{ maxWidth: 1100, margin: '0 auto', padding: '6rem 2rem' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: '4rem', alignItems: 'center' }}>
-          {/* Logo display */}
+          {/* Logo display — new OWRMSLogo component */}
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <div style={{
-              width: 220, height: 220, borderRadius: '50%',
-              background: 'linear-gradient(135deg,#f0f9ff,#e0f2fe)',
-              border: '2px solid #bae6fd',
+              width: 240, height: 240,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 20px 60px rgba(14,165,233,0.15)',
+              filter: 'drop-shadow(0 20px 60px rgba(0,180,255,0.25))',
             }}>
-              <img
-                src="/owrms-logo.png"
-                alt="OWRMS Logo"
-                style={{ width: 180, height: 180, objectFit: 'contain' }}
-              />
+              <OWRMSLogo size={220} variant="full" />
             </div>
           </div>
+
           <div>
             <SectionHeading en="The Meaning of Logo" vi="Ý nghĩa Logo" />
-            <p style={{ fontSize: '1rem', color: '#475569', lineHeight: 1.85, marginBottom: '1.5rem' }}>
-              Logo truyền tải thông điệp về một dịch vụ kho bãi trực tuyến thông minh, nơi những quy trình logistics phức tạp được xử lý bằng <strong style={{ color: '#0ea5e9' }}>công nghệ hiện đại</strong> để mang lại sự an tâm và hiệu quả tối đa cho khách hàng.
-            </p>
+
+            {/* Cube */}
+            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: '1.2rem' }}>
+              <div style={{
+                flexShrink: 0, width: 36, height: 36, borderRadius: 10,
+                background: 'linear-gradient(135deg,#00c8f0,#0052d4)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#fff' }}>warehouse</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.93rem', color: '#475569', lineHeight: 1.75 }}>
+                <strong style={{ color: '#0c4a6e' }}>Khối kho 3D</strong> ở trung tâm logo biểu trưng cho hệ thống
+                kho bãi vật lý — nơi hàng hóa được lưu trữ, quản lý có hệ thống
+                với những kệ hàng ngăn nắp và lưới phân vùng rõ ràng.
+              </p>
+            </div>
+
+            {/* Ring */}
+            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: '1.2rem' }}>
+              <div style={{
+                flexShrink: 0, width: 36, height: 36, borderRadius: 10,
+                background: 'linear-gradient(135deg,#3a7bd5,#00d2ff)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#fff' }}>sync</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.93rem', color: '#475569', lineHeight: 1.75 }}>
+                <strong style={{ color: '#0c4a6e' }}>Vòng conic gradient xoay</strong> bao quanh tượng trưng cho
+                sự <strong style={{ color: '#0ea5e9' }}>kết nối liên tục</strong> — dòng chảy không ngừng của
+                logistics: từ nhập kho, lưu trữ, đến xuất hàng đến tay khách.
+              </p>
+            </div>
+
+            {/* Glassmorphism & glow */}
+            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+              <div style={{
+                flexShrink: 0, width: 36, height: 36, borderRadius: 10,
+                background: 'linear-gradient(135deg,#0ea5e9,#0052d4)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#fff' }}>memory</span>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.93rem', color: '#475569', lineHeight: 1.75 }}>
+                <strong style={{ color: '#0c4a6e' }}>Hiệu ứng glassmorphism & ánh neon</strong> thể hiện nền tảng
+                <strong style={{ color: '#0ea5e9' }}> công nghệ hiện đại</strong> — minh bạch, đáng tin cậy,
+                chiếu sáng con đường logistics của doanh nghiệp.
+              </p>
+            </div>
+
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-              {['Thông minh', 'Hiện đại', 'Tin cậy', 'Hiệu quả'].map(tag => (
+              {[
+                'Kho bãi thông minh',
+                'Kết nối không gián đoạn',
+                'Công nghệ hiện đại',
+                'Minh bạch & Tin cậy',
+              ].map(tag => (
                 <span key={tag} style={{
-                  padding: '6px 18px', borderRadius: 999, background: '#f0f9ff',
-                  border: '1px solid #bae6fd', color: '#0369a1',
-                  fontSize: '0.82rem', fontWeight: 600,
+                  padding: '6px 16px', borderRadius: 999,
+                  background: 'linear-gradient(135deg,#e0f2fe,#bae6fd)',
+                  border: '1px solid #7dd3fc', color: '#0369a1',
+                  fontSize: '0.8rem', fontWeight: 600,
                 }}>{tag}</span>
               ))}
             </div>
