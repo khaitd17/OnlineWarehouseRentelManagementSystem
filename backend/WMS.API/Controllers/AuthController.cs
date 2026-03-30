@@ -87,6 +87,29 @@ public class AuthController : ControllerBase
             isAllSkill    = m.IsAllSkill,
         }).ToList();
 
+        // ─── ADDITION ───
+        // Include warehouses where the user has an active/pending rental contract (RENTER role)
+        var activeContracts = await _db.RentalContracts
+            .Where(c => c.RenterId == userId && (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT"))
+            .Include(c => c.Warehouse)
+            .ToListAsync();
+
+        foreach (var contract in activeContracts)
+        {
+            if (!warehouseItems.Any(w => w.warehouseId == contract.WarehouseId))
+            {
+                warehouseItems.Add(new
+                {
+                    warehouseId   = contract.WarehouseId,
+                    warehouseName = contract.Warehouse.Name,
+                    role          = "RENTER",
+                    skills        = new List<string>(),
+                    isAllSkill    = false
+                });
+            }
+        }
+        // ─────────────────
+
         var context = new
         {
             userId     = user.UserId,
