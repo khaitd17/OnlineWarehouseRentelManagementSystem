@@ -29,4 +29,6 @@ public class RentalContractDto
     public int? RentalAreaId { get; set; }
     public double RequestedArea { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsCurrentUserRenter { get; set; }
+    public bool IsCurrentUserOwner { get; set; }
 }

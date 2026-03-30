@@ -3,45 +3,43 @@ using WMS.Application.Features.RentalRequests.Common;
 using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
 
-namespace WMS.Application.Features.RentalRequests.GetMyRentalRequests;
+namespace WMS.Application.Features.RentalRequests.GetOwnerRequests;
 
-public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQuery, IEnumerable<RentalRequestDto>>
+public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IEnumerable<RentalRequestDto>>
 {
     private readonly IRentalRequestRepository _repository;
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IUserRepository _userRepository;
-    private readonly IRentalContractRepository _contractRepository;
 
-    public GetMyRentalRequestsHandler(
+    public GetOwnerRequestsHandler(
         IRentalRequestRepository repository,
         IWarehouseRepository warehouseRepository,
-        IUserRepository userRepository,
-        IRentalContractRepository contractRepository)
+        IUserRepository userRepository)
     {
         _repository = repository;
         _warehouseRepository = warehouseRepository;
         _userRepository = userRepository;
-        _contractRepository = contractRepository;
     }
 
-    public async Task<IEnumerable<RentalRequestDto>> Handle(GetMyRentalRequestsQuery request, CancellationToken cancellationToken)
+    public async Task<IEnumerable<RentalRequestDto>> Handle(GetOwnerRequestsQuery request, CancellationToken cancellationToken)
     {
-        var rentalRequests = await _repository.GetByRenterIdAsync(request.RenterId);
+        // Get all requests for owner's warehouses
+        var allRequests = await _repository.GetByWarehouseOwnerIdAsync(request.OwnerId);
+
+        // Filter by status if provided
+        if (!string.IsNullOrEmpty(request.Status))
+        {
+            allRequests = allRequests.Where(r => r.Status == request.Status);
+        }
 
         var result = new List<RentalRequestDto>();
-        foreach (var r in rentalRequests)
+        foreach (var r in allRequests)
         {
             var warehouse = await _warehouseRepository.GetByIdAsync(r.WarehouseId, cancellationToken);
             var renter = await _userRepository.GetByIdAsync(r.RenterId, cancellationToken);
-            
-            // Get contract ID if request is approved
-            int? contractId = null;
-            if (r.Status == "APPROVED")
-            {
-                var contract = await _contractRepository.GetByRentalRequestIdAsync(r.RequestId);
-                contractId = contract?.ContractId;
-            }
-            
+            var owner = warehouse != null
+                ? await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken)
+                : null;
             result.Add(new RentalRequestDto
             {
                 RequestId = r.RequestId,
@@ -62,7 +60,9 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
                 ReviewedAt = r.ReviewedAt,
                 RejectionReason = r.RejectionReason,
                 ContractImageUrl = r.ContractImageUrl,
-                ContractId = contractId
+                OwnerName = owner?.FullName ?? "",
+                OwnerEmail = owner?.Email ?? "",
+                OwnerPhone = owner?.Phone ?? ""
             });
         }
         return result;

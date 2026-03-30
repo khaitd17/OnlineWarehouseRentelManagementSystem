@@ -742,6 +742,6 @@ const WarehouseDetailsPage = () => {
 
 const fieldGroup = { display: 'flex', flexDirection: 'column', gap: '6px' };
 const fieldLabel = { fontSize: '0.72rem', fontWeight: 700, color: '#64748b', letterSpacing: '0.04em' };
-const fieldInput = { padding: '11px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' };
+const fieldInput = { padding: '11px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#000' };
 
 export default WarehouseDetailsPage;

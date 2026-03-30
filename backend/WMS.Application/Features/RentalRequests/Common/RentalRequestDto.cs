@@ -20,6 +20,7 @@ public class RentalRequestDto
     public DateTime? ReviewedAt { get; set; }
     public string? RejectionReason { get; set; }
     public string? ContractImageUrl { get; set; }
+    public int? ContractId { get; set; }  // ID of the contract created when request is approved
     public string? OwnerName { get; set; }
     public string? OwnerEmail { get; set; }
     public string? OwnerPhone { get; set; }

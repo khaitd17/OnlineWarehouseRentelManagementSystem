@@ -35,7 +35,10 @@ const MyContracts = () => {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = (user.role || user.roleName || "").toUpperCase();
-  const isOwner = userRole === "OWNER" || userRole === "USER" || userRole === "OPERATOR";
+  const isOwner = userRole === "OWNER";
+  const isRenter = userRole === "RENTER";
+
+  console.log('MyContracts - User role:', userRole, 'isOwner:', isOwner, 'isRenter:', isRenter);
 
   useEffect(() => {
     const fetchContracts = async () => {
@@ -43,13 +46,20 @@ const MyContracts = () => {
         if (isOwner) {
           // Owner: Lấy tất cả contracts của warehouses họ sở hữu
           const response = await rentalService.getContractsForOwner();
+          console.log('Owner contracts:', response);
           setContracts(response);
-        } else {
+        } else if (isRenter) {
           // Renter: Lấy contracts của họ thuê
           const response = await rentalService.getMyContracts();
+          console.log('Renter contracts:', response);
           setContracts(response);
+        } else {
+          // Các role khác không có contracts
+          console.log('User role không hợp lệ:', userRole);
+          setContracts([]);
         }
       } catch (err) {
+        console.error('Error fetching contracts:', err);
         setError(err.response?.data?.message || "Không thể tải danh sách hợp đồng");
       } finally {
         setLoading(false);
@@ -57,7 +67,7 @@ const MyContracts = () => {
     };
 
     fetchContracts();
-  }, [isOwner]);
+  }, [isOwner, isRenter]);
 
   return (
     <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>

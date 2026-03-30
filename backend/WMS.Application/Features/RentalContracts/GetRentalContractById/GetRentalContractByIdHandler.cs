@@ -71,7 +71,9 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
             OwnerSignedFileUrl = contract.OwnerSignedFileUrl,
             OwnerSignedAt = contract.OwnerSignedAt,
             OwnerSignatureBase64 = contract.OwnerSignatureBase64,
-            CreatedAt = contract.CreatedAt
+            CreatedAt = contract.CreatedAt,
+            IsCurrentUserRenter = isRenter,
+            IsCurrentUserOwner = isOwner
         };
     }
 }

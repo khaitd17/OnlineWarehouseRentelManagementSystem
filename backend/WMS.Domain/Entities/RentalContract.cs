@@ -56,6 +56,7 @@ public class RentalContract
 
         var effectiveStartDate = startDateOverride ?? request.StartDate;
         var effectiveDuration = durationMonthsOverride ?? request.DurationMonths;
+        
         var endDate = effectiveStartDate.AddMonths(effectiveDuration);
         var totalValue = monthlyPayment * effectiveDuration;
 

@@ -6,6 +6,7 @@ using WMS.Application.Features.RentalRequests.CreateRentalRequest;
 using WMS.Application.Features.RentalRequests.GetRentalRequestById;
 using WMS.Application.Features.RentalRequests.GetMyRentalRequests;
 using WMS.Application.Features.RentalRequests.GetPendingRequests;
+using WMS.Application.Features.RentalRequests.GetOwnerRequests;
 using WMS.Application.Features.RentalRequests.ApproveRentalRequest;
 using WMS.Application.Features.RentalRequests.RejectRentalRequest;
 using WMS.Application.Features.RentalRequests.CancelRentalRequest;
@@ -120,6 +121,30 @@ public class RentalRequestsController : ControllerBase
         {
             var userId = GetUserId();
             var query = new GetPendingRequestsQuery { OwnerId = userId };
+            var result = await _mediator.Send(query);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get all rental requests for warehouses owned by current user with optional status filter (Owner)
+    /// </summary>
+    [HttpGet("owner/all")]
+    public async Task<IActionResult> GetOwnerRequests([FromQuery] string? status = null)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var query = new GetOwnerRequestsQuery 
+            { 
+                OwnerId = userId,
+                Status = status 
+            };
             var result = await _mediator.Send(query);
 
             return Ok(result);

@@ -29,6 +29,10 @@ import PendingRentalRequests from "../pages/PendingRentalRequests";
 import RentalRequestDetail from "../pages/RentalRequestDetail";
 import MyContracts from "../pages/MyContracts";
 import ContractDetail from "../pages/ContractDetail";
+import ContractPaymentSelection from "../pages/ContractPaymentSelection";
+import ContractPayment from "../pages/ContractPayment";
+import PaymentResult from "../pages/PaymentResult";
+import PendingCashPayments from "../pages/PendingCashPayments";
 import WarehouseContracts from "../pages/WarehouseContracts";
 import OccupancyDashboard from "../pages/OccupancyDashboard";
 import RoleBasedRoute from "./RoleBasedRoute";
@@ -129,6 +133,9 @@ function AppRoutes() {
             <Route path="/my-rental-requests" element={<MyRentalRequests />} />
             <Route path="/my-contracts" element={<MyContracts />} />
             <Route path="/contracts/:id" element={<ContractDetail />} />
+            <Route path="/contracts/:id/payment" element={<ContractPaymentSelection />} />
+            <Route path="/contracts/:id/payment/online" element={<ContractPayment />} />
+            <Route path="/payment-result" element={<PaymentResult />} />
             <Route path="/sign-contract/:contractId" element={<ContractSigningWrapper userRole="RENTER" />} />
             <Route path="/sign-contract/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="RENTER" />} />
             <Route path="/settings" element={<ProfilePage />} />
@@ -151,6 +158,7 @@ function AppRoutes() {
             <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
             <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
             <Route path="/contract-extensions" element={<OwnerExtensionPage />} />
+            <Route path="/pending-cash-payments" element={<PendingCashPayments />} />
             <Route path="/sign-contract-owner/:contractId" element={<ContractSigningWrapper userRole="OWNER" />} />
             <Route path="/sign-contract-owner/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="OWNER" />} />
             <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
