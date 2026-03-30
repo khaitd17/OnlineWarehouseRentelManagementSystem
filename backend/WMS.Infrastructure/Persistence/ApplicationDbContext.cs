@@ -253,6 +253,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CancellationReason).HasColumnName("cancellation_reason");
             entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
             entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
+            entity.Property(e => e.OwnerSignatureExpiry).HasColumnName("owner_signature_expiry");
             entity.HasOne(d => d.RentalRequest).WithMany().HasForeignKey(d => d.RentalRequestId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Renter).WithMany().HasForeignKey(d => d.RenterId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull);
@@ -323,8 +324,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RentalAreaId).HasColumnName("rental_area_id");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Equipment).HasForeignKey(d => d.WarehouseId).HasConstraintName("FK_equipments_warehouse");
             entity.HasOne(d => d.RentalArea).WithMany(p => p.Equipments).HasForeignKey(d => d.RentalAreaId).HasConstraintName("FK_equipments_rental_area");
-
-            // Note: Many-to-many relationship with Contract is configured in Contract entity
+            // Ignore unmapped navigation collection to prevent EF Core from generating phantom FK columns
+            entity.Ignore(e => e.RentalContracts);
         });
 
         modelBuilder.Entity<EquipmentHistory>(entity =>
@@ -500,14 +501,20 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PaymentType).HasMaxLength(20).HasColumnName("payment_type");
             entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
             entity.Property(e => e.PaymentCode).HasMaxLength(50).HasColumnName("payment_code");
+            entity.Property(e => e.PaymentMethod).HasMaxLength(20).HasDefaultValue("BANK_TRANSFER").HasColumnName("payment_method");
             entity.Property(e => e.SepayTransactionId).HasColumnName("sepay_transaction_id");
             entity.Property(e => e.SepayReferenceCode).HasMaxLength(100).HasColumnName("sepay_reference_code");
             entity.Property(e => e.PaidAt).HasColumnName("paid_at");
             entity.Property(e => e.ExpiredAt).HasColumnName("expired_at");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-            // TODO: Fix relationship after RentalContract entity is properly configured
-            // entity.HasOne(d => d.Contract).WithMany().HasForeignKey(d => d.ContractId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_rental_payments_contract");
+            
+            // Relationship với Contract (table 'contracts', not 'rental_contracts')
+            entity.HasOne(d => d.Contract)
+                .WithMany()
+                .HasForeignKey(d => d.ContractId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_rental_payments_contracts");
         });
 
         modelBuilder.Entity<Rating>(entity =>

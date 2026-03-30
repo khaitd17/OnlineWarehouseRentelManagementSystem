@@ -10,15 +10,18 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
     private readonly IRentalRequestRepository _repository;
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IRentalContractRepository _contractRepository;
 
     public GetMyRentalRequestsHandler(
         IRentalRequestRepository repository,
         IWarehouseRepository warehouseRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IRentalContractRepository contractRepository)
     {
         _repository = repository;
         _warehouseRepository = warehouseRepository;
         _userRepository = userRepository;
+        _contractRepository = contractRepository;
     }
 
     public async Task<IEnumerable<RentalRequestDto>> Handle(GetMyRentalRequestsQuery request, CancellationToken cancellationToken)
@@ -30,6 +33,15 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
         {
             var warehouse = await _warehouseRepository.GetByIdAsync(r.WarehouseId, cancellationToken);
             var renter = await _userRepository.GetByIdAsync(r.RenterId, cancellationToken);
+            
+            // Get contract ID if request is approved
+            int? contractId = null;
+            if (r.Status == "APPROVED")
+            {
+                var contract = await _contractRepository.GetByRentalRequestIdAsync(r.RequestId);
+                contractId = contract?.ContractId;
+            }
+            
             result.Add(new RentalRequestDto
             {
                 RequestId = r.RequestId,
@@ -49,7 +61,8 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
                 ReviewedByName = null,
                 ReviewedAt = r.ReviewedAt,
                 RejectionReason = r.RejectionReason,
-                ContractImageUrl = r.ContractImageUrl
+                ContractImageUrl = r.ContractImageUrl,
+                ContractId = contractId
             });
         }
         return result;

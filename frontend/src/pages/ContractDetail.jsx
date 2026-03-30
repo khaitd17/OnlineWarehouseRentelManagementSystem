@@ -11,6 +11,7 @@ import AuditLogList from "../components/AuditLogList";
 const statusConfig = {
   DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
   PENDING_OWNER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ chủ kho ký" },
+  PENDING_RENTER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ người thuê ký" },
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
   SIGNED:     { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
   PENDING_PAYMENT: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ thanh toán" },
@@ -168,6 +169,13 @@ const ContractDetail = () => {
     : 0;
   const canRequestExtension = contract?.status === "ACTIVE" && daysUntilExpiry <= 90 && daysUntilExpiry > 0;
   const canReturn = ["ACTIVE", "COMPLETED"].includes(contract?.status);
+
+  // Access control: Determine who can sign/pay based on status and role
+  const canOwnerSign = contract?.isCurrentUserOwner && contract?.status === "PENDING_OWNER_SIGNATURE";
+  const canRenterSign = contract?.isCurrentUserRenter && 
+    (contract?.status === "DRAFT" || contract?.status === "PENDING_SIGNATURE" || contract?.status === "PENDING_RENTER_SIGNATURE");
+  const canRenterPay = contract?.isCurrentUserRenter && 
+    (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED");
 
   if (loading) return <div style={{ padding: "2rem", color: "#64748b" }}>Đang tải...</div>;
 
@@ -463,8 +471,8 @@ const ContractDetail = () => {
         </div>
       )}
 
-      {/* Signing Button - For DRAFT and PENDING_SIGNATURE status */}
-      {(contract.status === "DRAFT" || contract.status === "PENDING_SIGNATURE") && (
+      {/* Signing Button - Only for users who have permission to sign */}
+      {(canOwnerSign || canRenterSign) && (
         <button
           onClick={() => setShowSigningModal(true)}
           style={{
@@ -487,8 +495,8 @@ const ContractDetail = () => {
         </button>
       )}
 
-      {/* Payment Button - For PENDING_PAYMENT or SIGNED status */}
-      {(contract.status === "PENDING_PAYMENT" || contract.status === "SIGNED") && (
+      {/* Payment Button - Only for renter */}
+      {canRenterPay && (
         <div style={{ marginTop: "0.5rem" }}>
           <div style={{
             padding: "1rem 1.5rem",
@@ -527,6 +535,7 @@ const ContractDetail = () => {
       {showSigningModal && (
         <ContractSigningModal
           contract={contract}
+          isOwner={contract.isCurrentUserOwner}
           onClose={() => setShowSigningModal(false)}
           onSignSuccess={reloadContract}
         />

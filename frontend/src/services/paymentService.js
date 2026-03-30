@@ -43,6 +43,40 @@ const paymentService = {
     return response.data;
   },
 
+  /**
+   * Tạo cash payment (thanh toán tiền mặt)
+   * @param {Object} data - {contractId, amount, paymentType}
+   * @returns {Promise} payment info
+   */
+  createCashPayment: async (data) => {
+    const response = await axiosClient.post("/payments/cash", data);
+    return response.data;
+  },
+
+  /**
+   * Lấy danh sách thanh toán tiền mặt chờ xác nhận (cho chủ kho)
+   * @returns {Promise} danh sách pending cash payments
+   */
+  getPendingCashPayments: async () => {
+    const response = await axiosClient.get("/payments/pending-confirmation");
+    return response.data;
+  },
+
+  /**
+   * Xác nhận thanh toán tiền mặt (cho chủ kho)
+   * @param {number} paymentId
+   * @param {boolean} isApproved
+   * @param {string} rejectionReason - optional, khi từ chối
+   * @returns {Promise} result
+   */
+  confirmCashPayment: async (paymentId, isApproved, rejectionReason = null) => {
+    const response = await axiosClient.post(`/payments/${paymentId}/confirm`, {
+      isApproved,
+      rejectionReason
+    });
+    return response.data;
+  },
+
   // ── Utility Methods ──────────────────────────────────────────
 
   /**

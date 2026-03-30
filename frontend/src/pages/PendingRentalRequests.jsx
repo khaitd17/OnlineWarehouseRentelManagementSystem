@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import rentalService from "../services/rentalService";
+import warehouseService from "../services/warehouseService";
 import SignatureCanvas from "../components/SignatureCanvas";
 
 const statusColors = {
@@ -70,6 +71,7 @@ const PendingRentalRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("PENDING"); // "PENDING" or "APPROVED"
 
   // Modal state
   const [actionModal, setActionModal] = useState(null);
@@ -79,6 +81,7 @@ const PendingRentalRequests = () => {
     monthlyPayment: "",
     depositAmount: "",
     terms: "",
+    pricePerM2: "", // Thêm field để lưu giá/m2
   });
   const [rejectReason, setRejectReason] = useState("");
   const [contractImageFile, setContractImageFile] = useState(null);
@@ -89,20 +92,20 @@ const PendingRentalRequests = () => {
   const signatureCanvasRef = useRef(null);
 
   useEffect(() => {
-    fetchPending();
-  }, []);
+    fetchRequests();
+  }, [activeTab]);
 
-  const fetchPending = async () => {
+  const fetchRequests = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await rentalService.getPendingRequests();
+      const data = await rentalService.getOwnerRequests(activeTab);
       setRequests(data);
     } catch (err) {
       console.error(err);
       setError(
         err.response?.data?.message ||
-          "Không thể tải danh sách yêu cầu chờ duyệt"
+          "Không thể tải danh sách yêu cầu"
       );
     } finally {
       setLoading(false);
@@ -114,17 +117,28 @@ const PendingRentalRequests = () => {
     return new Date(dateStr).toLocaleDateString("vi-VN");
   };
 
-  const openApproveModal = (req) => {
-    setActionModal({ type: "approve", request: req });
-    setContractForm({
-      startDate: req.startDate ? req.startDate.split("T")[0] : "",
-      durationMonths: req.durationMonths || "",
-      monthlyPayment: "",
-      depositAmount: "",
-      terms: generateDefaultTerms(req),
-    });
-    setContractImageFile(null);
-    setContractImagePreview(null);
+  const openApproveModal = async (req) => {
+    try {
+      // Fetch warehouse details để lấy PricePerM2
+      const warehouse = await warehouseService.getWarehouseById(req.warehouseId);
+      const pricePerM2 = warehouse.pricePerM2 || 0;
+      const calculatedMonthlyPayment = req.requestedArea * pricePerM2;
+
+      setActionModal({ type: "approve", request: req });
+      setContractForm({
+        startDate: req.startDate ? req.startDate.split("T")[0] : "",
+        durationMonths: req.durationMonths || "",
+        monthlyPayment: calculatedMonthlyPayment.toFixed(0), // Tự động tính giá
+        depositAmount: "",
+        terms: generateDefaultTerms(req),
+        pricePerM2: pricePerM2, // Lưu giá/m2 để hiển thị
+      });
+      setContractImageFile(null);
+      setContractImagePreview(null);
+    } catch (err) {
+      console.error("Error fetching warehouse:", err);
+      alert("Không thể tải thông tin kho. Vui lòng thử lại.");
+    }
   };
 
   const openRejectModal = (req) => {
@@ -156,10 +170,20 @@ const PendingRentalRequests = () => {
   };
 
   const handleApprove = async () => {
+    // Validation
     if (!contractForm.monthlyPayment || parseFloat(contractForm.monthlyPayment) <= 0) {
       alert("Vui lòng nhập giá thuê hàng tháng hợp lệ");
       return;
     }
+    if (!contractForm.startDate) {
+      alert("Vui lòng chọn ngày bắt đầu hợp đồng");
+      return;
+    }
+    if (!contractForm.durationMonths || parseInt(contractForm.durationMonths) < 1 || parseInt(contractForm.durationMonths) > 120) {
+      alert("Vui lòng nhập thời hạn hợp đồng từ 1-120 tháng");
+      return;
+    }
+    
     setActionLoading(true);
     try {
       let contractImageUrl = null;
@@ -172,10 +196,10 @@ const PendingRentalRequests = () => {
         requestId: actionModal.request.requestId,
         contractImageUrl,
         monthlyPayment: parseFloat(contractForm.monthlyPayment),
-        depositAmount: contractForm.depositAmount ? parseFloat(contractForm.depositAmount) : null,
+        depositAmount: contractForm.depositAmount ? parseFloat(contractForm.depositAmount) : 0,
         terms: contractForm.terms.trim() || null,
-        startDate: contractForm.startDate || null,
-        durationMonths: contractForm.durationMonths ? parseInt(contractForm.durationMonths) : null,
+        startDate: contractForm.startDate,
+        durationMonths: parseInt(contractForm.durationMonths),
       };
 
       const result = await rentalService.approveRentalRequest(
@@ -208,7 +232,7 @@ const PendingRentalRequests = () => {
       await rentalService.ownerSignContract(createdContractId, signatureBase64);
       alert("Đã ký và gửi hợp đồng đến người thuê thành công!");
       closeModal();
-      fetchPending();
+      fetchRequests(); // Reload list after signing
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Có lỗi khi ký hợp đồng");
@@ -234,7 +258,7 @@ const PendingRentalRequests = () => {
       );
       alert("Đã từ chối yêu cầu thuê!");
       closeModal();
-      fetchPending();
+      fetchRequests(); // Reload list after rejecting
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Có lỗi khi từ chối yêu cầu");
@@ -366,15 +390,18 @@ const PendingRentalRequests = () => {
 
         {/* Giá thuê và thanh toán */}
         <ContractSection title="Giá thuê và thanh toán">
-          <div style={groupStyle}>
-            <label style={modalLabelStyle}>Giá thuê/tháng (VNĐ) *</label>
-            <input
-              type="number"
-              min="0"
-              value={contractForm.monthlyPayment}
-              onChange={(e) => handleFormChange("monthlyPayment", e.target.value)}
-              placeholder="VD: 5000000"
-              style={modalInputStyle}
+          <ReadOnlyField 
+            label="Giá/m² (VNĐ)" 
+            value={formatCurrency(contractForm.pricePerM2)} 
+          />
+          <ReadOnlyField 
+            label="Diện tích thuê" 
+            value={`${req.requestedArea} m²`} 
+          />
+          <div style={{ gridColumn: "1 / -1" }}>
+            <ReadOnlyField 
+              label={`Tổng giá thuê/tháng (${req.requestedArea} m² × ${formatCurrency(contractForm.pricePerM2)})`}
+              value={formatCurrency(contractForm.monthlyPayment)} 
             />
           </div>
           <div style={groupStyle}>
@@ -526,11 +553,49 @@ const PendingRentalRequests = () => {
     <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
       <div style={{ marginBottom: "2rem" }}>
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a" }}>
-          Yêu cầu thuê chờ duyệt
+          Yêu cầu thuê kho
         </h1>
         <p style={{ color: "#64748b", marginTop: "0.3rem" }}>
           Xem xét và gửi hợp đồng hoặc từ chối các yêu cầu thuê kho
         </p>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ marginBottom: "2rem", display: "flex", gap: "1rem", borderBottom: "2px solid #f1f5f9" }}>
+        <button
+          onClick={() => setActiveTab("PENDING")}
+          style={{
+            padding: "0.75rem 1.5rem",
+            fontSize: "0.95rem",
+            fontWeight: 600,
+            border: "none",
+            background: "none",
+            color: activeTab === "PENDING" ? "#0095c7" : "#64748b",
+            borderBottom: activeTab === "PENDING" ? "3px solid #0095c7" : "none",
+            marginBottom: activeTab === "PENDING" ? "-2px" : "0",
+            cursor: "pointer",
+            transition: "all 0.2s"
+          }}
+        >
+          Chờ duyệt
+        </button>
+        <button
+          onClick={() => setActiveTab("APPROVED")}
+          style={{
+            padding: "0.75rem 1.5rem",
+            fontSize: "0.95rem",
+            fontWeight: 600,
+            border: "none",
+            background: "none",
+            color: activeTab === "APPROVED" ? "#0095c7" : "#64748b",
+            borderBottom: activeTab === "APPROVED" ? "3px solid #0095c7" : "none",
+            marginBottom: activeTab === "APPROVED" ? "-2px" : "0",
+            cursor: "pointer",
+            transition: "all 0.2s"
+          }}
+        >
+          Đã duyệt
+        </button>
       </div>
 
       {error && (

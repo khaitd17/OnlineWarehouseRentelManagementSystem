@@ -65,6 +65,7 @@ const MENU_BY_ROLE = {
   ],
   RENTER: [
     { icon: "description",             label: "Hợp đồng của tôi",       path: "/my-contracts" },
+    { icon: "access_time",             label: "Gia hạn hợp đồng",       path: "/contract-extensions-renter" },
     { icon: "list_alt",                label: "Yêu cầu thuê kho",        path: "/my-rental-requests" },
     { icon: "favorite",               label: "Kho yêu thích",           path: "/my-favorites",             badgeKey: "favoritesCount", section: "TÌM KIẾM" },
     { icon: "add_circle",              label: "Tạo yêu cầu nhập/xuất",   path: "/create-inventory",         section: "KHO" },

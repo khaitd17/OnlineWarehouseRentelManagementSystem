@@ -27,11 +27,13 @@ public class ApproveRentalRequestValidator : AbstractValidator<ApproveRentalRequ
             .WithMessage("Terms must not exceed 5000 characters");
 
         RuleFor(x => x.StartDate)
-            .GreaterThanOrEqualTo(DateTime.UtcNow.AddDays(-1).Date).When(x => x.StartDate.HasValue)
+            .NotNull().WithMessage("Start date is required")
+            .GreaterThanOrEqualTo(DateTime.UtcNow.AddDays(-1).Date)
             .WithMessage("Start date must not be in the past");
 
         RuleFor(x => x.DurationMonths)
-            .InclusiveBetween(1, 120).When(x => x.DurationMonths.HasValue)
+            .NotNull().WithMessage("Duration is required")
+            .InclusiveBetween(1, 120)
             .WithMessage("Duration must be between 1 and 120 months");
 
         // Note: OwnerSignatureBase64 is no longer required at approval time

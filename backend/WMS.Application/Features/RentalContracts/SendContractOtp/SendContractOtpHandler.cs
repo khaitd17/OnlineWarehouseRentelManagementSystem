@@ -35,7 +35,7 @@ public class SendContractOtpHandler : IRequestHandler<SendContractOtpCommand, Un
         if (contract.RenterId != request.UserId)
             throw new UnauthorizedAccessException("Only the renter can sign the contract");
 
-        if (contract.Status != "DRAFT" && contract.Status != "PENDING_SIGNATURE")
+        if (contract.Status != "DRAFT" && contract.Status != "PENDING_RENTER_SIGNATURE")
             throw new InvalidOperationException($"Cannot send OTP for contract with status {contract.Status}");
 
         var user = await _userRepo.GetByIdAsync(request.UserId, cancellationToken)
