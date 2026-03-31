@@ -12,6 +12,10 @@ using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Repositories;
 using WMS.Infrastructure.Services;
 using WMS.API.Hubs;
+using Hangfire;
+using Hangfire.SqlServer;
+using WMS.Infrastructure.BackgroundJobs;
+using WMS.API.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -113,6 +117,27 @@ builder.Services.AddScoped<ISepayService, SepayService>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<INotificationSender, WMS.API.Hubs.SignalRNotificationSender>();
 
+// Hangfire Configuration
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"),
+        new SqlServerStorageOptions
+        {
+            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+            QueuePollInterval = TimeSpan.Zero,
+            UseRecommendedIsolationLevel = true,
+            DisableGlobalLocks = true
+        }));
+
+builder.Services.AddHangfireServer();
+
+// Background job classes
+builder.Services.AddScoped<ContractNotificationJob>();
+builder.Services.AddScoped<ContractExpiryJob>();
+
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
@@ -175,13 +200,7 @@ using (var scope = app.Services.CreateScope())
         // 1. Apply any pending migrations automatically
         context.Database.Migrate();
 
-        // 1.1 Patch: Manually ensure termination columns exist (workaround for empty migration history)
-        try {
-            context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'terminated_at') ALTER TABLE contracts ADD terminated_at datetime2 NULL;");
-            context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_reason') ALTER TABLE contracts ADD termination_reason nvarchar(max) NULL;");
-            context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'terminated_at') ALTER TABLE rental_contracts ADD terminated_at datetime2 NULL;");
-            context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'termination_reason') ALTER TABLE rental_contracts ADD termination_reason nvarchar(max) NULL;");
-        } catch { /* ignore if already exists or fails */ }
+
 
         logger.LogInformation("Database migrations applied successfully.");
 
@@ -228,8 +247,34 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Hangfire Dashboard (with authorization)
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireAuthorizationFilter() },
+    DashboardTitle = "OWRMS Background Jobs"
+});
+
 app.MapControllers();
 
 app.MapHub<NotificationHub>("/hubs/notifications");
+
+// Configure Hangfire Recurring Jobs
+RecurringJob.AddOrUpdate<ContractNotificationJob>(
+    "contract-expiry-notifications",
+    job => job.SendExpiryNotifications(),
+    "0 9 * * *",  // Run daily at 9 AM UTC
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<ContractNotificationJob>(
+    "payment-reminders",
+    job => job.SendPaymentReminders(),
+    "0 */6 * * *",  // Run every 6 hours
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<ContractExpiryJob>(
+    "process-contract-expiries",
+    job => job.ProcessAllExpiries(),
+    "*/30 * * * *",  // Run every 30 minutes
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.Run();

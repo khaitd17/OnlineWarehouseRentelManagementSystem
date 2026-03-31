@@ -75,6 +75,11 @@ export const getOccupancyStats = async () => {
   return response.data;
 };
 
+export const getWarehouseById = async (warehouseId) => {
+  const response = await axiosClient.get(`/Warehouse/${warehouseId}`);
+  return response.data;
+};
+
 // ── Default Export ──────────────────────────────────────────────
 const warehouseService = {
   getMyWarehouses,
@@ -83,7 +88,8 @@ const warehouseService = {
   uploadWarehouseImage,
   uploadWarehouseDocument,
   submitWarehouse,
-  getOccupancyStats
+  getOccupancyStats,
+  getWarehouseById
 };
 
 export default warehouseService;

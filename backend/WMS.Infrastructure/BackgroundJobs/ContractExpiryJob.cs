@@ -17,13 +17,49 @@ public class ContractExpiryJob
     }
 
     /// <summary>
-    /// Auto cancel contracts PENDING_SIGNATURE that expired (48h)
+    /// Auto cancel contracts PENDING_OWNER_SIGNATURE that expired (48h)
+    /// </summary>
+    public async Task CancelExpiredOwnerSignatures()
+    {
+        var now = DateTime.UtcNow;
+        var expiredContracts = await _db.RentalContracts
+            .Where(c => c.Status == RentalContractStatus.PendingOwnerSignature
+                        && c.OwnerSignatureExpiry.HasValue
+                        && c.OwnerSignatureExpiry.Value < now)
+            .ToListAsync();
+
+        _logger.LogInformation("Found {Count} expired owner signature contracts", expiredContracts.Count);
+
+        foreach (var contract in expiredContracts)
+        {
+            contract.Cancel("Owner không ký trong 48 giờ - hợp đồng tự động hủy");
+
+            // Also cancel the extension if exists
+            var extension = await _db.ContractExtensions
+                .FirstOrDefaultAsync(e => e.NewContractId == contract.ContractId);
+            if (extension != null)
+            {
+                extension.Cancel();
+                _logger.LogInformation("Cancelled extension {ExtensionId} due to owner signature expiry", extension.ExtensionId);
+            }
+
+            _logger.LogInformation("Cancelled contract {ContractId} due to owner signature expiry", contract.ContractId);
+        }
+
+        if (expiredContracts.Any())
+        {
+            await _db.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Auto cancel contracts PENDING_RENTER_SIGNATURE that expired (48h)
     /// </summary>
     public async Task CancelExpiredSignatures()
     {
         var now = DateTime.UtcNow;
         var expiredContracts = await _db.RentalContracts
-            .Where(c => c.Status == RentalContractStatus.PendingSignature
+            .Where(c => c.Status == RentalContractStatus.PendingRenterSignature
                         && c.PendingSignatureExpiry.HasValue
                         && c.PendingSignatureExpiry.Value < now)
             .ToListAsync();
@@ -32,8 +68,8 @@ public class ContractExpiryJob
 
         foreach (var contract in expiredContracts)
         {
-            contract.Cancel("Hợp đồng đã hết hạn ký (quá 48 giờ)");
-            _logger.LogInformation("Cancelled contract {ContractId} due to signature expiry", contract.ContractId);
+            contract.Cancel("Người thuê không ký trong 48 giờ - hợp đồng tự động hủy");
+            _logger.LogInformation("Cancelled contract {ContractId} due to renter signature expiry", contract.ContractId);
         }
 
         if (expiredContracts.Any())
@@ -137,10 +173,11 @@ public class ContractExpiryJob
     {
         _logger.LogInformation("Starting contract expiry processing");
 
-        await CancelExpiredSignatures();
-        await CancelExpiredPayments();
-        await CompleteExpiredContracts();
-        await MarkOverdueReturns();
+        await CancelExpiredOwnerSignatures();  // Check owner signature timeout first
+        await CancelExpiredSignatures();       // Then renter signature timeout
+        await CancelExpiredPayments();         // Then payment timeout
+        await CompleteExpiredContracts();      // Mark completed if end date passed
+        await MarkOverdueReturns();            // Mark overdue if not returned
 
         _logger.LogInformation("Finished contract expiry processing");
     }

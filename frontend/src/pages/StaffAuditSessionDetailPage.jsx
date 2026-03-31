@@ -14,7 +14,7 @@ export default function StaffAuditSessionDetailPage() {
   const [resFilters, setResFilters] = useState({ search: "", page: 1, pageSize: 10 });
   const [toast, setToast] = useState(null);
 
-  const defaultRecordModal = { open: false, items: [{ itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }], completeSession: false, loading: false };
+  const defaultRecordModal = { open: false, items: [], completeSession: false, loading: false };
   const [recordModal, setRecordModal] = useState(defaultRecordModal);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [inventoryLoading, setInventoryLoading] = useState(false);
@@ -51,8 +51,21 @@ export default function StaffAuditSessionDetailPage() {
     setInventoryLoading(true);
     try {
       const res = await adminService.getAuditSessionInventory(id);
-      if (res.data.success) setInventoryItems(res.data.data || []);
-      else setInventoryItems([]);
+      if (res.data.success) {
+        const items = res.data.data || [];
+        setInventoryItems(items);
+        setRecordModal(p => ({
+          ...p,
+          items: items.map(inv => ({
+            itemName: inv.itemName,
+            expectedQty: inv.quantity,
+            actualQty: "",
+            discrepancyReason: ""
+          }))
+        }));
+      } else {
+        setInventoryItems([]);
+      }
     } catch { setInventoryItems([]); }
     setInventoryLoading(false);
   };
@@ -63,38 +76,27 @@ export default function StaffAuditSessionDetailPage() {
   };
 
   // Record results
-  const addItem = () => setRecordModal(p => ({ ...p, items: [...p.items, { itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }] }));
-  const removeItem = (idx) => setRecordModal(p => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
-
   const updateItem = (idx, field, value) => {
     setRecordModal(p => ({
       ...p,
-      items: p.items.map((item, i) => {
-        if (i !== idx) return item;
-        if (field === "itemName") {
-          // Auto-fill expectedQty when selecting a product
-          const selected = inventoryItems.find(inv => inv.itemName === value);
-          return { ...item, itemName: value, expectedQty: selected ? selected.quantity : "" };
-        }
-        return { ...item, [field]: value };
-      })
+      items: p.items.map((item, i) => i === idx ? { ...item, [field]: value } : item)
     }));
   };
 
   const handleRecord = async () => {
+    const itemsToRecord = recordModal.items.filter(i => i.actualQty !== "");
+
     let hasError = false;
-    for (const item of recordModal.items) {
-      if (!item.itemName.trim()) { hasError = true; break; }
-      if (item.expectedQty === "" || parseInt(item.expectedQty) < 0) { hasError = true; break; }
-      if (item.actualQty === "" || parseInt(item.actualQty) < 0) { hasError = true; break; }
+    for (const item of itemsToRecord) {
+      if (parseInt(item.actualQty) < 0) { hasError = true; break; }
     }
-    if (hasError) { showToast("Vui lòng điền đầy đủ thông tin (tên, SL >= 0)", "error"); return; }
-    if (recordModal.items.length === 0) { showToast("Vui lòng thêm ít nhất 1 mục", "error"); return; }
+    if (hasError) { showToast("Số lượng thực tế phải >= 0", "error"); return; }
+    if (itemsToRecord.length === 0) { showToast("Vui lòng nhập số lượng thực tế cho ít nhất 1 mục", "error"); return; }
 
     setRecordModal(p => ({ ...p, loading: true }));
     try {
       const payload = {
-        items: recordModal.items.map(i => ({ itemName: i.itemName.trim(), expectedQty: parseInt(i.expectedQty), actualQty: parseInt(i.actualQty), discrepancyReason: i.discrepancyReason || null })),
+        items: itemsToRecord.map(i => ({ itemName: i.itemName.trim(), expectedQty: parseInt(i.expectedQty), actualQty: parseInt(i.actualQty), discrepancyReason: i.discrepancyReason || null })),
         completeSession: recordModal.completeSession,
       };
       const res = await adminService.recordAuditResults(id, payload);
@@ -127,9 +129,6 @@ export default function StaffAuditSessionDetailPage() {
   if (!session) return <div className="text-center py-16 text-red-500">Không tìm thấy phiên kiểm kê.</div>;
 
   const canRecord = session.status === "APPROVED" || session.status === "IN_PROGRESS";
-
-  // Get already-recorded item names to filter them out of the dropdown
-  const recordedItemNames = new Set(recordModal.items.map(i => i.itemName).filter(Boolean));
 
   return (
     <div style={{ fontFamily: "Inter, sans-serif" }}>
@@ -276,43 +275,25 @@ export default function StaffAuditSessionDetailPage() {
             ) : (
               <>
                 <div className="mb-2">
-                  <div className="grid gap-2 mb-1" style={{ gridTemplateColumns: "2.5fr 1fr 1fr 2fr auto" }}>
+                  <div className="grid gap-2 mb-1" style={{ gridTemplateColumns: "2.5fr 1fr 1fr 2fr" }}>
                     <span className="text-[11px] font-bold uppercase text-slate-400 px-1">Hàng hóa *</span>
                     <span className="text-[11px] font-bold uppercase text-slate-400 px-1">SL dự kiến</span>
                     <span className="text-[11px] font-bold uppercase text-slate-400 px-1">SL thực tế *</span>
                     <span className="text-[11px] font-bold uppercase text-slate-400 px-1">Lý do chênh lệch</span>
-                    <span></span>
                   </div>
                 </div>
-                <div style={{ maxHeight: 320, overflowY: "auto" }}>
+                <div style={{ maxHeight: 320, overflowY: "auto", overflowX: "hidden" }}>
                   {recordModal.items.map((item, idx) => (
-                    <div key={idx} className="grid gap-2 mb-2" style={{ gridTemplateColumns: "2.5fr 1fr 1fr 2fr auto", alignItems: "start" }}>
-                      <select
-                        className="px-2 py-1.5 rounded border border-slate-200 text-sm bg-white"
-                        value={item.itemName}
-                        onChange={e => updateItem(idx, "itemName", e.target.value)}
-                      >
-                        <option value="">-- Chọn hàng hóa --</option>
-                        {inventoryItems.map(inv => (
-                          <option
-                            key={inv.itemName}
-                            value={inv.itemName}
-                            disabled={recordedItemNames.has(inv.itemName) && item.itemName !== inv.itemName}
-                          >
-                            {inv.itemName} ({inv.quantity} {inv.unit})
-                          </option>
-                        ))}
-                      </select>
+                    <div key={idx} className="grid gap-2 mb-2" style={{ gridTemplateColumns: "2.5fr 1fr 1fr 2fr", alignItems: "start" }}>
+                      <div className="px-3 py-1.5 rounded border border-slate-200 text-sm bg-slate-50 text-slate-800 font-semibold truncate" title={item.itemName}>
+                        {item.itemName}
+                      </div>
                       <input className="px-2 py-1.5 rounded border border-slate-200 text-sm bg-slate-50 text-slate-500" type="number" min="0" placeholder="SL dự kiến" value={item.expectedQty} readOnly tabIndex={-1} />
                       <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" type="number" min="0" placeholder="SL thực tế *" value={item.actualQty} onChange={e => updateItem(idx, "actualQty", e.target.value)} />
                       <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" placeholder="Lý do chênh lệch" value={item.discrepancyReason} onChange={e => updateItem(idx, "discrepancyReason", e.target.value)} />
-                      {recordModal.items.length > 1 && <button className="px-2 py-1.5 rounded bg-red-50 text-red-500 text-sm font-bold" onClick={() => removeItem(idx)}>✕</button>}
                     </div>
                   ))}
                 </div>
-                {recordModal.items.length < inventoryItems.length && (
-                  <button onClick={addItem} className="text-sm font-bold mt-2 px-3 py-1.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-50">+ Thêm mục</button>
-                )}
                 <div className="mt-4 mb-4">
                   <label className="text-sm flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={recordModal.completeSession} onChange={e => setRecordModal(p => ({ ...p, completeSession: e.target.checked }))} />

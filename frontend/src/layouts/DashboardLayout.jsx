@@ -117,6 +117,20 @@ const DashboardLayout = () => {
         navigate(`/rental-request/${notification.referenceId}`);
       } else if (notification.type === 'CONTRACT_REJECTED') {
         navigate('/my-rental-requests');
+      } else if (notification.type === 'EXTENSION_REQUEST_RECEIVED') {
+        navigate('/contract-extensions');
+      } else if (notification.type === 'EXTENSION_APPROVED' ||
+                 notification.type === 'EXTENSION_REJECTED') {
+        navigate('/contract-extensions-renter');
+      } else if (notification.type === 'CONTRACT_EXTENSION_SIGNATURE_NEEDED') {
+        // Navigate to appropriate signing page based on user role
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userRole = (user.role || user.roleName || '').toUpperCase();
+        if (userRole === 'OWNER' || userRole === 'OPERATOR') {
+          navigate(`/sign-contract-owner/${notification.referenceId}`);
+        } else {
+          navigate(`/sign-contract/${notification.referenceId}`);
+        }
       }
     } else if (notification.type === 'CONTRACT_REJECTED') {
       navigate('/my-rental-requests');

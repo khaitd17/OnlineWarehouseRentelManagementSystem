@@ -143,7 +143,14 @@ const MyRentalRequests = () => {
                       ✅ Chủ kho đã gửi đề xuất! Hợp đồng đã được tạo — chờ bạn ký.
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); navigate("/my-contracts"); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (req.contractId) {
+                          navigate(`/contracts/${req.contractId}`);
+                        } else {
+                          alert("Không tìm thấy hợp đồng. Vui lòng liên hệ hỗ trợ.");
+                        }
+                      }}
                       style={{ padding: "0.45rem 1rem", borderRadius: "8px", border: "none",
                         backgroundColor: "#16a34a", color: "#fff",
                         fontWeight: 600, cursor: "pointer", fontSize: "0.85rem", whiteSpace: "nowrap" }}>

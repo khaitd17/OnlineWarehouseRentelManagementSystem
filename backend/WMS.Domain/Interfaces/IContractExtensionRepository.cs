@@ -17,5 +17,8 @@ namespace WMS.Domain.Interfaces
         Task<List<ContractExtension>> GetByRequesterIdAsync(int requesterId);
         Task<List<ContractExtension>> GetPendingByWarehouseIdsAsync(List<int> warehouseIds);
         Task<ContractExtension?> GetPendingByContractIdAsync(int contractId);
+
+        // Get approved extensions where new contract is pending owner signature
+        Task<IEnumerable<ContractExtension>> GetApprovedPendingSignatureByWarehouseIdsAsync(IEnumerable<int> warehouseIds);
     }
 }

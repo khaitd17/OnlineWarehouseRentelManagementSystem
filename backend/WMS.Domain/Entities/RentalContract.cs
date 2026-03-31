@@ -32,6 +32,11 @@ public class RentalContract
     public DateTime? TerminatedAt { get; private set; }
     public string? TerminationReason { get; private set; }
 
+    // Expiry tracking for background jobs
+    public DateTime? OwnerSignatureExpiry { get; private set; }
+    public DateTime? RenterSignatureExpiry { get; private set; }
+    public DateTime? PaymentExpiry { get; private set; }
+
     // Navigation properties
     public RentalRequest? RentalRequest { get; set; }
     public Warehouse? Warehouse { get; set; }
@@ -51,6 +56,7 @@ public class RentalContract
 
         var effectiveStartDate = startDateOverride ?? request.StartDate;
         var effectiveDuration = durationMonthsOverride ?? request.DurationMonths;
+        
         var endDate = effectiveStartDate.AddMonths(effectiveDuration);
         var totalValue = monthlyPayment * effectiveDuration;
 
@@ -69,7 +75,8 @@ public class RentalContract
             DepositAmount = depositAmount,
             Status = "PENDING_OWNER_SIGNATURE",
             Terms = terms,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            OwnerSignatureExpiry = DateTime.UtcNow.AddHours(48) // 48h timeout for owner to sign
         };
     }
 
@@ -87,22 +94,24 @@ public class RentalContract
         OwnerSignedFileUrl = ownerSignedFileUrl;
         OwnerSignedAt = DateTime.UtcNow;
         OwnerSignatureBase64 = ownerSignatureBase64;
-        Status = "PENDING_SIGNATURE"; // Chờ xác thực ký của người thuê
+        Status = "PENDING_RENTER_SIGNATURE"; // Chờ xác thực ký của người thuê
+        RenterSignatureExpiry = DateTime.UtcNow.AddHours(48); // 48h timeout for renter to sign
+        OwnerSignatureExpiry = null; // Clear owner expiry
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void MarkPendingSignature()
     {
-        if (Status != "PENDING_RENTER_SIGNATURE" && Status != "PENDING_SIGNATURE")
+        if (Status != "PENDING_RENTER_SIGNATURE" && Status != "PENDING_RENTER_SIGNATURE")
             throw new InvalidOperationException($"Cannot mark pending signature for contract with status {Status}");
 
-        Status = "PENDING_SIGNATURE";
+        Status = "PENDING_RENTER_SIGNATURE";
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void Sign(string signedFileUrl)
     {
-        if (Status != "PENDING_SIGNATURE")
+        if (Status != "PENDING_RENTER_SIGNATURE")
             throw new InvalidOperationException($"Cannot sign contract with status {Status}");
 
         SignedFileUrl = signedFileUrl;
@@ -162,12 +171,14 @@ public class RentalContract
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void MarkPendingPayment(double expiryHours = 24)
+    public void MarkPendingPayment(double expiryHours = 48)
     {
-        if (Status != "PENDING_SIGNATURE" && Status != "ACTIVE")
+        if (Status != "PENDING_RENTER_SIGNATURE" && Status != "ACTIVE")
             throw new InvalidOperationException($"Cannot mark pending payment for contract with status {Status}");
 
         Status = "PENDING_PAYMENT";
+        PaymentExpiry = DateTime.UtcNow.AddHours(expiryHours); // 48h timeout for payment
+        RenterSignatureExpiry = null; // Clear renter signature expiry
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -195,16 +206,16 @@ public class RentalContract
 
     public bool IsPendingOwnerSignature => Status == "PENDING_OWNER_SIGNATURE";
     public bool IsPendingRenterSignature => Status == "PENDING_RENTER_SIGNATURE";
-    public bool IsPendingSignature => Status == "PENDING_SIGNATURE";
+    public bool IsPendingSignature => Status == "PENDING_RENTER_SIGNATURE";
     public bool IsPendingPayment => Status == "PENDING_PAYMENT";
     public bool IsActive => Status == "ACTIVE";
     public bool IsExpired => Status == "EXPIRED";
     public bool IsTerminated => Status == "TERMINATED";
     public bool IsOverdue => Status == "OVERDUE";
 
-    // Expiry checking properties for background jobs
-    public DateTime? PendingSignatureExpiry => IsPendingSignature ? CreatedAt.AddHours(24) : null;
-    public DateTime? PendingPaymentExpiry => IsPendingPayment ? CreatedAt.AddHours(48) : null;
+    // Expiry checking properties for background jobs (use new explicit fields)
+    public DateTime? PendingSignatureExpiry => RenterSignatureExpiry;
+    public DateTime? PendingPaymentExpiry => PaymentExpiry;
 
     // Additional methods
     public void ActivateAfterPayment()

@@ -7,6 +7,8 @@ public class CreatePaymentCommand : IRequest<CreatePaymentResult>
     public int ContractId { get; set; }
     public string PaymentType { get; set; } = "DEPOSIT";
     public decimal? AmountOverride { get; set; }
+    public string PaymentMethod { get; set; } = "BANK_TRANSFER"; // BANK_TRANSFER, CASH
+    public string? Status { get; set; } // null = use default (PENDING), or PENDING_CONFIRMATION for cash
 }
 
 public class CreatePaymentResult

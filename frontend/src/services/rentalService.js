@@ -21,6 +21,12 @@ const rentalService = {
     return response.data;
   },
 
+  getOwnerRequests: async (status = null) => {
+    const params = status ? { status } : {};
+    const response = await axiosClient.get("/rental-requests/owner/all", { params });
+    return response.data;
+  },
+
   approveRentalRequest: async (id, data) => {
     const response = await axiosClient.post(`/rental-requests/${id}/approve`, data);
     return response.data;
