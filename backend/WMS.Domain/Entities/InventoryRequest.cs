@@ -13,25 +13,23 @@ public partial class InventoryRequest
 
     public string Type { get; set; } = null!;
 
-    /// <summary>PENDING | ASSIGNED | COMPLETED | REJECTED</summary>
     public string? Status { get; set; }
 
     public int? ConfirmedBy { get; set; }
 
     public DateTime? ConfirmedAt { get; set; }
 
-    /// <summary>Staff được Manager giao việc</summary>
     public int? AssignedStaffId { get; set; }
 
-    /// <summary>Ghi chú nội bộ từ Manager khi giao việc</summary>
     public string? AssignedNote { get; set; }
 
-    /// <summary>Thời điểm Manager giao việc cho Staff</summary>
     public DateTime? AssignedAt { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }
+
+    public DateTime? ScheduledDate { get; set; }
 
     public string? Notes { get; set; }
 

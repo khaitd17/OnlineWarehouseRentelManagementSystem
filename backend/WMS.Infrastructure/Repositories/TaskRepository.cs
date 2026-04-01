@@ -185,27 +185,26 @@ public class TaskRepository : ITaskRepository
         await _db.SaveChangesAsync(ct);
     }
 
-    // ─── Helper: unit task step definitions ───────────────────────────────────
     private static List<(string Code, string Desc, int Order)> GetUnitTaskSteps(string? typeCode)
         => typeCode switch
         {
             "INBOUND" =>
             [
-                (nameof(UnitTaskTypeCode.INBOUND_APPROVE),  "Duyệt đơn nhập kho",            1),
-                (nameof(UnitTaskTypeCode.INBOUND_RECEIVE),  "Tiếp nhận & xác nhận nhập kho", 2),
-                (nameof(UnitTaskTypeCode.INBOUND_PUTAWAY),  "Đặt hàng vào vị trí",           3),
+                (nameof(UnitTaskTypeCode.INBOUND_APPROVE), "Duyệt đơn nhập kho",            1),
+                (nameof(UnitTaskTypeCode.INBOUND_RECEIVE), "Tiếp nhận & xác nhận nhập kho", 2),
+                // (nameof(UnitTaskTypeCode.INBOUND_PUTAWAY), "Đặt hàng vào vị trí", 3),
             ],
             "OUTBOUND" =>
             [
-                (nameof(UnitTaskTypeCode.OUTBOUND_APPROVE),  "Duyệt đơn xuất kho",             1),
-                (nameof(UnitTaskTypeCode.OUTBOUND_PICK),     "Lấy hàng từ vị trí (Picking)",   2),
-                (nameof(UnitTaskTypeCode.OUTBOUND_DISPATCH), "Xác nhận xuất kho",               3),
+                (nameof(UnitTaskTypeCode.OUTBOUND_APPROVE), "Duyệt đơn xuất kho",             1),
+                (nameof(UnitTaskTypeCode.OUTBOUND_PICK),    "Lấy hàng từ vị trí (Picking)",   2),
+                // (nameof(UnitTaskTypeCode.OUTBOUND_DISPATCH), "Xác nhận xuất kho", 3),
             ],
             "AUDIT" =>
             [
-                (nameof(UnitTaskTypeCode.AUDIT_OPEN),  "Mở phiên kiểm kê",       1),
-                (nameof(UnitTaskTypeCode.AUDIT_COUNT), "Nhập kết quả kiểm đếm",  2),
-                (nameof(UnitTaskTypeCode.AUDIT_CLOSE), "Đóng phiên kiểm kê",     3),
+                (nameof(UnitTaskTypeCode.AUDIT_OPEN),  "Mở phiên kiểm kê",      1),
+                (nameof(UnitTaskTypeCode.AUDIT_COUNT), "Nhập kết quả kiểm đếm", 2),
+                (nameof(UnitTaskTypeCode.AUDIT_CLOSE), "Đóng phiên kiểm kê",    3),
             ],
             _ => []
         };
