@@ -150,6 +150,7 @@ const ConfirmMovement = () => {
       showToast(`Xác nhận hoàn thành yêu cầu #${id} thành công! Tồn kho đã được cập nhật.`);
       setSelectedReq(null);
       fetchAssigned();
+      window.dispatchEvent(new Event('inventoryRequestUpdated'));
     } catch (err) {
       showToast(err?.response?.data?.message || 'Xác nhận thất bại.', true);
     } finally {
