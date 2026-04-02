@@ -22,6 +22,21 @@ namespace WMS.Infrastructure.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("ContractEquipment", b =>
+                {
+                    b.Property<int>("IncludedEquipmentsEquipmentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RentalContractsContractId")
+                        .HasColumnType("int");
+
+                    b.HasKey("IncludedEquipmentsEquipmentId", "RentalContractsContractId");
+
+                    b.HasIndex("RentalContractsContractId");
+
+                    b.ToTable("ContractEquipment", (string)null);
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.AuditResult", b =>
                 {
                     b.Property<int>("ResultId")
@@ -1345,10 +1360,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("owner_signature_base64");
 
-                    b.Property<DateTime?>("OwnerSignatureExpiry")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("owner_signature_expiry");
-
                     b.Property<DateTime?>("OwnerSignedAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("owner_signed_at");
@@ -1362,9 +1373,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("parent_contract_id");
 
-                    b.Property<DateTime?>("PaymentExpiry")
-                        .HasColumnType("datetime2");
-
                     b.Property<int>("RentalRequestId")
                         .HasColumnType("int")
                         .HasColumnName("rental_request_id");
@@ -1372,9 +1380,6 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<int>("RenterId")
                         .HasColumnType("int")
                         .HasColumnName("renter_id");
-
-                    b.Property<DateTime?>("RenterSignatureExpiry")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ReturnedAt")
                         .HasColumnType("datetime2")
@@ -1470,14 +1475,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)")
                         .HasColumnName("payment_code");
-
-                    b.Property<string>("PaymentMethod")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
-                        .HasDefaultValue("BANK_TRANSFER")
-                        .HasColumnName("payment_method");
 
                     b.Property<string>("PaymentType")
                         .IsRequired()
@@ -2849,7 +2846,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("zone_id");
 
-                    b.ToTable("task_zones");
+                    b.ToTable("task_zones", (string)null);
                 });
 
             modelBuilder.Entity("warehouse_membership_skills", b =>
@@ -2864,7 +2861,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("skill_id");
 
-                    b.ToTable("warehouse_membership_skills");
+                    b.ToTable("warehouse_membership_skills", (string)null);
                 });
 
             modelBuilder.Entity("warehouse_membership_zones", b =>
@@ -2879,7 +2876,22 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("zone_id");
 
-                    b.ToTable("warehouse_membership_zones");
+                    b.ToTable("warehouse_membership_zones", (string)null);
+                });
+
+            modelBuilder.Entity("ContractEquipment", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.Equipment", null)
+                        .WithMany()
+                        .HasForeignKey("IncludedEquipmentsEquipmentId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("WMS.Domain.Entities.Contract", null)
+                        .WithMany()
+                        .HasForeignKey("RentalContractsContractId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.AuditResult", b =>
@@ -3008,7 +3020,7 @@ namespace WMS.Infrastructure.Migrations
             modelBuilder.Entity("WMS.Domain.Entities.EquipmentHistory", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.Contract", "Contract")
-                        .WithMany()
+                        .WithMany("EquipmentUsageLogs")
                         .HasForeignKey("ContractId")
                         .OnDelete(DeleteBehavior.NoAction);
 
@@ -3618,6 +3630,8 @@ namespace WMS.Infrastructure.Migrations
 
             modelBuilder.Entity("WMS.Domain.Entities.Contract", b =>
                 {
+                    b.Navigation("EquipmentUsageLogs");
+
                     b.Navigation("Payments");
 
                     b.Navigation("Ratings");

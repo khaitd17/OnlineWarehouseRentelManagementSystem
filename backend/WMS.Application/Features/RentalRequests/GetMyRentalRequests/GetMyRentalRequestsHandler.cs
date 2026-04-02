@@ -34,12 +34,17 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
             var warehouse = await _warehouseRepository.GetByIdAsync(r.WarehouseId, cancellationToken);
             var renter = await _userRepository.GetByIdAsync(r.RenterId, cancellationToken);
             
-            // Get contract ID if request is approved
+            // Get contract ID and status if request is approved
             int? contractId = null;
+            string? contractStatus = null;
             if (r.Status == "APPROVED")
             {
                 var contract = await _contractRepository.GetByRentalRequestIdAsync(r.RequestId);
-                contractId = contract?.ContractId;
+                if (contract != null)
+                {
+                    contractId = contract.ContractId;
+                    contractStatus = contract.Status;
+                }
             }
             
             result.Add(new RentalRequestDto
@@ -62,7 +67,8 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
                 ReviewedAt = r.ReviewedAt,
                 RejectionReason = r.RejectionReason,
                 ContractImageUrl = r.ContractImageUrl,
-                ContractId = contractId
+                ContractId = contractId,
+                ContractStatus = contractStatus
             });
         }
         return result;

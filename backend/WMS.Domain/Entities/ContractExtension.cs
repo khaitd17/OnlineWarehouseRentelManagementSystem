@@ -22,8 +22,8 @@ public class ContractExtension
     public DateTime? UpdatedAt { get; private set; }
 
     // Navigation properties
-    public RentalContract? OriginalContract { get; set; }
-    public RentalContract? NewContract { get; set; }
+    public Contract? OriginalContract { get; set; }
+    public Contract? NewContract { get; set; }
     public User? Requester { get; set; }
     public User? Reviewer { get; set; }
 

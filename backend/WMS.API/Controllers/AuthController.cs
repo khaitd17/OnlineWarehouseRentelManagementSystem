@@ -90,7 +90,8 @@ public class AuthController : ControllerBase
             }).ToList();
 
             // Include warehouses where the user has an active/pending rental contract (RENTER role)
-            var activeContracts = await _db.RentalContracts
+            // Use _db.Contracts which maps to "contracts" table where actual data is stored
+            var activeContracts = await _db.Contracts
                 .Where(c => c.RenterId == userId && (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT"))
                 .Include(c => c.Warehouse)
                 .ToListAsync();

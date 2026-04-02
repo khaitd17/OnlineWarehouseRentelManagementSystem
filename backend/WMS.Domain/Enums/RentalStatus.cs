@@ -28,6 +28,10 @@ public static class RentalContractStatus
     public const string Closed = "CLOSED";
     public const string Overdue = "OVERDUE";
     public const string Cancelled = "CANCELLED";
+
+    // NEW - 2-party approval for termination/close
+    public const string PendingTermination = "PENDING_TERMINATION";
+    public const string PendingClose = "PENDING_CLOSE";
 }
 
 public static class PaymentStatus

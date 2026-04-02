@@ -3,6 +3,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import Sidebar from '../components/Dashboard/Sidebar';
 import notificationService from '../services/notificationService';
+import authService from '../services/authService';
 
 const DashboardLayout = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -43,9 +44,20 @@ const DashboardLayout = () => {
       .configureLogging(LogLevel.Warning)
       .build();
 
-    connection.on('ReceiveNotification', (notification) => {
+    connection.on('ReceiveNotification', async (notification) => {
       setNotifications(prev => [notification, ...prev]);
       setUnreadCount(prev => prev + 1);
+      
+      // When payment is confirmed/rejected, refresh warehouse context to update role
+      if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+        try {
+          await authService.refreshWarehouseContext();
+          // Trigger authChange event to refresh Sidebar menu
+          window.dispatchEvent(new Event('authChange'));
+        } catch (err) {
+          console.warn('[DashboardLayout] Failed to refresh warehouse context:', err);
+        }
+      }
     });
 
     connection.start().catch(() => {});
@@ -94,19 +106,46 @@ const DashboardLayout = () => {
     setShowNotifications(!showNotifications);
   };
 
+  const isNotificationRead = (notification) => {
+    return Boolean(
+      notification?.isRead ?? notification?.IsRead ?? notification?.read ?? false
+    );
+  };
+
   const handleNotificationClick = async (notification) => {
-    if (!notification.isRead) {
+    const wasUnread = !isNotificationRead(notification);
+
+    if (wasUnread) {
+      setNotifications(prev =>
+        prev.map(n =>
+          n.notificationId === notification.notificationId
+            ? { ...n, isRead: true, IsRead: true, read: true }
+            : n
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+
       try {
         await notificationService.markNotificationAsRead(notification.notificationId);
-        setNotifications(prev =>
-          prev.map(n =>
-            n.notificationId === notification.notificationId ? { ...n, isRead: true } : n
-          )
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      } catch (err) {}
+      } catch (err) {
+        fetchUnreadCount();
+      }
     }
     setShowNotifications(false);
+
+    // Handle payment-related notifications - refresh context and navigate
+    if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+      try {
+        await authService.refreshWarehouseContext();
+        window.dispatchEvent(new Event('authChange'));
+      } catch (err) {
+        console.warn('[DashboardLayout] Failed to refresh warehouse context:', err);
+      }
+      if (notification.referenceId) {
+        navigate(`/contracts/${notification.referenceId}`);
+      }
+      return;
+    }
 
     if (notification.referenceId) {
       if (notification.type === 'CONTRACT_APPROVED' ||
@@ -298,11 +337,11 @@ const DashboardLayout = () => {
                         style={{
                           padding: '14px 20px', cursor: 'pointer',
                           borderBottom: '1px solid #f1f5f9',
-                          backgroundColor: n.isRead ? '#fff' : '#f0f9ff',
+                          backgroundColor: isNotificationRead(n) ? '#fff' : '#f0f9ff',
                           transition: 'background-color 0.15s',
                         }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = n.isRead ? '#f8fafc' : '#e0f2fe'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = n.isRead ? '#fff' : '#f0f9ff'}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = isNotificationRead(n) ? '#f8fafc' : '#e0f2fe'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = isNotificationRead(n) ? '#fff' : '#f0f9ff'}
                       >
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                           <div style={{
@@ -329,7 +368,7 @@ const DashboardLayout = () => {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{
-                              fontWeight: n.isRead ? 400 : 600, fontSize: '13px',
+                              fontWeight: isNotificationRead(n) ? 400 : 600, fontSize: '13px',
                               color: '#1e293b', marginBottom: '4px',
                             }}>
                               {n.title}
@@ -346,7 +385,7 @@ const DashboardLayout = () => {
                               {formatTime(n.createdAt)}
                             </div>
                           </div>
-                          {!n.isRead && (
+                          {!isNotificationRead(n) && (
                             <div style={{
                               width: '8px', height: '8px', borderRadius: '50%',
                               backgroundColor: '#3b82f6', flexShrink: 0, marginTop: '6px',

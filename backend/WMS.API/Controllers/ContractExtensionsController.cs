@@ -1,11 +1,14 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using WMS.Application.Features.ContractExtensions.RequestExtension;
 using WMS.Application.Features.ContractExtensions.ReviewExtension;
+using WMS.Domain.Entities;
 using WMS.Domain.Enums;
 using WMS.Domain.Interfaces;
+using WMS.Infrastructure.Persistence;
 
 namespace WMS.API.Controllers
 {
@@ -18,17 +21,20 @@ namespace WMS.API.Controllers
         private readonly IContractExtensionRepository _extensionRepo;
         private readonly IWarehouseRepository _warehouseRepo;
         private readonly IRentalContractRepository _contractRepo;
+        private readonly ApplicationDbContext _db;
 
         public ContractExtensionsController(
             IMediator mediator,
             IContractExtensionRepository extensionRepo,
             IWarehouseRepository warehouseRepo,
-            IRentalContractRepository contractRepo)
+            IRentalContractRepository contractRepo,
+            ApplicationDbContext db)
         {
             _mediator = mediator;
             _extensionRepo = extensionRepo;
             _warehouseRepo = warehouseRepo;
             _contractRepo = contractRepo;
+            _db = db;
         }
 
         private int GetUserId()
@@ -217,7 +223,14 @@ namespace WMS.API.Controllers
             {
                 var userId = GetUserId();
                 var extensions = await _extensionRepo.GetByRequesterIdAsync(userId);
-                return Ok(extensions.Select(MapExtensionToDto));
+                
+                // Load original contracts separately due to FK mapping issue
+                var contractIds = extensions.Select(e => e.OriginalContractId).Distinct().ToList();
+                var contracts = await _db.Contracts
+                    .Where(c => contractIds.Contains(c.ContractId))
+                    .ToDictionaryAsync(c => c.ContractId);
+                
+                return Ok(extensions.Select(e => MapExtensionToDtoWithContract(e, contracts)));
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -412,6 +425,51 @@ namespace WMS.API.Controllers
                     endDate = e.OriginalContract.EndDate,
                     monthlyPayment = e.OriginalContract.MonthlyPayment,
                     status = e.OriginalContract.Status
+                } : null
+            };
+        }
+
+        private object MapExtensionToDtoWithContract(Domain.Entities.ContractExtension e, Dictionary<int, Contract> contracts)
+        {
+            Contract? contract = contracts.GetValueOrDefault(e.OriginalContractId);
+            
+            return new
+            {
+                extensionId = e.ExtensionId,
+                originalContractId = e.OriginalContractId,
+                newContractId = e.NewContractId,
+                requesterId = e.RequesterId,
+                durationMonths = e.DurationMonths,
+                proposedMonthlyPayment = e.ProposedMonthlyPayment,
+                status = e.Status,
+                notes = e.Notes,
+                rejectionReason = e.RejectionReason,
+                requestedAt = e.RequestedAt,
+                reviewedAt = e.ReviewedAt,
+                reviewedBy = e.ReviewedBy,
+                createdAt = e.CreatedAt,
+                updatedAt = e.UpdatedAt,
+                requester = e.Requester != null ? new
+                {
+                    userId = e.Requester.UserId,
+                    fullName = e.Requester.FullName,
+                    email = e.Requester.Email
+                } : null,
+                reviewer = e.Reviewer != null ? new
+                {
+                    userId = e.Reviewer.UserId,
+                    fullName = e.Reviewer.FullName,
+                    email = e.Reviewer.Email
+                } : null,
+                originalContract = contract != null ? new
+                {
+                    contractId = contract.ContractId,
+                    contractNumber = contract.ContractNumber,
+                    warehouseId = contract.WarehouseId,
+                    startDate = contract.StartDate,
+                    endDate = contract.EndDate,
+                    monthlyPayment = contract.MonthlyPayment,
+                    status = contract.Status
                 } : null
             };
         }

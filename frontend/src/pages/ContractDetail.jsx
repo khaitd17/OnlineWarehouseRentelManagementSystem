@@ -22,6 +22,9 @@ const statusConfig = {
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
   CANCELLED:  { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
   OVERDUE:    { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
+  // 2-party approval statuses
+  PENDING_TERMINATION: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ xác nhận kết thúc sớm" },
+  PENDING_CLOSE: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ xác nhận kết thúc" },
 };
 
 const formatDate = (dateStr) => {
@@ -102,9 +105,57 @@ const ContractDetail = () => {
   const [showTerminateModal, setShowTerminateModal] = useState(false);
   const [showExtensionModal, setShowExtensionModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  
+  // Approval action states
+  const [processingApproval, setProcessingApproval] = useState(false);
 
   const reloadContract = () => {
     setRefreshKey(k => k + 1);
+  };
+
+  // Handle approve termination/close
+  const handleApprove = async () => {
+    if (!window.confirm("Bạn có chắc chắn muốn đồng ý yêu cầu này?")) return;
+    setProcessingApproval(true);
+    try {
+      await rentalService.approveTermination(contract.contractId);
+      alert("Đã xác nhận thành công!");
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Có lỗi xảy ra khi xác nhận");
+    } finally {
+      setProcessingApproval(false);
+    }
+  };
+
+  // Handle reject termination/close
+  const handleReject = async () => {
+    const reason = window.prompt("Nhập lý do từ chối (nếu có):");
+    setProcessingApproval(true);
+    try {
+      await rentalService.rejectTermination(contract.contractId, reason || "");
+      alert("Đã từ chối yêu cầu!");
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Có lỗi xảy ra khi từ chối");
+    } finally {
+      setProcessingApproval(false);
+    }
+  };
+
+  // Handle request close
+  const handleRequestClose = async () => {
+    if (!window.confirm("Bạn có chắc chắn muốn yêu cầu kết thúc hợp đồng này?")) return;
+    setProcessingApproval(true);
+    try {
+      await rentalService.requestClose(contract.contractId);
+      alert("Yêu cầu kết thúc đã được gửi. Đang chờ bên còn lại xác nhận.");
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Có lỗi xảy ra khi gửi yêu cầu");
+    } finally {
+      setProcessingApproval(false);
+    }
   };
 
   // Fetch contract
@@ -164,17 +215,36 @@ const ContractDetail = () => {
 
   // Calculate action button visibility
   const canTerminate = contract?.status === "ACTIVE";
+  const canRequestClose = contract?.status === "ACTIVE";
   const daysUntilExpiry = contract?.endDate
     ? Math.ceil((new Date(contract.endDate) - new Date()) / (1000 * 60 * 60 * 24))
     : 0;
   const canRequestExtension = contract?.status === "ACTIVE" && daysUntilExpiry <= 90 && daysUntilExpiry > 0;
   const canReturn = ["ACTIVE", "COMPLETED"].includes(contract?.status);
 
+  // Check if current user can approve/reject termination or close request
+  const isPendingApproval = ["PENDING_TERMINATION", "PENDING_CLOSE"].includes(contract?.status);
+  const isRequester = (contract?.terminationRequestedBy === "RENTER" && contract?.isCurrentUserRenter) ||
+                      (contract?.terminationRequestedBy === "OWNER" && contract?.isCurrentUserOwner);
+  const canApproveOrReject = isPendingApproval && !isRequester;
+
+  // Debug log
+  if (isPendingApproval) {
+    console.log('Pending Approval Debug:', {
+      status: contract?.status,
+      terminationRequestedBy: contract?.terminationRequestedBy,
+      isCurrentUserRenter: contract?.isCurrentUserRenter,
+      isCurrentUserOwner: contract?.isCurrentUserOwner,
+      isRequester,
+      canApproveOrReject
+    });
+  }
+
   // Access control: Determine who can sign/pay based on status and role
   const canOwnerSign = contract?.isCurrentUserOwner && contract?.status === "PENDING_OWNER_SIGNATURE";
   const canRenterSign = contract?.isCurrentUserRenter && 
     (contract?.status === "DRAFT" || contract?.status === "PENDING_SIGNATURE" || contract?.status === "PENDING_RENTER_SIGNATURE");
-  const canRenterPay = contract?.isCurrentUserRenter && 
+  const canRenterPay = contract?.isCurrentUserRenter &&
     (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED");
 
   if (loading) return <div style={{ padding: "2rem", color: "#64748b" }}>Đang tải...</div>;
@@ -395,8 +465,76 @@ const ContractDetail = () => {
         <AuditLogList logs={auditLogs} loading={loadingLogs} />
       </CollapsibleSection>
 
+      {/* Pending Approval Section - Show when waiting for approval from the other party */}
+      {isPendingApproval && (
+        <div style={{ 
+          backgroundColor: "#fef3c7", borderRadius: "16px", padding: "1.5rem 2rem",
+          border: "1px solid #fde047", marginBottom: "1rem"
+        }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#92400e", marginBottom: "0.8rem" }}>
+            ⏳ {contract.status === "PENDING_TERMINATION" ? "Yêu cầu kết thúc sớm đang chờ xác nhận" : "Yêu cầu kết thúc hợp đồng đang chờ xác nhận"}
+          </h2>
+          <p style={{ color: "#92400e", fontSize: "0.9rem", marginBottom: "1rem" }}>
+            {contract.terminationRequestedBy === "RENTER" ? "Người thuê" : "Chủ kho"} đã gửi yêu cầu {contract.status === "PENDING_TERMINATION" ? "kết thúc sớm" : "kết thúc"} hợp đồng.
+            {contract.terminationReason && <><br/><strong>Lý do:</strong> {contract.terminationReason}</>}
+            {contract.earlyTerminationFee && <><br/><strong>Phí kết thúc sớm:</strong> {formatCurrency(contract.earlyTerminationFee)}</>}
+          </p>
+          {canApproveOrReject && (
+            <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
+              <button
+                onClick={handleApprove}
+                disabled={processingApproval}
+                style={{
+                  padding: "0.7rem 1.2rem",
+                  borderRadius: "10px",
+                  border: "none",
+                  backgroundColor: "#16a34a",
+                  color: "#fff",
+                  fontWeight: 600,
+                  cursor: processingApproval ? "not-allowed" : "pointer",
+                  fontSize: "0.9rem",
+                  opacity: processingApproval ? 0.6 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>check_circle</span>
+                Đồng ý
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={processingApproval}
+                style={{
+                  padding: "0.7rem 1.2rem",
+                  borderRadius: "10px",
+                  border: "1px solid #dc2626",
+                  backgroundColor: "#fff",
+                  color: "#dc2626",
+                  fontWeight: 600,
+                  cursor: processingApproval ? "not-allowed" : "pointer",
+                  fontSize: "0.9rem",
+                  opacity: processingApproval ? 0.6 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>cancel</span>
+                Từ chối
+              </button>
+            </div>
+          )}
+          {isRequester && (
+            <p style={{ color: "#92400e", fontSize: "0.85rem", fontStyle: "italic" }}>
+              Bạn đã gửi yêu cầu này. Đang chờ bên còn lại xác nhận.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Actions Section */}
-      {(canTerminate || canRequestExtension || canReturn) && (
+      {(canTerminate || canRequestExtension || canReturn || canRequestClose) && !isPendingApproval && (
         <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
           boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem" }}>
           <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
@@ -444,6 +582,29 @@ const ContractDetail = () => {
               >
                 <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>assignment_return</span>
                 Trả kho
+              </button>
+            )}
+            {canRequestClose && (
+              <button
+                onClick={handleRequestClose}
+                disabled={processingApproval}
+                style={{
+                  padding: "0.7rem 1.2rem",
+                  borderRadius: "10px",
+                  border: "1px solid #16a34a",
+                  backgroundColor: "#fff",
+                  color: "#16a34a",
+                  fontWeight: 600,
+                  cursor: processingApproval ? "not-allowed" : "pointer",
+                  fontSize: "0.9rem",
+                  opacity: processingApproval ? 0.6 : 1,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>check_circle</span>
+                Kết thúc hợp đồng
               </button>
             )}
             {canTerminate && (

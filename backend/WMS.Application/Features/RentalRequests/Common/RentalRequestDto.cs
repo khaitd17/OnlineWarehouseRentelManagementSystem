@@ -21,6 +21,7 @@ public class RentalRequestDto
     public string? RejectionReason { get; set; }
     public string? ContractImageUrl { get; set; }
     public int? ContractId { get; set; }  // ID of the contract created when request is approved
+    public string? ContractStatus { get; set; }  // Contract status if exists
     public string? OwnerName { get; set; }
     public string? OwnerEmail { get; set; }
     public string? OwnerPhone { get; set; }

@@ -13,6 +13,8 @@ const MENU_BY_ROLE = {
     { icon: "dashboard", label: "Tổng quan", path: "/owner-dashboard" },
     { icon: "donut_large", label: "Biểu đồ công suất", path: "/occupancy-dashboard" },
     { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
+    { icon: "description", label: "Quản lý hợp đồng", path: "/owner-contracts", section: "HỢP ĐỒNG" },
+    { icon: "payments", label: "Xác nhận thanh toán", path: "/pending-cash-payments", badgeKey: "pendingPaymentCount" },
     { icon: "inventory_2", label: "Yêu cầu nhập/xuất", path: "/owner-inventory-requests", section: "YÊU CẦU" },
     { icon: "inventory", label: "Tồn kho hàng thuê", path: "/owner-inventory" },
     { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions" },
@@ -29,6 +31,8 @@ const MENU_BY_ROLE = {
     { icon: "dashboard", label: "Tổng quan", path: "/owner-dashboard" },
     { icon: "donut_large", label: "Biểu đồ công suất", path: "/occupancy-dashboard" },
     { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
+    { icon: "description", label: "Quản lý hợp đồng", path: "/owner-contracts", section: "HỢP ĐỒNG" },
+    { icon: "payments", label: "Xác nhận thanh toán", path: "/pending-cash-payments", badgeKey: "pendingPaymentCount" },
     { icon: "inventory_2", label: "Yêu cầu nhập/xuất", path: "/owner-inventory-requests", section: "YÊU CẦU" },
     { icon: "inventory", label: "Tồn kho hàng thuê", path: "/owner-inventory" },
     { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions" },
@@ -56,7 +60,7 @@ const MENU_BY_ROLE = {
   ],
   STAFF: [
     { icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" },
-    { icon: "swap_horiz", label: "Yêu cầu nhập/xuất kho", path: "/confirm-movement", section: "KHO", badgeKey: "staffTaskCount" },
+    { icon: "swap_horiz", label: "Yêu cầu nhập/xuất kho", path: "/confirm-movement", section: "KHO" },
     { icon: "inventory", label: "Quản lí tồn kho", path: "/staff-inventory" },
     { icon: "fact_check", label: "Kiểm kê kho", path: "/staff-audit-sessions" },
     { icon: "calendar_month", label: "Lịch của tôi", path: "/my-schedule", section: "CÁ NHÂN" },
@@ -123,7 +127,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [unratedCount,         setUnratedCount]        = useState(0);
   const [unrepliedCount,       setUnrepliedCount]      = useState(0);
   const [pendingRequestCount,  setPendingRequestCount] = useState(0);
-  const [staffTaskCount,       setStaffTaskCount]      = useState(0);
+  const [pendingPaymentCount,  setPendingPaymentCount] = useState(0);
   const [favoritesCount,       setFavoritesCount]      = useState(() => favoritesService.count());
 
   const loadUserInfo = () => {
@@ -182,31 +186,38 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   };
 
-  const fetchStaffTaskCount = async () => {
+  const fetchPendingPaymentCount = async () => {
     try {
-      const res = await axiosClient.get('/InventoryRequests/assigned-to-me');
-      const list = Array.isArray(res.data) ? res.data : [];
-      setStaffTaskCount(list.length);
+      const response = await axiosClient.get('/payments/pending-cash');
+      const payments = response.data || [];
+      setPendingPaymentCount(payments.length);
     } catch {
-      setStaffTaskCount(0);
+      setPendingPaymentCount(0);
     }
   };
 
   useEffect(() => {
     const role = loadUserInfo();
     if (role === "RENTER") fetchUnratedCount();
-    if (role === "OWNER" || role === "OPERATOR") fetchUnrepliedCount();
+    if (role === "OWNER" || role === "OPERATOR") {
+      fetchUnrepliedCount();
+      fetchPendingPaymentCount();
+    }
     if (role === "MANAGER") fetchPendingRequestCount();
-    if (role === "STAFF") fetchStaffTaskCount();
   }, []);
 
   useEffect(() => {
     const handler = () => {
       const role = loadUserInfo();
       if (role === "RENTER") { fetchUnratedCount(); } else { setUnratedCount(0); }
-      if (role === "OWNER" || role === "OPERATOR") { fetchUnrepliedCount(); } else { setUnrepliedCount(0); }
+      if (role === "OWNER" || role === "OPERATOR") { 
+        fetchUnrepliedCount(); 
+        fetchPendingPaymentCount();
+      } else { 
+        setUnrepliedCount(0); 
+        setPendingPaymentCount(0);
+      }
       if (role === "MANAGER") { fetchPendingRequestCount(); } else { setPendingRequestCount(0); }
-      if (role === "STAFF") { fetchStaffTaskCount(); } else { setStaffTaskCount(0); }
     };
     window.addEventListener("authChange", handler);
     return () => window.removeEventListener("authChange", handler);
@@ -236,15 +247,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     if (effectiveRole === "RENTER") fetchUnratedCount();
     if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR") fetchUnrepliedCount();
     if (effectiveRole === "MANAGER") fetchPendingRequestCount();
-    if (effectiveRole === "STAFF") fetchStaffTaskCount();
   }, [location.pathname, effectiveRole]);
-
-  // Re-fetch staff task count khi staff xác nhận hoàn thành
-  useEffect(() => {
-    const handler = () => { if (effectiveRole === "STAFF") fetchStaffTaskCount(); };
-    window.addEventListener("inventoryRequestUpdated", handler);
-    return () => window.removeEventListener("inventoryRequestUpdated", handler);
-  }, [effectiveRole]);
 
   // Auto-close sidebar on route change (mobile)
   useEffect(() => {
@@ -278,7 +281,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     return () => window.removeEventListener('favoritesChanged', handler);
   }, []);
 
-  const badgeValues = { unratedCount, unrepliedCount, pendingRequestCount, staffTaskCount, favoritesCount };
+  const badgeValues = { unratedCount, unrepliedCount, pendingRequestCount, pendingPaymentCount, favoritesCount };
 
   return (
     <>

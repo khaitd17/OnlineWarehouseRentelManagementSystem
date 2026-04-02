@@ -49,6 +49,13 @@ public partial class Contract
 
     public string? TerminationReason { get; set; }
 
+    // Termination/Close approval tracking
+    public string? TerminationRequestedBy { get; set; } // "RENTER" or "OWNER"
+    public DateTime? TerminationRequestedAt { get; set; }
+    public bool RenterApprovedTermination { get; set; }
+    public bool OwnerApprovedTermination { get; set; }
+    public decimal? EarlyTerminationFee { get; set; }
+
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();
