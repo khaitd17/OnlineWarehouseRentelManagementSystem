@@ -10,8 +10,9 @@ public class RentalPayment
     public int ContractId { get; private set; }
     public decimal Amount { get; private set; }
     public string PaymentType { get; private set; } = "DEPOSIT";
-    public string Status { get; private set; } = "PENDING";
+    public string Status { get; set; } = "PENDING";
     public string PaymentCode { get; private set; } = null!; // Unique code: WMS{PaymentId}
+    public string PaymentMethod { get; set; } = "BANK_TRANSFER"; // BANK_TRANSFER, CASH
     public int? SepayTransactionId { get; private set; }
     public string? SepayReferenceCode { get; private set; }
     public DateTime? PaidAt { get; private set; }
@@ -19,8 +20,8 @@ public class RentalPayment
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
-    // Navigation properties
-    public RentalContract? Contract { get; set; }
+    // Navigation properties - maps to 'contracts' table (not rental_contracts)
+    public Contract? Contract { get; set; }
 
     // Factory method
     public static RentalPayment Create(

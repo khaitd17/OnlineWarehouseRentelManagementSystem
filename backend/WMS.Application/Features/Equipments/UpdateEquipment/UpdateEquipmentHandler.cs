@@ -12,8 +12,9 @@ public class UpdateEquipmentHandler : BaseEquipmentHandler, IRequestHandler<Upda
     public UpdateEquipmentHandler(
         IWarehouseRepository warehouseRepository,
         IStaffMembershipRepository membershipRepository,
+        IRentalContractRepository contractRepository,
         IEquipmentRepository equipmentRepository) 
-        : base(warehouseRepository, membershipRepository)
+        : base(warehouseRepository, membershipRepository, contractRepository)
     {
         _equipmentRepository = equipmentRepository;
     }

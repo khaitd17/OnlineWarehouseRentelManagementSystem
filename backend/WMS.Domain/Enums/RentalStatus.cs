@@ -13,7 +13,7 @@ public static class RentalContractStatus
     // Existing
     public const string Draft = "DRAFT";
     public const string PendingOwnerSignature = "PENDING_OWNER_SIGNATURE";
-    public const string PendingSignature = "PENDING_SIGNATURE";
+    public const string PendingRenterSignature = "PENDING_RENTER_SIGNATURE";
     public const string Active = "ACTIVE";
     public const string Expired = "EXPIRED";
     public const string Terminated = "TERMINATED";
@@ -28,6 +28,10 @@ public static class RentalContractStatus
     public const string Closed = "CLOSED";
     public const string Overdue = "OVERDUE";
     public const string Cancelled = "CANCELLED";
+
+    // NEW - 2-party approval for termination/close
+    public const string PendingTermination = "PENDING_TERMINATION";
+    public const string PendingClose = "PENDING_CLOSE";
 }
 
 public static class PaymentStatus

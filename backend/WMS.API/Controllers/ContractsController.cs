@@ -1,10 +1,14 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using WMS.Application.Features.Contracts.CancelContract;
 using WMS.Application.Features.Contracts.TerminateEarly;
 using WMS.Application.Features.Contracts.CompleteContract;
 using WMS.Application.Features.Contracts.CloseContract;
+using WMS.Application.Features.Contracts.ApproveTermination;
+using WMS.Application.Features.Contracts.RejectTermination;
+using WMS.Application.Features.Contracts.RequestClose;
 using WMS.Application.Features.Contracts.GetContractHistory;
 using WMS.Application.Features.Contracts.GetContracts;
 
@@ -22,6 +26,17 @@ namespace WMS.API.Controllers
             _mediator = mediator;
         }
 
+        private int GetUserId()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? User.FindFirst("sub")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                throw new UnauthorizedAccessException("User not found");
+
+            return int.Parse(userId);
+        }
+
         [HttpGet]
         public async Task<ActionResult<GetContractsResponse>> GetContracts(
             [FromQuery] string? status = null,
@@ -32,7 +47,7 @@ namespace WMS.API.Controllers
         {
             var query = new GetContractsQuery
             {
-                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0"),
+                UserId = GetUserId(),
                 Status = status,
                 StartDateFrom = startDateFrom,
                 StartDateTo = startDateTo,
@@ -57,7 +72,7 @@ namespace WMS.API.Controllers
             {
                 ContractId = id,
                 CancellationReason = request.CancellationReason,
-                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+                UserId = GetUserId()
             };
 
             var result = await _mediator.Send(command);
@@ -78,7 +93,7 @@ namespace WMS.API.Controllers
                 ContractId = id,
                 TerminationReason = request.TerminationReason,
                 EarlyTerminationFee = request.EarlyTerminationFee,
-                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+                UserId = GetUserId()
             };
 
             var result = await _mediator.Send(command);
@@ -98,7 +113,7 @@ namespace WMS.API.Controllers
             {
                 ContractId = id,
                 Notes = request.Notes,
-                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+                UserId = GetUserId()
             };
 
             var result = await _mediator.Send(command);
@@ -119,7 +134,7 @@ namespace WMS.API.Controllers
                 ContractId = id,
                 DamageCompensation = request.DamageCompensation,
                 Notes = request.Notes,
-                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+                UserId = GetUserId()
             };
 
             var result = await _mediator.Send(command);
@@ -138,7 +153,7 @@ namespace WMS.API.Controllers
             var query = new GetContractHistoryQuery
             {
                 ContractId = id,
-                UserId = int.Parse(HttpContext.Items["UserId"]?.ToString() ?? "0")
+                UserId = GetUserId()
             };
 
             var result = await _mediator.Send(query);
@@ -149,6 +164,57 @@ namespace WMS.API.Controllers
             }
 
             return Ok(result);
+        }
+
+        [HttpPost("{id}/approve-termination")]
+        public async Task<ActionResult<ApproveTerminationResponse>> ApproveTermination(int id)
+        {
+            var command = new ApproveTerminationCommand
+            {
+                ContractId = id,
+                UserId = GetUserId()
+            };
+
+            var result = await _mediator.Send(command);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/reject-termination")]
+        public async Task<ActionResult<RejectTerminationResponse>> RejectTermination(int id, [FromBody] RejectTerminationRequest request)
+        {
+            var command = new RejectTerminationCommand
+            {
+                ContractId = id,
+                UserId = GetUserId(),
+                RejectReason = request.RejectReason
+            };
+
+            var result = await _mediator.Send(command);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        [HttpPost("{id}/request-close")]
+        public async Task<ActionResult<RequestCloseResponse>> RequestClose(int id)
+        {
+            var contract = await _mediator.Send(new RequestCloseCommand
+            {
+                ContractId = id,
+                UserId = GetUserId()
+            });
+
+            return Ok(contract);
         }
     }
 
@@ -173,5 +239,10 @@ namespace WMS.API.Controllers
     {
         public decimal? DamageCompensation { get; set; }
         public string? Notes { get; set; }
+    }
+
+    public class RejectTerminationRequest
+    {
+        public string? RejectReason { get; set; }
     }
 }

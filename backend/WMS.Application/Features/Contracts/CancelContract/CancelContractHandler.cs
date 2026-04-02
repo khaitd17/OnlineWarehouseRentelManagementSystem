@@ -40,7 +40,7 @@ namespace WMS.Application.Features.Contracts.CancelContract
                 // Kiểm tra quyền cancel
                 var canCancel = contract.Status == RentalContractStatus.Draft ||
                                contract.Status == RentalContractStatus.PendingOwnerSignature ||
-                               contract.Status == RentalContractStatus.PendingSignature ||
+                               contract.Status == RentalContractStatus.PendingRenterSignature ||
                                contract.Status == RentalContractStatus.Signed ||
                                contract.Status == RentalContractStatus.PendingPayment;
 

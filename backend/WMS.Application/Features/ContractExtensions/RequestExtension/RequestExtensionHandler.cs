@@ -10,17 +10,20 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
     {
         private readonly IContractExtensionRepository _extensionRepository;
         private readonly IRentalContractRepository _contractRepository;
+        private readonly IWarehouseRepository _warehouseRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly INotificationSender _notificationSender;
 
         public RequestExtensionHandler(
             IContractExtensionRepository extensionRepository,
             IRentalContractRepository contractRepository,
+            IWarehouseRepository warehouseRepository,
             INotificationRepository notificationRepository,
             INotificationSender notificationSender)
         {
             _extensionRepository = extensionRepository;
             _contractRepository = contractRepository;
+            _warehouseRepository = warehouseRepository;
             _notificationRepository = notificationRepository;
             _notificationSender = notificationSender;
         }
@@ -81,18 +84,29 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
 
                 var savedExtension = await _extensionRepository.AddAsync(extension);
 
-                // Gửi thông báo cho warehouse owner/staff
-                var notification = new Notification
-                {
-                    UserId = 0, // TODO: Get warehouse owner/admin từ contract.WarehouseId
-                    Title = "Contract Extension Request",
-                    Message = $"New extension request for contract {originalContract.ContractNumber}. Duration: {request.DurationMonths} months.",
-                    Type = "contract_extension_request",
-                    CreatedAt = DateTime.UtcNow
-                };
+                // Get warehouse to find owner
+                var warehouse = await _warehouseRepository.GetByIdAsync(
+                    originalContract.WarehouseId,
+                    cancellationToken);
 
-                await _notificationRepository.AddAsync(notification);
-                // TODO: Send to warehouse owner/staff thay vì userId = 0
+                if (warehouse != null)
+                {
+                    // Send notification to warehouse owner
+                    var notification = new Notification
+                    {
+                        UserId = warehouse.OwnerId,
+                        Title = "Yêu cầu gia hạn hợp đồng mới",
+                        Message = $"Người thuê đã gửi yêu cầu gia hạn hợp đồng {originalContract.ContractNumber}. " +
+                                  $"Thời hạn gia hạn: {request.DurationMonths} tháng.",
+                        Type = "CONTRACT_EXTENSION_REQUEST",
+                        ReferenceId = savedExtension.ExtensionId,
+                        ReferenceType = "CONTRACT_EXTENSION",
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    await _notificationRepository.AddAsync(notification);
+                    await _notificationSender.SendToUserAsync(warehouse.OwnerId, notification);
+                }
 
                 return new RequestExtensionResponse
                 {
@@ -100,7 +114,7 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
                     Message = "Contract extension request submitted successfully",
                     ExtensionId = savedExtension.ExtensionId,
                     Status = savedExtension.Status,
-                    NextSteps = "Your extension request has been submitted and is pending review by the warehouse owner/staff."
+                    NextSteps = "Your extension request has been submitted and is pending review by the warehouse owner."
                 };
             }
             catch (Exception ex)

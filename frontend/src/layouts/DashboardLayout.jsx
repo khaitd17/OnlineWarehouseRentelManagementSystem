@@ -3,6 +3,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import Sidebar from '../components/Dashboard/Sidebar';
 import notificationService from '../services/notificationService';
+import authService from '../services/authService';
 
 const DashboardLayout = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -43,9 +44,20 @@ const DashboardLayout = () => {
       .configureLogging(LogLevel.Warning)
       .build();
 
-    connection.on('ReceiveNotification', (notification) => {
+    connection.on('ReceiveNotification', async (notification) => {
       setNotifications(prev => [notification, ...prev]);
       setUnreadCount(prev => prev + 1);
+      
+      // When payment is confirmed/rejected, refresh warehouse context to update role
+      if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+        try {
+          await authService.refreshWarehouseContext();
+          // Trigger authChange event to refresh Sidebar menu
+          window.dispatchEvent(new Event('authChange'));
+        } catch (err) {
+          console.warn('[DashboardLayout] Failed to refresh warehouse context:', err);
+        }
+      }
     });
 
     connection.start().catch(() => {});
@@ -94,19 +106,46 @@ const DashboardLayout = () => {
     setShowNotifications(!showNotifications);
   };
 
+  const isNotificationRead = (notification) => {
+    return Boolean(
+      notification?.isRead ?? notification?.IsRead ?? notification?.read ?? false
+    );
+  };
+
   const handleNotificationClick = async (notification) => {
-    if (!notification.isRead) {
+    const wasUnread = !isNotificationRead(notification);
+
+    if (wasUnread) {
+      setNotifications(prev =>
+        prev.map(n =>
+          n.notificationId === notification.notificationId
+            ? { ...n, isRead: true, IsRead: true, read: true }
+            : n
+        )
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+
       try {
         await notificationService.markNotificationAsRead(notification.notificationId);
-        setNotifications(prev =>
-          prev.map(n =>
-            n.notificationId === notification.notificationId ? { ...n, isRead: true } : n
-          )
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      } catch (err) {}
+      } catch (err) {
+        fetchUnreadCount();
+      }
     }
     setShowNotifications(false);
+
+    // Handle payment-related notifications - refresh context and navigate
+    if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+      try {
+        await authService.refreshWarehouseContext();
+        window.dispatchEvent(new Event('authChange'));
+      } catch (err) {
+        console.warn('[DashboardLayout] Failed to refresh warehouse context:', err);
+      }
+      if (notification.referenceId) {
+        navigate(`/contracts/${notification.referenceId}`);
+      }
+      return;
+    }
 
     if (notification.referenceId) {
       if (notification.type === 'CONTRACT_APPROVED' ||
@@ -117,10 +156,31 @@ const DashboardLayout = () => {
         navigate(`/rental-request/${notification.referenceId}`);
       } else if (notification.type === 'CONTRACT_REJECTED') {
         navigate('/my-rental-requests');
+      } else if (notification.type === 'EXTENSION_REQUEST_RECEIVED') {
+        navigate('/contract-extensions');
+      } else if (notification.type === 'EXTENSION_APPROVED' ||
+                 notification.type === 'EXTENSION_REJECTED') {
+        navigate('/contract-extensions-renter');
+      } else if (notification.type === 'CONTRACT_EXTENSION_SIGNATURE_NEEDED') {
+        // Navigate to appropriate signing page based on user role
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userRole = (user.role || user.roleName || '').toUpperCase();
+        if (userRole === 'OWNER' || userRole === 'OPERATOR') {
+          navigate(`/sign-contract-owner/${notification.referenceId}`);
+        } else {
+          navigate(`/sign-contract/${notification.referenceId}`);
+        }
       }
     } else if (notification.type === 'CONTRACT_REJECTED') {
       navigate('/my-rental-requests');
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.dispatchEvent(new Event('authChange'));
+    navigate('/');
   };
 
   const formatTime = (dateStr) => {
@@ -277,11 +337,11 @@ const DashboardLayout = () => {
                         style={{
                           padding: '14px 20px', cursor: 'pointer',
                           borderBottom: '1px solid #f1f5f9',
-                          backgroundColor: n.isRead ? '#fff' : '#f0f9ff',
+                          backgroundColor: isNotificationRead(n) ? '#fff' : '#f0f9ff',
                           transition: 'background-color 0.15s',
                         }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = n.isRead ? '#f8fafc' : '#e0f2fe'}
-                        onMouseLeave={e => e.currentTarget.style.backgroundColor = n.isRead ? '#fff' : '#f0f9ff'}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = isNotificationRead(n) ? '#f8fafc' : '#e0f2fe'}
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = isNotificationRead(n) ? '#fff' : '#f0f9ff'}
                       >
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                           <div style={{
@@ -308,7 +368,7 @@ const DashboardLayout = () => {
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{
-                              fontWeight: n.isRead ? 400 : 600, fontSize: '13px',
+                              fontWeight: isNotificationRead(n) ? 400 : 600, fontSize: '13px',
                               color: '#1e293b', marginBottom: '4px',
                             }}>
                               {n.title}
@@ -325,7 +385,7 @@ const DashboardLayout = () => {
                               {formatTime(n.createdAt)}
                             </div>
                           </div>
-                          {!n.isRead && (
+                          {!isNotificationRead(n) && (
                             <div style={{
                               width: '8px', height: '8px', borderRadius: '50%',
                               backgroundColor: '#3b82f6', flexShrink: 0, marginTop: '6px',
@@ -353,26 +413,42 @@ const DashboardLayout = () => {
               </button>
             )}
 
-            <Link
-              to="/profile"
-              title="Trang cá nhân"
-              style={{
-                width: '40px', height: '40px', borderRadius: '50%',
-                overflow: 'hidden', border: '2px solid rgba(0,178,214,0.3)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0, cursor: 'pointer',
-                transition: 'opacity 0.2s',
-                marginLeft: '4px',
-              }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-            >
-              <img
-                src={user.avatarUrl || user.AvatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || user.FullName || 'User')}&background=00b2d6&color=fff`}
-                alt="Profile"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            </Link>
+            <div className="nav-user-dropdown" style={{ marginLeft: '4px' }}>
+              <div className="nav-user-trigger">
+                <img
+                  src={user.avatarUrl || user.AvatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || user.FullName || 'User')}&background=00b2d6&color=fff`}
+                  alt="Avatar"
+                  style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(0,178,214,0.3)' }}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span className="nav-user-trigger-name">
+                    Xin chào, {(user.fullName || user.FullName || 'Bạn').split(' ').slice(-2).join(' ')}
+                  </span>
+                </div>
+                <span className="nav-dropdown-caret">▾</span>
+              </div>
+
+              <div className="nav-dropdown-menu">
+                <div className="nav-dropdown-user-header">
+                  <img
+                    src={user.avatarUrl || user.AvatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || user.FullName || 'User')}&background=00b2d6&color=fff`}
+                    alt="Avatar"
+                  />
+                  <div style={{ overflow: 'hidden' }}>
+                    <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user.fullName || user.FullName || 'Người dùng'}
+                    </p>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {user.email || ''}
+                    </p>
+                  </div>
+                </div>
+
+                <Link to="/profile" className="nav-dropdown-item">Hồ sơ</Link>
+                <div className="nav-dropdown-divider" />
+                <button className="nav-dropdown-item logout" onClick={handleLogout}>Đăng xuất</button>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -406,6 +482,48 @@ const DashboardLayout = () => {
             padding: 0.75rem !important;
           }
         }
+        
+        /* Avatar Dropdown Styles for Light Theme */
+        .nav-user-dropdown { position: relative; display: inline-flex; align-items: center; }
+        .nav-user-dropdown::after { content: ''; position: absolute; top: 100%; left: -10px; right: -10px; height: 14px; }
+        .nav-user-dropdown:hover .nav-dropdown-menu,
+        .nav-user-dropdown:focus-within .nav-dropdown-menu {
+          opacity: 1; visibility: visible; transform: translateY(0); pointer-events: all;
+        }
+        .nav-user-trigger {
+          display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px;
+          border-radius: 999px; transition: background 0.2s;
+        }
+        .nav-user-trigger:hover { background: #f1f5f9; }
+        .nav-user-trigger-name {
+          max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          font-size: 0.85rem; font-weight: 600; color: #1e293b; line-height: 1.1;
+        }
+        .nav-dropdown-caret { font-size: 0.65rem; color: #94a3b8; transition: transform 0.2s; margin-left: 2px; }
+        .nav-user-dropdown:hover .nav-dropdown-caret { transform: rotate(180deg); }
+        .nav-dropdown-menu {
+          position: absolute; top: calc(100% + 14px); right: 0; min-width: 210px;
+          background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+          opacity: 0; visibility: hidden; transform: translateY(-6px);
+          transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+          z-index: 2000; overflow: hidden; pointer-events: none;
+        }
+        .nav-dropdown-user-header {
+          padding: 14px 16px 12px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 10px;
+        }
+        .nav-dropdown-user-header img {
+          width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 1px solid #e2e8f0; flex-shrink: 0;
+        }
+        .nav-dropdown-item {
+          display: block; padding: 12px 16px; font-size: 0.875rem; font-weight: 500; color: #475569;
+          text-decoration: none; transition: background 0.15s, color 0.15s; cursor: pointer;
+          background: transparent; border: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif;
+        }
+        .nav-dropdown-item:hover { background: #f8fafc; color: #0284c7; }
+        .nav-dropdown-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
+        .nav-dropdown-item.logout { color: #ef4444; }
+        .nav-dropdown-item.logout:hover { background: #fef2f2; color: #dc2626; }
       `}</style>
     </div>
   );

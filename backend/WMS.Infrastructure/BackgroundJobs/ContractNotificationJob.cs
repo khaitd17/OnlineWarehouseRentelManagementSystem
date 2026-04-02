@@ -11,26 +11,30 @@ public class ContractNotificationJob
 {
     private readonly ApplicationDbContext _db;
     private readonly INotificationSender _notificationSender;
+    private readonly IEmailService _emailService;
     private readonly ILogger<ContractNotificationJob> _logger;
 
     public ContractNotificationJob(
         ApplicationDbContext db,
         INotificationSender notificationSender,
+        IEmailService emailService,
         ILogger<ContractNotificationJob> logger)
     {
         _db = db;
         _notificationSender = notificationSender;
+        _emailService = emailService;
         _logger = logger;
     }
 
     /// <summary>
-    /// Send notifications for contracts expiring in 30 days
+    /// Send notifications for contracts expiring in 30/7/3/1 days
     /// </summary>
     public async Task SendExpiryNotifications()
     {
         var today = DateTime.UtcNow.Date;
         var in30Days = today.AddDays(30);
         var in7Days = today.AddDays(7);
+        var in3Days = today.AddDays(3);  // NEW: 3-day notification
         var in1Day = today.AddDays(1);
 
         // 30 days notice
@@ -38,6 +42,9 @@ public class ContractNotificationJob
 
         // 7 days notice
         await SendNotificationsForDate(in7Days, "7 ngày");
+
+        // 3 days notice (NEW)
+        await SendNotificationsForDate(in3Days, "3 ngày");
 
         // 1 day notice
         await SendNotificationsForDate(in1Day, "1 ngày");
@@ -48,6 +55,8 @@ public class ContractNotificationJob
     private async Task SendNotificationsForDate(DateTime expiryDate, string timeframe)
     {
         var contracts = await _db.RentalContracts
+            .Include(c => c.Renter)       // Include renter for email
+            .Include(c => c.Warehouse)    // Include warehouse for context
             .Where(c => c.Status == RentalContractStatus.Active
                         && c.EndDate.Date == expiryDate)
             .ToListAsync();
@@ -67,6 +76,7 @@ public class ContractNotificationJob
             if (existingNotification)
                 continue;
 
+            // Create in-app notification
             var notification = new Notification
             {
                 UserId = contract.RenterId,
@@ -82,7 +92,43 @@ public class ContractNotificationJob
             _db.Notifications.Add(notification);
             await _db.SaveChangesAsync();
 
+            // Send SignalR notification
             await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+
+            // Send email notification
+            if (contract.Renter != null && !string.IsNullOrEmpty(contract.Renter.Email))
+            {
+                try
+                {
+                    var warehouseName = contract.Warehouse?.Name ?? "kho";
+                    var htmlContent = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; border-top: 4px solid #f59e0b;'>
+    <h2 style='color: #0f172a; text-align: center;'>⚠️ Thông báo hợp đồng sắp hết hạn</h2>
+    <p style='color: #64748b; font-size: 14px;'>Kính chào <strong>{contract.Renter.FullName}</strong>,</p>
+    <p style='color: #64748b; font-size: 14px;'>Hợp đồng thuê kho <strong>{warehouseName}</strong> của bạn sẽ hết hạn trong <strong>{timeframe}</strong>.</p>
+    <div style='background: #fef3c7; padding: 16px; border-radius: 8px; margin: 16px 0;'>
+        <p style='margin: 0; color: #92400e;'><strong>Mã hợp đồng:</strong> {contract.ContractNumber}</p>
+        <p style='margin: 8px 0 0 0; color: #92400e;'><strong>Ngày hết hạn:</strong> {contract.EndDate:dd/MM/yyyy}</p>
+    </div>
+    <p style='color: #64748b; font-size: 14px;'>Nếu bạn muốn tiếp tục thuê kho, vui lòng gửi yêu cầu gia hạn hợp đồng trước khi hợp đồng hết hạn.</p>
+    <p style='color: #94a3b8; font-size: 12px; margin-top: 24px;'>Trân trọng,<br/>Hệ thống quản lý kho OWRMS</p>
+</div>";
+
+                    await _emailService.SendInfo(
+                        contract.Renter.Email,
+                        contract.Renter.FullName,
+                        $"[OWRMS] Hợp đồng sắp hết hạn trong {timeframe}",
+                        htmlContent);
+
+                    _logger.LogInformation("Sent expiry email for contract {ContractId} to {Email}",
+                        contract.ContractId, contract.Renter.Email);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to send expiry email for contract {ContractId}",
+                        contract.ContractId);
+                }
+            }
 
             _logger.LogInformation("Sent expiry notification for contract {ContractId} to user {UserId}",
                 contract.ContractId, contract.RenterId);

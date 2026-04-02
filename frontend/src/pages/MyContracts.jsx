@@ -15,6 +15,9 @@ const statusConfig = {
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
   CANCELLED:  { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
   OVERDUE:    { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
+  // 2-party approval statuses
+  PENDING_TERMINATION: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ xác nhận kết thúc sớm" },
+  PENDING_CLOSE: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ xác nhận kết thúc" },
 };
 
 const formatDate = (dateStr) => {
@@ -35,7 +38,11 @@ const MyContracts = () => {
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = (user.role || user.roleName || "").toUpperCase();
-  const isOwner = userRole === "OWNER" || userRole === "USER" || userRole === "OPERATOR";
+  const isOwner = userRole === "OWNER";
+  // USER role cũng có thể là renter (người thuê kho)
+  const isRenter = userRole === "RENTER" || userRole === "USER";
+
+  console.log('MyContracts - User role:', userRole, 'isOwner:', isOwner, 'isRenter:', isRenter);
 
   useEffect(() => {
     const fetchContracts = async () => {
@@ -43,13 +50,16 @@ const MyContracts = () => {
         if (isOwner) {
           // Owner: Lấy tất cả contracts của warehouses họ sở hữu
           const response = await rentalService.getContractsForOwner();
+          console.log('Owner contracts:', response);
           setContracts(response);
         } else {
-          // Renter: Lấy contracts của họ thuê
+          // Renter/User: Lấy contracts của họ thuê (bất kỳ user nào cũng có thể là người thuê)
           const response = await rentalService.getMyContracts();
+          console.log('Renter contracts:', response);
           setContracts(response);
         }
       } catch (err) {
+        console.error('Error fetching contracts:', err);
         setError(err.response?.data?.message || "Không thể tải danh sách hợp đồng");
       } finally {
         setLoading(false);

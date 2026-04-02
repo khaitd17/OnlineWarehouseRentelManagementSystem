@@ -21,6 +21,12 @@ const rentalService = {
     return response.data;
   },
 
+  getOwnerRequests: async (status = null) => {
+    const params = status ? { status } : {};
+    const response = await axiosClient.get("/rental-requests/owner/all", { params });
+    return response.data;
+  },
+
   approveRentalRequest: async (id, data) => {
     const response = await axiosClient.post(`/rental-requests/${id}/approve`, data);
     return response.data;
@@ -161,9 +167,27 @@ const rentalService = {
 
   terminateContractEarly: async (contractId, reason, earlyTerminationFee) => {
     const response = await axiosClient.post(`/contracts/${contractId}/terminate`, {
-      reason,
+      terminationReason: reason,
       earlyTerminationFee
     });
+    return response.data;
+  },
+
+  // Approve termination or close request
+  approveTermination: async (contractId) => {
+    const response = await axiosClient.post(`/contracts/${contractId}/approve-termination`);
+    return response.data;
+  },
+
+  // Reject termination or close request
+  rejectTermination: async (contractId, rejectReason = '') => {
+    const response = await axiosClient.post(`/contracts/${contractId}/reject-termination`, { rejectReason });
+    return response.data;
+  },
+
+  // Request close contract (2-party approval)
+  requestClose: async (contractId) => {
+    const response = await axiosClient.post(`/contracts/${contractId}/request-close`);
     return response.data;
   },
 

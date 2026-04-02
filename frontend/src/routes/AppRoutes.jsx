@@ -29,6 +29,10 @@ import PendingRentalRequests from "../pages/PendingRentalRequests";
 import RentalRequestDetail from "../pages/RentalRequestDetail";
 import MyContracts from "../pages/MyContracts";
 import ContractDetail from "../pages/ContractDetail";
+import ContractPaymentSelection from "../pages/ContractPaymentSelection";
+import ContractPayment from "../pages/ContractPayment";
+import PaymentResult from "../pages/PaymentResult";
+import PendingCashPayments from "../pages/PendingCashPayments";
 import WarehouseContracts from "../pages/WarehouseContracts";
 import OccupancyDashboard from "../pages/OccupancyDashboard";
 import RoleBasedRoute from "./RoleBasedRoute";
@@ -77,6 +81,12 @@ import AdminPendingWarehousesPage from "../pages/admin/AdminPendingWarehousesPag
 import EquipmentManagement from "../pages/EquipmentManagement";
 import MyRatingsPage from "../pages/MyRatingsPage";
 import FavoritesPage from "../pages/FavoritesPage";
+import OwnerContracts from "../pages/OwnerContracts";
+
+// Contract Extension Pages
+import RenterExtensionPage from "../pages/RenterExtensionPage.jsx";
+import OwnerExtensionPage from "../pages/OwnerExtensionPage.jsx";
+import ContractSigningWrapper from "../components/contract/ContractSigningWrapper.jsx";
 
 import authService from "../services/authService";
 
@@ -125,6 +135,11 @@ function AppRoutes() {
             <Route path="/my-rental-requests" element={<MyRentalRequests />} />
             <Route path="/my-contracts" element={<MyContracts />} />
             <Route path="/contracts/:id" element={<ContractDetail />} />
+            <Route path="/contracts/:id/payment" element={<ContractPaymentSelection />} />
+            <Route path="/contracts/:id/payment/online" element={<ContractPayment />} />
+            <Route path="/payment-result" element={<PaymentResult />} />
+            <Route path="/sign-contract/:contractId" element={<ContractSigningWrapper userRole="RENTER" />} />
+            <Route path="/sign-contract/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="RENTER" />} />
             <Route path="/settings" element={<ProfilePage />} />
             <Route path="/create-warehouse" element={<CreateWarehouse />} />
             <Route path="/post-warehouse" element={<PostWarehousePage />} />
@@ -143,7 +158,12 @@ function AppRoutes() {
             <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
             <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
             <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
+            <Route path="/owner-contracts" element={<OwnerContracts />} />
             <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
+            <Route path="/contract-extensions" element={<OwnerExtensionPage />} />
+            <Route path="/pending-cash-payments" element={<PendingCashPayments />} />
+            <Route path="/sign-contract-owner/:contractId" element={<ContractSigningWrapper userRole="OWNER" />} />
+            <Route path="/sign-contract-owner/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="OWNER" />} />
             <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
             <Route path="/owner-inventory" element={<OwnerInventoryPage />} />
           </Route>
@@ -156,12 +176,11 @@ function AppRoutes() {
             <Route path="/list-staff" element={<ListStaff />} />
             <Route path="/shift-scheduling" element={<ShiftSchedulingPage />} />
             <Route path="/task-scheduling" element={<TaskSchedulingPage />} />
-            <Route path="/equipment-management" element={<EquipmentManagement />} />
           </Route>
         </Route>
 
-        {/* ── STAFF / MANAGER / OPERATOR / OWNER ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'ADMIN']} />}>
+        {/* ── Warehouse members (Staff, Manager, Operator, Owner, Renter) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'RENTER', 'ADMIN']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/staff-dashboard" element={<StaffDashboard />} />
             <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
@@ -173,6 +192,7 @@ function AppRoutes() {
             <Route path="/my-schedule" element={<MySchedulePage />} />
             <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
             <Route path="/staff-audit-sessions/:id" element={<StaffAuditSessionDetailPage />} />
+            <Route path="/equipment-management" element={<EquipmentManagement />} />
           </Route>
         </Route>
 
@@ -180,6 +200,7 @@ function AppRoutes() {
         <Route element={<RoleBasedRoute allowedRoles={['RENTER', 'USER', 'ADMIN']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/renter-dashboard" element={<RenterDashboard />} />
+            <Route path="/contract-extensions-renter" element={<RenterExtensionPage />} />
             {/* Merged history page (2 tabs) */}
             <Route path="/renter-inventory-history" element={<RenterInventoryHistory />} />
             {/* Keep old routes for backward compatibility */}

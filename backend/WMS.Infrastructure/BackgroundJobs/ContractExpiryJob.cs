@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using WMS.Domain.Entities;
 using WMS.Domain.Enums;
 using WMS.Infrastructure.Persistence;
 
@@ -17,29 +18,48 @@ public class ContractExpiryJob
     }
 
     /// <summary>
-    /// Auto cancel contracts PENDING_SIGNATURE that expired (48h)
+    /// Auto cancel contracts PENDING_OWNER_SIGNATURE that expired (48h)
+    /// </summary>
+    public async Task CancelExpiredOwnerSignatures()
+    {
+        var now = DateTime.UtcNow;
+        
+        // Use raw SQL to avoid column mapping issues
+        var sql = @"
+            UPDATE rental_contracts 
+            SET status = @CancelledStatus, updated_at = @Now 
+            WHERE status = @PendingStatus 
+            AND owner_signature_expiry IS NOT NULL 
+            AND owner_signature_expiry < @Now";
+            
+        var affected = await _db.Database.ExecuteSqlRawAsync(sql, 
+            new Microsoft.Data.SqlClient.SqlParameter("@CancelledStatus", RentalContractStatus.Cancelled),
+            new Microsoft.Data.SqlClient.SqlParameter("@PendingStatus", RentalContractStatus.PendingOwnerSignature),
+            new Microsoft.Data.SqlClient.SqlParameter("@Now", now));
+
+        _logger.LogInformation("Cancelled {Count} expired owner signature contracts", affected);
+    }
+
+    /// <summary>
+    /// Auto cancel contracts PENDING_RENTER_SIGNATURE that expired (48h)
     /// </summary>
     public async Task CancelExpiredSignatures()
     {
         var now = DateTime.UtcNow;
-        var expiredContracts = await _db.RentalContracts
-            .Where(c => c.Status == RentalContractStatus.PendingSignature
-                        && c.PendingSignatureExpiry.HasValue
-                        && c.PendingSignatureExpiry.Value < now)
-            .ToListAsync();
+        
+        var sql = @"
+            UPDATE rental_contracts 
+            SET status = @CancelledStatus, updated_at = @Now 
+            WHERE status = @PendingStatus 
+            AND RenterSignatureExpiry IS NOT NULL 
+            AND RenterSignatureExpiry < @Now";
+            
+        var affected = await _db.Database.ExecuteSqlRawAsync(sql, 
+            new Microsoft.Data.SqlClient.SqlParameter("@CancelledStatus", RentalContractStatus.Cancelled),
+            new Microsoft.Data.SqlClient.SqlParameter("@PendingStatus", RentalContractStatus.PendingRenterSignature),
+            new Microsoft.Data.SqlClient.SqlParameter("@Now", now));
 
-        _logger.LogInformation("Found {Count} expired signature contracts", expiredContracts.Count);
-
-        foreach (var contract in expiredContracts)
-        {
-            contract.Cancel("Hợp đồng đã hết hạn ký (quá 48 giờ)");
-            _logger.LogInformation("Cancelled contract {ContractId} due to signature expiry", contract.ContractId);
-        }
-
-        if (expiredContracts.Any())
-        {
-            await _db.SaveChangesAsync();
-        }
+        _logger.LogInformation("Cancelled {Count} expired renter signature contracts", affected);
     }
 
     /// <summary>
@@ -48,59 +68,123 @@ public class ContractExpiryJob
     public async Task CancelExpiredPayments()
     {
         var now = DateTime.UtcNow;
-        var expiredContracts = await _db.RentalContracts
-            .Where(c => c.Status == RentalContractStatus.PendingPayment
-                        && c.PendingPaymentExpiry.HasValue
-                        && c.PendingPaymentExpiry.Value < now)
+        
+        var sql = @"
+            UPDATE rental_contracts 
+            SET status = @CancelledStatus, updated_at = @Now 
+            WHERE status = @PendingStatus 
+            AND PaymentExpiry IS NOT NULL 
+            AND PaymentExpiry < @Now";
+            
+        var affected = await _db.Database.ExecuteSqlRawAsync(sql, 
+            new Microsoft.Data.SqlClient.SqlParameter("@CancelledStatus", RentalContractStatus.Cancelled),
+            new Microsoft.Data.SqlClient.SqlParameter("@PendingStatus", RentalContractStatus.PendingPayment),
+            new Microsoft.Data.SqlClient.SqlParameter("@Now", now));
+
+        _logger.LogInformation("Cancelled {Count} expired payment contracts", affected);
+
+        // Cancel pending payments separately
+        var payments = await _db.RentalPayments
+            .Where(p => p.Status == PaymentStatus.Pending)
+            .Join(_db.Contracts.Where(c => c.Status == RentalContractStatus.Cancelled), 
+                  p => p.ContractId, c => c.ContractId, (p, c) => p)
             .ToListAsync();
 
-        _logger.LogInformation("Found {Count} expired payment contracts", expiredContracts.Count);
-
-        foreach (var contract in expiredContracts)
+        foreach (var payment in payments)
         {
-            contract.Cancel("Hợp đồng đã hết hạn thanh toán (quá 48 giờ)");
-
-            // Cancel pending payments
-            var pendingPayments = await _db.RentalPayments
-                .Where(p => p.ContractId == contract.ContractId && p.Status == PaymentStatus.Pending)
-                .ToListAsync();
-
-            foreach (var payment in pendingPayments)
-            {
-                payment.MarkExpired();
-            }
-
-            _logger.LogInformation("Cancelled contract {ContractId} due to payment expiry", contract.ContractId);
+            payment.MarkExpired();
         }
 
-        if (expiredContracts.Any())
+        if (payments.Any())
         {
             await _db.SaveChangesAsync();
         }
     }
 
     /// <summary>
-    /// Auto complete contracts when EndDate passed
+    /// Auto complete contracts when EndDate passed and deactivate membership
     /// </summary>
     public async Task CompleteExpiredContracts()
     {
-        var today = DateTime.UtcNow.Date;
-        var expiredContracts = await _db.RentalContracts
-            .Where(c => c.Status == RentalContractStatus.Active
-                        && c.EndDate.Date < today)
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var now = DateTime.UtcNow;
+        
+        // Get expired contract IDs for membership processing  
+        var expiredContractIds = await _db.Contracts
+            .Where(c => c.Status == RentalContractStatus.Active && c.EndDate < today)
+            .Select(c => new { c.ContractId, c.RenterId, c.WarehouseId })
             .ToListAsync();
 
-        _logger.LogInformation("Found {Count} contracts that reached end date", expiredContracts.Count);
-
-        foreach (var contract in expiredContracts)
+        if (expiredContractIds.Any())
         {
-            contract.Complete();
-            _logger.LogInformation("Completed contract {ContractId}", contract.ContractId);
+            // Update status with raw SQL
+            var contractIds = string.Join(",", expiredContractIds.Select(c => c.ContractId));
+            var sql = $@"
+                UPDATE rental_contracts 
+                SET status = @CompletedStatus, updated_at = @Now 
+                WHERE contract_id IN ({contractIds})";
+                
+            await _db.Database.ExecuteSqlRawAsync(sql,
+                new Microsoft.Data.SqlClient.SqlParameter("@CompletedStatus", RentalContractStatus.Completed),
+                new Microsoft.Data.SqlClient.SqlParameter("@Now", now));
+
+            _logger.LogInformation("Completed {Count} expired contracts", expiredContractIds.Count);
+
+            // Deactivate memberships
+            foreach (var contract in expiredContractIds)
+            {
+                await DeactivateRenterMembershipAsync(contract.RenterId, contract.WarehouseId);
+            }
         }
+    }
 
-        if (expiredContracts.Any())
+    /// <summary>
+    /// Deactivate warehouse membership for renter when contract expires.
+    /// Only deactivates if user has no other active contracts for the same warehouse.
+    /// </summary>
+    private async Task DeactivateRenterMembershipAsync(int renterId, int warehouseId)
+    {
+        try
         {
-            await _db.SaveChangesAsync();
+            // Check if user has other active contracts for this warehouse
+            var hasOtherActiveContracts = await _db.Contracts
+                .AnyAsync(c => c.RenterId == renterId
+                           && c.WarehouseId == warehouseId
+                           && c.Status == RentalContractStatus.Active);
+
+            if (hasOtherActiveContracts)
+            {
+                _logger.LogInformation("Renter {RenterId} has other active contracts in warehouse {WarehouseId}, keeping membership",
+                    renterId, warehouseId);
+                return;
+            }
+
+            // Get RENTER warehouse role
+            var renterRole = await _db.WarehouseRoles.FirstOrDefaultAsync(r => r.Code == "RENTER");
+            if (renterRole == null)
+            {
+                _logger.LogWarning("RENTER warehouse role not found");
+                return;
+            }
+
+            // Find and deactivate membership
+            var membership = await _db.WarehouseMemberships
+                .FirstOrDefaultAsync(m => m.UserId == renterId
+                                       && m.WarehouseId == warehouseId
+                                       && m.WarehouseRoleId == renterRole.Id
+                                       && m.IsActive);
+
+            if (membership != null)
+            {
+                membership.IsActive = false;
+                _logger.LogInformation("Deactivated RENTER membership {MembershipId} for user {RenterId} in warehouse {WarehouseId}",
+                    membership.Id, renterId, warehouseId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to deactivate RENTER membership for user {RenterId} in warehouse {WarehouseId}",
+                renterId, warehouseId);
         }
     }
 
@@ -110,24 +194,21 @@ public class ContractExpiryJob
     public async Task MarkOverdueReturns()
     {
         var overdueDate = DateTime.UtcNow.AddDays(-7);
-        var overdueContracts = await _db.RentalContracts
-            .Where(c => c.Status == RentalContractStatus.Completed
-                        && c.UpdatedAt.HasValue
-                        && c.UpdatedAt.Value < overdueDate)
-            .ToListAsync();
+        
+        var sql = @"
+            UPDATE rental_contracts 
+            SET status = @OverdueStatus, updated_at = @Now 
+            WHERE status = @CompletedStatus 
+            AND updated_at IS NOT NULL 
+            AND updated_at < @OverdueDate";
+            
+        var affected = await _db.Database.ExecuteSqlRawAsync(sql,
+            new Microsoft.Data.SqlClient.SqlParameter("@OverdueStatus", RentalContractStatus.Overdue),
+            new Microsoft.Data.SqlClient.SqlParameter("@CompletedStatus", RentalContractStatus.Completed),
+            new Microsoft.Data.SqlClient.SqlParameter("@OverdueDate", overdueDate),
+            new Microsoft.Data.SqlClient.SqlParameter("@Now", DateTime.UtcNow));
 
-        _logger.LogInformation("Found {Count} overdue return contracts", overdueContracts.Count);
-
-        foreach (var contract in overdueContracts)
-        {
-            contract.MarkOverdue();
-            _logger.LogInformation("Marked contract {ContractId} as OVERDUE", contract.ContractId);
-        }
-
-        if (overdueContracts.Any())
-        {
-            await _db.SaveChangesAsync();
-        }
+        _logger.LogInformation("Marked {Count} contracts as OVERDUE", affected);
     }
 
     /// <summary>
@@ -137,10 +218,11 @@ public class ContractExpiryJob
     {
         _logger.LogInformation("Starting contract expiry processing");
 
-        await CancelExpiredSignatures();
-        await CancelExpiredPayments();
-        await CompleteExpiredContracts();
-        await MarkOverdueReturns();
+        await CancelExpiredOwnerSignatures();  // Check owner signature timeout first
+        await CancelExpiredSignatures();       // Then renter signature timeout
+        await CancelExpiredPayments();         // Then payment timeout
+        await CompleteExpiredContracts();      // Mark completed if end date passed
+        await MarkOverdueReturns();            // Mark overdue if not returned
 
         _logger.LogInformation("Finished contract expiry processing");
     }

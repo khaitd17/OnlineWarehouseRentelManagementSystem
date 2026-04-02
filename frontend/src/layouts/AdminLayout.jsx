@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
+import { NavLink, Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { ToastProvider } from "../components/Toast";
+import OWRMSLogo from "../components/OWRMSLogo";
 import "../styles/admin.css";
 
 const NAV_ITEMS = [
@@ -98,8 +99,8 @@ export default function AdminLayout() {
         {/* ── Sidebar ── */}
         <aside className={`admin-sidebar${sidebarOpen ? ' open' : ''}`}>
           <div className="admin-sidebar-logo" style={{ justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Settings size={20} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <OWRMSLogo size={32} variant="mini" />
               <span>OWRMS Admin</span>
             </div>
             {/* Mobile close button */}
@@ -204,29 +205,55 @@ export default function AdminLayout() {
               {/* Divider */}
               <div className="admin-topbar-divider" />
 
-              {/* User info + Avatar */}
-              <div
-                className="admin-topbar-user"
-                onClick={goToProfile}
-                title="Xem hồ sơ cá nhân"
-                style={{ cursor: 'pointer' }}
-              >
-                <div className="admin-topbar-user-text">
-                  <span className="admin-topbar-user-name">
-                    {user.fullName || "Admin User"}
-                  </span>
-                  <span className="admin-topbar-user-role">Quản trị viên</span>
+              {/* User info + Avatar Dropdown */}
+              <div className="nav-user-dropdown" style={{ marginLeft: '8px' }}>
+                <div className="nav-user-trigger">
+                  <div className="admin-topbar-avatar" style={{ margin: 0, width: 38, height: 38, flexShrink: 0 }}>
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="avatar"
+                        style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                      />
+                    ) : (
+                      <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#e2e8f0', borderRadius: '50%', color: '#475569', fontWeight: 600 }}>{(user.fullName || "A").charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <div className="admin-topbar-user-text" style={{ textAlign: 'left' }}>
+                    <span className="admin-topbar-user-name">
+                      {user.fullName || "Admin"}
+                    </span>
+                    <span className="admin-topbar-user-role">Quản trị viên</span>
+                  </div>
+                  <span className="nav-dropdown-caret" style={{ color: '#94a3b8' }}>▾</span>
                 </div>
-                <div className="admin-topbar-avatar">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt="avatar"
-                      style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
-                    />
-                  ) : (
-                    <span>{(user.fullName || "A").charAt(0).toUpperCase()}</span>
-                  )}
+
+                <div className="nav-dropdown-menu">
+                  <div className="nav-dropdown-user-header">
+                    <div className="admin-topbar-avatar" style={{ margin: 0, width: 36, height: 36, flexShrink: 0 }}>
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt="avatar"
+                          style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+                        />
+                      ) : (
+                        <span style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#e2e8f0', borderRadius: '50%', color: '#475569', fontWeight: 600 }}>{(user.fullName || "A").charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div style={{ overflow: 'hidden' }}>
+                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {user.fullName || "Admin User"}
+                      </p>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {user.email || ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Link to="/admin/profile" className="nav-dropdown-item">Hồ sơ</Link>
+                  <div className="nav-dropdown-divider" />
+                  <button className="nav-dropdown-item logout" onClick={handleLogout}>Đăng xuất</button>
                 </div>
               </div>
             </div>
@@ -246,6 +273,41 @@ export default function AdminLayout() {
             display: block !important;
           }
         }
+        
+        /* Avatar Dropdown Styles for Light Theme */
+        .nav-user-dropdown { position: relative; display: inline-flex; align-items: center; }
+        .nav-user-dropdown::after { content: ''; position: absolute; top: 100%; left: -10px; right: -10px; height: 14px; z-index: 10; }
+        .nav-user-dropdown:hover .nav-dropdown-menu,
+        .nav-user-dropdown:focus-within .nav-dropdown-menu {
+          opacity: 1; visibility: visible; transform: translateY(0); pointer-events: all;
+        }
+        .nav-user-trigger {
+          display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; padding-right: 8px;
+          border-radius: 999px; transition: background 0.2s;
+        }
+        .nav-user-trigger:hover { background: #f1f5f9; }
+        .nav-dropdown-caret { font-size: 0.65rem; color: #94a3b8; transition: transform 0.2s; margin-left: 2px; }
+        .nav-user-dropdown:hover .nav-dropdown-caret { transform: rotate(180deg); }
+        .nav-dropdown-menu {
+          position: absolute; top: calc(100% + 14px); right: 0; min-width: 210px;
+          background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+          opacity: 0; visibility: hidden; transform: translateY(-6px);
+          transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+          z-index: 2000; overflow: hidden; pointer-events: none;
+        }
+        .nav-dropdown-user-header {
+          padding: 14px 16px 12px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 10px;
+        }
+        .nav-dropdown-item {
+          display: block; padding: 12px 16px; font-size: 0.875rem; font-weight: 500; color: #475569;
+          text-decoration: none; transition: background 0.15s, color 0.15s; cursor: pointer;
+          background: transparent; border: none; width: 100%; text-align: left; font-family: 'Inter', sans-serif;
+        }
+        .nav-dropdown-item:hover { background: #f8fafc; color: #0284c7; }
+        .nav-dropdown-divider { height: 1px; background: #f1f5f9; margin: 4px 0; }
+        .nav-dropdown-item.logout { color: #ef4444; }
+        .nav-dropdown-item.logout:hover { background: #fef2f2; color: #dc2626; }
       `}</style>
     </ToastProvider>
   );

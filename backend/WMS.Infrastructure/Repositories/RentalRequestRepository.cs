@@ -77,6 +77,18 @@ public class RentalRequestRepository : IRentalRequestRepository
         return dbRequests.Select(MapToDomain).ToList();
     }
 
+    public async Task<IEnumerable<DomainRentalRequest>> GetByWarehouseOwnerIdAsync(int ownerId)
+    {
+        // Get all requests for owner's warehouses (no status filter)
+        var dbRequests = await _context.RentalRequests
+            .Include(r => r.Warehouse)
+            .Where(r => r.Warehouse.OwnerId == ownerId)
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync();
+
+        return dbRequests.Select(MapToDomain).ToList();
+    }
+
     public async Task<int> AddAsync(DomainRentalRequest request)
     {
         var dbRequest = new DbRentalRequest

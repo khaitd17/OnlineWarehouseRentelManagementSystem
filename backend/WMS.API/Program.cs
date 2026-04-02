@@ -12,6 +12,10 @@ using WMS.Infrastructure.Persistence;
 using WMS.Infrastructure.Repositories;
 using WMS.Infrastructure.Services;
 using WMS.API.Hubs;
+using Hangfire;
+using Hangfire.SqlServer;
+using WMS.Infrastructure.BackgroundJobs;
+using WMS.API.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,6 +103,7 @@ builder.Services.AddScoped<IRenterAssetRepository, RenterAssetRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRatingRepository, WMS.Infrastructure.Repositories.RatingRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseReturnRepository, WMS.Infrastructure.Repositories.WarehouseReturnRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalPaymentRepository, WMS.Infrastructure.Repositories.RentalPaymentRepository>();
+builder.Services.AddScoped<IEquipmentIncidentRepository, EquipmentIncidentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
 
 // Services
@@ -111,6 +116,27 @@ builder.Services.AddScoped<ISepayService, SepayService>();
 // SignalR
 builder.Services.AddSignalR();
 builder.Services.AddScoped<INotificationSender, WMS.API.Hubs.SignalRNotificationSender>();
+
+// Hangfire Configuration
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(builder.Configuration.GetConnectionString("DefaultConnection"),
+        new SqlServerStorageOptions
+        {
+            CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+            SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+            QueuePollInterval = TimeSpan.Zero,
+            UseRecommendedIsolationLevel = true,
+            DisableGlobalLocks = true
+        }));
+
+builder.Services.AddHangfireServer();
+
+// Background job classes
+builder.Services.AddScoped<ContractNotificationJob>();
+builder.Services.AddScoped<ContractExpiryJob>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -173,6 +199,9 @@ using (var scope = app.Services.CreateScope())
     {
         // 1. Apply any pending migrations automatically
         context.Database.Migrate();
+
+
+
         logger.LogInformation("Database migrations applied successfully.");
 
         // 2. Seed the database
@@ -218,8 +247,35 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Hangfire Dashboard (with authorization)
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireAuthorizationFilter() },
+    DashboardTitle = "OWRMS Background Jobs"
+});
+
 app.MapControllers();
 
 app.MapHub<NotificationHub>("/hubs/notifications");
+
+// Configure Hangfire Recurring Jobs
+RecurringJob.AddOrUpdate<ContractNotificationJob>(
+    "contract-expiry-notifications",
+    job => job.SendExpiryNotifications(),
+    "0 9 * * *",  // Run daily at 9 AM UTC
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<ContractNotificationJob>(
+    "payment-reminders",
+    job => job.SendPaymentReminders(),
+    "0 */6 * * *",  // Run every 6 hours
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Tạm vô hiệu hóa contract expiry job để fix API trước
+// RecurringJob.AddOrUpdate<ContractExpiryJob>(
+//     "process-contract-expiries",
+//     job => job.ProcessAllExpiries(),
+//     "*/30 * * * *",  // Run every 30 minutes
+//     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.Run();

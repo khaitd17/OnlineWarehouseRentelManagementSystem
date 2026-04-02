@@ -77,14 +77,23 @@ public class SearchWarehousesHandler
 
         // ── 9. Tính rating cho từng kho (batch) ───────────────────
         // Lấy tất cả ratings rồi group trong memory — tránh N+1 query
-        var allRatings = await _ratingRepository.GetAllAsync(cancellationToken);
-        var ratingByWarehouse = allRatings
-            .Where(r => r.IsHidden != true)
-            .GroupBy(r => r.WarehouseId)
-            .ToDictionary(
-                g => g.Key,
-                g => (avg: g.Average(r => (double)r.Star), count: g.Count())
-            );
+        var ratingByWarehouse = new Dictionary<int, (double avg, int count)>();
+        try
+        {
+            var allRatings = await _ratingRepository.GetAllAsync(cancellationToken);
+            ratingByWarehouse = allRatings
+                .Where(r => r.IsHidden != true)
+                .GroupBy(r => r.WarehouseId)
+                .ToDictionary(
+                    g => g.Key,
+                    g => (avg: g.Average(r => (double)r.Star), count: g.Count())
+                );
+        }
+        catch (Exception ex)
+        {
+            // Nếu lỗi DB (ví dụ thiếu cột schema), bỏ qua rating nhưng không làm crash kết quả tìm kiếm kho
+            Console.WriteLine($"Warning: Could not fetch ratings for search results: {ex.Message}");
+        }
 
         // ── 10. Lọc theo đánh giá tối thiểu ──────────────────────
         if (request.MinRating.HasValue)

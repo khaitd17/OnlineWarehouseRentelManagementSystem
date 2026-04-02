@@ -60,42 +60,72 @@ public class AuthController : ControllerBase
     [Authorize]
     public async Task<IActionResult> GetWarehouseContext()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
-            return Unauthorized(new { message = "User ID not found in token." });
-
-        var user = await _db.Users
-            .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.UserId == userId);
-
-        if (user == null)
-            return NotFound(new { message = "User not found." });
-
-        var memberships = await _db.WarehouseMemberships
-            .Where(m => m.UserId == userId && m.IsActive)
-            .Include(m => m.Warehouse)
-            .Include(m => m.Role)
-            .Include(m => m.Skills)
-            .ToListAsync();
-
-        var warehouseItems = memberships.Select(m => new
+        try
         {
-            warehouseId   = m.WarehouseId,
-            warehouseName = m.Warehouse.Name,
-            role          = m.Role.Code,
-            skills        = m.Skills.Select(skill => skill.Code).ToList(),
-            isAllSkill    = m.IsAllSkill,
-        }).ToList();
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new { message = "User ID not found in token." });
 
-        var context = new
+            var user = await _db.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.UserId == userId);
+
+            if (user == null)
+                return NotFound(new { message = "User not found." });
+
+            var memberships = await _db.WarehouseMemberships
+                .Where(m => m.UserId == userId && m.IsActive)
+                .Include(m => m.Warehouse)
+                .Include(m => m.Role)
+                .Include(m => m.Skills)
+                .ToListAsync();
+
+            var warehouseItems = memberships.Select(m => new WarehouseContextItem
+            {
+                warehouseId   = m.WarehouseId,
+                warehouseName = m.Warehouse?.Name ?? "",
+                role          = m.Role?.Code ?? "",
+                skills        = m.Skills.Select(skill => skill.Code).ToList(),
+                isAllSkill    = m.IsAllSkill,
+            }).ToList();
+
+            // Include warehouses where the user has an active/pending rental contract (RENTER role)
+            // Use _db.Contracts which maps to "contracts" table where actual data is stored
+            var activeContracts = await _db.Contracts
+                .Where(c => c.RenterId == userId && (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT"))
+                .Include(c => c.Warehouse)
+                .ToListAsync();
+
+            foreach (var contract in activeContracts)
+            {
+                if (!warehouseItems.Any(w => w.warehouseId == contract.WarehouseId))
+                {
+                    warehouseItems.Add(new WarehouseContextItem
+                    {
+                        warehouseId   = contract.WarehouseId,
+                        warehouseName = contract.Warehouse?.Name ?? "",
+                        role          = "RENTER",
+                        skills        = new List<string>(),
+                        isAllSkill    = false
+                    });
+                }
+            }
+
+            var context = new
+            {
+                userId     = user.UserId,
+                name       = user.FullName,
+                systemRole = user.Role?.RoleName?.ToLower() ?? "user",
+                warehouses = warehouseItems
+            };
+
+            return Ok(context);
+        }
+        catch (Exception ex)
         {
-            userId     = user.UserId,
-            name       = user.FullName,
-            systemRole = user.Role?.RoleName?.ToLower() ?? "user",
-            warehouses = warehouseItems
-        };
-
-        return Ok(context);
+            Console.Error.WriteLine($"[GetWarehouseContext] ERROR: {ex.Message}\n{ex.StackTrace}");
+            return StatusCode(500, new { message = "Internal error: " + ex.Message });
+        }
     }
 
     /// <summary>Yêu cầu gửi email đặt lại mật khẩu</summary>
@@ -188,4 +218,14 @@ public record LoginRequest(string Email, string Password);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NewPassword);
 public record GoogleLoginRequest(string Email, string? FullName, string? GoogleId, string? AvatarUrl);
+
+// ---- Response DTOs ----
+public class WarehouseContextItem
+{
+    public int warehouseId { get; set; }
+    public string warehouseName { get; set; } = "";
+    public string role { get; set; } = "";
+    public List<string> skills { get; set; } = new();
+    public bool isAllSkill { get; set; }
+}
 

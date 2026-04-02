@@ -8,22 +8,20 @@ namespace WMS.Application.Features.Equipments.PostRentalInspection;
 public class PostRentalInspectionHandler : BaseEquipmentHandler, IRequestHandler<PostRentalInspectionCommand>
 {
     private readonly IEquipmentRepository _equipmentRepository;
-    private readonly IRentalContractRepository _contractRepository;
 
     public PostRentalInspectionHandler(
         IWarehouseRepository warehouseRepository,
         IStaffMembershipRepository membershipRepository,
         IEquipmentRepository equipmentRepository,
         IRentalContractRepository contractRepository) 
-        : base(warehouseRepository, membershipRepository)
+        : base(warehouseRepository, membershipRepository, contractRepository)
     {
         _equipmentRepository = equipmentRepository;
-        _contractRepository = contractRepository;
     }
 
     public async Task Handle(PostRentalInspectionCommand request, CancellationToken cancellationToken)
     {
-        var contract = await _contractRepository.GetWithEquipmentsByIdAsync(request.ContractId)
+        var contract = await ContractRepository.GetWithEquipmentsByIdAsync(request.ContractId)
             ?? throw new KeyNotFoundException("Contract not found");
 
         await EnsureCanManageEquipment(contract.WarehouseId, request.RequestUserId, cancellationToken, isStaffAllowed: true);

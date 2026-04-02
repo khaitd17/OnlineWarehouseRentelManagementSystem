@@ -29,4 +29,14 @@ public class RentalContractDto
     public int? RentalAreaId { get; set; }
     public double RequestedArea { get; set; }
     public DateTime CreatedAt { get; set; }
+    public bool IsCurrentUserRenter { get; set; }
+    public bool IsCurrentUserOwner { get; set; }
+    
+    // 2-party approval fields
+    public string? TerminationRequestedBy { get; set; }
+    public DateTime? TerminationRequestedAt { get; set; }
+    public bool RenterApprovedTermination { get; set; }
+    public bool OwnerApprovedTermination { get; set; }
+    public string? TerminationReason { get; set; }
+    public decimal? EarlyTerminationFee { get; set; }
 }

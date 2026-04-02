@@ -32,6 +32,18 @@ public class RentalContract
     public DateTime? TerminatedAt { get; private set; }
     public string? TerminationReason { get; private set; }
 
+    // Expiry tracking for background jobs
+    public DateTime? OwnerSignatureExpiry { get; private set; }
+    public DateTime? RenterSignatureExpiry { get; private set; }
+    public DateTime? PaymentExpiry { get; private set; }
+
+    // Termination/Close approval tracking (2-party approval)
+    public string? TerminationRequestedBy { get; private set; } // "RENTER" or "OWNER"
+    public DateTime? TerminationRequestedAt { get; private set; }
+    public bool RenterApprovedTermination { get; private set; }
+    public bool OwnerApprovedTermination { get; private set; }
+    public decimal? EarlyTerminationFee { get; private set; }
+
     // Navigation properties
     public RentalRequest? RentalRequest { get; set; }
     public Warehouse? Warehouse { get; set; }
@@ -51,6 +63,7 @@ public class RentalContract
 
         var effectiveStartDate = startDateOverride ?? request.StartDate;
         var effectiveDuration = durationMonthsOverride ?? request.DurationMonths;
+        
         var endDate = effectiveStartDate.AddMonths(effectiveDuration);
         var totalValue = monthlyPayment * effectiveDuration;
 
@@ -69,7 +82,8 @@ public class RentalContract
             DepositAmount = depositAmount,
             Status = "PENDING_OWNER_SIGNATURE",
             Terms = terms,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            OwnerSignatureExpiry = DateTime.UtcNow.AddHours(48) // 48h timeout for owner to sign
         };
     }
 
@@ -87,22 +101,24 @@ public class RentalContract
         OwnerSignedFileUrl = ownerSignedFileUrl;
         OwnerSignedAt = DateTime.UtcNow;
         OwnerSignatureBase64 = ownerSignatureBase64;
-        Status = "PENDING_SIGNATURE"; // Chờ xác thực ký của người thuê
+        Status = "PENDING_RENTER_SIGNATURE"; // Chờ xác thực ký của người thuê
+        RenterSignatureExpiry = DateTime.UtcNow.AddHours(48); // 48h timeout for renter to sign
+        OwnerSignatureExpiry = null; // Clear owner expiry
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void MarkPendingSignature()
     {
-        if (Status != "PENDING_RENTER_SIGNATURE" && Status != "PENDING_SIGNATURE")
+        if (Status != "PENDING_RENTER_SIGNATURE" && Status != "PENDING_RENTER_SIGNATURE")
             throw new InvalidOperationException($"Cannot mark pending signature for contract with status {Status}");
 
-        Status = "PENDING_SIGNATURE";
+        Status = "PENDING_RENTER_SIGNATURE";
         UpdatedAt = DateTime.UtcNow;
     }
 
     public void Sign(string signedFileUrl)
     {
-        if (Status != "PENDING_SIGNATURE")
+        if (Status != "PENDING_RENTER_SIGNATURE")
             throw new InvalidOperationException($"Cannot sign contract with status {Status}");
 
         SignedFileUrl = signedFileUrl;
@@ -122,6 +138,71 @@ public class RentalContract
         UpdatedAt = DateTime.UtcNow;
     }
 
+    // Request termination - needs approval from other party
+    public void RequestTerminationEarly(string requestedBy, string reason, decimal? fee = null)
+    {
+        if (Status != "ACTIVE")
+            throw new InvalidOperationException($"Cannot request termination for contract with status {Status}");
+        
+        if (requestedBy != "RENTER" && requestedBy != "OWNER")
+            throw new ArgumentException("RequestedBy must be RENTER or OWNER");
+
+        Status = "PENDING_TERMINATION";
+        TerminationRequestedBy = requestedBy;
+        TerminationRequestedAt = DateTime.UtcNow;
+        TerminationReason = reason;
+        EarlyTerminationFee = fee;
+        
+        // Auto-approve for requester
+        if (requestedBy == "RENTER")
+            RenterApprovedTermination = true;
+        else
+            OwnerApprovedTermination = true;
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Approve termination request
+    public void ApproveTermination(string approvedBy)
+    {
+        if (Status != "PENDING_TERMINATION")
+            throw new InvalidOperationException($"Cannot approve termination for contract with status {Status}");
+        
+        if (approvedBy == "RENTER")
+            RenterApprovedTermination = true;
+        else if (approvedBy == "OWNER")
+            OwnerApprovedTermination = true;
+        else
+            throw new ArgumentException("ApprovedBy must be RENTER or OWNER");
+
+        // If both parties approved, terminate
+        if (RenterApprovedTermination && OwnerApprovedTermination)
+        {
+            Status = "TERMINATED";
+            TerminatedAt = DateTime.UtcNow;
+        }
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Reject termination request
+    public void RejectTermination(string rejectedBy)
+    {
+        if (Status != "PENDING_TERMINATION")
+            throw new InvalidOperationException($"Cannot reject termination for contract with status {Status}");
+        
+        // Reset to ACTIVE
+        Status = "ACTIVE";
+        TerminationRequestedBy = null;
+        TerminationRequestedAt = null;
+        RenterApprovedTermination = false;
+        OwnerApprovedTermination = false;
+        TerminationReason = null;
+        EarlyTerminationFee = null;
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void TerminateEarly(string reason, decimal? earlyTerminationFee = null)
     {
         if (Status != "ACTIVE")
@@ -129,6 +210,7 @@ public class RentalContract
 
         Status = "TERMINATED";
         TerminationReason = reason;
+        EarlyTerminationFee = earlyTerminationFee;
         TerminatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -140,6 +222,67 @@ public class RentalContract
 
         Status = "CANCELLED";
         CancellationReason = reason;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Request close - needs approval from other party  
+    public void RequestClose(string requestedBy)
+    {
+        if (Status != "ACTIVE")
+            throw new InvalidOperationException($"Cannot request close for contract with status {Status}");
+        
+        if (requestedBy != "RENTER" && requestedBy != "OWNER")
+            throw new ArgumentException("RequestedBy must be RENTER or OWNER");
+
+        Status = "PENDING_CLOSE";
+        TerminationRequestedBy = requestedBy;
+        TerminationRequestedAt = DateTime.UtcNow;
+        
+        // Auto-approve for requester
+        if (requestedBy == "RENTER")
+            RenterApprovedTermination = true;
+        else
+            OwnerApprovedTermination = true;
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Approve close request
+    public void ApproveClose(string approvedBy)
+    {
+        if (Status != "PENDING_CLOSE")
+            throw new InvalidOperationException($"Cannot approve close for contract with status {Status}");
+        
+        if (approvedBy == "RENTER")
+            RenterApprovedTermination = true;
+        else if (approvedBy == "OWNER")
+            OwnerApprovedTermination = true;
+        else
+            throw new ArgumentException("ApprovedBy must be RENTER or OWNER");
+
+        // If both parties approved, close
+        if (RenterApprovedTermination && OwnerApprovedTermination)
+        {
+            Status = "CLOSED";
+            ReturnedAt = DateTime.UtcNow;
+        }
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Reject close request
+    public void RejectClose(string rejectedBy)
+    {
+        if (Status != "PENDING_CLOSE")
+            throw new InvalidOperationException($"Cannot reject close for contract with status {Status}");
+        
+        // Reset to ACTIVE
+        Status = "ACTIVE";
+        TerminationRequestedBy = null;
+        TerminationRequestedAt = null;
+        RenterApprovedTermination = false;
+        OwnerApprovedTermination = false;
+        
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -162,12 +305,14 @@ public class RentalContract
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void MarkPendingPayment(double expiryHours = 24)
+    public void MarkPendingPayment(double expiryHours = 48)
     {
-        if (Status != "PENDING_SIGNATURE" && Status != "ACTIVE")
+        if (Status != "PENDING_RENTER_SIGNATURE" && Status != "ACTIVE")
             throw new InvalidOperationException($"Cannot mark pending payment for contract with status {Status}");
 
         Status = "PENDING_PAYMENT";
+        PaymentExpiry = DateTime.UtcNow.AddHours(expiryHours); // 48h timeout for payment
+        RenterSignatureExpiry = null; // Clear renter signature expiry
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -195,16 +340,16 @@ public class RentalContract
 
     public bool IsPendingOwnerSignature => Status == "PENDING_OWNER_SIGNATURE";
     public bool IsPendingRenterSignature => Status == "PENDING_RENTER_SIGNATURE";
-    public bool IsPendingSignature => Status == "PENDING_SIGNATURE";
+    public bool IsPendingSignature => Status == "PENDING_RENTER_SIGNATURE";
     public bool IsPendingPayment => Status == "PENDING_PAYMENT";
     public bool IsActive => Status == "ACTIVE";
     public bool IsExpired => Status == "EXPIRED";
     public bool IsTerminated => Status == "TERMINATED";
     public bool IsOverdue => Status == "OVERDUE";
 
-    // Expiry checking properties for background jobs
-    public DateTime? PendingSignatureExpiry => IsPendingSignature ? CreatedAt.AddHours(24) : null;
-    public DateTime? PendingPaymentExpiry => IsPendingPayment ? CreatedAt.AddHours(48) : null;
+    // Expiry checking properties for background jobs (use new explicit fields)
+    public DateTime? PendingSignatureExpiry => RenterSignatureExpiry;
+    public DateTime? PendingPaymentExpiry => PaymentExpiry;
 
     // Additional methods
     public void ActivateAfterPayment()
@@ -212,6 +357,16 @@ public class RentalContract
         if (Status != "PENDING_PAYMENT")
             throw new InvalidOperationException($"Cannot activate contract with status {Status}");
 
+        Status = "ACTIVE";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Force activate the contract regardless of current status.
+    /// Used when owner confirms cash payment.
+    /// </summary>
+    public void ForceActivate()
+    {
         Status = "ACTIVE";
         UpdatedAt = DateTime.UtcNow;
     }

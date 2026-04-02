@@ -75,6 +75,20 @@ const authService = {
     const ctx = localStorage.getItem("warehouseContext");
     return ctx ? JSON.parse(ctx) : null;
   },
+
+  refreshWarehouseContext: async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return null;
+      const ctxResponse = await axiosClient.get("/auth/warehouse-context");
+      const ctx = ctxResponse.data;
+      localStorage.setItem("warehouseContext", JSON.stringify(ctx));
+      return ctx;
+    } catch (err) {
+      console.warn("[WarehouseContext] Failed to refresh:", err);
+      return null;
+    }
+  },
 };
 
 export default authService;

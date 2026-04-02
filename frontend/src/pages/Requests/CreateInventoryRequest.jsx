@@ -51,7 +51,7 @@ function UnitCombobox({ value, onChange, accent }) {
   );
 }
 
-/* ── Searchable row ─────────────────────────────────────── */
+/* ── Searchable row (INBOUND only) ─────────────────────────────────────── */
 function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, onEnter, canRemove }) {
   const ref = useRef(null);
   const filtered = (item.search ? list.filter(a=>(a.assetName||'').toLowerCase().includes(item.search.toLowerCase())) : list).slice(0,20);
@@ -66,15 +66,13 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
   return (
     <tr style={{ borderBottom:'1px solid #f1f5f9' }}>
       <td style={{ padding:'10px 14px', color:'#94a3b8', fontSize:'0.8rem', fontWeight:700, width:36 }}>{idx+1}</td>
-
-      {/* Asset combobox */}
       <td style={{ padding:'6px 8px', minWidth:220 }}>
         <div ref={ref} style={{ position:'relative' }}>
           <input value={item.search||item.itemName}
             onChange={e=>{ const v=e.target.value; onUpdate({ search:v, itemName:v, assetId:null, isNew:false, showDrop:true }); }}
             onFocus={()=>onUpdate({ showDrop:true })}
             onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEnter(); } }}
-            placeholder={type==='INBOUND'?'Tìm hoặc gõ tên hàng...':'Chọn hàng hóa...'}
+            placeholder="Tìm hoặc gõ tên hàng..."
             style={{ ...inp(), borderColor: item.showDrop ? accent : '#e2e8f0' }}
           />
           {item.isNew && <span style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', fontSize:'0.7rem', color:accent, fontWeight:700, background:`${accent}15`, padding:'2px 6px', borderRadius:8 }}>MỚI</span>}
@@ -88,11 +86,10 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
                     style={{ padding:'9px 14px', cursor:'pointer', fontSize:'0.85rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
                     <span style={{ fontWeight:600, color:'#1e293b' }}>{a.assetName}</span>
-                    {type==='OUTBOUND' ? <span style={{ fontSize:'0.73rem', background:'#f0fdf4', color:'#16a34a', border:'1px solid #bbf7d0', padding:'2px 8px', borderRadius:20, fontWeight:700 }}>Tồn: {a.quantity} {a.unit}</span>
-                    : <span style={{ fontSize:'0.75rem', color:'#94a3b8' }}>{a.unit}</span>}
+                    <span style={{ fontSize:'0.75rem', color:'#94a3b8' }}>{a.unit}</span>
                   </div>
                 ))}
-                {type==='INBOUND' && item.search && !filtered.find(a=>a.assetName.toLowerCase()===item.search.toLowerCase()) && (
+                {item.search && !filtered.find(a=>a.assetName.toLowerCase()===item.search.toLowerCase()) && (
                   <div onMouseDown={()=>onUpdate({ assetId:null, itemName:item.search, isNew:true, showDrop:false, unit:'cái' })}
                     style={{ padding:'9px 14px', cursor:'pointer', fontSize:'0.85rem', color:accent, fontWeight:700, borderTop:'1px solid #f1f5f9' }}
                     onMouseEnter={e=>e.currentTarget.style.background=`${accent}10`} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
@@ -104,37 +101,20 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
           )}
         </div>
       </td>
-
-      {/* Unit combobox - áp dụng cho cả new asset và existing */}
       <td style={{ padding:'6px 8px', width:100 }}>
         <UnitCombobox value={item.unit} onChange={v=>onUpdate({ unit:v })} accent={accent}/>
       </td>
-
-      {/* Qty */}
       <td style={{ padding:'6px 8px', width:100 }}>
-        <input type="number" min={1} max={type==='OUTBOUND'&&item.availableQty?item.availableQty:undefined}
+        <input type="number" min={1}
           value={item.qty} onChange={e=>onUpdate({ qty:e.target.value })}
           onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEnter(); }}}
           style={{ ...inp(), borderColor: isOver?'#fca5a5':'#e2e8f0', color: isOver?'#dc2626':'#1e293b', fontWeight:700 }} />
       </td>
-
-      {/* Note / Lưu ý */}
       <td style={{ padding:'6px 8px', minWidth:160 }}>
         <input value={item.note||''} onChange={e=>onUpdate({ note:e.target.value })}
-          placeholder="VD: Dễ vỡ, bảo quản lạnh, hàng nặng..."
+          placeholder="VD: Dễ vỡ, bảo quản lạnh..."
           style={{ ...inp(), fontSize:'0.82rem', color:'#475569' }}/>
       </td>
-
-      {/* Available (outbound) */}
-      {type==='OUTBOUND' && (
-        <td style={{ padding:'6px 8px', width:90 }}>
-          {item.availableQty!==null
-            ? <span style={{ fontSize:'0.8rem', fontWeight:700, color:isOver?'#dc2626':'#16a34a', background:isOver?'#fef2f2':'#f0fdf4', padding:'4px 10px', borderRadius:20, border:`1px solid ${isOver?'#fecaca':'#bbf7d0'}`, whiteSpace:'nowrap' }}>{isOver?'⚠️ ':'✓ '}{item.availableQty}</span>
-            : <span style={{ color:'#cbd5e1', fontSize:'0.82rem' }}>—</span>}
-        </td>
-      )}
-
-      {/* Delete */}
       <td style={{ padding:'6px 8px', width:44 }}>
         <button onClick={onRemove} disabled={!canRemove} title="Xóa dòng"
           style={{ width:32, height:32, borderRadius:8, border:`1px solid ${canRemove?'#fecaca':'#f1f5f9'}`, background:canRemove?'#fef2f2':'transparent', color:canRemove?'#dc2626':'#e2e8f0', cursor:canRemove?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
@@ -142,6 +122,140 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
         </button>
       </td>
     </tr>
+  );
+}
+
+/* ── Outbound Checkbox Table ────────────────────────────────────────────── */
+function OutboundInventoryTable({ inventory, loading, selectedItems, setSelectedItems, accent }) {
+  const [search, setSearch] = useState('');
+
+  const handleToggle = (asset) => {
+    setSelectedItems(prev => {
+      const cur = prev[asset.assetId] || { checked:false, qty:1, note:'' };
+      return { ...prev, [asset.assetId]: { ...cur, checked:!cur.checked } };
+    });
+  };
+  const handleQtyChange = (assetId, val) => {
+    setSelectedItems(prev => ({ ...prev, [assetId]: { ...(prev[assetId]||{ checked:true, note:'' }), qty: val } }));
+  };
+  const handleNoteChange = (assetId, val) => {
+    setSelectedItems(prev => ({ ...prev, [assetId]: { ...(prev[assetId]||{ checked:true, qty:1 }), note: val } }));
+  };
+
+  const filtered = inventory.filter(a =>
+    (a.assetName||'').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const checkedCount = Object.values(selectedItems).filter(v=>v.checked).length;
+
+  if (loading) return (
+    <div style={{ padding:'40px 24px', textAlign:'center', color:'#94a3b8' }}>
+      <div style={{ fontSize:'2rem', marginBottom:8 }}>⏳</div>
+      <div style={{ fontWeight:600 }}>Đang tải tồn kho...</div>
+    </div>
+  );
+
+  if (!loading && inventory.length === 0) return (
+    <div style={{ padding:'48px 24px', textAlign:'center' }}>
+      <div style={{ fontSize:'3rem', marginBottom:12 }}>📭</div>
+      <div style={{ fontWeight:700, fontSize:'1rem', color:'#1e293b', marginBottom:6 }}>Kho hiện không có hàng hóa</div>
+      <div style={{ fontSize:'0.83rem', color:'#94a3b8' }}>Chưa có mặt hàng nào được nhập vào kho này.</div>
+    </div>
+  );
+
+  return (
+    <div>
+      {/* Toolbar */}
+      <div style={{ padding:'14px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:12 }}>
+        <div style={{ position:'relative', flex:1, maxWidth:340 }}>
+          <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:'0.9rem', color:'#94a3b8' }}>🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Tìm kiếm mặt hàng..."
+            style={{ ...inp(), paddingLeft:34, borderRadius:10 }}
+            onFocus={e=>e.target.style.borderColor=accent}
+            onBlur={e=>e.target.style.borderColor='#e2e8f0'}
+          />
+        </div>
+        <span style={{ fontSize:'0.82rem', fontWeight:600, color: checkedCount>0 ? accent : '#94a3b8',
+          background: checkedCount>0 ? `${accent}15` : '#f8fafc',
+          border:`1px solid ${checkedCount>0 ? `${accent}40` : '#e2e8f0'}`,
+          padding:'5px 12px', borderRadius:20, whiteSpace:'nowrap', transition:'all 0.2s' }}>
+          Đã chọn: {checkedCount} / {inventory.length}
+        </span>
+      </div>
+
+      {/* Table */}
+      <div style={{ overflowX:'auto' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse' }}>
+          <thead>
+            <tr style={{ background:'#f8fafc', position:'sticky', top:0, zIndex:2 }}>
+              {['', 'Tên hàng hóa', 'Đơn vị', 'Tồn kho', 'Số lượng xuất', 'Ghi chú'].map((h,i)=>(
+                <th key={i} style={{ padding:'10px 14px', fontSize:'0.7rem', fontWeight:700, color:'#94a3b8', textAlign:'left', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={6} style={{ padding:'32px', textAlign:'center', color:'#94a3b8', fontSize:'0.87rem' }}>
+                Không tìm thấy mặt hàng nào
+              </td></tr>
+            ) : filtered.map(asset => {
+              const state = selectedItems[asset.assetId] || { checked:false, qty:1, note:'' };
+              const isChecked = !!state.checked;
+              const isOver = isChecked && Number(state.qty) > asset.quantity;
+              return (
+                <tr key={asset.assetId}
+                  style={{ borderBottom:'1px solid #f1f5f9', background: isChecked ? '#fffbeb' : '#fff', transition:'background 0.15s', cursor:'pointer' }}
+                  onClick={() => handleToggle(asset)}>
+                  {/* Checkbox */}
+                  <td style={{ padding:'12px 14px', width:44 }} onClick={e=>e.stopPropagation()}>
+                    <input type="checkbox" checked={isChecked}
+                      onChange={()=>handleToggle(asset)}
+                      style={{ width:17, height:17, accentColor:accent, cursor:'pointer' }}/>
+                  </td>
+                  {/* Name */}
+                  <td style={{ padding:'10px 14px', fontWeight:isChecked?700:500, color:'#1e293b', fontSize:'0.88rem' }}>
+                    {asset.assetName}
+                  </td>
+                  {/* Unit */}
+                  <td style={{ padding:'10px 14px', color:'#64748b', fontSize:'0.83rem' }}>{asset.unit||'—'}</td>
+                  {/* Stock */}
+                  <td style={{ padding:'10px 14px' }}>
+                    <span style={{ fontSize:'0.78rem', fontWeight:700, color:'#16a34a', background:'#f0fdf4', border:'1px solid #bbf7d0', padding:'3px 10px', borderRadius:20 }}>
+                      {asset.quantity}
+                    </span>
+                  </td>
+                  {/* Qty input */}
+                  <td style={{ padding:'8px 10px', width:120 }} onClick={e=>e.stopPropagation()}>
+                    <input type="number" min={1} max={asset.quantity}
+                      value={state.qty}
+                      disabled={!isChecked}
+                      onChange={e=>handleQtyChange(asset.assetId, e.target.value)}
+                      style={{ ...inp(), width:90, fontWeight:700,
+                        borderColor: !isChecked ? '#f1f5f9' : isOver ? '#fca5a5' : accent,
+                        color: !isChecked ? '#cbd5e1' : isOver ? '#dc2626' : '#1e293b',
+                        background: !isChecked ? '#f8fafc' : '#fff',
+                        cursor: isChecked ? 'text' : 'not-allowed' }}/>
+                    {isOver && <div style={{ fontSize:'0.7rem', color:'#dc2626', marginTop:3, fontWeight:600 }}>⚠️ Vượt tồn kho</div>}
+                  </td>
+                  {/* Note */}
+                  <td style={{ padding:'8px 10px', minWidth:180 }} onClick={e=>e.stopPropagation()}>
+                    <input value={state.note||''}
+                      disabled={!isChecked}
+                      onChange={e=>handleNoteChange(asset.assetId, e.target.value)}
+                      placeholder={isChecked ? 'Ghi chú...' : '—'}
+                      style={{ ...inp(), fontSize:'0.81rem', color:'#475569',
+                        borderColor: !isChecked ? '#f1f5f9' : '#e2e8f0',
+                        background: !isChecked ? '#f8fafc' : '#fff',
+                        cursor: isChecked ? 'text' : 'not-allowed' }}/>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -203,7 +317,13 @@ export default function CreateInventoryRequest() {
   const [loadingAssets, setLoadingAssets] = useState(false);
   const [inventory, setInventory] = useState([]);
   const [loadingInv, setLoadingInv] = useState(false);
+
+  // INBOUND items (combobox rows)
   const [items, setItems] = useState([newRow()]);
+
+  // OUTBOUND selected items: { [assetId]: { checked, qty, note } }
+  const [selectedItems, setSelectedItems] = useState({});
+
   const [docFiles, setDocFiles] = useState([]);
   const [uploadedUrls, setUploadedUrls] = useState([]);
   const [notes, setNotes] = useState('');
@@ -211,11 +331,10 @@ export default function CreateInventoryRequest() {
   const [submitting, setSubmitting] = useState(false);
   const [uploadingDocs, setUploadingDocs] = useState(false);
   const [error, setError] = useState('');
-  const [draftSaved, setDraftSaved] = useState(false);   // toast "Đã lưu"
-  const [hasDraft, setHasDraft] = useState(false);       // banner restore
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
   const DRAFT_KEY = 'inv_req_draft';
 
-  // Auto-load draft khi mở trang
   useEffect(()=>{
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
@@ -225,10 +344,7 @@ export default function CreateInventoryRequest() {
 
   const saveDraft = () => {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({
-        type, warehouseId, step, items, notes, scheduledDate,
-        savedAt: new Date().toISOString()
-      }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ type, warehouseId, step, items, notes, scheduledDate, savedAt: new Date().toISOString() }));
       setDraftSaved(true);
       setTimeout(()=>setDraftSaved(false), 2500);
     } catch{ alert('Không thể lưu nháp.'); }
@@ -265,15 +381,13 @@ export default function CreateInventoryRequest() {
           return acc;
         },[]);
         setWarehouses(whs);
-        // Pre-select nếu chỉ có 1 kho, nhưng KHÔNG auto-skip Step 1
-        // vì user vẫn cần chọn loại (Nhập/Xuất)
         if(whs.length===1){ setWarehouseId(whs[0].warehouseId); }
       })
       .catch(()=>setWarehouses([]))
       .finally(()=>setLoadingWH(false));
   },[]);
 
-  // Load assets for inbound
+  // Load assets for INBOUND
   useEffect(()=>{
     if(type!=='INBOUND') return;
     setLoadingAssets(true);
@@ -283,7 +397,7 @@ export default function CreateInventoryRequest() {
       .finally(()=>setLoadingAssets(false));
   },[type]);
 
-  // Load inventory for outbound
+  // Load inventory for OUTBOUND
   useEffect(()=>{
     if(type!=='OUTBOUND'||!warehouseId) return;
     setLoadingInv(true);
@@ -293,13 +407,34 @@ export default function CreateInventoryRequest() {
       .finally(()=>setLoadingInv(false));
   },[type,warehouseId]);
 
+  // INBOUND helpers
   const updateItem = (id,patch) => setItems(prev=>prev.map(i=>i.id===id?{...i,...patch}:i));
   const addRow = () => setItems(prev=>[...prev,newRow()]);
   const removeRow = id => setItems(prev=>prev.length>1?prev.filter(i=>i.id!==id):prev);
 
-  const handleProceed = ()=>{ if(!warehouseId){setError('Vui lòng chọn kho.');return;} setError(''); setItems([newRow()]); setStep(2); };
+  // OUTBOUND helpers
+  const handleToggle = (asset) => {
+    setSelectedItems(prev => {
+      const cur = prev[asset.assetId] || { checked:false, qty:1, note:'' };
+      return { ...prev, [asset.assetId]: { ...cur, checked:!cur.checked } };
+    });
+  };
+  const handleQtyChange = (assetId, val) => {
+    setSelectedItems(prev => ({ ...prev, [assetId]: { ...(prev[assetId]||{ checked:true, note:'' }), qty: val } }));
+  };
+  const handleNoteChange = (assetId, val) => {
+    setSelectedItems(prev => ({ ...prev, [assetId]: { ...(prev[assetId]||{ checked:true, qty:1 }), note: val } }));
+  };
 
-  const uploadDocuments = async ()=>{
+  const handleProceed = () => {
+    if(!warehouseId){ setError('Vui lòng chọn kho.'); return; }
+    setError('');
+    setItems([newRow()]);
+    setSelectedItems({});
+    setStep(2);
+  };
+
+  const uploadDocuments = async () => {
     if(!docFiles.length) return [];
     setUploadingDocs(true);
     try {
@@ -310,14 +445,43 @@ export default function CreateInventoryRequest() {
     finally{ setUploadingDocs(false); }
   };
 
-  const handleSubmit = async ()=>{
+  const handleSubmit = async () => {
     setError('');
+
+    if(type === 'OUTBOUND') {
+      // Validate outbound selectedItems
+      const chosen = inventory.filter(a => selectedItems[a.assetId]?.checked);
+      if(!chosen.length){ setError('Vui lòng chọn ít nhất 1 mặt hàng.'); return; }
+      for(const asset of chosen){
+        const s = selectedItems[asset.assetId];
+        if(!s.qty || Number(s.qty) < 1){ setError(`"${asset.assetName}": Số lượng phải >= 1.`); return; }
+        if(Number(s.qty) > asset.quantity){ setError(`"${asset.assetName}": Số lượng vượt tồn kho (${asset.quantity}).`); return; }
+      }
+      setSubmitting(true);
+      try {
+        let docUrls=uploadedUrls;
+        if(docFiles.length&&!uploadedUrls.length) docUrls=await uploadDocuments();
+        const processedItems = chosen.map(asset => ({
+          assetId: asset.assetId,
+          itemName: asset.assetName,
+          quantity: Number(selectedItems[asset.assetId].qty),
+          unit: asset.unit||'cái',
+          description: selectedItems[asset.assetId].note||null,
+        }));
+        await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'OUTBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processedItems });
+        clearDraft();
+        navigate('/renter-inventory-history?tab=outbound',{state:{created:true,type:'OUTBOUND'}});
+      } catch(err){ setError(err?.message||err?.response?.data?.message||'Tạo yêu cầu thất bại.'); }
+      finally{ setSubmitting(false); }
+      return;
+    }
+
+    // INBOUND validation
     const valid=items.filter(i=>i.itemName.trim()||i.assetId);
     if(!valid.length){setError('Vui lòng thêm ít nhất 1 mặt hàng.');return;}
     for(const it of valid){
       if(!it.itemName.trim()){setError('Vui lòng nhập tên hàng hóa.');return;}
       if(!it.qty||Number(it.qty)<1){setError('Số lượng phải >= 1.');return;}
-      if(type==='OUTBOUND'&&it.availableQty!==null&&Number(it.qty)>it.availableQty){setError(`"${it.itemName}": Số lượng xuất vượt tồn kho (${it.availableQty}).`);return;}
     }
     setSubmitting(true);
     try {
@@ -332,19 +496,24 @@ export default function CreateInventoryRequest() {
         }
         processed.push({ assetId, itemName:it.itemName.trim(), quantity:Number(it.qty), unit:it.unit, description:it.note||null });
       }
-      await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type, notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed });
+      await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'INBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed });
       clearDraft();
-      navigate(`/renter-inventory-history?tab=${type==='INBOUND'?'inbound':'outbound'}`,{state:{created:true,type}});
+      navigate('/renter-inventory-history?tab=inbound',{state:{created:true,type:'INBOUND'}});
     } catch(err){ setError(err?.message||err?.response?.data?.message||'Tạo yêu cầu thất bại.'); }
     finally{ setSubmitting(false); }
   };
 
   const card = { background:'#fff', borderRadius:16, border:'1px solid #e2e8f0', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' };
 
+  // Count for action bar
+  const outboundCheckedCount = Object.values(selectedItems).filter(v=>v.checked).length;
+  const inboundFilledCount = items.filter(i=>i.itemName.trim()).length;
+  const itemCount = type==='OUTBOUND' ? outboundCheckedCount : inboundFilledCount;
+
   return (
     <div style={{ fontFamily:'Inter, sans-serif', maxWidth:920, margin:'0 auto', paddingBottom:60 }}>
 
-      {/* ── Banner phục hồi nháp ── */}
+      {/* Banner phục hồi nháp */}
       {hasDraft && (
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderRadius:12, background:'#fffbeb', border:'1.5px solid #fde68a', marginBottom:18 }}>
           <span style={{ fontSize:'1.1rem' }}>📝</span>
@@ -353,6 +522,7 @@ export default function CreateInventoryRequest() {
           <button onClick={clearDraft} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #fde68a', background:'#fff', color:'#92400e', fontWeight:600, fontSize:'0.82rem', cursor:'pointer' }}>Bỏ qua</button>
         </div>
       )}
+
       {/* Header */}
       <div style={{ marginBottom:28 }}>
         <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>
@@ -361,7 +531,6 @@ export default function CreateInventoryRequest() {
         <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>
           {step===1 ? 'Chọn loại yêu cầu và kho hàng để tiếp tục.' : 'Thêm hàng hóa, chứng từ và ghi chú cho yêu cầu.'}
         </p>
-        {/* Step indicator */}
         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:16 }}>
           {[1,2].map(s=>(
             <React.Fragment key={s}>
@@ -383,7 +552,6 @@ export default function CreateInventoryRequest() {
       {/* ── STEP 1 ── */}
       {step===1&&(
         <div style={{ ...card, padding:32 }}>
-          {/* Type toggle */}
           <div style={{ marginBottom:28 }}>
             <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>Loại yêu cầu</p>
             <div style={{ display:'flex', gap:12 }}>
@@ -398,7 +566,6 @@ export default function CreateInventoryRequest() {
             </div>
           </div>
 
-          {/* Warehouse radio cards */}
           <div>
             <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>Kho hàng</p>
             {loadingWH ? <div style={{ padding:20, textAlign:'center', color:'#94a3b8' }}>Đang tải...</div>
@@ -412,7 +579,7 @@ export default function CreateInventoryRequest() {
                     {wh.contractNumber&&<div style={{ fontSize:'0.77rem', color:'#64748b', marginTop:2 }}>HĐ: {wh.contractNumber}</div>}
                   </div>
                   {wh.status==='ACTIVE' ? (
-                    <span className="badge-active" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:'#f0fdf4', color:'#16a34a', border:'1px solid #bbf7d0', boxShadow:'0 0 0 0 rgba(34,197,94,0.4)' }}>
+                    <span className="badge-active" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:'#f0fdf4', color:'#16a34a', border:'1px solid #bbf7d0' }}>
                       <span className="pulse-dot" style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', flexShrink:0 }}/>
                       Đang hiệu lực
                     </span>
@@ -439,61 +606,65 @@ export default function CreateInventoryRequest() {
       {/* ── STEP 2 ── */}
       {step===2&&(
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          {/* Type info bar - chỉ hiện loại đã chọn, không cho đổi trong step 2 */}
+          {/* Type info bar */}
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 18px', borderRadius:12, background: type==='INBOUND'?'#e0f7fa':'#fff8e1', border:`1.5px solid ${accent}30` }}>
             <span style={{ fontSize:'1.1rem' }}>{type==='INBOUND'?'📥':'📤'}</span>
-            <span style={{ fontWeight:700, fontSize:'0.9rem', color: accent }}>
-              {type==='INBOUND'?'Nhập kho':'Xuất kho'}
-            </span>
+            <span style={{ fontWeight:700, fontSize:'0.9rem', color: accent }}>{type==='INBOUND'?'Nhập kho':'Xuất kho'}</span>
             <span style={{ fontSize:'0.82rem', color:'#94a3b8', marginLeft:4 }}>—</span>
             <span style={{ fontSize:'0.82rem', color:'#64748b' }}>Kho: <strong style={{color:'#1e293b'}}>{selectedWH?.name}</strong></span>
-            <span style={{ marginLeft:'auto', fontSize:'0.78rem', color:'#94a3b8', fontStyle:'italic' }}>
-              Muốn đổi loại? ← Quay lại bước 1
-            </span>
+            <span style={{ marginLeft:'auto', fontSize:'0.78rem', color:'#94a3b8', fontStyle:'italic' }}>Muốn đổi loại? ← Quay lại bước 1</span>
           </div>
 
-          {/* Items table card */}
+          {/* Items card */}
           <div style={card}>
-            <div style={{ padding:'16px 22px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontWeight:800, fontSize:'0.97rem', color:'#0f172a' }}>📋 Danh sách hàng hóa</span>
-            </div>
-            <div>
-              <table style={{ width:'100%', borderCollapse:'collapse' }}>
-                <thead>
-                  <tr style={{ background:'#f8fafc' }}>
-                    {['#', type==='INBOUND'?'Hàng hóa / Tài sản':'Hàng hóa', 'Đơn vị', 'Số lượng', 'Ghi chú', ...(type==='OUTBOUND'?['Tồn kho']:[]), ''].map((h,i)=>(
-                      <th key={i} style={{ padding:'10px 14px', fontSize:'0.7rem', fontWeight:700, color:'#94a3b8', textAlign:'left', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item,idx)=>(
-                    <ItemRow key={item.id} item={item} idx={idx} type={type}
-                      list={type==='INBOUND'?assets:inventory}
-                      loading={type==='INBOUND'?loadingAssets:loadingInv}
-                      accent={accent}
-                      onUpdate={patch=>updateItem(item.id,patch)}
-                      onRemove={()=>removeRow(item.id)}
-                      onEnter={addRow}
-                      canRemove={items.length>1}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ padding:'12px 22px', borderTop:'1px solid #f1f5f9' }}>
-              <button onClick={addRow}
-                style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:`1.5px dashed ${accent}`, background:'transparent', color:accent, fontWeight:600, fontSize:'0.83rem', cursor:'pointer', transition:'all 0.15s' }}
-                onMouseEnter={e=>e.currentTarget.style.background=`${accent}10`}
-                onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                + Thêm dòng hàng hóa
-              </button>
-            </div>
+            {type==='OUTBOUND'
+              ? <OutboundInventoryTable
+                  inventory={inventory}
+                  loading={loadingInv}
+                  selectedItems={selectedItems}
+                  setSelectedItems={setSelectedItems}
+                  accent={accent}
+                />
+              : <>
+                  <div style={{ padding:'16px 22px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:10 }}>
+                    <span style={{ fontWeight:800, fontSize:'0.97rem', color:'#0f172a' }}>📋 Danh sách hàng hóa</span>
+                  </div>
+                  <div>
+                    <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                      <thead>
+                        <tr style={{ background:'#f8fafc' }}>
+                          {['#', 'Hàng hóa / Tài sản', 'Đơn vị', 'Số lượng', 'Ghi chú', ''].map((h,i)=>(
+                            <th key={i} style={{ padding:'10px 14px', fontSize:'0.7rem', fontWeight:700, color:'#94a3b8', textAlign:'left', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((item,idx)=>(
+                          <ItemRow key={item.id} item={item} idx={idx} type={type}
+                            list={assets} loading={loadingAssets} accent={accent}
+                            onUpdate={patch=>updateItem(item.id,patch)}
+                            onRemove={()=>removeRow(item.id)}
+                            onEnter={addRow}
+                            canRemove={items.length>1}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ padding:'12px 22px', borderTop:'1px solid #f1f5f9' }}>
+                    <button onClick={addRow}
+                      style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:8, border:`1.5px dashed ${accent}`, background:'transparent', color:accent, fontWeight:600, fontSize:'0.83rem', cursor:'pointer', transition:'all 0.15s' }}
+                      onMouseEnter={e=>e.currentTarget.style.background=`${accent}10`}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      + Thêm dòng hàng hóa
+                    </button>
+                  </div>
+                </>
+            }
           </div>
 
           {/* Docs + Notes card */}
           <div style={{ ...card, padding:24 }}>
-            {/* Ngày dự kiến - đặt trước doc/note, full width */}
             <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:22, paddingBottom:18, borderBottom:'1px solid #f1f5f9' }}>
               <div style={{ flex:'0 0 auto' }}>
                 <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 8px' }}>
@@ -501,9 +672,7 @@ export default function CreateInventoryRequest() {
                 </p>
                 <input type="date" value={scheduledDate} min={new Date().toISOString().split('T')[0]}
                   onChange={e=>setScheduledDate(e.target.value)}
-                  style={{ ...inp(), width:200, cursor:'pointer', colorScheme:'light',
-                    borderColor: scheduledDate ? accent : '#e2e8f0',
-                    background: scheduledDate ? `${accent}08` : '#fff' }}
+                  style={{ ...inp(), width:200, cursor:'pointer', colorScheme:'light', borderColor: scheduledDate ? accent : '#e2e8f0', background: scheduledDate ? `${accent}08` : '#fff' }}
                   onFocus={e=>e.target.style.borderColor=accent}
                   onBlur={e=>e.target.style.borderColor=scheduledDate?accent:'#e2e8f0'}/>
               </div>
@@ -515,9 +684,7 @@ export default function CreateInventoryRequest() {
                   </span>
                 </div>
               )}
-              {!scheduledDate && (
-                <span style={{ fontSize:'0.8rem', color:'#94a3b8', fontStyle:'italic' }}>Tùy chọn — để trống nếu chưa xác định</span>
-              )}
+              {!scheduledDate && <span style={{ fontSize:'0.8rem', color:'#94a3b8', fontStyle:'italic' }}>Tùy chọn — để trống nếu chưa xác định</span>}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:28 }}>
               <DocUpload docFiles={docFiles} setDocFiles={setDocFiles} uploadedUrls={uploadedUrls} accent={accent} />
@@ -541,16 +708,14 @@ export default function CreateInventoryRequest() {
               ← Quay lại
             </button>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              {/* Toast lưu nháp */}
               {draftSaved && (
                 <span style={{ fontSize:'0.8rem', color:'#16a34a', fontWeight:600, background:'#dcfce7', border:'1px solid #bbf7d0', borderRadius:8, padding:'5px 12px', display:'flex', alignItems:'center', gap:5 }}>
                   ✔ Đã lưu nháp
                 </span>
               )}
               <span style={{ fontSize:'0.82rem', color:'#94a3b8' }}>
-                {items.filter(i=>i.itemName.trim()).length} mặt hàng
+                {itemCount} mặt hàng
               </span>
-              {/* Nút Lưu Nháp */}
               <button onClick={saveDraft} disabled={submitting}
                 style={{ padding:'11px 18px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontWeight:600, fontSize:'0.88rem', cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}
                 onMouseEnter={e=>{ e.currentTarget.style.background='#f1f5f9'; e.currentTarget.style.borderColor='#cbd5e1'; }}
@@ -571,8 +736,6 @@ export default function CreateInventoryRequest() {
         @keyframes spin{to{transform:rotate(360deg);}}
         .unit-drop::-webkit-scrollbar{display:none;}
         .unit-drop{scrollbar-width:none;-ms-overflow-style:none;}
-
-        /* Pulsing dot - badge Đang hiệu lực */
         @keyframes pulse-ring {
           0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
           70%  { box-shadow: 0 0 0 7px rgba(34,197,94,0); }
@@ -584,8 +747,6 @@ export default function CreateInventoryRequest() {
         }
         .pulse-dot { animation: dot-beat 1.6s ease-in-out infinite; }
         .badge-active { animation: pulse-ring 2.2s ease-in-out infinite; }
-
-        /* Slide-in cho warehouse cards */
         @keyframes slide-in {
           from { opacity:0; transform:translateY(8px); }
           to   { opacity:1; transform:translateY(0); }

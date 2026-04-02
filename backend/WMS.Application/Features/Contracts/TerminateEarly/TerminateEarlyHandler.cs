@@ -8,15 +8,18 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
     public class TerminateEarlyHandler : IRequestHandler<TerminateEarlyCommand, TerminateEarlyResponse>
     {
         private readonly IRentalContractRepository _contractRepository;
+        private readonly IWarehouseRepository _warehouseRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly INotificationSender _notificationSender;
 
         public TerminateEarlyHandler(
             IRentalContractRepository contractRepository,
+            IWarehouseRepository warehouseRepository,
             INotificationRepository notificationRepository,
             INotificationSender notificationSender)
         {
             _contractRepository = contractRepository;
+            _warehouseRepository = warehouseRepository;
             _notificationRepository = notificationRepository;
             _notificationSender = notificationSender;
         }
@@ -37,7 +40,35 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
                     };
                 }
 
-                // Chỉ có thể terminate early khi contract đang ACTIVE
+                // Get warehouse to determine owner
+                var warehouse = await _warehouseRepository.GetByIdAsync(contract.WarehouseId, cancellationToken);
+                if (warehouse == null)
+                {
+                    return new TerminateEarlyResponse
+                    {
+                        Success = false,
+                        Message = "Warehouse not found",
+                        ContractId = request.ContractId
+                    };
+                }
+
+                // Determine if user is renter or owner
+                var isRenter = contract.RenterId == request.UserId;
+                var isOwner = warehouse.OwnerId == request.UserId;
+                
+                if (!isRenter && !isOwner)
+                {
+                    return new TerminateEarlyResponse
+                    {
+                        Success = false,
+                        Message = "You are not authorized to terminate this contract",
+                        ContractId = request.ContractId
+                    };
+                }
+
+                var requestedBy = isRenter ? "RENTER" : "OWNER";
+
+                // Chỉ có thể request termination khi contract đang ACTIVE
                 if (contract.Status != RentalContractStatus.Active)
                 {
                     return new TerminateEarlyResponse
@@ -48,31 +79,38 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
                     };
                 }
 
-                // Terminate early với domain method
-                contract.TerminateEarly(request.TerminationReason, request.EarlyTerminationFee);
+                // Request termination (2-party approval flow)
+                contract.RequestTerminationEarly(requestedBy, request.TerminationReason, request.EarlyTerminationFee);
 
                 await _contractRepository.UpdateAsync(contract);
 
-                // Gửi thông báo
+                // Determine the other party to notify
+                int notifyUserId = isRenter ? warehouse.OwnerId : contract.RenterId;
+                var requesterType = isRenter ? "Người thuê" : "Chủ kho";
+
+                // Gửi thông báo cho bên còn lại
                 var notification = new WMS.Domain.Entities.Notification
                 {
-                    UserId = contract.RenterId,
-                    Title = "Contract Terminated Early",
-                    Message = $"Your rental contract {contract.ContractNumber} has been terminated early. Fee: {request.EarlyTerminationFee:C}. Reason: {request.TerminationReason}",
-                    Type = "contract_terminated",
+                    UserId = notifyUserId,
+                    Title = "Yêu cầu kết thúc hợp đồng sớm",
+                    Message = $"{requesterType} yêu cầu kết thúc sớm hợp đồng {contract.ContractNumber}. Lý do: {request.TerminationReason}. Phí kết thúc sớm: {request.EarlyTerminationFee:N0}đ. Vui lòng xác nhận hoặc từ chối.",
+                    Type = "termination_request",
+                    ReferenceType = "Contract",
+                    ReferenceId = contract.ContractId,
                     CreatedAt = DateTime.UtcNow
                 };
 
                 await _notificationRepository.AddAsync(notification);
-                await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+                await _notificationSender.SendToUserAsync(notifyUserId, notification);
 
                 return new TerminateEarlyResponse
                 {
                     Success = true,
-                    Message = "Contract terminated early successfully",
+                    Message = "Yêu cầu kết thúc sớm đã được gửi. Đang chờ bên còn lại xác nhận.",
                     ContractId = request.ContractId,
                     Status = contract.Status,
-                    EarlyTerminationFee = request.EarlyTerminationFee
+                    EarlyTerminationFee = request.EarlyTerminationFee,
+                    PendingApproval = true
                 };
             }
             catch (Exception ex)

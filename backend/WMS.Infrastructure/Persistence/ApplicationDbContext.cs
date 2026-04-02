@@ -19,6 +19,9 @@ public class ApplicationDbContext : DbContext
     public virtual DbSet<Equipment> Equipments { get; set; }
     public virtual DbSet<EquipmentHistory> EquipmentHistories { get; set; }
     public virtual DbSet<EquipmentMaintenanceRecord> EquipmentMaintenanceRecords { get; set; }
+    public virtual DbSet<EquipmentIncident> EquipmentIncidents { get; set; }
+    public virtual DbSet<EquipmentIncidentComment> EquipmentIncidentComments { get; set; }
+    public virtual DbSet<EquipmentIncidentAttachment> EquipmentIncidentAttachments { get; set; }
 
     public virtual DbSet<InventoryItem> InventoryItems { get; set; }
 
@@ -177,6 +180,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
             entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
             entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
+            entity.Property(e => e.TerminationRequestedBy).HasMaxLength(20).HasColumnName("termination_requested_by");
+            entity.Property(e => e.TerminationRequestedAt).HasColumnName("termination_requested_at");
+            entity.Property(e => e.RenterApprovedTermination).HasDefaultValue(false).HasColumnName("renter_approved_termination");
+            entity.Property(e => e.OwnerApprovedTermination).HasDefaultValue(false).HasColumnName("owner_approved_termination");
+            entity.Property(e => e.EarlyTerminationFee).HasColumnType("decimal(15, 2)").HasColumnName("early_termination_fee");
             entity.Property(e => e.TotalValue).HasColumnType("decimal(15, 2)").HasColumnName("total_value");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
@@ -250,6 +258,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CancellationReason).HasColumnName("cancellation_reason");
             entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
             entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
+            entity.Property(e => e.OwnerSignatureExpiry).HasColumnName("owner_signature_expiry");
+            entity.Property(e => e.RenterSignatureExpiry).HasColumnName("RenterSignatureExpiry");
+            entity.Property(e => e.PaymentExpiry).HasColumnName("PaymentExpiry");
             entity.HasOne(d => d.RentalRequest).WithMany().HasForeignKey(d => d.RentalRequestId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Renter).WithMany().HasForeignKey(d => d.RenterId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull);
@@ -320,8 +331,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RentalAreaId).HasColumnName("rental_area_id");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Equipment).HasForeignKey(d => d.WarehouseId).HasConstraintName("FK_equipments_warehouse");
             entity.HasOne(d => d.RentalArea).WithMany(p => p.Equipments).HasForeignKey(d => d.RentalAreaId).HasConstraintName("FK_equipments_rental_area");
-
-            // Note: Many-to-many relationship with Contract is configured in Contract entity
+            // Ignore unmapped navigation collection to prevent EF Core from generating phantom FK columns
+            entity.Ignore(e => e.RentalContracts);
         });
 
         modelBuilder.Entity<EquipmentHistory>(entity =>
@@ -341,6 +352,36 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
             entity.Property(e => e.TotalCost).HasColumnType("decimal(15, 2)");
             entity.HasOne(d => d.Equipment).WithMany(p => p.MaintenanceRecords).HasForeignKey(d => d.EquipmentId);
+        });
+
+        modelBuilder.Entity<EquipmentIncident>(entity =>
+        {
+            entity.ToTable("equipment_incidents");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.Property(e => e.Title).HasMaxLength(255);
+            entity.Property(e => e.Status).HasMaxLength(20);
+            entity.Property(e => e.Severity).HasMaxLength(20);
+            entity.HasOne(d => d.Equipment).WithMany().HasForeignKey(d => d.EquipmentId);
+            entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId);
+            entity.HasOne(d => d.ReportedBy).WithMany().HasForeignKey(d => d.ReportedById);
+        });
+
+        modelBuilder.Entity<EquipmentIncidentComment>(entity =>
+        {
+            entity.ToTable("equipment_incident_comments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.HasOne(d => d.Incident).WithMany(p => p.Comments).HasForeignKey(d => d.IncidentId);
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId);
+        });
+
+        modelBuilder.Entity<EquipmentIncidentAttachment>(entity =>
+        {
+            entity.ToTable("equipment_incident_attachments");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())");
+            entity.HasOne(d => d.Incident).WithMany(p => p.Attachments).HasForeignKey(d => d.IncidentId);
         });
 
         modelBuilder.Entity<InventoryItem>(entity =>
@@ -467,14 +508,20 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PaymentType).HasMaxLength(20).HasColumnName("payment_type");
             entity.Property(e => e.Status).HasMaxLength(20).HasColumnName("status");
             entity.Property(e => e.PaymentCode).HasMaxLength(50).HasColumnName("payment_code");
+            entity.Property(e => e.PaymentMethod).HasMaxLength(20).HasDefaultValue("BANK_TRANSFER").HasColumnName("payment_method");
             entity.Property(e => e.SepayTransactionId).HasColumnName("sepay_transaction_id");
             entity.Property(e => e.SepayReferenceCode).HasMaxLength(100).HasColumnName("sepay_reference_code");
             entity.Property(e => e.PaidAt).HasColumnName("paid_at");
             entity.Property(e => e.ExpiredAt).HasColumnName("expired_at");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
-            // TODO: Fix relationship after RentalContract entity is properly configured
-            // entity.HasOne(d => d.Contract).WithMany().HasForeignKey(d => d.ContractId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_rental_payments_contract");
+            
+            // Relationship với Contract (table 'contracts', not 'rental_contracts')
+            entity.HasOne(d => d.Contract)
+                .WithMany()
+                .HasForeignKey(d => d.ContractId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_rental_payments_contracts");
         });
 
         modelBuilder.Entity<Rating>(entity =>

@@ -71,7 +71,16 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
             OwnerSignedFileUrl = contract.OwnerSignedFileUrl,
             OwnerSignedAt = contract.OwnerSignedAt,
             OwnerSignatureBase64 = contract.OwnerSignatureBase64,
-            CreatedAt = contract.CreatedAt
+            CreatedAt = contract.CreatedAt,
+            IsCurrentUserRenter = isRenter,
+            IsCurrentUserOwner = isOwner,
+            // 2-party approval fields
+            TerminationRequestedBy = contract.TerminationRequestedBy,
+            TerminationRequestedAt = contract.TerminationRequestedAt,
+            RenterApprovedTermination = contract.RenterApprovedTermination,
+            OwnerApprovedTermination = contract.OwnerApprovedTermination,
+            TerminationReason = contract.TerminationReason,
+            EarlyTerminationFee = contract.EarlyTerminationFee
         };
     }
 }

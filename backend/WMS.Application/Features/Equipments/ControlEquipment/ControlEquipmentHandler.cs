@@ -11,8 +11,9 @@ public class ControlEquipmentHandler : BaseEquipmentHandler, IRequestHandler<Con
     public ControlEquipmentHandler(
         IWarehouseRepository warehouseRepository,
         IStaffMembershipRepository membershipRepository,
+        IRentalContractRepository contractRepository,
         IEquipmentRepository equipmentRepository) 
-        : base(warehouseRepository, membershipRepository)
+        : base(warehouseRepository, membershipRepository, contractRepository)
     {
         _equipmentRepository = equipmentRepository;
     }

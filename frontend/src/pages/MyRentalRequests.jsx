@@ -8,6 +8,12 @@ const statusConfig = {
   APPROVED:  { bg: "#dcfce7", color: "#16a34a", label: "Đã duyệt" },
   REJECTED:  { bg: "#fee2e2", color: "#dc2626", label: "Từ chối" },
   CANCELLED: { bg: "#f1f5f9", color: "#64748b", label: "Đã hủy" },
+  // Contract statuses
+  ACTIVE: { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
+  CLOSED: { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
+  TERMINATED: { bg: "#f1f5f9", color: "#64748b", label: "Đã kết thúc" },
+  PENDING_CLOSE: { bg: "#fef3c7", color: "#d97706", label: "Chờ đóng" },
+  PENDING_TERMINATION: { bg: "#fef3c7", color: "#d97706", label: "Chờ kết thúc" },
 };
 
 const formatDate = (dateStr) => {
@@ -90,7 +96,9 @@ const MyRentalRequests = () => {
       {!loading && requests.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           {requests.map((req) => {
-            const s = statusConfig[req.status] || { bg: "#f1f5f9", color: "#64748b", label: req.status };
+            // Show contract status if contract exists, otherwise show request status
+            const displayStatus = req.contractStatus || req.status;
+            const s = statusConfig[displayStatus] || { bg: "#f1f5f9", color: "#64748b", label: displayStatus };
             return (
               <div
                 key={req.requestId}
@@ -143,7 +151,14 @@ const MyRentalRequests = () => {
                       ✅ Chủ kho đã gửi đề xuất! Hợp đồng đã được tạo — chờ bạn ký.
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); navigate("/my-contracts"); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        if (req.contractId) {
+                          navigate(`/contracts/${req.contractId}`);
+                        } else {
+                          alert("Không tìm thấy hợp đồng. Vui lòng liên hệ hỗ trợ.");
+                        }
+                      }}
                       style={{ padding: "0.45rem 1rem", borderRadius: "8px", border: "none",
                         backgroundColor: "#16a34a", color: "#fff",
                         fontWeight: 600, cursor: "pointer", fontSize: "0.85rem", whiteSpace: "nowrap" }}>

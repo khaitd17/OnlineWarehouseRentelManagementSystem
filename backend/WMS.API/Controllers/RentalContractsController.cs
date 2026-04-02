@@ -94,7 +94,8 @@ public class RentalContractsController : ControllerBase
         try
         {
             var ownerId = GetUserId();
-            var contracts = await _db.RentalContracts
+            // Use _db.Contracts which maps to "contracts" table where actual data is stored
+            var contracts = await _db.Contracts
                 .Include(c => c.Warehouse)
                 .Include(c => c.Renter)
                 .Where(c => c.Warehouse != null && c.Warehouse.OwnerId == ownerId)

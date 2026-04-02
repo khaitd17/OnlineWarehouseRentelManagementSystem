@@ -2,8 +2,8 @@ import React, { useState, useRef } from "react";
 import rentalService from "../services/rentalService";
 import SignatureCanvas from "./SignatureCanvas";
 
-const ContractSigningModal = ({ contract, onClose, onSignSuccess }) => {
-  const [step, setStep] = useState(1); // 1: Send OTP, 2: Verify OTP, 3: Sign
+const ContractSigningModal = ({ contract, onClose, onSignSuccess, isOwner = false }) => {
+  const [step, setStep] = useState(isOwner ? 3 : 1); // Owner doesn't need OTP, go straight to sign
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [otpCode, setOtpCode] = useState("");
@@ -53,7 +53,14 @@ const ContractSigningModal = ({ contract, onClose, onSignSuccess }) => {
       setLoading(true);
       setError("");
       const signatureBase64 = signatureCanvasRef.current.toBase64();
-      const result = await rentalService.signContract(contract.contractId, signatureBase64);
+      
+      // Use different API endpoint based on role
+      if (isOwner) {
+        await rentalService.ownerSignContract(contract.contractId, signatureBase64);
+      } else {
+        await rentalService.signContract(contract.contractId, signatureBase64);
+      }
+      
       alert("Hợp đồng đã được ký thành công!");
       onSignSuccess?.();
       onClose();
@@ -97,9 +104,11 @@ const ContractSigningModal = ({ contract, onClose, onSignSuccess }) => {
           <h2 style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>
             Ký hợp đồng {contract.contractNumber}
           </h2>
-          <p style={{ color: "#64748b", fontSize: "0.9rem", marginTop: "0.5rem", margin: 0 }}>
-            Bước {step} / 3
-          </p>
+          {!isOwner && (
+            <p style={{ color: "#64748b", fontSize: "0.9rem", marginTop: "0.5rem", margin: 0 }}>
+              Bước {step} / 3
+            </p>
+          )}
         </div>
 
         {error && (
@@ -116,7 +125,7 @@ const ContractSigningModal = ({ contract, onClose, onSignSuccess }) => {
           </div>
         )}
 
-        {step === 1 && (
+        {!isOwner && step === 1 && (
           <div>
             <p style={{ color: "#64748b", marginBottom: "1.5rem" }}>
               Bước đầu tiên: Gửi mã OTP xác thực qua email {contract.renterEmail}
@@ -141,7 +150,7 @@ const ContractSigningModal = ({ contract, onClose, onSignSuccess }) => {
           </div>
         )}
 
-        {step === 2 && (
+        {!isOwner && step === 2 && (
           <div>
             <p style={{ color: "#64748b", marginBottom: "1rem" }}>
               Nhập mã OTP 6 chữ số mà bạn vừa nhận được qua email
@@ -184,7 +193,7 @@ const ContractSigningModal = ({ contract, onClose, onSignSuccess }) => {
           </div>
         )}
 
-        {step === 3 && (
+        {(isOwner || step === 3) && (
           <div>
             <p style={{ color: "#64748b", marginBottom: "1rem" }}>
               Vẽ chữ ký của bạn trên khung bên dưới
