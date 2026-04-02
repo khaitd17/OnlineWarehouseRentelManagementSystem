@@ -56,7 +56,7 @@ const MENU_BY_ROLE = {
   ],
   STAFF: [
     { icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" },
-    { icon: "swap_horiz", label: "Yêu cầu nhập/xuất kho", path: "/confirm-movement", section: "KHO" },
+    { icon: "swap_horiz", label: "Yêu cầu nhập/xuất kho", path: "/confirm-movement", section: "KHO", badgeKey: "staffTaskCount" },
     { icon: "inventory", label: "Quản lí tồn kho", path: "/staff-inventory" },
     { icon: "fact_check", label: "Kiểm kê kho", path: "/staff-audit-sessions" },
     { icon: "calendar_month", label: "Lịch của tôi", path: "/my-schedule", section: "CÁ NHÂN" },
@@ -123,6 +123,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [unratedCount,         setUnratedCount]        = useState(0);
   const [unrepliedCount,       setUnrepliedCount]      = useState(0);
   const [pendingRequestCount,  setPendingRequestCount] = useState(0);
+  const [staffTaskCount,       setStaffTaskCount]      = useState(0);
   const [favoritesCount,       setFavoritesCount]      = useState(() => favoritesService.count());
 
   const loadUserInfo = () => {
@@ -181,11 +182,22 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   };
 
+  const fetchStaffTaskCount = async () => {
+    try {
+      const res = await axiosClient.get('/InventoryRequests/assigned-to-me');
+      const list = Array.isArray(res.data) ? res.data : [];
+      setStaffTaskCount(list.length);
+    } catch {
+      setStaffTaskCount(0);
+    }
+  };
+
   useEffect(() => {
     const role = loadUserInfo();
     if (role === "RENTER") fetchUnratedCount();
     if (role === "OWNER" || role === "OPERATOR") fetchUnrepliedCount();
     if (role === "MANAGER") fetchPendingRequestCount();
+    if (role === "STAFF") fetchStaffTaskCount();
   }, []);
 
   useEffect(() => {
@@ -194,6 +206,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       if (role === "RENTER") { fetchUnratedCount(); } else { setUnratedCount(0); }
       if (role === "OWNER" || role === "OPERATOR") { fetchUnrepliedCount(); } else { setUnrepliedCount(0); }
       if (role === "MANAGER") { fetchPendingRequestCount(); } else { setPendingRequestCount(0); }
+      if (role === "STAFF") { fetchStaffTaskCount(); } else { setStaffTaskCount(0); }
     };
     window.addEventListener("authChange", handler);
     return () => window.removeEventListener("authChange", handler);
@@ -223,7 +236,15 @@ const Sidebar = ({ isOpen, onClose }) => {
     if (effectiveRole === "RENTER") fetchUnratedCount();
     if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR") fetchUnrepliedCount();
     if (effectiveRole === "MANAGER") fetchPendingRequestCount();
+    if (effectiveRole === "STAFF") fetchStaffTaskCount();
   }, [location.pathname, effectiveRole]);
+
+  // Re-fetch staff task count khi staff xác nhận hoàn thành
+  useEffect(() => {
+    const handler = () => { if (effectiveRole === "STAFF") fetchStaffTaskCount(); };
+    window.addEventListener("inventoryRequestUpdated", handler);
+    return () => window.removeEventListener("inventoryRequestUpdated", handler);
+  }, [effectiveRole]);
 
   // Auto-close sidebar on route change (mobile)
   useEffect(() => {
@@ -257,7 +278,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     return () => window.removeEventListener('favoritesChanged', handler);
   }, []);
 
-  const badgeValues = { unratedCount, unrepliedCount, pendingRequestCount, favoritesCount };
+  const badgeValues = { unratedCount, unrepliedCount, pendingRequestCount, staffTaskCount, favoritesCount };
 
   return (
     <>

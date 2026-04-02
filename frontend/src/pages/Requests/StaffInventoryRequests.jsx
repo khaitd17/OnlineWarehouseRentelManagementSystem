@@ -240,6 +240,7 @@ const ManagerInventoryRequests = () => {
   const [page, setPage]                 = useState(1);
   const [data, setData]                 = useState({ items:[], totalCount:0, totalPages:0 });
   const [loading, setLoading]           = useState(false);
+  const [tabCounts, setTabCounts]       = useState({ INBOUND:0, OUTBOUND:0 });
   const [detailReq, setDetailReq]       = useState(null);
   const [approveReq, setApproveReq]     = useState(null);
   const [assignReq, setAssignReq]       = useState(null);
@@ -287,6 +288,23 @@ const ManagerInventoryRequests = () => {
   },[activeTab, statusFilter, page]);
 
   useEffect(()=>{ fetchData(); },[fetchData]);
+
+  // Fetch tổng số lượng mỗi loại để hiển thị badge trên tab
+  useEffect(()=>{
+    const fetchTabCounts = async () => {
+      try {
+        const [inRes, outRes] = await Promise.all([
+          inventoryService.getInventoryRequests({ type:'INBOUND',  page:1, pageSize:1 }),
+          inventoryService.getInventoryRequests({ type:'OUTBOUND', page:1, pageSize:1 }),
+        ]);
+        setTabCounts({
+          INBOUND:  inRes.data?.totalCount  ?? 0,
+          OUTBOUND: outRes.data?.totalCount ?? 0,
+        });
+      } catch {}
+    };
+    fetchTabCounts();
+  },[]);
 
   const filtered = search
     ? data.items.filter(r => r.renterName?.toLowerCase().includes(search.toLowerCase()) || r.warehouseName?.toLowerCase().includes(search.toLowerCase()) || String(r.invReqId).includes(search))
@@ -388,10 +406,23 @@ const ManagerInventoryRequests = () => {
       {/* Tab Switcher — pill style đồng bộ */}
       <div style={{ display:'flex', gap:8, padding:'11px 16px', borderRadius:12, background:activeTab==='INBOUND'?'#e0f7fa':'#fff8e1', border:`1.5px solid ${accent}30`, marginBottom:20, alignItems:'center' }}>
         <span style={{ fontSize:'0.82rem', fontWeight:600, color:'#64748b' }}>Loại yêu cầu:</span>
-        {[{v:'INBOUND',label:'Nhập kho'},{v:'OUTBOUND',label:'Xuất kho'}].map(({v,label})=>(
+        {[
+          {v:'INBOUND',  label:'Nhập kho', icon:'📥', color:INBOUND_COLOR},
+          {v:'OUTBOUND', label:'Xuất kho', icon:'📤', color:OUTBOUND_COLOR},
+        ].map(({v,label,icon,color})=>(
           <button key={v} onClick={()=>{ setActiveTab(v); setPage(1); setSearch(''); setStatusFilter(''); }}
-            style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 16px', borderRadius:8, border:`1.5px solid ${activeTab===v?accent:'#e2e8f0'}`, background:activeTab===v?accent:'#fff', color:activeTab===v?'#fff':'#64748b', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', transition:'all 0.18s' }}>
+            style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 18px', borderRadius:8, border:`1.5px solid ${activeTab===v?color:'#e2e8f0'}`, background:activeTab===v?color:'#fff', color:activeTab===v?'#fff':'#64748b', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', transition:'all 0.18s' }}>
+            <span>{icon}</span>
             {label}
+            {tabCounts[v] > 0 && (
+              <span style={{
+                display:'inline-flex', alignItems:'center', justifyContent:'center',
+                minWidth:20, height:20, borderRadius:999, fontSize:'0.7rem', fontWeight:800,
+                background: activeTab===v ? 'rgba(255,255,255,0.25)' : `${color}18`,
+                color: activeTab===v ? '#fff' : color,
+                padding:'0 5px', lineHeight:1,
+              }}>{tabCounts[v]}</span>
+            )}
           </button>
         ))}
       </div>
