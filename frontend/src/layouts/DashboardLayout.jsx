@@ -3,6 +3,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import Sidebar from '../components/Dashboard/Sidebar';
 import notificationService from '../services/notificationService';
+import authService from '../services/authService';
 
 const DashboardLayout = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -43,9 +44,20 @@ const DashboardLayout = () => {
       .configureLogging(LogLevel.Warning)
       .build();
 
-    connection.on('ReceiveNotification', (notification) => {
+    connection.on('ReceiveNotification', async (notification) => {
       setNotifications(prev => [notification, ...prev]);
       setUnreadCount(prev => prev + 1);
+      
+      // When payment is confirmed/rejected, refresh warehouse context to update role
+      if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+        try {
+          await authService.refreshWarehouseContext();
+          // Trigger authChange event to refresh Sidebar menu
+          window.dispatchEvent(new Event('authChange'));
+        } catch (err) {
+          console.warn('[DashboardLayout] Failed to refresh warehouse context:', err);
+        }
+      }
     });
 
     connection.start().catch(() => {});
@@ -107,6 +119,20 @@ const DashboardLayout = () => {
       } catch (err) {}
     }
     setShowNotifications(false);
+
+    // Handle payment-related notifications - refresh context and navigate
+    if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+      try {
+        await authService.refreshWarehouseContext();
+        window.dispatchEvent(new Event('authChange'));
+      } catch (err) {
+        console.warn('[DashboardLayout] Failed to refresh warehouse context:', err);
+      }
+      if (notification.referenceId) {
+        navigate(`/contracts/${notification.referenceId}`);
+      }
+      return;
+    }
 
     if (notification.referenceId) {
       if (notification.type === 'CONTRACT_APPROVED' ||

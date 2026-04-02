@@ -227,6 +227,16 @@ public class RentalContract
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Force activate the contract regardless of current status.
+    /// Used when owner confirms cash payment.
+    /// </summary>
+    public void ForceActivate()
+    {
+        Status = "ACTIVE";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void MarkOverdue()
     {
         if (Status != "ACTIVE")

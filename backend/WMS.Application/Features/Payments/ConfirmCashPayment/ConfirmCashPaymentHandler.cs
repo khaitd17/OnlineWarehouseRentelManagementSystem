@@ -14,6 +14,7 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
     private readonly IWarehouseRepository _warehouseRepo;
     private readonly INotificationRepository _notificationRepo;
     private readonly INotificationSender _notificationSender;
+    private readonly IStaffMembershipRepository _membershipRepo;
     private readonly ILogger<ConfirmCashPaymentHandler> _logger;
 
     public ConfirmCashPaymentHandler(
@@ -22,6 +23,7 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
         IWarehouseRepository warehouseRepo,
         INotificationRepository notificationRepo,
         INotificationSender notificationSender,
+        IStaffMembershipRepository membershipRepo,
         ILogger<ConfirmCashPaymentHandler> logger)
     {
         _paymentRepo = paymentRepo;
@@ -29,6 +31,7 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
         _warehouseRepo = warehouseRepo;
         _notificationRepo = notificationRepo;
         _notificationSender = notificationSender;
+        _membershipRepo = membershipRepo;
         _logger = logger;
     }
 
@@ -87,20 +90,22 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
             }
             else
             {
-                // For other statuses, set status directly via reflection (since Status is private set)
-                var statusProp = typeof(RentalContract).GetProperty("Status");
-                statusProp?.SetValue(contract, RentalContractStatus.Active);
+                // Force activate for any other status (e.g. when owner confirms cash payment)
+                contract.ForceActivate();
             }
 
             await _paymentRepo.UpdateAsync(payment);
             await _contractRepo.UpdateAsync(contract);
 
+            // Create warehouse membership for renter (Quản lý kho role)
+            await CreateRenterMembershipAsync(contract.RenterId, contract.WarehouseId, cancellationToken);
+
             // Send notification to renter
             var notification = new Notification
             {
                 UserId = contract.RenterId,
-                Title = "Thanh toán đã được xác nhận",
-                Message = $"Chủ kho đã xác nhận thanh toán tiền mặt cho hợp đồng {contract.ContractNumber}. Hợp đồng đã được kích hoạt!",
+                Title = "🎉 Thanh toán đã được xác nhận",
+                Message = $"Chủ kho đã xác nhận thanh toán tiền mặt cho hợp đồng {contract.ContractNumber}. Hợp đồng đã được kích hoạt! Bạn giờ đã có quyền quản lý kho.",
                 Type = "PAYMENT_CONFIRMED",
                 ReferenceId = contract.ContractId,
                 ReferenceType = "CONTRACT",
@@ -110,12 +115,13 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
             await _notificationRepo.AddAsync(notification);
             await _notificationSender.SendToUserAsync(contract.RenterId, notification);
 
-            _logger.LogInformation("Cash payment {PaymentId} confirmed by owner {OwnerId}", request.PaymentId, request.OwnerId);
+            _logger.LogInformation("Cash payment {PaymentId} confirmed by owner {OwnerId}. Renter {RenterId} granted RENTER role for warehouse {WarehouseId}", 
+                request.PaymentId, request.OwnerId, contract.RenterId, contract.WarehouseId);
 
             return new ConfirmCashPaymentResult
             {
                 Success = true,
-                Message = "Đã xác nhận thanh toán thành công. Hợp đồng đã được kích hoạt.",
+                Message = "Đã xác nhận thanh toán thành công. Hợp đồng đã được kích hoạt và người thuê đã được cấp quyền quản lý kho.",
                 NewContractStatus = contract.Status
             };
         }
@@ -150,6 +156,46 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
                 Message = "Đã từ chối thanh toán.",
                 NewContractStatus = contract.Status
             };
+        }
+    }
+
+    /// <summary>
+    /// Create warehouse membership for renter with RENTER role.
+    /// If membership already exists, skip creation.
+    /// </summary>
+    private async Task CreateRenterMembershipAsync(int renterId, int warehouseId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Check if membership already exists
+            var existingMembership = await _membershipRepo.GetCallerMembershipAsync(renterId, warehouseId, cancellationToken);
+            if (existingMembership != null)
+            {
+                _logger.LogInformation("Renter {RenterId} already has membership {MembershipId} in warehouse {WarehouseId}",
+                    renterId, existingMembership.MembershipId, warehouseId);
+                return;
+            }
+
+            // Create new membership with RENTER role
+            var membershipDto = new CreateMembershipDto
+            {
+                UserId = renterId,
+                WarehouseId = warehouseId,
+                RoleCode = "RENTER",
+                IsAllSkill = true, // Renter has all skills
+                SkillIds = new List<int>(),
+                WarehouseShiftId = null
+            };
+
+            var membershipId = await _membershipRepo.CreateMembershipAsync(membershipDto, cancellationToken);
+            _logger.LogInformation("Created RENTER membership {MembershipId} for user {RenterId} in warehouse {WarehouseId}",
+                membershipId, renterId, warehouseId);
+        }
+        catch (Exception ex)
+        {
+            // Log but don't fail the payment confirmation
+            _logger.LogWarning(ex, "Failed to create RENTER membership for user {RenterId} in warehouse {WarehouseId}. Error: {Error}",
+                renterId, warehouseId, ex.Message);
         }
     }
 }

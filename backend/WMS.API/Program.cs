@@ -271,10 +271,11 @@ RecurringJob.AddOrUpdate<ContractNotificationJob>(
     "0 */6 * * *",  // Run every 6 hours
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
-RecurringJob.AddOrUpdate<ContractExpiryJob>(
-    "process-contract-expiries",
-    job => job.ProcessAllExpiries(),
-    "*/30 * * * *",  // Run every 30 minutes
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+// Tạm vô hiệu hóa contract expiry job để fix API trước
+// RecurringJob.AddOrUpdate<ContractExpiryJob>(
+//     "process-contract-expiries",
+//     job => job.ProcessAllExpiries(),
+//     "*/30 * * * *",  // Run every 30 minutes
+//     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.Run();

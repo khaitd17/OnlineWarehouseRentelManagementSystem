@@ -36,7 +36,8 @@ const MyContracts = () => {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userRole = (user.role || user.roleName || "").toUpperCase();
   const isOwner = userRole === "OWNER";
-  const isRenter = userRole === "RENTER";
+  // USER role cũng có thể là renter (người thuê kho)
+  const isRenter = userRole === "RENTER" || userRole === "USER";
 
   console.log('MyContracts - User role:', userRole, 'isOwner:', isOwner, 'isRenter:', isRenter);
 
@@ -48,15 +49,11 @@ const MyContracts = () => {
           const response = await rentalService.getContractsForOwner();
           console.log('Owner contracts:', response);
           setContracts(response);
-        } else if (isRenter) {
-          // Renter: Lấy contracts của họ thuê
+        } else {
+          // Renter/User: Lấy contracts của họ thuê (bất kỳ user nào cũng có thể là người thuê)
           const response = await rentalService.getMyContracts();
           console.log('Renter contracts:', response);
           setContracts(response);
-        } else {
-          // Các role khác không có contracts
-          console.log('User role không hợp lệ:', userRole);
-          setContracts([]);
         }
       } catch (err) {
         console.error('Error fetching contracts:', err);
@@ -67,7 +64,7 @@ const MyContracts = () => {
     };
 
     fetchContracts();
-  }, [isOwner, isRenter]);
+  }, [isOwner]);
 
   return (
     <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>

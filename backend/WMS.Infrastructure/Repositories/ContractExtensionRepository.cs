@@ -87,7 +87,9 @@ namespace WMS.Infrastructure.Repositories
         public async Task<List<ContractExtension>> GetByRequesterIdAsync(int requesterId)
         {
             return await _context.ContractExtensions
-                .Include(e => e.OriginalContract)
+                // Temporarily comment out due to FK mapping issue - will load manually in controller
+                // .Include(e => e.OriginalContract)
+                .Include(e => e.Requester)
                 .Include(e => e.Reviewer)
                 .Where(e => e.RequesterId == requesterId)
                 .OrderByDescending(e => e.RequestedAt)

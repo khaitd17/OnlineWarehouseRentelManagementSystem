@@ -81,6 +81,7 @@ import AdminPendingWarehousesPage from "../pages/admin/AdminPendingWarehousesPag
 import EquipmentManagement from "../pages/EquipmentManagement";
 import MyRatingsPage from "../pages/MyRatingsPage";
 import FavoritesPage from "../pages/FavoritesPage";
+import OwnerContracts from "../pages/OwnerContracts";
 
 // Contract Extension Pages
 import RenterExtensionPage from "../pages/RenterExtensionPage.jsx";
@@ -157,6 +158,7 @@ function AppRoutes() {
             <Route path="/warehouse-new/:id" element={<WarehouseDetail />} />
             <Route path="/pending-rental-requests" element={<PendingRentalRequests />} />
             <Route path="/rental-request/:id" element={<RentalRequestDetail />} />
+            <Route path="/owner-contracts" element={<OwnerContracts />} />
             <Route path="/warehouse-contracts/:warehouseId" element={<WarehouseContracts />} />
             <Route path="/contract-extensions" element={<OwnerExtensionPage />} />
             <Route path="/pending-cash-payments" element={<PendingCashPayments />} />
