@@ -37,6 +37,13 @@ public class RentalContract
     public DateTime? RenterSignatureExpiry { get; private set; }
     public DateTime? PaymentExpiry { get; private set; }
 
+    // Termination/Close approval tracking (2-party approval)
+    public string? TerminationRequestedBy { get; private set; } // "RENTER" or "OWNER"
+    public DateTime? TerminationRequestedAt { get; private set; }
+    public bool RenterApprovedTermination { get; private set; }
+    public bool OwnerApprovedTermination { get; private set; }
+    public decimal? EarlyTerminationFee { get; private set; }
+
     // Navigation properties
     public RentalRequest? RentalRequest { get; set; }
     public Warehouse? Warehouse { get; set; }
@@ -131,6 +138,71 @@ public class RentalContract
         UpdatedAt = DateTime.UtcNow;
     }
 
+    // Request termination - needs approval from other party
+    public void RequestTerminationEarly(string requestedBy, string reason, decimal? fee = null)
+    {
+        if (Status != "ACTIVE")
+            throw new InvalidOperationException($"Cannot request termination for contract with status {Status}");
+        
+        if (requestedBy != "RENTER" && requestedBy != "OWNER")
+            throw new ArgumentException("RequestedBy must be RENTER or OWNER");
+
+        Status = "PENDING_TERMINATION";
+        TerminationRequestedBy = requestedBy;
+        TerminationRequestedAt = DateTime.UtcNow;
+        TerminationReason = reason;
+        EarlyTerminationFee = fee;
+        
+        // Auto-approve for requester
+        if (requestedBy == "RENTER")
+            RenterApprovedTermination = true;
+        else
+            OwnerApprovedTermination = true;
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Approve termination request
+    public void ApproveTermination(string approvedBy)
+    {
+        if (Status != "PENDING_TERMINATION")
+            throw new InvalidOperationException($"Cannot approve termination for contract with status {Status}");
+        
+        if (approvedBy == "RENTER")
+            RenterApprovedTermination = true;
+        else if (approvedBy == "OWNER")
+            OwnerApprovedTermination = true;
+        else
+            throw new ArgumentException("ApprovedBy must be RENTER or OWNER");
+
+        // If both parties approved, terminate
+        if (RenterApprovedTermination && OwnerApprovedTermination)
+        {
+            Status = "TERMINATED";
+            TerminatedAt = DateTime.UtcNow;
+        }
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Reject termination request
+    public void RejectTermination(string rejectedBy)
+    {
+        if (Status != "PENDING_TERMINATION")
+            throw new InvalidOperationException($"Cannot reject termination for contract with status {Status}");
+        
+        // Reset to ACTIVE
+        Status = "ACTIVE";
+        TerminationRequestedBy = null;
+        TerminationRequestedAt = null;
+        RenterApprovedTermination = false;
+        OwnerApprovedTermination = false;
+        TerminationReason = null;
+        EarlyTerminationFee = null;
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void TerminateEarly(string reason, decimal? earlyTerminationFee = null)
     {
         if (Status != "ACTIVE")
@@ -138,6 +210,7 @@ public class RentalContract
 
         Status = "TERMINATED";
         TerminationReason = reason;
+        EarlyTerminationFee = earlyTerminationFee;
         TerminatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -149,6 +222,67 @@ public class RentalContract
 
         Status = "CANCELLED";
         CancellationReason = reason;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Request close - needs approval from other party  
+    public void RequestClose(string requestedBy)
+    {
+        if (Status != "ACTIVE")
+            throw new InvalidOperationException($"Cannot request close for contract with status {Status}");
+        
+        if (requestedBy != "RENTER" && requestedBy != "OWNER")
+            throw new ArgumentException("RequestedBy must be RENTER or OWNER");
+
+        Status = "PENDING_CLOSE";
+        TerminationRequestedBy = requestedBy;
+        TerminationRequestedAt = DateTime.UtcNow;
+        
+        // Auto-approve for requester
+        if (requestedBy == "RENTER")
+            RenterApprovedTermination = true;
+        else
+            OwnerApprovedTermination = true;
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Approve close request
+    public void ApproveClose(string approvedBy)
+    {
+        if (Status != "PENDING_CLOSE")
+            throw new InvalidOperationException($"Cannot approve close for contract with status {Status}");
+        
+        if (approvedBy == "RENTER")
+            RenterApprovedTermination = true;
+        else if (approvedBy == "OWNER")
+            OwnerApprovedTermination = true;
+        else
+            throw new ArgumentException("ApprovedBy must be RENTER or OWNER");
+
+        // If both parties approved, close
+        if (RenterApprovedTermination && OwnerApprovedTermination)
+        {
+            Status = "CLOSED";
+            ReturnedAt = DateTime.UtcNow;
+        }
+        
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Reject close request
+    public void RejectClose(string rejectedBy)
+    {
+        if (Status != "PENDING_CLOSE")
+            throw new InvalidOperationException($"Cannot reject close for contract with status {Status}");
+        
+        // Reset to ACTIVE
+        Status = "ACTIVE";
+        TerminationRequestedBy = null;
+        TerminationRequestedAt = null;
+        RenterApprovedTermination = false;
+        OwnerApprovedTermination = false;
+        
         UpdatedAt = DateTime.UtcNow;
     }
 

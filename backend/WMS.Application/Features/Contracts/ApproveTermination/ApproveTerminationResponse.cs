@@ -1,12 +1,11 @@
-namespace WMS.Application.Features.Contracts.TerminateEarly
+namespace WMS.Application.Features.Contracts.ApproveTermination
 {
-    public class TerminateEarlyResponse
+    public class ApproveTerminationResponse
     {
         public bool Success { get; set; }
         public string Message { get; set; } = string.Empty;
         public int ContractId { get; set; }
         public string Status { get; set; } = string.Empty;
-        public decimal? EarlyTerminationFee { get; set; }
-        public bool PendingApproval { get; set; }
+        public bool IsFullyApproved { get; set; }
     }
 }

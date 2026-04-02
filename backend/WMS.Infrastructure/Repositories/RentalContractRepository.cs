@@ -104,6 +104,15 @@ public class RentalContractRepository : IRentalContractRepository
         dbContract.OwnerSignedFileUrl = contract.OwnerSignedFileUrl;
         dbContract.OwnerSignedAt = contract.OwnerSignedAt;
         dbContract.OwnerSignatureBase64 = contract.OwnerSignatureBase64;
+        
+        // Termination/Close approval fields
+        dbContract.TerminationRequestedBy = contract.TerminationRequestedBy;
+        dbContract.TerminationRequestedAt = contract.TerminationRequestedAt;
+        dbContract.RenterApprovedTermination = contract.RenterApprovedTermination;
+        dbContract.OwnerApprovedTermination = contract.OwnerApprovedTermination;
+        dbContract.TerminationReason = contract.TerminationReason;
+        dbContract.EarlyTerminationFee = contract.EarlyTerminationFee;
+        dbContract.TerminatedAt = contract.TerminatedAt;
 
         await _context.SaveChangesAsync();
     }
@@ -232,6 +241,97 @@ public class RentalContractRepository : IRentalContractRepository
         return await query.CountAsync();
     }
 
+    // Direct DB update for termination fields (bypass domain model reflection issues)
+    public async SystemTask RequestTerminationAsync(int contractId, string requestedBy, string? reason = null, decimal? fee = null)
+    {
+        var dbContract = await _context.Contracts.FindAsync(contractId);
+        if (dbContract == null)
+            throw new InvalidOperationException($"Contract {contractId} not found");
+
+        dbContract.Status = "PENDING_TERMINATION";
+        dbContract.TerminationRequestedBy = requestedBy;
+        dbContract.TerminationRequestedAt = DateTime.UtcNow;
+        dbContract.TerminationReason = reason;
+        dbContract.EarlyTerminationFee = fee;
+        
+        if (requestedBy == "RENTER")
+            dbContract.RenterApprovedTermination = true;
+        else
+            dbContract.OwnerApprovedTermination = true;
+        
+        dbContract.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async SystemTask RequestCloseAsync(int contractId, string requestedBy)
+    {
+        var dbContract = await _context.Contracts.FindAsync(contractId);
+        if (dbContract == null)
+            throw new InvalidOperationException($"Contract {contractId} not found");
+
+        dbContract.Status = "PENDING_CLOSE";
+        dbContract.TerminationRequestedBy = requestedBy;
+        dbContract.TerminationRequestedAt = DateTime.UtcNow;
+        
+        if (requestedBy == "RENTER")
+            dbContract.RenterApprovedTermination = true;
+        else
+            dbContract.OwnerApprovedTermination = true;
+        
+        dbContract.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async SystemTask ApproveTerminationAsync(int contractId, string approvedBy)
+    {
+        var dbContract = await _context.Contracts.FindAsync(contractId);
+        if (dbContract == null)
+            throw new InvalidOperationException($"Contract {contractId} not found");
+
+        if (approvedBy == "RENTER")
+            dbContract.RenterApprovedTermination = true;
+        else
+            dbContract.OwnerApprovedTermination = true;
+
+        // If both parties approved, change status
+        if (dbContract.RenterApprovedTermination && dbContract.OwnerApprovedTermination)
+        {
+            if (dbContract.Status == "PENDING_TERMINATION")
+            {
+                dbContract.Status = "TERMINATED";
+                dbContract.TerminatedAt = DateTime.UtcNow;
+            }
+            else if (dbContract.Status == "PENDING_CLOSE")
+            {
+                dbContract.Status = "CLOSED";
+            }
+        }
+        
+        dbContract.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async SystemTask RejectTerminationAsync(int contractId)
+    {
+        var dbContract = await _context.Contracts.FindAsync(contractId);
+        if (dbContract == null)
+            throw new InvalidOperationException($"Contract {contractId} not found");
+
+        dbContract.Status = "ACTIVE";
+        dbContract.TerminationRequestedBy = null;
+        dbContract.TerminationRequestedAt = null;
+        dbContract.RenterApprovedTermination = false;
+        dbContract.OwnerApprovedTermination = false;
+        dbContract.TerminationReason = null;
+        dbContract.EarlyTerminationFee = null;
+        dbContract.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
     private DomainRentalContract MapToDomain(DbContract dbContract)
     {
         // Using reflection to bypass private constructor
@@ -260,6 +360,15 @@ public class RentalContractRepository : IRentalContractRepository
         var ownerSignatureBase64Prop = typeof(DomainRentalContract).GetProperty("OwnerSignatureBase64");
         var createdAtProp = typeof(DomainRentalContract).GetProperty("CreatedAt");
         var updatedAtProp = typeof(DomainRentalContract).GetProperty("UpdatedAt");
+        
+        // Termination/Close approval properties
+        var terminationRequestedByProp = typeof(DomainRentalContract).GetProperty("TerminationRequestedBy");
+        var terminationRequestedAtProp = typeof(DomainRentalContract).GetProperty("TerminationRequestedAt");
+        var renterApprovedTerminationProp = typeof(DomainRentalContract).GetProperty("RenterApprovedTermination");
+        var ownerApprovedTerminationProp = typeof(DomainRentalContract).GetProperty("OwnerApprovedTermination");
+        var terminationReasonProp = typeof(DomainRentalContract).GetProperty("TerminationReason");
+        var earlyTerminationFeeProp = typeof(DomainRentalContract).GetProperty("EarlyTerminationFee");
+        var terminatedAtProp = typeof(DomainRentalContract).GetProperty("TerminatedAt");
 
         contractIdProp?.SetValue(domainContract, dbContract.ContractId);
         rentalRequestIdProp?.SetValue(domainContract, dbContract.RequestId);
@@ -281,6 +390,15 @@ public class RentalContractRepository : IRentalContractRepository
         ownerSignatureBase64Prop?.SetValue(domainContract, dbContract.OwnerSignatureBase64);
         createdAtProp?.SetValue(domainContract, dbContract.CreatedAt ?? DateTime.UtcNow);
         updatedAtProp?.SetValue(domainContract, dbContract.UpdatedAt);
+        
+        // Map termination/close approval fields
+        terminationRequestedByProp?.SetValue(domainContract, dbContract.TerminationRequestedBy);
+        terminationRequestedAtProp?.SetValue(domainContract, dbContract.TerminationRequestedAt);
+        renterApprovedTerminationProp?.SetValue(domainContract, dbContract.RenterApprovedTermination);
+        ownerApprovedTerminationProp?.SetValue(domainContract, dbContract.OwnerApprovedTermination);
+        terminationReasonProp?.SetValue(domainContract, dbContract.TerminationReason);
+        earlyTerminationFeeProp?.SetValue(domainContract, dbContract.EarlyTerminationFee);
+        terminatedAtProp?.SetValue(domainContract, dbContract.TerminatedAt);
 
         return domainContract;
     }

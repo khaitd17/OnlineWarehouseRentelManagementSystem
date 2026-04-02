@@ -3,16 +3,16 @@ using WMS.Domain.Enums;
 using WMS.Domain.Interfaces;
 using WMS.Application.Interfaces;
 
-namespace WMS.Application.Features.Contracts.TerminateEarly
+namespace WMS.Application.Features.Contracts.RequestClose
 {
-    public class TerminateEarlyHandler : IRequestHandler<TerminateEarlyCommand, TerminateEarlyResponse>
+    public class RequestCloseHandler : IRequestHandler<RequestCloseCommand, RequestCloseResponse>
     {
         private readonly IRentalContractRepository _contractRepository;
         private readonly IWarehouseRepository _warehouseRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly INotificationSender _notificationSender;
 
-        public TerminateEarlyHandler(
+        public RequestCloseHandler(
             IRentalContractRepository contractRepository,
             IWarehouseRepository warehouseRepository,
             INotificationRepository notificationRepository,
@@ -24,15 +24,14 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
             _notificationSender = notificationSender;
         }
 
-        public async Task<TerminateEarlyResponse> Handle(TerminateEarlyCommand request, CancellationToken cancellationToken)
+        public async Task<RequestCloseResponse> Handle(RequestCloseCommand request, CancellationToken cancellationToken)
         {
             try
             {
-                // Lấy contract
                 var contract = await _contractRepository.GetByIdAsync(request.ContractId);
                 if (contract == null)
                 {
-                    return new TerminateEarlyResponse
+                    return new RequestCloseResponse
                     {
                         Success = false,
                         Message = "Contract not found",
@@ -44,7 +43,7 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
                 var warehouse = await _warehouseRepository.GetByIdAsync(contract.WarehouseId, cancellationToken);
                 if (warehouse == null)
                 {
-                    return new TerminateEarlyResponse
+                    return new RequestCloseResponse
                     {
                         Success = false,
                         Message = "Warehouse not found",
@@ -58,43 +57,40 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
                 
                 if (!isRenter && !isOwner)
                 {
-                    return new TerminateEarlyResponse
+                    return new RequestCloseResponse
                     {
                         Success = false,
-                        Message = "You are not authorized to terminate this contract",
+                        Message = "You are not authorized to request close for this contract",
                         ContractId = request.ContractId
                     };
                 }
 
                 var requestedBy = isRenter ? "RENTER" : "OWNER";
 
-                // Chỉ có thể request termination khi contract đang ACTIVE
+                // Chỉ có thể request close khi contract đang ACTIVE
                 if (contract.Status != RentalContractStatus.Active)
                 {
-                    return new TerminateEarlyResponse
+                    return new RequestCloseResponse
                     {
                         Success = false,
-                        Message = $"Cannot terminate contract with status: {contract.Status}",
+                        Message = $"Cannot request close for contract with status: {contract.Status}",
                         ContractId = request.ContractId
                     };
                 }
 
-                // Request termination (2-party approval flow)
-                contract.RequestTerminationEarly(requestedBy, request.TerminationReason, request.EarlyTerminationFee);
+                // Request close - use direct DB update to bypass reflection issues
+                await _contractRepository.RequestCloseAsync(request.ContractId, requestedBy);
 
-                await _contractRepository.UpdateAsync(contract);
-
-                // Determine the other party to notify
+                // Notify the other party
                 int notifyUserId = isRenter ? warehouse.OwnerId : contract.RenterId;
                 var requesterType = isRenter ? "Người thuê" : "Chủ kho";
 
-                // Gửi thông báo cho bên còn lại
                 var notification = new WMS.Domain.Entities.Notification
                 {
                     UserId = notifyUserId,
-                    Title = "Yêu cầu kết thúc hợp đồng sớm",
-                    Message = $"{requesterType} yêu cầu kết thúc sớm hợp đồng {contract.ContractNumber}. Lý do: {request.TerminationReason}. Phí kết thúc sớm: {request.EarlyTerminationFee:N0}đ. Vui lòng xác nhận hoặc từ chối.",
-                    Type = "termination_request",
+                    Title = "Yêu cầu kết thúc hợp đồng",
+                    Message = $"{requesterType} yêu cầu kết thúc hợp đồng {contract.ContractNumber}. Vui lòng xác nhận hoặc từ chối.",
+                    Type = "close_request",
                     ReferenceType = "Contract",
                     ReferenceId = contract.ContractId,
                     CreatedAt = DateTime.UtcNow
@@ -103,22 +99,20 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
                 await _notificationRepository.AddAsync(notification);
                 await _notificationSender.SendToUserAsync(notifyUserId, notification);
 
-                return new TerminateEarlyResponse
+                return new RequestCloseResponse
                 {
                     Success = true,
-                    Message = "Yêu cầu kết thúc sớm đã được gửi. Đang chờ bên còn lại xác nhận.",
+                    Message = "Yêu cầu kết thúc hợp đồng đã được gửi. Đang chờ bên còn lại xác nhận.",
                     ContractId = request.ContractId,
-                    Status = contract.Status,
-                    EarlyTerminationFee = request.EarlyTerminationFee,
-                    PendingApproval = true
+                    Status = "PENDING_CLOSE"
                 };
             }
             catch (Exception ex)
             {
-                return new TerminateEarlyResponse
+                return new RequestCloseResponse
                 {
                     Success = false,
-                    Message = $"Error terminating contract: {ex.Message}",
+                    Message = $"Error requesting close: {ex.Message}",
                     ContractId = request.ContractId
                 };
             }

@@ -426,7 +426,7 @@ class NotificationService {
    * @returns {Promise}
    */
   async markNotificationAsRead(notificationId) {
-    const response = await axiosClient.post(`/notifications/${notificationId}/read`);
+    const response = await axiosClient.put(`/notifications/${notificationId}/read`);
     return response.data;
   }
 

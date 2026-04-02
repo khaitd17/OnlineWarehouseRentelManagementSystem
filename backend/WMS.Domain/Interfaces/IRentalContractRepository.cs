@@ -25,4 +25,10 @@ public interface IRentalContractRepository
     Task UpdateAsync(RentalContract contract);
     Task<RentalContract?> GetWithEquipmentsByIdAsync(int contractId);
     Task AssignEquipmentsAsync(int contractId, List<int> equipmentIds, CancellationToken cancellationToken);
+    
+    // Direct DB operations for termination (bypass domain model reflection issues)
+    Task RequestTerminationAsync(int contractId, string requestedBy, string? reason = null, decimal? fee = null);
+    Task RequestCloseAsync(int contractId, string requestedBy);
+    Task ApproveTerminationAsync(int contractId, string approvedBy);
+    Task RejectTerminationAsync(int contractId);
 }

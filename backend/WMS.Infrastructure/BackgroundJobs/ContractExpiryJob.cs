@@ -26,7 +26,7 @@ public class ContractExpiryJob
         
         // Use raw SQL to avoid column mapping issues
         var sql = @"
-            UPDATE contracts 
+            UPDATE rental_contracts 
             SET status = @CancelledStatus, updated_at = @Now 
             WHERE status = @PendingStatus 
             AND owner_signature_expiry IS NOT NULL 
@@ -48,11 +48,11 @@ public class ContractExpiryJob
         var now = DateTime.UtcNow;
         
         var sql = @"
-            UPDATE contracts 
+            UPDATE rental_contracts 
             SET status = @CancelledStatus, updated_at = @Now 
             WHERE status = @PendingStatus 
-            AND pending_signature_expiry IS NOT NULL 
-            AND pending_signature_expiry < @Now";
+            AND RenterSignatureExpiry IS NOT NULL 
+            AND RenterSignatureExpiry < @Now";
             
         var affected = await _db.Database.ExecuteSqlRawAsync(sql, 
             new Microsoft.Data.SqlClient.SqlParameter("@CancelledStatus", RentalContractStatus.Cancelled),
@@ -70,11 +70,11 @@ public class ContractExpiryJob
         var now = DateTime.UtcNow;
         
         var sql = @"
-            UPDATE contracts 
+            UPDATE rental_contracts 
             SET status = @CancelledStatus, updated_at = @Now 
             WHERE status = @PendingStatus 
-            AND pending_payment_expiry IS NOT NULL 
-            AND pending_payment_expiry < @Now";
+            AND PaymentExpiry IS NOT NULL 
+            AND PaymentExpiry < @Now";
             
         var affected = await _db.Database.ExecuteSqlRawAsync(sql, 
             new Microsoft.Data.SqlClient.SqlParameter("@CancelledStatus", RentalContractStatus.Cancelled),
@@ -120,7 +120,7 @@ public class ContractExpiryJob
             // Update status with raw SQL
             var contractIds = string.Join(",", expiredContractIds.Select(c => c.ContractId));
             var sql = $@"
-                UPDATE contracts 
+                UPDATE rental_contracts 
                 SET status = @CompletedStatus, updated_at = @Now 
                 WHERE contract_id IN ({contractIds})";
                 
@@ -196,7 +196,7 @@ public class ContractExpiryJob
         var overdueDate = DateTime.UtcNow.AddDays(-7);
         
         var sql = @"
-            UPDATE contracts 
+            UPDATE rental_contracts 
             SET status = @OverdueStatus, updated_at = @Now 
             WHERE status = @CompletedStatus 
             AND updated_at IS NOT NULL 

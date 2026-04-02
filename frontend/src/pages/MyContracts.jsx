@@ -15,6 +15,9 @@ const statusConfig = {
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
   CANCELLED:  { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
   OVERDUE:    { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
+  // 2-party approval statuses
+  PENDING_TERMINATION: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ xác nhận kết thúc sớm" },
+  PENDING_CLOSE: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ xác nhận kết thúc" },
 };
 
 const formatDate = (dateStr) => {
