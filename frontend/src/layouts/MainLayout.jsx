@@ -242,19 +242,148 @@ const NAV_STYLES = `
   }
 
   .nav-avatar {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid rgba(56, 189, 248, 0.5);
+    border: 2.5px solid rgba(56, 189, 248, 0.55);
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
     background: #1e3a5f;
     flex-shrink: 0;
+    display: block;
   }
   .nav-avatar:hover {
     border-color: #38bdf8;
-    transform: scale(1.08);
+    transform: scale(1.07);
+    box-shadow: 0 0 0 4px rgba(56,189,248,0.15);
+  }
+
+  /* ── Avatar Dropdown ── */
+  .nav-user-dropdown {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+  /* invisible bridge fills the gap between trigger and menu */
+  .nav-user-dropdown::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: -10px;
+    right: -10px;
+    height: 14px;
+  }
+  .nav-user-dropdown:hover .nav-dropdown-menu,
+  .nav-user-dropdown:focus-within .nav-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: all;
+  }
+  .nav-user-trigger {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 4px 6px 4px 4px;
+    border-radius: 999px;
+    transition: background 0.2s;
+  }
+  .nav-user-trigger:hover {
+    background: rgba(255,255,255,0.06);
+  }
+  .nav-user-trigger-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.1;
+  }
+  .nav-user-trigger-sub {
+    font-size: 0.7rem;
+    color: rgba(56,189,248,0.75);
+    font-weight: 500;
+    line-height: 1;
+  }
+  .nav-dropdown-caret {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.4);
+    transition: transform 0.2s;
+    margin-left: 2px;
+  }
+  .nav-user-dropdown:hover .nav-dropdown-caret {
+    transform: rotate(180deg);
+  }
+  .nav-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 14px);
+    right: 0;
+    min-width: 210px;
+    background: rgba(13, 22, 45, 0.97);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(56,189,248,0.12);
+    border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(56,189,248,0.05);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-6px);
+    transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    z-index: 2000;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  /* remove old ::before bridge (now handled by parent ::after) */
+  .nav-dropdown-menu::before { display: none; }
+  .nav-dropdown-user-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .nav-dropdown-user-header img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(56,189,248,0.4);
+    flex-shrink: 0;
+  }
+  .nav-dropdown-item {
+    display: block;
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgba(210,230,255,0.85);
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+  }
+  .nav-dropdown-item:hover {
+    background: rgba(56,189,248,0.08);
+    color: #38bdf8;
+  }
+  .nav-dropdown-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 4px 0;
+  }
+  .nav-dropdown-item.logout {
+    color: rgba(239,68,68,0.85);
+  }
+  .nav-dropdown-item.logout:hover {
+    background: rgba(239,68,68,0.08);
+    color: #ef4444;
   }
 
   /* Footer styles */
@@ -582,9 +711,6 @@ const MainLayout = () => {
         >
           {isAuthenticated ? (
             <>
-              {user && (
-                <Link to={dashboardPath} className="nav-dashboard-link">Dashboard</Link>
-              )}
               {user && dashboardPath === '/renter-dashboard' && (
                 <Link to="/my-favorites" className="nav-favorites-link">
                   ❤️ Yêu thích
@@ -593,16 +719,60 @@ const MainLayout = () => {
                   )}
                 </Link>
               )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <Link to="/profile" title="Trang cá nhân">
-                  <img
-                    className="nav-avatar"
-                    src={user?.avatarUrl || user?.AvatarUrl || 'https://www.svgrepo.com/show/5125/avatar.svg'}
-                    alt="Profile"
-                  />
-                </Link>
-                <button className="btn-logout" onClick={handleLogout}>Đăng xuất</button>
-              </div>
+              {user && (
+                <div className="nav-user-dropdown">
+                  {/* Trigger */}
+                  <div className="nav-user-trigger">
+                    <img
+                      className="nav-avatar"
+                      src={user?.avatarUrl || user?.AvatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName||user?.FullName||'U')}&background=0ea5e9&color=fff`}
+                      alt="Avatar"
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span className="nav-user-trigger-name">
+                        Xin chào, {(user?.fullName || user?.FullName || 'Bạn').split(' ').slice(-2).join(' ')}
+                      </span>
+                    </div>
+                    <span className="nav-dropdown-caret">▾</span>
+                  </div>
+
+                  {/* Dropdown */}
+                  <div className="nav-dropdown-menu">
+                    {/* User header */}
+                    <div className="nav-dropdown-user-header">
+                      <img
+                        src={user?.avatarUrl || user?.AvatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName||user?.FullName||'U')}&background=0ea5e9&color=fff`}
+                        alt="Avatar"
+                      />
+                      <div style={{ overflow: 'hidden' }}>
+                        <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'rgba(220,235,255,0.95)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {user?.fullName || user?.FullName || 'Người dùng'}
+                        </p>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'rgba(56,189,248,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {user?.email || ''}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Hồ sơ */}
+                    <Link to="/profile" className="nav-dropdown-item">
+                      Hồ sơ
+                    </Link>
+
+                    {/* Dashboard */}
+                    <Link to={dashboardPath} className="nav-dropdown-item">
+                      Dashboard
+                    </Link>
+
+                    <div className="nav-dropdown-divider" />
+
+                    {/* Đăng xuất */}
+                    <button className="nav-dropdown-item logout" onClick={handleLogout}>
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <>
