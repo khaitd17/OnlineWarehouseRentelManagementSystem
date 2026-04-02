@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   Users, UserCheck, Lock, UserPlus, Warehouse, CheckCircle, Clock,
-  Building, FileText, AlertTriangle, TrendingUp, TrendingDown,
-  DollarSign, CreditCard, Target, Lightbulb, AlertCircle, Package
+  Building, DollarSign, CreditCard, Target, Lightbulb
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -21,18 +20,8 @@ const formatCurrency = (value) => {
   return value?.toLocaleString("vi-VN") || "0";
 };
 
-const ALERT_ICONS = {
-  "alert-triangle": <AlertTriangle size={16} />,
-  "clock": <Clock size={16} />,
-  "trending-down": <TrendingDown size={16} />,
-  "package": <Package size={16} />,
-  "inbox": <Warehouse size={16} />,
-  "credit-card": <CreditCard size={16} />,
-};
-
 const REC_ICONS = {
   PAYMENT: <CreditCard size={16} />,
-  CONTRACT: <FileText size={16} />,
   REVENUE: <DollarSign size={16} />,
 };
 
@@ -73,9 +62,6 @@ export default function ReportsPage() {
     setExporting(false);
   };
 
-  const growthClass = report?.revenueGrowthRate > 0 ? "positive" : report?.revenueGrowthRate < 0 ? "negative" : "neutral";
-  const growthIcon = report?.revenueGrowthRate >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />;
-
   const revenuePieData = report ? [
     { name: "Đã thu", value: Number(report.totalRevenue) || 0 },
     { name: "Chờ thu", value: Number(report.pendingPayments) || 0 },
@@ -112,27 +98,7 @@ export default function ReportsPage() {
         <div style={{ textAlign: "center", padding: 60, color: "#ef4444" }}>Không thể tải dữ liệu.</div>
       ) : (
         <>
-          {/* ── Alerts ── */}
-          {report.alerts && report.alerts.length > 0 && (
-            <div className="admin-card">
-              <div className="admin-card-header"><h3>⚠️ Cảnh báo ({report.alerts.length})</h3></div>
-              <div className="admin-card-body">
-                <div className="admin-alerts-list">
-                  {report.alerts.map((alert, i) => (
-                    <div key={i} className={`admin-alert admin-alert-${alert.level.toLowerCase()}`}>
-                      <div className="admin-alert-icon">
-                        {ALERT_ICONS[alert.icon] || <AlertCircle size={16} />}
-                      </div>
-                      <div className="admin-alert-content">
-                        <div className="admin-alert-title">{alert.title}</div>
-                        <div className="admin-alert-message">{alert.message}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {/* ── User Stats ── */}
           <div className="admin-card">
@@ -166,23 +132,9 @@ export default function ReportsPage() {
             <div className="admin-card-header"><h3>💰 Tài chính & Doanh thu</h3></div>
             <div className="admin-card-body">
               <div className="admin-stats-grid">
-                <StatCard
-                  icon={<DollarSign size={20} />}
-                  value={<div className="admin-revenue-highlight">
-                    <span>{formatCurrency(report.totalRevenue)}</span>
-                    <span className={`admin-growth-badge ${growthClass}`}>
-                      {growthIcon} {report.revenueGrowthRate > 0 ? "+" : ""}{report.revenueGrowthRate}%
-                    </span>
-                  </div>}
-                  label="Tổng doanh thu"
-                  color="green"
-                />
+                <StatCard icon={<DollarSign size={20} />} value={formatCurrency(report.totalRevenue)} label="Tổng doanh thu" color="green" />
                 <StatCard icon={<CreditCard size={20} />} value={formatCurrency(report.pendingPayments)} label="Chờ thanh toán" color="orange" />
-                <StatCard icon={<AlertTriangle size={20} />} value={formatCurrency(report.overduePayments)} label="Quá hạn thanh toán" color="red" />
                 <StatCard icon={<Target size={20} />} value={report.collectionRate + "%"} label="Tỷ lệ thu tiền" color="blue" />
-                <StatCard icon={<FileText size={20} />} value={report.totalContracts} label="Tổng hợp đồng" color="blue" />
-                <StatCard icon={<CheckCircle size={20} />} value={report.activeContracts} label="HĐ hoạt động" color="green" />
-                <StatCard icon={<Clock size={20} />} value={report.expiringContracts} label="HĐ sắp hết hạn" color="orange" />
               </div>
             </div>
           </div>

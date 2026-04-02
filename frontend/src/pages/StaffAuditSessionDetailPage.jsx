@@ -46,27 +46,43 @@ export default function StaffAuditSessionDetailPage() {
 
   useEffect(() => { fetchResults(); }, [fetchResults]);
 
-  // Fetch items to audit based on session creator
+  // Fetch items to audit based on session creator & merge with existing results
   const fetchInventory = async () => {
     setInventoryLoading(true);
     try {
-      const res = await adminService.getAuditSessionInventory(id);
-      if (res.data.success) {
-        const items = res.data.data || [];
-        setInventoryItems(items);
-        setRecordModal(p => ({
-          ...p,
-          items: items.map(inv => ({
-            itemName: inv.itemName,
+      // Lấy danh sách hàng cần kiểm kê
+      const invRes = await adminService.getAuditSessionInventory(id);
+      // Lấy kết quả đã ghi nhận trước đó (tất cả, pageSize lớn)
+      const resRes = await adminService.getAuditResults(id, { page: 1, pageSize: 9999 });
+
+      const items = invRes.data.success ? (invRes.data.data || []) : [];
+      setInventoryItems(items);
+
+      const existingResults = resRes.data.success ? (resRes.data.data?.items || []) : [];
+
+      // Tạo map kết quả đã ghi theo itemName
+      const existingMap = {};
+      existingResults.forEach(r => {
+        existingMap[r.itemName?.trim()?.toLowerCase()] = r;
+      });
+
+      // Merge: pre-fill actualQty & discrepancyReason từ kết quả cũ
+      setRecordModal(p => ({
+        ...p,
+        items: items.map(inv => {
+          const key = (inv.itemName || inv.item_name || "").trim().toLowerCase();
+          const prev = existingMap[key];
+          return {
+            itemName: inv.itemName || inv.item_name,
             expectedQty: inv.quantity,
-            actualQty: "",
-            discrepancyReason: ""
-          }))
-        }));
-      } else {
-        setInventoryItems([]);
-      }
-    } catch { setInventoryItems([]); }
+            actualQty: prev ? String(prev.actualQty) : "",
+            discrepancyReason: prev ? (prev.discrepancyReason || "") : ""
+          };
+        })
+      }));
+    } catch {
+      setInventoryItems([]);
+    }
     setInventoryLoading(false);
   };
 

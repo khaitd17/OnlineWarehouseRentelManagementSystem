@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import {
-  Users, UserCheck, Lock, Warehouse, FileText, CheckCircle, Clock,
+  Users, UserCheck, Lock, Warehouse, CheckCircle, Clock,
   AlertTriangle, TrendingUp, TrendingDown, DollarSign, CreditCard,
-  BarChart3, Target, Lightbulb, AlertCircle, Info, Package
+  Target, Lightbulb
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -20,18 +20,8 @@ const formatCurrency = (value) => {
   return value?.toLocaleString("vi-VN") || "0";
 };
 
-const ALERT_ICONS = {
-  "alert-triangle": <AlertTriangle size={16} />,
-  "clock": <Clock size={16} />,
-  "trending-down": <TrendingDown size={16} />,
-  "package": <Package size={16} />,
-  "inbox": <Warehouse size={16} />,
-  "credit-card": <CreditCard size={16} />,
-};
-
 const REC_ICONS = {
   PAYMENT: <CreditCard size={16} />,
-  CONTRACT: <FileText size={16} />,
   REVENUE: <DollarSign size={16} />,
 };
 
@@ -82,32 +72,10 @@ export default function AdminDashboard() {
     <div>
       <div className="admin-page-header">
         <h1>Tổng quan hệ thống</h1>
-        <p>Thống kê tổng hợp về người dùng, kho bãi, doanh thu và cảnh báo</p>
+        <p>Thống kê tổng hợp về người dùng, kho bãi và doanh thu</p>
       </div>
 
-      {/* ── Alerts Panel ── */}
-      {report.alerts && report.alerts.length > 0 && (
-        <div className="admin-card" style={{ marginBottom: 20 }}>
-          <div className="admin-card-header">
-            <h3>⚠️ Cảnh báo hệ thống ({report.alerts.length})</h3>
-          </div>
-          <div className="admin-card-body">
-            <div className="admin-alerts-list">
-              {report.alerts.map((alert, i) => (
-                <div key={i} className={`admin-alert admin-alert-${alert.level.toLowerCase()}`}>
-                  <div className="admin-alert-icon">
-                    {ALERT_ICONS[alert.icon] || <AlertCircle size={16} />}
-                  </div>
-                  <div className="admin-alert-content">
-                    <div className="admin-alert-title">{alert.title}</div>
-                    <div className="admin-alert-message">{alert.message}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* ── Overview Stat Cards ── */}
       <div className="admin-stats-grid">
@@ -133,8 +101,7 @@ export default function AdminDashboard() {
         <StatCard icon={<CreditCard size={20} />} value={formatCurrency(report.pendingPayments)} label="Chờ thanh toán" color="orange" />
         <StatCard icon={<AlertTriangle size={20} />} value={formatCurrency(report.overduePayments)} label="Quá hạn" color="red" />
         <StatCard icon={<Target size={20} />} value={report.collectionRate + "%"} label="Tỷ lệ thu tiền" color="blue" />
-        <StatCard icon={<FileText size={20} />} value={report.activeContracts} label="HĐ đang hoạt động" color="green" />
-        <StatCard icon={<Clock size={20} />} value={report.expiringContracts} label="HĐ sắp hết hạn" color="orange" />
+
 
         <StatCard icon={<Lock size={20} />} value={report.lockedUsers} label="Tài khoản bị khóa" color="red" />
       </div>

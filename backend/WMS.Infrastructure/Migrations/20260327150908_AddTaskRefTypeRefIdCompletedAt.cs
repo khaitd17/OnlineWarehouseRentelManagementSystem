@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,118 +11,74 @@ namespace WMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_UnitTask_tasks_WarehouseTaskId",
-                table: "UnitTask");
+            // Tất cả các bước đều dùng IF EXISTS/IF NOT EXISTS để an toàn khi migration đã apply 1 phần
+            migrationBuilder.Sql(@"
+                -- Drop FK nếu còn tồn tại
+                IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_UnitTask_tasks_WarehouseTaskId')
+                    ALTER TABLE [UnitTask] DROP CONSTRAINT [FK_UnitTask_tasks_WarehouseTaskId];
 
-            migrationBuilder.DropTable(
-                name: "task_assignments");
+                -- Drop bảng task_assignments nếu còn
+                IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'task_assignments')
+                    DROP TABLE [task_assignments];
 
-            migrationBuilder.DropPrimaryKey(
-                name: "PK_UnitTask",
-                table: "UnitTask");
+                -- Drop PK cũ nếu còn
+                IF EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'PK_UnitTask')
+                    ALTER TABLE [UnitTask] DROP CONSTRAINT [PK_UnitTask];
 
-            migrationBuilder.DropColumn(
-                name: "referenceId",
-                table: "tasks");
+                -- Drop cột referenceId nếu còn (phải drop default constraint trước)
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('tasks') AND name = 'referenceId')
+                BEGIN
+                    DECLARE @dfName NVARCHAR(256);
+                    SELECT @dfName = d.name FROM sys.default_constraints d
+                        JOIN sys.columns c ON d.parent_column_id = c.column_id AND d.parent_object_id = c.object_id
+                        WHERE c.object_id = OBJECT_ID('tasks') AND c.name = 'referenceId';
+                    IF @dfName IS NOT NULL
+                        EXEC('ALTER TABLE [tasks] DROP CONSTRAINT [' + @dfName + ']');
+                    ALTER TABLE [tasks] DROP COLUMN [referenceId];
+                END
 
-            migrationBuilder.RenameTable(
-                name: "UnitTask",
-                newName: "unit_tasks");
+                -- Rename bảng UnitTask -> unit_tasks nếu chưa
+                IF EXISTS (SELECT 1 FROM sys.tables WHERE name = 'UnitTask') AND NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = 'unit_tasks')
+                    EXEC sp_rename N'UnitTask', N'unit_tasks';
 
-            migrationBuilder.RenameColumn(
-                name: "Status",
-                table: "unit_tasks",
-                newName: "status");
+                -- Rename columns (chỉ chạy nếu cột cũ còn)
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('unit_tasks') AND name = 'Status')
+                    EXEC sp_rename N'[unit_tasks].[Status]', N'status', 'COLUMN';
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('unit_tasks') AND name = 'Description')
+                    EXEC sp_rename N'[unit_tasks].[Description]', N'description', 'COLUMN';
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('unit_tasks') AND name = 'WarehouseTaskId')
+                    EXEC sp_rename N'[unit_tasks].[WarehouseTaskId]', N'warehouse_task_id', 'COLUMN';
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('unit_tasks') AND name = 'CreatedAt')
+                    EXEC sp_rename N'[unit_tasks].[CreatedAt]', N'created_at', 'COLUMN';
+                IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('unit_tasks') AND name = 'Id')
+                    EXEC sp_rename N'[unit_tasks].[Id]', N'unit_task_id', 'COLUMN';
 
-            migrationBuilder.RenameColumn(
-                name: "Description",
-                table: "unit_tasks",
-                newName: "description");
+                -- Rename index an toàn
+                IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_UnitTask_WarehouseTaskId' AND object_id = OBJECT_ID('unit_tasks'))
+                    EXEC sp_rename N'unit_tasks.IX_UnitTask_WarehouseTaskId', N'IX_unit_tasks_warehouse_task_id', 'INDEX';
 
-            migrationBuilder.RenameColumn(
-                name: "WarehouseTaskId",
-                table: "unit_tasks",
-                newName: "warehouse_task_id");
+                -- Thêm cột ref_id, ref_type cho bảng tasks
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('tasks') AND name = 'ref_id')
+                    ALTER TABLE [tasks] ADD [ref_id] int NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('tasks') AND name = 'ref_type')
+                    ALTER TABLE [tasks] ADD [ref_type] nvarchar(20) NULL;
 
-            migrationBuilder.RenameColumn(
-                name: "CreatedAt",
-                table: "unit_tasks",
-                newName: "created_at");
+                -- Thêm các cột mới cho unit_tasks
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('unit_tasks') AND name = 'completed_at')
+                    ALTER TABLE [unit_tasks] ADD [completed_at] datetime2 NULL;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('unit_tasks') AND name = 'order')
+                    ALTER TABLE [unit_tasks] ADD [order] int NOT NULL DEFAULT 0;
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('unit_tasks') AND name = 'unit_task_type_code')
+                    ALTER TABLE [unit_tasks] ADD [unit_task_type_code] nvarchar(50) NULL;
 
-            migrationBuilder.RenameColumn(
-                name: "Id",
-                table: "unit_tasks",
-                newName: "unit_task_id");
+                -- PK mới
+                IF NOT EXISTS (SELECT 1 FROM sys.key_constraints WHERE name = 'PK_unit_tasks')
+                    ALTER TABLE [unit_tasks] ADD CONSTRAINT [PK_unit_tasks] PRIMARY KEY ([unit_task_id]);
 
-            migrationBuilder.RenameIndex(
-                name: "IX_UnitTask_WarehouseTaskId",
-                table: "unit_tasks",
-                newName: "IX_unit_tasks_warehouse_task_id");
-
-            migrationBuilder.AddColumn<int>(
-                name: "ref_id",
-                table: "tasks",
-                type: "int",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "ref_type",
-                table: "tasks",
-                type: "nvarchar(20)",
-                maxLength: 20,
-                nullable: true);
-
-            migrationBuilder.AlterColumn<string>(
-                name: "status",
-                table: "unit_tasks",
-                type: "nvarchar(20)",
-                maxLength: 20,
-                nullable: false,
-                defaultValue: "Pending",
-                oldClrType: typeof(string),
-                oldType: "nvarchar(max)");
-
-            migrationBuilder.AlterColumn<DateTime>(
-                name: "created_at",
-                table: "unit_tasks",
-                type: "datetime2",
-                nullable: false,
-                defaultValueSql: "(getdate())",
-                oldClrType: typeof(DateTime),
-                oldType: "datetime2");
-
-            migrationBuilder.AddColumn<DateTime>(
-                name: "completed_at",
-                table: "unit_tasks",
-                type: "datetime2",
-                nullable: true);
-
-            migrationBuilder.AddColumn<int>(
-                name: "order",
-                table: "unit_tasks",
-                type: "int",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.AddColumn<string>(
-                name: "unit_task_type_code",
-                table: "unit_tasks",
-                type: "nvarchar(50)",
-                maxLength: 50,
-                nullable: true);
-
-            migrationBuilder.AddPrimaryKey(
-                name: "PK_unit_tasks",
-                table: "unit_tasks",
-                column: "unit_task_id");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_unit_tasks_tasks_warehouse_task_id",
-                table: "unit_tasks",
-                column: "warehouse_task_id",
-                principalTable: "tasks",
-                principalColumn: "task_id");
+                -- FK mới
+                IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_unit_tasks_tasks_warehouse_task_id')
+                    ALTER TABLE [unit_tasks] ADD CONSTRAINT [FK_unit_tasks_tasks_warehouse_task_id] FOREIGN KEY ([warehouse_task_id]) REFERENCES [tasks] ([task_id]);
+            ");
         }
 
         /// <inheritdoc />

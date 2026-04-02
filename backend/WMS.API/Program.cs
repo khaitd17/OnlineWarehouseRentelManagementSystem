@@ -200,7 +200,19 @@ using (var scope = app.Services.CreateScope())
         // 1. Apply any pending migrations automatically
         context.Database.Migrate();
 
-
+        // Patch: Thêm các cột termination còn thiếu vào bảng contracts
+        var patchSqls = new[]
+        {
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'early_termination_fee') ALTER TABLE contracts ADD early_termination_fee decimal(18,2) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'owner_approved_termination') ALTER TABLE contracts ADD owner_approved_termination bit NOT NULL DEFAULT 0;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'renter_approved_termination') ALTER TABLE contracts ADD renter_approved_termination bit NOT NULL DEFAULT 0;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_at') ALTER TABLE contracts ADD termination_requested_at datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_by') ALTER TABLE contracts ADD termination_requested_by nvarchar(50) NULL;",
+        };
+        foreach (var sql in patchSqls)
+        {
+            context.Database.ExecuteSqlRaw(sql);
+        }
 
         logger.LogInformation("Database migrations applied successfully.");
 

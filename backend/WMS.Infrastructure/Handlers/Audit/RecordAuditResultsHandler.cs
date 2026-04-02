@@ -52,18 +52,40 @@ public class RecordAuditResultsHandler : IRequestHandler<RecordAuditResultsComma
         if (errors.Count > 0)
             return ApiResponse<bool>.ErrorResponse("Dữ liệu kiểm kê không hợp lệ.", errors);
 
+        // Lấy tất cả kết quả đã có cho phiên này
+        var existingResults = await _db.AuditResults
+            .Where(r => r.AuditId == request.AuditId)
+            .ToListAsync(cancellationToken);
+
         foreach (var item in request.Items)
         {
-            _db.AuditResults.Add(new AuditResult
+            var trimmedName = item.ItemName.Trim();
+            var existing = existingResults.FirstOrDefault(r => 
+                r.ItemName.Trim().Equals(trimmedName, StringComparison.OrdinalIgnoreCase));
+
+            if (existing != null)
             {
-                AuditId = request.AuditId,
-                ItemName = item.ItemName.Trim(),
-                ExpectedQty = item.ExpectedQty,
-                ActualQty = item.ActualQty,
-                DiscrepancyReason = item.DiscrepancyReason,
-                RecordedBy = request.UserId,
-                CreatedAt = DateTime.UtcNow
-            });
+                // Cập nhật kết quả đã tồn tại
+                existing.ExpectedQty = item.ExpectedQty;
+                existing.ActualQty = item.ActualQty;
+                existing.DiscrepancyReason = item.DiscrepancyReason;
+                existing.RecordedBy = request.UserId;
+                existing.CreatedAt = DateTime.UtcNow;
+            }
+            else
+            {
+                // Thêm mới
+                _db.AuditResults.Add(new AuditResult
+                {
+                    AuditId = request.AuditId,
+                    ItemName = trimmedName,
+                    ExpectedQty = item.ExpectedQty,
+                    ActualQty = item.ActualQty,
+                    DiscrepancyReason = item.DiscrepancyReason,
+                    RecordedBy = request.UserId,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
         }
 
         // Chuyển trạng thái sang IN_PROGRESS nếu đang ở APPROVED
