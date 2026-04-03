@@ -47,7 +47,15 @@ public class GetOwnerInventoryRequestsHandler
                 Unit        = i.Unit,
                 Weight      = i.Weight,
                 Description = i.Description,
-            }).ToList()
+            }).ToList(),
+
+            // ── Timeline data ────────────────────────────────────
+            ConfirmedByName    = r.ConfirmedByNavigation?.FullName,
+            AssignedStaffName  = r.AssignedStaff?.FullName,
+            AssignedStaffEmail = r.AssignedStaff?.Email,
+            AssignedAt         = r.AssignedAt,
+            AssignedNote       = r.AssignedNote,
+            UpdatedAt          = r.UpdatedAt,
         }).ToList();
 
         return new OwnerInventoryRequestsResult

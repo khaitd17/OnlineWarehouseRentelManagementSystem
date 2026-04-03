@@ -627,8 +627,18 @@ const MainLayout = () => {
   if (isDashboard) return <Outlet />;
 
   const userRole = (user?.systemRole || user?.role || user?.roleName || '').toUpperCase();
-  const dashboardPath = userRole === 'STAFF' || userRole === 'MANAGER' ? '/staff-dashboard'
-    : userRole === 'RENTER' ? '/renter-dashboard'
+  const warehouseCtx = (() => { try { return JSON.parse(localStorage.getItem('warehouseContext') || '{}'); } catch { return {}; } })();
+  const warehouseRoles = (warehouseCtx.warehouses || []).map(w => (w.role || '').toUpperCase());
+  const ROLE_PRIORITY = ['OWNER', 'OPERATOR', 'MANAGER', 'STAFF', 'RENTER'];
+  const effectiveRole = (() => {
+    const sysRole = (warehouseCtx.systemRole || user?.role || user?.roleName || '').toUpperCase();
+    if (sysRole === 'ADMIN') return 'ADMIN';
+    for (const r of ROLE_PRIORITY) { if (warehouseRoles.includes(r)) return r; }
+    return sysRole || userRole || 'USER';
+  })();
+  const isRenter = effectiveRole === 'RENTER';
+  const dashboardPath = effectiveRole === 'STAFF' || effectiveRole === 'MANAGER' ? '/staff-dashboard'
+    : effectiveRole === 'RENTER' ? '/renter-dashboard'
     : '/dashboard';
 
   return (
@@ -711,14 +721,7 @@ const MainLayout = () => {
         >
           {isAuthenticated ? (
             <>
-              {user && dashboardPath === '/renter-dashboard' && (
-                <Link to="/my-favorites" className="nav-favorites-link">
-                  ❤️ Yêu thích
-                  {favoritesCount > 0 && (
-                    <span className="nav-favorites-badge">{favoritesCount}</span>
-                  )}
-                </Link>
-              )}
+
               {user && (
                 <div className="nav-user-dropdown">
                   {/* Trigger */}
@@ -763,6 +766,13 @@ const MainLayout = () => {
                     <Link to={dashboardPath} className="nav-dropdown-item">
                       Dashboard
                     </Link>
+
+                    {/* Kho yêu thích - chỉ hiện với Renter */}
+                    {isRenter && (
+                      <Link to="/my-favorites" className="nav-dropdown-item">
+                        Kho yêu thích
+                      </Link>
+                    )}
 
                     <div className="nav-dropdown-divider" />
 
