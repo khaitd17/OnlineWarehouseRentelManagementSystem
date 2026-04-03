@@ -42,89 +42,289 @@ const StatCard = ({ icon, label, value, color }) => (
 );
 
 /* ──────────────────────────────────────────────────────────────
+   Tracking Timeline Component
+────────────────────────────────────────────────────────────── */
+const formatDateTime = (dt) => {
+  if (!dt) return null;
+  const d = new Date(dt);
+  return {
+    date: d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    time: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+  };
+};
+
+const TimelineStep = ({ icon, iconBg, iconColor, title, subtitle, meta, note, isLast, isActive, isDone, isFailed }) => {
+  const borderColor = isFailed ? '#fecaca' : isDone ? '#a7f3d0' : isActive ? '#bfdbfe' : '#e5e7eb';
+  const lineColor   = isDone   ? '#10b981' : '#e5e7eb';
+  return (
+    <div style={{ display: 'flex', gap: 14, position: 'relative' }}>
+      {/* Vertical line */}
+      {!isLast && (
+        <div style={{
+          position: 'absolute', left: 19, top: 40, bottom: -8,
+          width: 2, background: lineColor, zIndex: 0,
+        }} />
+      )}
+      {/* Icon circle */}
+      <div style={{
+        width: 40, height: 40, borderRadius: '50%', flexShrink: 0, zIndex: 1,
+        background: iconBg, border: `2px solid ${borderColor}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 18, color: iconColor }}>{icon}</span>
+      </div>
+      {/* Content */}
+      <div style={{ paddingBottom: isLast ? 0 : 20, flex: 1 }}>
+        <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: isDone || isActive ? '#111827' : '#9ca3af' }}>
+          {title}
+        </p>
+        {subtitle && (
+          <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#6b7280', fontWeight: 500 }}>{subtitle}</p>
+        )}
+        {meta && (
+          <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontSize: '0.72rem', color: '#6b7280', background: '#f1f5f9',
+              padding: '3px 8px', borderRadius: 6, fontWeight: 500,
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>calendar_today</span>
+              {meta.date}
+            </span>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              fontSize: '0.72rem', color: '#6b7280', background: '#f1f5f9',
+              padding: '3px 8px', borderRadius: 6, fontWeight: 500,
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>schedule</span>
+              {meta.time}
+            </span>
+          </div>
+        )}
+        {note && (
+          <div style={{
+            marginTop: 8, padding: '8px 12px', borderRadius: 8,
+            background: '#fffbeb', border: '1px solid #fde68a',
+            fontSize: '0.78rem', color: '#92400e',
+          }}>
+            <span style={{ fontWeight: 700 }}>Ghi chú: </span>{note}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const TrackingTimeline = ({ req }) => {
+  const status = req.status;
+
+  // Xác định trạng thái từng bước
+  const isCompleted = status === 'COMPLETED';
+  const isRejected  = status === 'REJECTED';
+  const isAssigned  = ['ASSIGNED', 'COMPLETED', 'REJECTED'].includes(status);
+  const isConfirmed = ['CONFIRMED', 'ASSIGNED', 'COMPLETED', 'REJECTED'].includes(status);
+
+  const steps = [
+    {
+      icon: 'add_circle',
+      iconBg: '#d1fae5', iconColor: '#059669',
+      title: `Yêu cầu được tạo bởi ${req.renterName}`,
+      subtitle: req.renterEmail,
+      meta: formatDateTime(req.createdAt),
+      isDone: true,
+      isActive: false,
+    },
+    {
+      icon: isRejected && !isConfirmed ? 'cancel' : 'verified',
+      iconBg: isConfirmed ? '#d1fae5' : '#f1f5f9',
+      iconColor: isConfirmed ? '#059669' : '#d1d5db',
+      title: isConfirmed
+        ? `Đã duyệt bởi ${req.confirmedByName || 'Manager'}`
+        : (isRejected ? 'Đã từ chối' : 'Chờ Manager xét duyệt'),
+      subtitle: isConfirmed ? `Manager phụ trách` : undefined,
+      meta: isConfirmed ? formatDateTime(req.confirmedAt) : null,
+      isDone: isConfirmed,
+      isActive: !isConfirmed && status === 'PENDING',
+    },
+    {
+      icon: 'person_pin_circle',
+      iconBg: isAssigned ? '#dbeafe' : '#f1f5f9',
+      iconColor: isAssigned ? '#2563eb' : '#d1d5db',
+      title: isAssigned
+        ? `Giao cho ${req.assignedStaffName || 'Nhân viên kho'}`
+        : 'Chờ giao nhân viên xử lý',
+      subtitle: isAssigned && req.assignedStaffEmail ? req.assignedStaffEmail : undefined,
+      meta: isAssigned ? formatDateTime(req.assignedAt) : null,
+      note: isAssigned && req.assignedNote ? req.assignedNote : null,
+      isDone: isAssigned,
+      isActive: isConfirmed && !isAssigned,
+    },
+    {
+      icon: isCompleted ? 'check_circle' : isRejected ? 'cancel' : 'pending',
+      iconBg: isCompleted ? '#d1fae5' : isRejected ? '#fee2e2' : '#f1f5f9',
+      iconColor: isCompleted ? '#059669' : isRejected ? '#dc2626' : '#d1d5db',
+      title: isCompleted ? 'Hoàn thành xuất/nhập kho'
+           : isRejected  ? 'Yêu cầu bị từ chối'
+           : 'Chờ thực hiện & hoàn thành',
+      meta: (isCompleted || isRejected) ? formatDateTime(req.updatedAt) : null,
+      isDone: isCompleted || isRejected,
+      isFailed: isRejected,
+      isActive: isAssigned && !isCompleted && !isRejected,
+      isLast: true,
+    },
+  ];
+
+  return (
+    <div>
+      <p style={{ margin: '0 0 14px', fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        Tiến trình xử lý
+      </p>
+      <div style={{ borderLeft: 'none', paddingLeft: 0 }}>
+        {steps.map((step, i) => (
+          <TimelineStep key={i} {...step} isLast={i === steps.length - 1} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ──────────────────────────────────────────────────────────────
    Detail Modal
 ────────────────────────────────────────────────────────────── */
 const DetailModal = ({ req, onClose }) => {
   if (!req) return null;
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 1000, padding: 24,
     }} onClick={onClose}>
       <div style={{
-        background: '#fff', borderRadius: 16, padding: 28,
-        width: '100%', maxWidth: 560, maxHeight: '85vh', overflowY: 'auto',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+        background: '#fff', borderRadius: 16, padding: 0,
+        width: '100%', maxWidth: 620, maxHeight: '90vh', overflowY: 'auto',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+        display: 'flex', flexDirection: 'column',
       }} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+
+        {/* ── Modal Header ──────────────────────────── */}
+        <div style={{
+          padding: '20px 24px 16px',
+          borderBottom: '1px solid #f1f5f9',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+          background: 'linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%)',
+          borderRadius: '16px 16px 0 0',
+        }}>
           <div>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              #{req.type === 'INBOUND' ? 'Nhập kho' : 'Xuất kho'} • #{req.invReqId}
-            </p>
-            <h2 style={{ margin: '4px 0 0', fontSize: '1.15rem', fontWeight: 800, color: '#111827' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '2px 10px', borderRadius: 999,
+                fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                background: req.type === 'INBOUND' ? '#dcfce7' : '#fef3c7',
+                color:      req.type === 'INBOUND' ? '#16a34a' : '#d97706',
+                border:     `1px solid ${req.type === 'INBOUND' ? '#bbf7d0' : '#fde68a'}`,
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>
+                  {req.type === 'INBOUND' ? 'move_to_inbox' : 'outbox'}
+                </span>
+                {req.type === 'INBOUND' ? 'Nhập kho' : 'Xuất kho'}
+              </span>
+              <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>#{req.invReqId}</span>
+            </div>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#111827' }}>
               {req.warehouseName}
             </h2>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#9ca3af' }}>close</span>
+          <button onClick={onClose} style={{
+            background: '#f1f5f9', border: 'none', cursor: 'pointer',
+            width: 32, height: 32, borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'background 0.15s',
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
+            onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#6b7280' }}>close</span>
           </button>
         </div>
 
-        {/* Info */}
-        <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
-            {[
-              ['Người thuê', req.renterName],
-              ['Email', req.renterEmail],
-              ['Trạng thái', <StatusBadge status={req.status} />],
-              ['Ngày tạo', req.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN') : '—'],
-            ].map(([k, v]) => (
-              <div key={k}>
-                <p style={{ margin: 0, fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>{k}</p>
-                <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#374151', fontWeight: 500 }}>{v}</p>
-              </div>
-            ))}
-          </div>
-          {req.notes && (
-            <div style={{ marginTop: 10, borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
-              <p style={{ margin: 0, fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase' }}>Ghi chú</p>
-              <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#374151' }}>{req.notes}</p>
-            </div>
-          )}
-        </div>
+        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-        {/* Items */}
-        <p style={{ margin: '0 0 10px', fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Danh sách hàng hóa ({req.items?.length || 0} mặt hàng)
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {(req.items || []).map((item, i) => (
-            <div key={item.itemId} style={{
-              border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            }}>
-              <div>
-                <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{item.itemName}</p>
-                {item.description && <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>{item.description}</p>}
+          {/* ── Thông tin chung ───────────────────────── */}
+          <div>
+            <p style={{ margin: '0 0 10px', fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Thông tin chung
+            </p>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: '14px 16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 20px' }}>
+                {[
+                  ['Người thuê', req.renterName],
+                  ['Email',      req.renterEmail],
+                  ['Trạng thái', <StatusBadge status={req.status} />],
+                  ['Ngày tạo',   req.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN') : '—'],
+                ].map(([k, v]) => (
+                  <div key={k}>
+                    <p style={{ margin: 0, fontSize: '0.68rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k}</p>
+                    <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: '#374151', fontWeight: 500 }}>{v}</p>
+                  </div>
+                ))}
               </div>
-              <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#00b2d6' }}>
-                  {item.quantity.toLocaleString()} {item.unit}
-                </p>
-                {item.weight && <p style={{ margin: 0, fontSize: '0.72rem', color: '#9ca3af' }}>{item.weight} kg</p>}
-              </div>
+              {req.notes && (
+                <div style={{ marginTop: 12, borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+                  <p style={{ margin: 0, fontSize: '0.68rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Ghi chú từ Người thuê</p>
+                  <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: '#374151' }}>{req.notes}</p>
+                </div>
+              )}
             </div>
-          ))}
-          {(!req.items || req.items.length === 0) && (
-            <p style={{ color: '#9ca3af', fontSize: '0.85rem', textAlign: 'center', padding: '12px 0' }}>Không có mặt hàng nào.</p>
-          )}
+          </div>
+
+          {/* ── Tracking Timeline ─────────────────────── */}
+          <div style={{ background: '#f8fafc', borderRadius: 10, padding: '16px 18px' }}>
+            <TrackingTimeline req={req} />
+          </div>
+
+          {/* ── Danh sách Hàng hóa ───────────────────── */}
+          <div>
+            <p style={{ margin: '0 0 10px', fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Danh sách hàng hóa
+              <span style={{
+                marginLeft: 8, padding: '1px 8px', borderRadius: 999,
+                background: '#e0f2fe', color: '#0284c7', fontSize: '0.72rem', fontWeight: 700,
+              }}>{req.items?.length || 0} mặt hàng</span>
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(req.items || []).map((item) => (
+                <div key={item.itemId} style={{
+                  border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: '#fff',
+                }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{item.itemName}</p>
+                    {item.description && <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>{item.description}</p>}
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#00b2d6' }}>
+                      {item.quantity.toLocaleString()} {item.unit}
+                    </p>
+                    {item.weight && <p style={{ margin: 0, fontSize: '0.72rem', color: '#9ca3af' }}>{item.weight} kg</p>}
+                  </div>
+                </div>
+              ))}
+              {(!req.items || req.items.length === 0) && (
+                <p style={{ color: '#9ca3af', fontSize: '0.85rem', textAlign: 'center', padding: '16px 0' }}>
+                  Không có mặt hàng nào.
+                </p>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
   );
 };
+
 
 /* ──────────────────────────────────────────────────────────────
    Main Page

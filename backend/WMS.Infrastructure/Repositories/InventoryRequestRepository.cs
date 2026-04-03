@@ -23,6 +23,8 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.Renter)
             .Include(r => r.Warehouse)
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
+            .Include(r => r.ConfirmedByNavigation)   // Manager đã duyệt
+            .Include(r => r.AssignedStaff)            // Staff được giao việc
             .Where(r => r.Warehouse.OwnerId == ownerId && r.Type == type);
 
         if (!string.IsNullOrEmpty(status))
