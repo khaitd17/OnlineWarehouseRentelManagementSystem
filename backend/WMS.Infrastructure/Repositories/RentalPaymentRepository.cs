@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
+using WMS.Domain.Enums;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
@@ -21,6 +22,16 @@ public class RentalPaymentRepository : IRentalPaymentRepository
             .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
     }
 
+    public async Task<RentalPayment?> GetByIdWithDetailsAsync(int paymentId)
+    {
+        return await _db.RentalPayments
+            .Include(p => p.Contract)
+            .ThenInclude(c => c!.Renter)
+            .Include(p => p.Contract)
+            .ThenInclude(c => c!.Warehouse)
+            .FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+    }
+
     public async Task<RentalPayment?> GetByPaymentCodeAsync(string paymentCode)
     {
         return await _db.RentalPayments
@@ -32,6 +43,14 @@ public class RentalPaymentRepository : IRentalPaymentRepository
     {
         return await _db.RentalPayments
             .Where(p => p.ContractId == contractId)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<RentalPayment>> GetCompletedByContractIdAsync(int contractId)
+    {
+        return await _db.RentalPayments
+            .Where(p => p.ContractId == contractId && p.Status == PaymentStatus.Completed)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
     }

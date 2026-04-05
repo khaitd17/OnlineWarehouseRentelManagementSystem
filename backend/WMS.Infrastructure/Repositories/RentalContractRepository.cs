@@ -26,6 +26,16 @@ public class RentalContractRepository : IRentalContractRepository
         return dbContract != null ? MapToDomain(dbContract) : null;
     }
 
+    public async Task<DomainRentalContract?> GetByIdWithDetailsAsync(int contractId)
+    {
+        var dbContract = await _context.Contracts
+            .Include(c => c.Renter)
+            .Include(c => c.Warehouse)
+            .FirstOrDefaultAsync(c => c.ContractId == contractId);
+
+        return dbContract != null ? MapToDomain(dbContract) : null;
+    }
+
     public async Task<DomainRentalContract?> GetByRentalRequestIdAsync(int requestId)
     {
         var dbContract = await _context.Contracts

@@ -96,6 +96,8 @@ builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.Infrastructure.Repositories.NotificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.ICancellationLogRepository, WMS.Infrastructure.Repositories.CancellationLogRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IRefundRepository, WMS.Infrastructure.Repositories.RefundRepository>();
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
@@ -137,6 +139,9 @@ builder.Services.AddHangfireServer();
 // Background job classes
 builder.Services.AddScoped<ContractNotificationJob>();
 builder.Services.AddScoped<ContractExpiryJob>();
+builder.Services.AddScoped<ExpireSignaturesJob>();
+builder.Services.AddScoped<ExpirePaymentsJob>();
+builder.Services.AddScoped<MonthlyPaymentJob>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -269,6 +274,41 @@ RecurringJob.AddOrUpdate<ContractNotificationJob>(
     "payment-reminders",
     job => job.SendPaymentReminders(),
     "0 */6 * * *",  // Run every 6 hours
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// NEW - Expire signatures job (every hour)
+RecurringJob.AddOrUpdate<ExpireSignaturesJob>(
+    "expire-signatures",
+    job => job.ProcessExpiredSignatures(),
+    Cron.Hourly,  // Run every hour
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// NEW - Expire payments job (every hour)
+RecurringJob.AddOrUpdate<ExpirePaymentsJob>(
+    "expire-payments",
+    job => job.ProcessExpiredPayments(),
+    Cron.Hourly,  // Run every hour
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// NEW - Payment expiry reminders (every 6 hours)
+RecurringJob.AddOrUpdate<ExpirePaymentsJob>(
+    "payment-expiry-reminders",
+    job => job.SendPaymentExpiryReminders(),
+    "0 */6 * * *",  // Run every 6 hours
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// NEW - Monthly payment creation (daily at 2am)
+RecurringJob.AddOrUpdate<MonthlyPaymentJob>(
+    "create-monthly-payments",
+    job => job.CreateUpcomingPayments(),
+    "0 2 * * *",  // Run daily at 2 AM
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// NEW - Overdue payment reminders (daily at 9am)
+RecurringJob.AddOrUpdate<MonthlyPaymentJob>(
+    "overdue-payment-reminders",
+    job => job.SendOverdueReminders(),
+    "0 9 * * *",  // Run daily at 9 AM
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Tạm vô hiệu hóa contract expiry job để fix API trước

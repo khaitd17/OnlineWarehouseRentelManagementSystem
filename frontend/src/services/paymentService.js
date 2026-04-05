@@ -77,6 +77,26 @@ const paymentService = {
     return response.data;
   },
 
+  /**
+   * Retry payment (thanh toán lại khi thất bại/hết hạn)
+   * @param {number} paymentId
+   * @returns {Promise} new payment info with QR code
+   */
+  retryPayment: async (paymentId) => {
+    const response = await axiosClient.post(`/payments/${paymentId}/retry`);
+    return response.data;
+  },
+
+  /**
+   * Get retry info for a payment
+   * @param {number} paymentId
+   * @returns {Promise} retry info (retryCount, maxRetry, canRetry)
+   */
+  getRetryInfo: async (paymentId) => {
+    const response = await axiosClient.get(`/payments/${paymentId}/retry-info`);
+    return response.data;
+  },
+
   // ── Utility Methods ──────────────────────────────────────────
 
   /**
@@ -133,6 +153,18 @@ const paymentService = {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
     return { hours, minutes, isExpired: false };
+  },
+
+  /**
+   * Check if payment can be retried
+   * @param {string} status - payment status
+   * @param {number} retryCount - current retry count
+   * @param {number} maxRetry - maximum retries allowed
+   * @returns {boolean} true if can retry
+   */
+  canRetryPayment: (status, retryCount, maxRetry = 3) => {
+    const retryableStatuses = ['EXPIRED', 'FAILED', 'RETRY_PENDING'];
+    return retryableStatuses.includes(status) && retryCount < maxRetry;
   }
 };
 

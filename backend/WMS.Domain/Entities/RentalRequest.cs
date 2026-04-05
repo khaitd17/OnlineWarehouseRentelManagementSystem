@@ -34,6 +34,13 @@ public partial class RentalRequest
     public string? RejectionReason { get; set; }
 
     public string? ContractImageUrl { get; set; }
+    
+    // NEW - Cancel tracking
+    public string? CancellationReason { get; set; }
+    
+    public DateTime? CancelledAt { get; set; }
+    
+    public string? CancelledBy { get; set; } // USER, OWNER, SYSTEM
 
     public virtual User Renter { get; set; } = null!;
 
@@ -98,6 +105,25 @@ public partial class RentalRequest
             throw new InvalidOperationException($"Cannot cancel request with status {Status}");
 
         Status = "CANCELLED";
+    }
+    
+    // NEW - Enhanced cancel with reason and tracking
+    public void CancelWithReason(string reason, string cancelledBy = "USER")
+    {
+        if (Status != "PENDING" && Status != "APPROVED")
+            throw new InvalidOperationException($"Cannot cancel request with status {Status}");
+
+        Status = cancelledBy switch
+        {
+            "USER" => "CANCELLED_BY_USER",
+            "OWNER" => "CANCELLED_BY_OWNER",
+            "SYSTEM" => "CANCELLED_BY_SYSTEM",
+            _ => "CANCELLED"
+        };
+        
+        CancellationReason = reason;
+        CancelledAt = DateTime.UtcNow;
+        CancelledBy = cancelledBy;
     }
 
     public void Send()

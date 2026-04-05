@@ -6,6 +6,11 @@ public static class RentalRequestStatus
     public const string Approved = "APPROVED";
     public const string Rejected = "REJECTED";
     public const string Cancelled = "CANCELLED";
+    
+    // NEW - Cancel tracking
+    public const string CancelledByUser = "CANCELLED_BY_USER";
+    public const string CancelledByOwner = "CANCELLED_BY_OWNER";
+    public const string CancelledBySystem = "CANCELLED_BY_SYSTEM";
 }
 
 public static class RentalContractStatus
@@ -32,6 +37,13 @@ public static class RentalContractStatus
     // NEW - 2-party approval for termination/close
     public const string PendingTermination = "PENDING_TERMINATION";
     public const string PendingClose = "PENDING_CLOSE";
+    
+    // NEW - Cancel tracking
+    public const string CancelledByUser = "CANCELLED_BY_USER";
+    public const string CancelledByOwner = "CANCELLED_BY_OWNER";
+    public const string CancelledNoPayment = "CANCELLED_NO_PAYMENT";
+    public const string ExpiredSignature = "EXPIRED_SIGNATURE";
+    public const string ExpiredPayment = "EXPIRED_PAYMENT";
 }
 
 public static class PaymentStatus
@@ -42,6 +54,11 @@ public static class PaymentStatus
     public const string Failed = "FAILED";
     public const string Cancelled = "CANCELLED";
     public const string Expired = "EXPIRED";
+    
+    // NEW - Cancel tracking
+    public const string CancelledByUser = "CANCELLED_BY_USER";
+    public const string PendingConfirmation = "PENDING_CONFIRMATION"; // Cash payment
+    public const string RetryPending = "RETRY_PENDING";
 }
 
 public static class PaymentType

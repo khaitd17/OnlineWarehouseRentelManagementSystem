@@ -82,6 +82,10 @@ public class ApplicationDbContext : DbContext
     public virtual DbSet<ContractVerification> ContractVerifications { get; set; }
 
     public virtual DbSet<ContractLog> ContractLogs { get; set; }
+    
+    public virtual DbSet<CancellationLog> CancellationLogs { get; set; }
+    
+    public virtual DbSet<Refund> Refunds { get; set; }
 
     public virtual DbSet<StaffShift> StaffShifts { get; set; }
 

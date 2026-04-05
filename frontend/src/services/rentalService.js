@@ -37,8 +37,8 @@ const rentalService = {
     return response.data;
   },
 
-  cancelRentalRequest: async (id) => {
-    const response = await axiosClient.post(`/rental-requests/${id}/cancel`);
+  cancelRentalRequest: async (id, reason = null) => {
+    const response = await axiosClient.post(`/rental-requests/${id}/cancel`, { reason });
     return response.data;
   },
 
