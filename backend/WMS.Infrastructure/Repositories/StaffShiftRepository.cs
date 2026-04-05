@@ -96,21 +96,16 @@ public class StaffShiftRepository : IStaffShiftRepository
             .Where(s => memberIds.Contains(s.MembershipId) && s.ShiftDate >= from && s.ShiftDate <= to)
             .ToListAsync(ct);
 
-        // Load tasks for these members via zone overlap (no assignment table)
-        var memberZoneIds = await _db.WarehouseMemberships
-            .Where(m => memberIds.Contains(m.Id))
-            .SelectMany(m => m.Zones.Select(z => z.Id))
-            .Distinct()
-            .ToListAsync(ct);
+        // Load tasks: task không còn zone, mọi nhân viên trong kho đều thấy task manual
+        var memberZoneIds = new List<int>(); // giữ lại để không phá vỡ memberZoneMap query bên dưới
 
         var warehouseTasks = await _db.WarehouseTasks
             .Where(t => t.WarehouseId == warehouseId
                      && t.ScheduledAt.HasValue
                      && DateOnly.FromDateTime(t.ScheduledAt.Value) >= from
                      && DateOnly.FromDateTime(t.ScheduledAt.Value) <= to
-                     && (t.IsAllZone || t.Zones.Any(z => memberZoneIds.Contains(z.Id))))
+                     && t.TaskType.IsManual)
             .Include(t => t.TaskType)
-            .Include(t => t.Zones)
             .ToListAsync(ct);
 
         // Map tasks to each member whose zones intersect
@@ -119,14 +114,11 @@ public class StaffShiftRepository : IStaffShiftRepository
             .Select(m => new { m.Id, ZoneIds = m.Zones.Select(z => z.Id).ToList(), m.IsAllZone })
             .ToListAsync(ct);
 
-        // Group tasks by (membershipId, date)
         var taskMap = new Dictionary<(int, string), List<TaskSlotDto>>();
         foreach (var member in memberZoneMap)
         {
             foreach (var t in warehouseTasks)
             {
-                if (!t.IsAllZone && !member.IsAllZone && !t.Zones.Any(z => member.ZoneIds.Contains(z.Id)))
-                    continue;
                 var dateKey = DateOnly.FromDateTime(t.ScheduledAt!.Value).ToString("yyyy-MM-dd");
                 var key = (member.Id, dateKey);
                 if (!taskMap.ContainsKey(key)) taskMap[key] = new List<TaskSlotDto>();
@@ -198,14 +190,12 @@ public class StaffShiftRepository : IStaffShiftRepository
             .Where(s => s.MembershipId == membership.Id && s.ShiftDate >= from && s.ShiftDate <= to)
             .ToListAsync(ct);
 
-        // Load tasks for this member
-        var memberZoneIds = membership.Zones.Select(z => z.Id).ToList();
         var myTasks = await _db.WarehouseTasks
             .Where(t => t.WarehouseId == warehouseId
                      && t.ScheduledAt.HasValue
                      && DateOnly.FromDateTime(t.ScheduledAt.Value) >= from
                      && DateOnly.FromDateTime(t.ScheduledAt.Value) <= to
-                     && (t.IsAllZone || membership.IsAllZone || t.Zones.Any(z => memberZoneIds.Contains(z.Id))))
+                     && t.TaskType.IsManual)
             .Include(t => t.TaskType)
             .ToListAsync(ct);
 

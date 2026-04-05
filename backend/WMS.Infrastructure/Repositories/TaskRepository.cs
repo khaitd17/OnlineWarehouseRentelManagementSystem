@@ -13,17 +13,21 @@ public class TaskRepository : ITaskRepository
 
     public TaskRepository(ApplicationDbContext db) => _db = db;
 
-    // ─── Get tasks by date range ───────────────────────────────────────────────
+    // Get tasks by date range 
     public async Task<List<TaskDto>> GetTasksAsync(
-        int warehouseId, DateTime startDate, DateTime endDate, CancellationToken ct = default)
+        int warehouseId, DateTime startDate, DateTime endDate, bool isManualOnly = false, CancellationToken ct = default)
     {
-        var tasks = await _db.WarehouseTasks
+        var query = _db.WarehouseTasks
             .Where(t => t.WarehouseId == warehouseId
                      && t.ScheduledAt.HasValue
                      && t.ScheduledAt.Value >= startDate
-                     && t.ScheduledAt.Value <= endDate)
+                     && t.ScheduledAt.Value <= endDate);
+
+        if (isManualOnly)
+            query = query.Where(t => t.TaskType.IsManual);
+
+        var tasks = await query
             .Include(t => t.TaskType)
-            .Include(t => t.Zones)
             .Include(t => t.UnitTasks)
                 .ThenInclude(u => u.CompletedByUser)
             .OrderBy(t => t.ScheduledAt)
@@ -32,7 +36,7 @@ public class TaskRepository : ITaskRepository
         return tasks.Select(MapToDto).ToList();
     }
 
-    // ─── Get task types ────────────────────────────────────────────────────────
+    // Get task types
     public async Task<List<TaskTypeDto>> GetTaskTypesAsync(CancellationToken ct = default)
         => await _db.TaskTypes
             .Select(t => new TaskTypeDto
@@ -42,8 +46,24 @@ public class TaskRepository : ITaskRepository
                 Name        = t.Name,
                 Description = t.Description,
                 IsAllSkill  = t.IsAllSkill,
+                IsManual    = t.IsManual,
             })
             .ToListAsync(ct);
+
+    // Get single task type by id 
+    public async Task<TaskTypeDto?> GetTaskTypeByIdAsync(int taskTypeId, CancellationToken ct = default)
+        => await _db.TaskTypes
+            .Where(t => t.Id == taskTypeId)
+            .Select(t => new TaskTypeDto
+            {
+                Id          = t.Id,
+                Code        = t.Code,
+                Name        = t.Name,
+                Description = t.Description,
+                IsAllSkill  = t.IsAllSkill,
+                IsManual    = t.IsManual,
+            })
+            .FirstOrDefaultAsync(ct);
 
     // ─── Create task + auto-create UnitTasks ───────────────────────────────────
     public async Task<int> CreateTaskAsync(CreateTaskDto dto, CancellationToken ct = default)
@@ -52,20 +72,11 @@ public class TaskRepository : ITaskRepository
         {
             WarehouseId = dto.WarehouseId,
             TaskTypeId  = dto.TaskTypeId,
-            IsAllZone   = dto.IsAllZone,
             Note        = dto.Note,
             ScheduledAt = dto.ScheduledAt,
             Status      = nameof(WarehouseTaskStatus.Pending),
             CreatedAt   = DateTime.UtcNow,
         };
-
-        if (!dto.IsAllZone && dto.ZoneIds.Any())
-        {
-            var zones = await _db.Zones
-                .Where(z => dto.ZoneIds.Contains(z.Id) && z.WarehouseId == dto.WarehouseId)
-                .ToListAsync(ct);
-            foreach (var z in zones) task.Zones.Add(z);
-        }
 
         _db.WarehouseTasks.Add(task);
         await _db.SaveChangesAsync(ct);
@@ -118,16 +129,51 @@ public class TaskRepository : ITaskRepository
             .FirstOrDefaultAsync(t => t.Code == typeCode, ct)
             ?? throw new InvalidOperationException($"TaskType '{typeCode}' không tồn tại trong DB.");
 
+        // Tự động ghi thông tin quan trọng vào Note khi tạo task
+        string? autoNote = null;
+        if (typeCode is "INBOUND" or "OUTBOUND")
+        {
+            var invReq = await _db.InventoryRequests
+                .Include(r => r.Renter)
+                .Include(r => r.InventoryItems)
+                .FirstOrDefaultAsync(r => r.InvReqId == refId, ct);
+
+            if (invReq != null)
+            {
+                var renterName  = invReq.Renter?.FullName ?? "Không rõ";
+                var itemLines   = invReq.InventoryItems
+                    .Select(i => $"{i.ItemName} x{i.Quantity} {i.Unit}")
+                    .ToList();
+                var itemSummary = itemLines.Count > 0
+                    ? string.Join(", ", itemLines.Take(5)) + (itemLines.Count > 5 ? $" (+{itemLines.Count - 5} mặt hàng)" : "")
+                    : "Chưa có hàng hóa";
+                autoNote = $"[{renterName}] {itemSummary}";
+            }
+        }
+        else if (typeCode == "AUDIT")
+        {
+            var audit = await _db.AuditSessions
+                .Include(a => a.CreatedByNavigation)
+                .FirstOrDefaultAsync(a => a.AuditId == refId, ct);
+
+            if (audit != null)
+            {
+                var creatorName = audit.CreatedByNavigation?.FullName ?? "Không rõ";
+                var auditNote   = !string.IsNullOrWhiteSpace(audit.Notes) ? audit.Notes : "Kiểm kê kho";
+                autoNote = $"[{creatorName}] {auditNote}";
+            }
+        }
+
         var task = new WarehouseTask
         {
             WarehouseId = warehouseId,
             TaskTypeId  = taskType.Id,
             RefType     = refType.ToUpperInvariant(),
             RefId       = refId,
-            IsAllZone   = true,
             ScheduledAt = scheduledAt ?? DateTime.UtcNow,
             Status      = nameof(WarehouseTaskStatus.Pending),
             CreatedAt   = DateTime.UtcNow,
+            Note        = autoNote,
         };
 
         _db.WarehouseTasks.Add(task);
@@ -222,9 +268,7 @@ public class TaskRepository : ITaskRepository
         RefId        = t.RefId,
         ScheduledAt  = t.ScheduledAt,
         Note         = t.Note,
-        IsAllZone    = t.IsAllZone,
         CreatedAt    = t.CreatedAt,
-        Zones        = t.Zones.Select(z => new ZoneItemDto { Id = z.Id, Code = z.Code, Name = z.Name }).ToList(),
         UnitTasks    = t.UnitTasks.OrderBy(u => u.Order).Select(u => new UnitTaskDto
         {
             Id               = u.Id,
