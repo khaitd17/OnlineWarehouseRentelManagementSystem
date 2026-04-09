@@ -56,6 +56,7 @@ import CreateInventoryRequest from "../pages/Requests/CreateInventoryRequest";
 import RenterInventoryPage from "../pages/RenterInventoryPage";
 import OwnerInventoryPage from "../pages/OwnerInventoryPage";
 import StaffInventoryPage from "../pages/StaffInventoryPage";
+import SubscriptionPage from "../pages/SubscriptionPage";
 
 // Audit session pages
 import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
@@ -166,6 +167,7 @@ function AppRoutes() {
             <Route path="/sign-contract-owner/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="OWNER" />} />
             <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
             <Route path="/owner-inventory" element={<OwnerInventoryPage />} />
+            <Route path="/subscriptions" element={<SubscriptionPage />} />
           </Route>
         </Route>
 

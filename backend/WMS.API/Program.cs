@@ -72,6 +72,7 @@ builder.Services.AddMediatR(cfg =>
         typeof(RegisterCommand).Assembly,
         typeof(ApplicationDbContext).Assembly);
     cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+    cfg.AddOpenBehavior(typeof(WarehouseLockProtectionBehavior<,>));
 });
 
 // FluentValidation Registration
@@ -105,6 +106,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseReturnRepository, WMS
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalPaymentRepository, WMS.Infrastructure.Repositories.RentalPaymentRepository>();
 builder.Services.AddScoped<IEquipmentIncidentRepository, EquipmentIncidentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionRepository, WMS.Infrastructure.Repositories.SubscriptionRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();
@@ -133,10 +135,12 @@ builder.Services.AddHangfire(config => config
         }));
 
 builder.Services.AddHangfireServer();
+builder.Services.Configure<WMS.Infrastructure.Services.SepaySettings>(builder.Configuration.GetSection("SePay"));
 
 // Background job classes
 builder.Services.AddScoped<ContractNotificationJob>();
 builder.Services.AddScoped<ContractExpiryJob>();
+builder.Services.AddScoped<SubscriptionExpiryJob>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -281,6 +285,12 @@ RecurringJob.AddOrUpdate<ContractNotificationJob>(
     "payment-reminders",
     job => job.SendPaymentReminders(),
     "0 */6 * * *",  // Run every 6 hours
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<SubscriptionExpiryJob>(
+    "subscription-expiry-job",
+    job => job.ProcessExpiries(),
+    "0 0 * * *",  // Run daily at midnight
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Tạm vô hiệu hóa contract expiry job để fix API trước

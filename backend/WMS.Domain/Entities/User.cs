@@ -54,4 +54,6 @@ public partial class User
     public virtual ICollection<AuditSession> AssignedAuditSessions { get; set; } = new List<AuditSession>();
 
     public virtual ICollection<AuditResult> RecordedAuditResults { get; set; } = new List<AuditResult>();
+
+    public virtual ICollection<Subscription> Subscriptions { get; set; } = new List<Subscription>();
 }
