@@ -2,8 +2,9 @@ namespace WMS.Domain.Interfaces;
 
 public interface ITaskRepository
 {
-    Task<List<TaskDto>> GetTasksAsync(int warehouseId, DateTime startDate, DateTime endDate, CancellationToken ct = default);
+    Task<List<TaskDto>> GetTasksAsync(int warehouseId, DateTime startDate, DateTime endDate, bool isManualOnly = false, CancellationToken ct = default);
     Task<List<TaskTypeDto>> GetTaskTypesAsync(CancellationToken ct = default);
+    Task<TaskTypeDto?> GetTaskTypeByIdAsync(int taskTypeId, CancellationToken ct = default);
     Task<int> CreateTaskAsync(CreateTaskDto dto, CancellationToken ct = default);
     Task<int?> GetTaskWarehouseIdAsync(int taskId, CancellationToken ct = default);
 
@@ -28,18 +29,11 @@ public class TaskDto
     public int? RefId { get; set; }
     public DateTime? ScheduledAt { get; set; }
     public string? Note { get; set; }
-    public bool IsAllZone { get; set; }
     public DateTime CreatedAt { get; set; }
-    public List<ZoneItemDto> Zones { get; set; } = new();
     public List<UnitTaskDto> UnitTasks { get; set; } = new();
 }
 
-public class ZoneItemDto
-{
-    public int Id { get; set; }
-    public string Code { get; set; } = null!;
-    public string Name { get; set; } = null!;
-}
+
 
 public class UnitTaskDto
 {
@@ -56,10 +50,8 @@ public class UnitTaskDto
 public class CreateTaskDto
 {
     public int WarehouseId { get; set; }
-    public int TaskTypeId { get; set; }
-    public bool IsAllZone { get; set; }
-    public List<int> ZoneIds { get; set; } = new();
-    public string? Note { get; set; }
+    public int TaskTypeId  { get; set; }
+    public string? Note    { get; set; }
     public DateTime? ScheduledAt { get; set; }
 }
 
@@ -70,6 +62,7 @@ public class TaskTypeDto
     public string Name { get; set; } = null!;
     public string? Description { get; set; }
     public bool IsAllSkill { get; set; }
+    public bool IsManual   { get; set; }
 }
 
 public class EligibleStaffDto

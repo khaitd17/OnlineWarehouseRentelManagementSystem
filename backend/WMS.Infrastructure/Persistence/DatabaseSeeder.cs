@@ -191,20 +191,23 @@ namespace WMS.Infrastructure.Persistence
             // ══════════════════════════════════════════════════
             // 6. TASK TYPES
             // ══════════════════════════════════════════════════
-            var taskTypeData = new (string Code, string Name, string Desc, bool AllSkill)[]
+            var taskTypeData = new (string Code, string Name, string Desc, bool AllSkill, bool IsManual)[]
             {
-                ("INBOUND",       "Nhập kho",          "Tiếp nhận hàng hoá vào kho",             false),
-                ("OUTBOUND",      "Xuất kho",          "Xuất hàng hoá ra khỏi kho",              false),
-                ("AUDIT",         "Kiểm kê định kỳ",   "Đếm và đối chiếu tồn kho",              false),
-                ("EQUIP_MAINT",   "Bảo trì thiết bị",  "Bảo dưỡng và sửa chữa thiết bị kho",    false),
-                ("GENERAL_CLEAN", "Vệ sinh kho",       "Vệ sinh toàn bộ hoặc khu vực kho",       true),
-                ("ZONE_INSPECT",  "Kiểm tra khu vực",  "Tuần tra và kiểm tra tình trạng zone",   true),
-                ("OTHER",         "Khác",              "Task tổng quát",                          true),
+                ("INBOUND",       "Nhập kho",          "Tiếp nhận hàng hoá vào kho",             false, false),
+                ("OUTBOUND",      "Xuất kho",          "Xuất hàng hoá ra khỏi kho",              false, false),
+                ("AUDIT",         "Kiểm kê định kỳ",   "Đếm và đối chiếu tồn kho",              false, false),
+                ("EQUIP_MAINT",   "Bảo trì thiết bị",  "Bảo dưỡng và sửa chữa thiết bị kho",    false,  true),
+                ("GENERAL_CLEAN", "Vệ sinh kho",       "Vệ sinh toàn bộ hoặc khu vực kho",        true,  true),
+                ("ZONE_INSPECT",  "Kiểm tra khu vực",  "Tuần tra và kiểm tra tình trạng zone",    true,  true),
+                ("OTHER",         "Khác",              "Task tổng quát",                           true,  true),
             };
             foreach (var tt in taskTypeData)
             {
-                if (!context.TaskTypes.Any(t => t.Code == tt.Code))
-                    context.TaskTypes.Add(new TaskType { Code = tt.Code, Name = tt.Name, Description = tt.Desc, IsAllSkill = tt.AllSkill });
+                var existing = context.TaskTypes.FirstOrDefault(t => t.Code == tt.Code);
+                if (existing == null)
+                    context.TaskTypes.Add(new TaskType { Code = tt.Code, Name = tt.Name, Description = tt.Desc, IsAllSkill = tt.AllSkill, IsManual = tt.IsManual });
+                else if (existing.IsManual != tt.IsManual)
+                    existing.IsManual = tt.IsManual; // migrate DB cũ
             }
             context.SaveChanges();
 
@@ -223,73 +226,6 @@ namespace WMS.Infrastructure.Persistence
             if (ttEquip.SkillId    == null) { ttEquip.SkillId    = skWwWorker?.Id; }
             context.SaveChanges();
 
-            // ══════════════════════════════════════════════════
-            // 6b. SAMPLE TASKS + UNIT TASKS (for demo UI)
-            // ══════════════════════════════════════════════════
-            if (!context.WarehouseTasks.Any(t => t.WarehouseId == warehouse.WarehouseId))
-            {
-                var today = DateTime.UtcNow.Date;
-                var sampleTasks = new[]
-                {
-                    new { TypeId = ttInbound.Id,  TypeCode = "INBOUND",  Date = today, Note = "Nhập lô hàng điện tử từ nhà cung cấp ABC" },
-                    new { TypeId = ttOutbound.Id, TypeCode = "OUTBOUND", Date = today.AddDays(1), Note = "Xuất kho đơn hàng #2025-032 cho khách Nguyễn" },
-                    new { TypeId = ttAudit.Id,    TypeCode = "AUDIT",    Date = today.AddDays(2), Note = "Kiểm kê định kỳ quý I/2025" },
-                    new { TypeId = ttInbound.Id,  TypeCode = "INBOUND",  Date = today.AddDays(3), Note = "Nhập thêm hàng tiêu dùng từ kho B" },
-                    new { TypeId = ttOutbound.Id, TypeCode = "OUTBOUND", Date = today.AddDays(5), Note = "Xuất kho đơn hàng #2025-087" },
-                };
-
-                var unitSteps = new Dictionary<string, (string Code, string Desc, int Order)[]>
-                {
-                    ["INBOUND"]  = new[] {
-                        ("INBOUND_APPROVE",  "Duyệt đơn nhập kho",            1),
-                        ("INBOUND_RECEIVE",  "Tiếp nhận & xác nhận nhập kho", 2),
-                        ("INBOUND_PUTAWAY",  "Đặt hàng vào vị trí",           3),
-                    },
-                    ["OUTBOUND"] = new[] {
-                        ("OUTBOUND_APPROVE",  "Duyệt đơn xuất kho",           1),
-                        ("OUTBOUND_PICK",     "Lấy hàng từ vị trí (Picking)", 2),
-                        ("OUTBOUND_DISPATCH", "Xác nhận xuất kho",             3),
-                    },
-                    ["AUDIT"]    = new[] {
-                        ("AUDIT_OPEN",  "Mở phiên kiểm kê",       1),
-                        ("AUDIT_COUNT", "Nhập kết quả kiểm đếm",  2),
-                        ("AUDIT_CLOSE", "Đóng phiên kiểm kê",     3),
-                    },
-                };
-
-                foreach (var s in sampleTasks)
-                {
-                    var t = new WarehouseTask
-                    {
-                        WarehouseId = warehouse.WarehouseId,
-                        TaskTypeId  = s.TypeId,
-                        IsAllZone   = true,
-                        Note        = s.Note,
-                        ScheduledAt = s.Date.AddHours(8),
-                        Status      = "Pending",
-                        CreatedAt   = DateTime.UtcNow,
-                    };
-                    context.WarehouseTasks.Add(t);
-                    context.SaveChanges();
-
-                    if (unitSteps.TryGetValue(s.TypeCode, out var steps))
-                    {
-                        foreach (var (code, desc, order) in steps)
-                        {
-                            context.UnitTasks.Add(new UnitTask
-                            {
-                                WarehouseTaskId  = t.Id,
-                                UnitTaskTypeCode = code,
-                                Description      = desc,
-                                Order            = order,
-                                Status           = "Pending",
-                                CreatedAt        = DateTime.UtcNow,
-                            });
-                        }
-                        context.SaveChanges();
-                    }
-                }
-            }
 
             // ══════════════════════════════════════════════════
             // 7. WAREHOUSE ROLES
@@ -866,26 +802,15 @@ namespace WMS.Infrastructure.Persistence
             if (!context.WarehouseTasks.Any())
             {
                 var ttIds = context.TaskTypes.ToDictionary(t => t.Code, t => t.Id);
-                var zA  = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-A");
-                var zB  = context.Zones.First(z => z.WarehouseId == warehouse.WarehouseId && z.Code == "Z-B");
-                var zA2 = context.Zones.First(z => z.WarehouseId == warehouse2.WarehouseId && z.Code == "Z-A");
 
-                var t1 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["GENERAL_CLEAN"], IsAllZone = true,  Status = "Pending",     ScheduledAt = new DateTime(2026,3,17,8,0,0,DateTimeKind.Utc),  Note = "Vệ sinh toàn bộ kho Hà Nội" };
-                var t2 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["ZONE_INSPECT"],  IsAllZone = false, Status = "InProgress",  ScheduledAt = new DateTime(2026,3,15,7,30,0,DateTimeKind.Utc), Note = "Kiểm tra khu A và B" };
-                var t3 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["INBOUND"],       IsAllZone = false, Status = "Pending",     ScheduledAt = new DateTime(2026,3,18,9,0,0,DateTimeKind.Utc),  Note = "Tiếp nhận lô hàng mới" };
-                var t4 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["OUTBOUND"],      IsAllZone = false, Status = "Pending",     ScheduledAt = new DateTime(2026,3,19,10,0,0,DateTimeKind.Utc), Note = "Xuất hàng đơn #001" };
-                var t5 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["AUDIT"],         IsAllZone = false, Status = "Pending",     ScheduledAt = new DateTime(2026,3,20,8,0,0,DateTimeKind.Utc),  Note = "Kiểm kê Zone B" };
-                var t6 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["EQUIP_MAINT"],   IsAllZone = true,  Status = "Completed",   ScheduledAt = new DateTime(2026,3,16,8,0,0,DateTimeKind.Utc),  Note = "Bảo trì xe nâng" };
-                var t7 = new WarehouseTask { WarehouseId = warehouse2.WarehouseId, TaskTypeId = ttIds["GENERAL_CLEAN"], IsAllZone = true,  Status = "Pending",     ScheduledAt = null, Note = "Vệ sinh kho Hải Phòng" };
-                var t8 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["OTHER"],         IsAllZone = true,  Status = "Pending",     ScheduledAt = null, Note = "Hỗ trợ đặc biệt theo yêu cầu" };
+                var t1 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["GENERAL_CLEAN"], Status = "Pending", ScheduledAt = new DateTime(2026,3,17,8,0,0,DateTimeKind.Utc),  Note = "Vệ sinh toàn bộ kho Hà Nội" };
+                var t2 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["ZONE_INSPECT"],  Status = "Pending", ScheduledAt = new DateTime(2026,3,15,7,30,0,DateTimeKind.Utc), Note = "Kiểm tra khu A và B" };
+                var t3 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["EQUIP_MAINT"],  Status = "Done",    ScheduledAt = new DateTime(2026,3,16,8,0,0,DateTimeKind.Utc),  Note = "Bảo trì xe nâng" };
+                var t4 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["GENERAL_CLEAN"], Status = "Pending", ScheduledAt = null, Note = "Vệ sinh khu B" };
+                var t5 = new WarehouseTask { WarehouseId = warehouse2.WarehouseId, TaskTypeId = ttIds["GENERAL_CLEAN"], Status = "Pending", ScheduledAt = null, Note = "Vệ sinh kho Hải Phòng" };
+                var t6 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["OTHER"],         Status = "Pending", ScheduledAt = null, Note = "Hỗ trợ đặc biệt theo yêu cầu" };
 
-                context.WarehouseTasks.AddRange(t1, t2, t3, t4, t5, t6, t7, t8);
-                context.SaveChanges();
-
-                t2.Zones.Add(zA); t2.Zones.Add(zB);
-                t3.Zones.Add(zA);
-                t4.Zones.Add(zA);
-                t5.Zones.Add(zB);
+                context.WarehouseTasks.AddRange(t1, t2, t3, t4, t5, t6);
                 context.SaveChanges();
             }
             // ─── 30 nhân viên STAFF cho Kho Hà Nội ─────────────────────────────────────

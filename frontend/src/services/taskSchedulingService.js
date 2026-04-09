@@ -5,11 +5,6 @@ export async function getMyWarehouses() {
   return res.data;
 }
 
-export async function getWarehouseZones(warehouseId) {
-  const res = await axiosClient.get(`/staff/warehouse-options?warehouseId=${warehouseId}`);
-  return res.data.zones || [];
-}
-
 export async function getTaskTypes() {
   const res = await axiosClient.get("/tasks/types");
   return res.data;

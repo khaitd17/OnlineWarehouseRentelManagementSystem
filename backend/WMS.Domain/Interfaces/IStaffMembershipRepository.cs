@@ -23,6 +23,10 @@ public interface IStaffMembershipRepository
     Task ReassignMembershipAsync(ReassignMembershipDto dto, CancellationToken ct = default);
 
     Task<List<ManagerScopeDto>> GetActiveManagersInWarehouseAsync(int warehouseId, CancellationToken ct = default);
+
+    Task<List<MyWarehouseItemDto>> GetMyWarehousesAsync(int userId, CancellationToken ct = default);
+
+    Task<List<SkillDto>> GetSkillsAsync(CancellationToken ct = default);
 }
 
 public class StaffMembershipDto
@@ -88,6 +92,14 @@ public class ManagedWarehouseDto
     public int WarehouseId { get; set; }
     public string WarehouseName { get; set; } = null!;
     public string RoleCode { get; set; } = null!;
+}
+
+public class MyWarehouseItemDto
+{
+    public int WarehouseId { get; set; }
+    public string WarehouseName { get; set; } = null!;
+    public string RoleCode { get; set; } = null!;
+    public bool HasZone { get; set; }
 }
 
 public class ReassignMembershipDto

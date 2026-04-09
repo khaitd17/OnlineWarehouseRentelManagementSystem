@@ -600,7 +600,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.ScheduledAt).HasColumnName("scheduled_at").IsRequired(false);
             entity.Property(e => e.Note).HasColumnName("note").IsRequired(false);
-            entity.Property(e => e.IsAllZone).HasColumnName("is_all_zone").HasDefaultValue(false);
             entity.Property(e => e.RefType).HasMaxLength(20).HasColumnName("ref_type").IsRequired(false);
             entity.Property(e => e.RefId).HasColumnName("ref_id").IsRequired(false);
             entity.HasOne(e => e.Warehouse).WithMany(p => p.Tasks).HasForeignKey(e => e.WarehouseId);
@@ -691,6 +690,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
             entity.Property(e => e.Description).HasColumnName("description").IsRequired(false);
             entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
+            entity.Property(e => e.IsManual).HasColumnName("is_manual").HasDefaultValue(false);
             entity.Property(e => e.SkillId).HasColumnName("skill_id").IsRequired(false);
             entity.HasOne(e => e.Skill).WithMany().HasForeignKey(e => e.SkillId).IsRequired(false);
         });
@@ -714,15 +714,6 @@ public class ApplicationDbContext : DbContext
                 j => { j.HasKey("membership_id", "zone_id"); });
 
 
-
-        modelBuilder.Entity<WarehouseTask>()
-            .HasMany(t => t.Zones)
-            .WithMany()
-            .UsingEntity<Dictionary<string, object>>(
-                "task_zones",
-                j => j.HasOne<Zone>().WithMany().HasForeignKey("zone_id"),
-                j => j.HasOne<WarehouseTask>().WithMany().HasForeignKey("task_id"),
-                j => { j.HasKey("task_id", "zone_id"); });
 
         modelBuilder.Entity<User>(entity =>
         {

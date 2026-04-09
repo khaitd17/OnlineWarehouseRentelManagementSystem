@@ -1,0 +1,14 @@
+﻿  Determining projects to restore...
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\tests\WMS.UnitTests\WMS.UnitTests.csproj : error NU1201: Project WMS.Application is not compatible with net8.0 (.NETCoreApp,Version=v8.0). Project WMS.Application supports: net9.0 (.NETCoreApp,Version=v9.0) [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.sln]
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\tests\WMS.UnitTests\WMS.UnitTests.csproj : error NU1201: Project WMS.Domain is not compatible with net8.0 (.NETCoreApp,Version=v8.0). Project WMS.Domain supports: net9.0 (.NETCoreApp,Version=v9.0) [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.sln]
+  Failed to restore D:\doan5\OnlineWarehouseRentelManagementSystem\backend\tests\WMS.UnitTests\WMS.UnitTests.csproj (in 485 ms).
+  4 of 5 projects are up-to-date for restore.
+
+Build FAILED.
+
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\tests\WMS.UnitTests\WMS.UnitTests.csproj : error NU1201: Project WMS.Application is not compatible with net8.0 (.NETCoreApp,Version=v8.0). Project WMS.Application supports: net9.0 (.NETCoreApp,Version=v9.0) [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.sln]
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\tests\WMS.UnitTests\WMS.UnitTests.csproj : error NU1201: Project WMS.Domain is not compatible with net8.0 (.NETCoreApp,Version=v8.0). Project WMS.Domain supports: net9.0 (.NETCoreApp,Version=v9.0) [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.sln]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:01.83
