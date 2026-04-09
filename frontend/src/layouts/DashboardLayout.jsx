@@ -49,7 +49,7 @@ const DashboardLayout = () => {
       setUnreadCount(prev => prev + 1);
       
       // When payment is confirmed/rejected, refresh warehouse context to update role
-      if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+      if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED' || notification.type === 'SUBSCRIPTION_ACTIVE') {
         try {
           await authService.refreshWarehouseContext();
           // Trigger authChange event to refresh Sidebar menu

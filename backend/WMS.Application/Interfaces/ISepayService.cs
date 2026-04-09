@@ -55,13 +55,15 @@ public class WebhookResult
     public bool Success { get; set; }
     public string? PaymentCode { get; set; }
     public int? PaymentId { get; set; }
+    public string? PaymentType { get; set; }
     public string? ErrorMessage { get; set; }
 
-    public static WebhookResult Ok(string paymentCode, int paymentId) => new()
+    public static WebhookResult Ok(string paymentCode, int paymentId, string paymentType = "RENTAL") => new()
     {
         Success = true,
         PaymentCode = paymentCode,
-        PaymentId = paymentId
+        PaymentId = paymentId,
+        PaymentType = paymentType
     };
 
     public static WebhookResult Fail(string message) => new()

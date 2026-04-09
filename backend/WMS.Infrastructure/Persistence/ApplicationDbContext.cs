@@ -65,6 +65,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<VWarehouseOccupancy> VWarehouseOccupancies { get; set; }
 
+    public virtual DbSet<Subscription> Subscriptions { get; set; }
+
     public virtual DbSet<Warehouse> Warehouses { get; set; }
 
     public virtual DbSet<WarehouseDocument> WarehouseDocuments { get; set; }
@@ -743,6 +745,24 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.HasOne(d => d.Role).WithMany(p => p.Users).HasForeignKey(d => d.RoleId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_users_roles");
+        });
+
+        modelBuilder.Entity<Subscription>(entity =>
+        {
+            entity.ToTable("subscriptions");
+            entity.HasKey(e => e.SubscriptionId);
+            entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Plan).HasMaxLength(50).HasConversion<string>().HasColumnName("plan");
+            entity.Property(e => e.Status).HasMaxLength(50).HasConversion<string>().HasColumnName("status");
+            entity.Property(e => e.StartDate).HasColumnName("start_date");
+            entity.Property(e => e.EndDate).HasColumnName("end_date");
+            entity.Property(e => e.TransactionReference).HasMaxLength(100).HasColumnName("transaction_reference");
+            
+            entity.HasOne(d => d.User)
+                  .WithMany(p => p.Subscriptions)
+                  .HasForeignKey(d => d.UserId)
+                  .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         modelBuilder.Entity<VActiveWarehouse>(entity =>
