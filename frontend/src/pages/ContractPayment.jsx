@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
+import PaymentRetryButton from "../components/PaymentRetryButton";
+import ExpiryCountdown from "../components/ExpiryCountdown";
 
 const formatCurrency = (amount) => {
   if (amount == null) return "—";
@@ -40,14 +42,27 @@ const ContractPayment = () => {
 
         if (existingPayments && existingPayments.length > 0) {
           // Use existing pending payment
-          currentPayment = existingPayments.find(p => p.status === 'PENDING');
+          currentPayment = existingPayments.find(p => 
+            p.status === 'PENDING' || p.status === 'RETRY_PENDING'
+          );
+          
           if (!currentPayment) {
-            // All payments completed or failed, create new one
-            currentPayment = await paymentService.createPayment({
-              contractId: parseInt(id),
-              amount: contractData.depositAmount || contractData.monthlyPayment,
-              paymentType: 'DEPOSIT'
-            });
+            // Check for failed/expired payments that can be retried
+            const failedPayment = existingPayments.find(p => 
+              p.status === 'FAILED' || p.status === 'EXPIRED'
+            );
+            
+            if (failedPayment) {
+              // Show the failed payment with retry option
+              currentPayment = failedPayment;
+            } else {
+              // All payments completed, create new one
+              currentPayment = await paymentService.createPayment({
+                contractId: parseInt(id),
+                amount: contractData.depositAmount || contractData.monthlyPayment,
+                paymentType: 'DEPOSIT'
+              });
+            }
           }
         } else {
           // Create new payment
@@ -60,10 +75,13 @@ const ContractPayment = () => {
 
         setPayment(currentPayment);
 
-        // Get QR info
-        const qr = await paymentService.getPaymentQrInfo(currentPayment.paymentId);
-        setQrInfo(qr);
+        // Get QR info only if payment is pending/retry-pending
+        if (currentPayment.status === 'PENDING' || currentPayment.status === 'RETRY_PENDING') {
+          const qr = await paymentService.getPaymentQrInfo(currentPayment.paymentId);
+          setQrInfo(qr);
+        }
 
+        setPaymentStatus(currentPayment.status);
         setLoading(false);
       } catch (err) {
         console.error("Error initializing payment:", err);
@@ -171,8 +189,51 @@ const ContractPayment = () => {
         </p>
       </div>
 
-      {/* Payment Status */}
-      {paymentStatus === 'COMPLETED' && (
+      {/* Payment Status - Failed/Expired */}
+      {(paymentStatus === 'FAILED' || paymentStatus === 'EXPIRED') && (
+        <div style={{
+          padding: "1.5rem", backgroundColor: "#fee2e2",
+          borderRadius: "12px", border: "1px solid #fecaca",
+          color: "#dc2626", marginBottom: "2rem"
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: "1rem" }}>
+            ❌ {paymentStatus === 'FAILED' ? 'Thanh toán thất bại' : 'Thanh toán đã hết hạn'}
+          </div>
+          <div style={{ marginBottom: "1rem" }}>
+            {paymentStatus === 'FAILED' 
+              ? 'Không nhận được xác nhận từ ngân hàng. Vui lòng thử lại.'
+              : 'Thời gian thanh toán đã hết. Vui lòng tạo thanh toán mới.'}
+          </div>
+          
+          {/* Retry Button */}
+          <PaymentRetryButton
+            paymentId={payment?.paymentId}
+            onRetrySuccess={async (result) => {
+              // Reload payment info after retry
+              try {
+                const updatedPayment = await paymentService.getPaymentById(payment.paymentId);
+                setPayment(updatedPayment);
+                setPaymentStatus(updatedPayment.status);
+                
+                // Get new QR code
+                if (updatedPayment.status === 'PENDING' || updatedPayment.status === 'RETRY_PENDING') {
+                  const qr = await paymentService.getPaymentQrInfo(updatedPayment.paymentId);
+                  setQrInfo(qr);
+                  setCountdown(5 * 60); // Reset countdown
+                }
+              } catch (err) {
+                console.error('Failed to reload payment:', err);
+              }
+            }}
+            onRetryError={(error) => {
+              alert(error);
+            }}
+            className="mt-2"
+          />
+        </div>
+      )}
+
+      {/* Payment Status - Completed */}
         <div style={{
           padding: "1rem 1.5rem", backgroundColor: "#dcfce7",
           borderRadius: "12px", border: "1px solid #86efac",
@@ -182,19 +243,18 @@ const ContractPayment = () => {
         </div>
       )}
 
-      {/* Countdown */}
-      <div style={{
-        padding: "1rem 1.5rem", backgroundColor: "#fef3c7",
-        borderRadius: "12px", border: "1px solid #fde047",
-        color: "#854d0e", marginBottom: "2rem", textAlign: "center"
-      }}>
-        <div style={{ fontSize: "0.9rem", marginBottom: "0.5rem" }}>
-          Thời gian còn lại để thanh toán:
-        </div>
-        <div style={{ fontSize: "1.8rem", fontWeight: 700 }}>
-          {formatCountdown(countdown)}
-        </div>
-      </div>
+      {/* Countdown - Only show if payment is pending */}
+      {(paymentStatus === 'PENDING' || paymentStatus === 'RETRY_PENDING') && payment?.expiredAt && (
+        <ExpiryCountdown
+          expiryDate={payment.expiredAt}
+          onExpired={() => {
+            setPaymentStatus('EXPIRED');
+            alert('Thanh toán đã hết hạn. Vui lòng tạo thanh toán mới.');
+          }}
+          warningThresholdMinutes={720}
+          className="mb-4"
+        />
+      )}
 
       {/* Payment Info */}
       <div style={{
@@ -244,8 +304,8 @@ const ContractPayment = () => {
         </div>
       </div>
 
-      {/* QR Code */}
-      {qrInfo && (
+      {/* QR Code - Only show if payment is PENDING or RETRY_PENDING */}
+      {qrInfo && (paymentStatus === 'PENDING' || paymentStatus === 'RETRY_PENDING') && (
         <div style={{
           backgroundColor: "#fff", borderRadius: "16px",
           padding: "2rem", boxShadow: "0 2px 12px rgba(0,0,0,0.08)",

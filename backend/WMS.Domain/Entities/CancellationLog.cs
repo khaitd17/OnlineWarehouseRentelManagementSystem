@@ -1,9 +1,12 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace WMS.Domain.Entities;
 
 public class CancellationLog
 {
     private CancellationLog() { } // For EF Core
     
+    [Key]
     public int LogId { get; private set; }
     public int? RentalRequestId { get; private set; }
     public int? RentalContractId { get; private set; }

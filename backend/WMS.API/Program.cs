@@ -203,7 +203,8 @@ using (var scope = app.Services.CreateScope())
     try
     {
         // 1. Apply any pending migrations automatically
-        context.Database.Migrate();
+        // DISABLED: Migrations causing conflicts - use manual SQL scripts instead
+        // context.Database.Migrate();
 
 
 

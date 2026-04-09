@@ -7,6 +7,8 @@ import ExtensionRequestModal from "../components/ExtensionRequestModal";
 import ReturnWarehouseModal from "../components/ReturnWarehouseModal";
 import SigningHistoryTimeline from "../components/SigningHistoryTimeline";
 import AuditLogList from "../components/AuditLogList";
+import ExtendContractModal from "../components/ExtendContractModal";
+import ExpiryCountdown from "../components/ExpiryCountdown";
 
 const statusConfig = {
   DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
@@ -105,6 +107,10 @@ const ContractDetail = () => {
   const [showTerminateModal, setShowTerminateModal] = useState(false);
   const [showExtensionModal, setShowExtensionModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [showExtendContractModal, setShowExtendContractModal] = useState(false);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
+  const [isSubmittingDecline, setIsSubmittingDecline] = useState(false);
   
   // Approval action states
   const [processingApproval, setProcessingApproval] = useState(false);
@@ -240,10 +246,32 @@ const ContractDetail = () => {
     });
   }
 
+  const handleDeclineContract = async () => {
+    if (!declineReason.trim()) {
+      alert('Vui lòng nhập lý do từ chối');
+      return;
+    }
+
+    setIsSubmittingDecline(true);
+    try {
+      await rentalService.declineContract(contract.contractId, declineReason);
+      alert('Đã từ chối hợp đồng thành công');
+      setShowDeclineModal(false);
+      setDeclineReason('');
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi từ chối hợp đồng');
+    } finally {
+      setIsSubmittingDecline(false);
+    }
+  };
+
   // Access control: Determine who can sign/pay based on status and role
   const canOwnerSign = contract?.isCurrentUserOwner && contract?.status === "PENDING_OWNER_SIGNATURE";
   const canRenterSign = contract?.isCurrentUserRenter && 
     (contract?.status === "DRAFT" || contract?.status === "PENDING_SIGNATURE" || contract?.status === "PENDING_RENTER_SIGNATURE");
+  const canRenterDecline = contract?.isCurrentUserRenter &&
+    (contract?.status === "DRAFT" || contract?.status === "PENDING_RENTER_SIGNATURE");
   const canRenterPay = contract?.isCurrentUserRenter &&
     (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED");
 
@@ -329,7 +357,32 @@ const ContractDetail = () => {
       </Section>
 
       {/* Thời hạn hợp đồng */}
-      <Section title="Thời hạn hợp đồng">
+      <Section 
+        title="Thời hạn hợp đồng"
+        action={
+          contract.status === "ACTIVE" && contract.isCurrentUserRenter && (
+            <button
+              onClick={() => setShowExtendContractModal(true)}
+              style={{
+                padding: "0.5rem 1rem",
+                borderRadius: "8px",
+                backgroundColor: "#0095c7",
+                color: "#fff",
+                border: "none",
+                fontWeight: 600,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px"
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>event_repeat</span>
+              Gia hạn
+            </button>
+          )
+        }
+      >
         <InfoRow label="Ngày bắt đầu" value={formatDate(contract.startDate)} />
         <InfoRow label="Ngày kết thúc" value={formatDate(contract.endDate)} />
         {contract.status === "ACTIVE" && daysUntilExpiry > 0 && daysUntilExpiry <= 30 && (
@@ -634,26 +687,69 @@ const ContractDetail = () => {
 
       {/* Signing Button - Only for users who have permission to sign */}
       {(canOwnerSign || canRenterSign) && (
-        <button
-          onClick={() => setShowSigningModal(true)}
-          style={{
-            marginTop: "0.5rem",
-            width: "100%",
-            padding: "1rem",
-            backgroundColor: "#0095c7",
-            color: "#fff",
-            border: "none",
-            borderRadius: "12px",
-            fontWeight: 700,
-            fontSize: "1rem",
-            cursor: "pointer",
-            transition: "background-color 0.2s",
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0077a3"}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#0095c7"}
-        >
-          {contract.status === "DRAFT" ? "Bắt đầu ký hợp đồng" : "Ký hợp đồng"}
-        </button>
+        <div>
+          {/* Signature Expiry Countdown */}
+          {contract.renterSignatureExpiry && (
+            <ExpiryCountdown
+              expiryDate={contract.renterSignatureExpiry}
+              onExpired={() => {
+                alert('Thời gian ký hợp đồng đã hết. Hợp đồng sẽ bị hủy.');
+                reloadContract();
+              }}
+              warningThresholdMinutes={720}
+              className="mb-3"
+            />
+          )}
+          
+          <button
+            onClick={() => setShowSigningModal(true)}
+            style={{
+              marginTop: "0.5rem",
+              width: "100%",
+              padding: "1rem",
+              backgroundColor: "#0095c7",
+              color: "#fff",
+              border: "none",
+              borderRadius: "12px",
+              fontWeight: 700,
+              fontSize: "1rem",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0077a3"}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#0095c7"}
+          >
+            {contract.status === "DRAFT" ? "Bắt đầu ký hợp đồng" : "Ký hợp đồng"}
+          </button>
+          
+          {/* Decline button - Only for renter */}
+          {canRenterDecline && (
+            <button
+              onClick={() => setShowDeclineModal(true)}
+              style={{
+                marginTop: "0.5rem",
+                width: "100%",
+                padding: "0.875rem",
+                backgroundColor: "#fff",
+                color: "#dc2626",
+                border: "1px solid #fecaca",
+                borderRadius: "12px",
+                fontWeight: 600,
+                fontSize: "0.95rem",
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = "#fef2f2";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#fff";
+              }}
+            >
+              Từ chối hợp đồng này
+            </button>
+          )}
+        </div>
       )}
 
       {/* Payment Button - Only for renter */}
@@ -702,6 +798,48 @@ const ContractDetail = () => {
         />
       )}
 
+      {/* Decline Modal */}
+      {showDeclineModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold mb-4">Từ chối hợp đồng</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Lý do từ chối <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={declineReason}
+                onChange={(e) => setDeclineReason(e.target.value)}
+                placeholder="Nhập lý do từ chối hợp đồng..."
+                rows={4}
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeclineModal(false);
+                  setDeclineReason('');
+                }}
+                disabled={isSubmittingDecline}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={handleDeclineContract}
+                disabled={isSubmittingDecline}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {isSubmittingDecline ? 'Đang xử lý...' : 'Xác nhận từ chối'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Terminate Modal */}
       {showTerminateModal && (
         <TerminateContractModal
@@ -726,6 +864,24 @@ const ContractDetail = () => {
           contract={contract}
           onClose={() => setShowReturnModal(false)}
           onSuccess={reloadContract}
+        />
+      )}
+
+      {/* Extend Contract Modal */}
+      {showExtendContractModal && (
+        <ExtendContractModal
+          contract={contract}
+          isOpen={showExtendContractModal}
+          onClose={() => setShowExtendContractModal(false)}
+          onExtensionSuccess={(result) => {
+            // Navigate to payment page
+            if (result.payment) {
+              navigate(`/contracts/${contract.contractId}/payment`);
+            } else {
+              alert('Gia hạn thành công');
+              reloadContract();
+            }
+          }}
         />
       )}
     </div>

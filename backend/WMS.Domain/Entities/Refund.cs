@@ -1,9 +1,12 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace WMS.Domain.Entities;
 
 public class Refund
 {
     private Refund() { } // For EF Core
     
+    [Key]
     public int RefundId { get; private set; }
     public int? PaymentId { get; private set; }
     public int ContractId { get; private set; }

@@ -133,6 +133,7 @@ const rentalService = {
   },
 
   // ── Contract Extension APIs ──────────────────────────────────────────
+  // OLD SYSTEM - Extension requests (require owner approval)
   requestContractExtension: async (data) => {
     const response = await axiosClient.post("/contract-extensions/request", data);
     return response.data;
@@ -145,6 +146,33 @@ const rentalService = {
 
   getContractExtensions: async (contractId) => {
     const response = await axiosClient.get(`/contract-extensions/contract/${contractId}`);
+    return response.data;
+  },
+
+  // NEW SYSTEM - Direct extension with payment
+  /**
+   * Extend contract directly (creates payment immediately)
+   * @param {number} contractId - Contract ID to extend
+   * @param {number} extensionMonths - Number of months to extend
+   * @returns {Promise} Extension payment info with QR code
+   */
+  extendContract: async (contractId, extensionMonths) => {
+    const response = await axiosClient.post(`/rental-contracts/${contractId}/extend`, { 
+      extensionMonths 
+    });
+    return response.data;
+  },
+
+  /**
+   * Decline contract before signing
+   * @param {number} contractId - Contract ID to decline
+   * @param {string} reason - Reason for declining
+   * @returns {Promise} Result
+   */
+  declineContract: async (contractId, reason) => {
+    const response = await axiosClient.post(`/rental-contracts/${contractId}/decline`, { 
+      reason 
+    });
     return response.data;
   },
 

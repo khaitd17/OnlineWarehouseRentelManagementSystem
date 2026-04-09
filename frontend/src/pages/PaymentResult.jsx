@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import PaymentRetryButton from "../components/PaymentRetryButton";
 
 const PaymentResult = () => {
   const navigate = useNavigate();
@@ -7,6 +8,7 @@ const PaymentResult = () => {
 
   const success = searchParams.get('success') === 'true';
   const contractId = searchParams.get('contractId');
+  const paymentId = searchParams.get('paymentId');
   const message = searchParams.get('message');
 
   useEffect(() => {
@@ -202,9 +204,27 @@ const PaymentResult = () => {
             display: "flex",
             gap: "1rem",
             justifyContent: "center",
-            flexWrap: "wrap"
+            flexWrap: "wrap",
+            alignItems: "center"
           }}>
-            {contractId && (
+            {/* Payment Retry Button */}
+            {paymentId && (
+              <PaymentRetryButton
+                paymentId={parseInt(paymentId)}
+                onRetrySuccess={(result) => {
+                  // Redirect to payment page with new QR code
+                  if (result.payment && contractId) {
+                    navigate(`/contracts/${contractId}/payment`);
+                  }
+                }}
+                onRetryError={(error) => {
+                  alert(error);
+                }}
+              />
+            )}
+            
+            {/* Manual retry if no paymentId */}
+            {!paymentId && contractId && (
               <button
                 onClick={() => navigate(`/contracts/${contractId}/payment`)}
                 style={{
@@ -224,6 +244,7 @@ const PaymentResult = () => {
                 Thử lại
               </button>
             )}
+            
             <button
               onClick={() => navigate('/help')}
               style={{
