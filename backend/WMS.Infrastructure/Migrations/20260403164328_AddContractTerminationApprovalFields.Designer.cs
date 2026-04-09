@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WMS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260403164328_AddContractTerminationApprovalFields")]
+    partial class AddContractTerminationApprovalFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -883,9 +886,6 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<int>("RenterId")
                         .HasColumnType("int")
                         .HasColumnName("renter_id");
-
-                    b.Property<DateTime?>("ScheduledDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
@@ -1894,51 +1894,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasDatabaseName("UQ_staff_shifts_membership_date");
 
                     b.ToTable("staff_shifts", (string)null);
-                });
-
-            modelBuilder.Entity("WMS.Domain.Entities.Subscription", b =>
-                {
-                    b.Property<int>("SubscriptionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("subscription_id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubscriptionId"));
-
-                    b.Property<DateTime?>("EndDate")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("end_date");
-
-                    b.Property<string>("Plan")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("plan");
-
-                    b.Property<DateTime?>("StartDate")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("start_date");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
-                        .HasColumnName("status");
-
-                    b.Property<string>("TransactionReference")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
-                        .HasColumnName("transaction_reference");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int")
-                        .HasColumnName("user_id");
-
-                    b.HasKey("SubscriptionId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("subscriptions", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.TaskType", b =>
@@ -3465,16 +3420,6 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Membership");
                 });
 
-            modelBuilder.Entity("WMS.Domain.Entities.Subscription", b =>
-                {
-                    b.HasOne("WMS.Domain.Entities.User", "User")
-                        .WithMany("Subscriptions")
-                        .HasForeignKey("UserId")
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("WMS.Domain.Entities.TaskType", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.Skill", "Skill")
@@ -3788,8 +3733,6 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("RentalRequestRenters");
 
                     b.Navigation("RentalRequestReviewedByNavigations");
-
-                    b.Navigation("Subscriptions");
 
                     b.Navigation("WarehouseApprovedByNavigations");
 

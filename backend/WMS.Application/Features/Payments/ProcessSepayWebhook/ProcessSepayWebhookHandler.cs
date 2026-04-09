@@ -4,6 +4,7 @@ using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 
+
 namespace WMS.Application.Features.Payments.ProcessSepayWebhook;
 
 public class ProcessSepayWebhookHandler : IRequestHandler<ProcessSepayWebhookCommand, WebhookCommandResult>
@@ -14,6 +15,7 @@ public class ProcessSepayWebhookHandler : IRequestHandler<ProcessSepayWebhookCom
     private readonly INotificationRepository _notificationRepo;
     private readonly INotificationSender _notificationSender;
     private readonly ILogger<ProcessSepayWebhookHandler> _logger;
+    private readonly ISubscriptionRepository _subscriptionRepo;
 
     public ProcessSepayWebhookHandler(
         ISepayService sepayService,
@@ -21,6 +23,7 @@ public class ProcessSepayWebhookHandler : IRequestHandler<ProcessSepayWebhookCom
         IRentalContractRepository contractRepo,
         INotificationRepository notificationRepo,
         INotificationSender notificationSender,
+        ISubscriptionRepository subscriptionRepo,
         ILogger<ProcessSepayWebhookHandler> logger)
     {
         _sepayService = sepayService;
@@ -28,6 +31,7 @@ public class ProcessSepayWebhookHandler : IRequestHandler<ProcessSepayWebhookCom
         _contractRepo = contractRepo;
         _notificationRepo = notificationRepo;
         _notificationSender = notificationSender;
+        _subscriptionRepo = subscriptionRepo;
         _logger = logger;
     }
 
@@ -71,27 +75,51 @@ public class ProcessSepayWebhookHandler : IRequestHandler<ProcessSepayWebhookCom
 
             if (result.Success && result.PaymentId.HasValue)
             {
-                // Get contract to send notification
-                var payment = await _paymentRepo.GetByIdAsync(result.PaymentId.Value);
-
-                if (payment != null && payment.Contract != null)
+                if (result.PaymentType == "SUBSCRIPTION")
                 {
-                    // Send notification to renter
-                    var notification = new Notification
+                    var subscription = await _subscriptionRepo.GetByIdAsync(result.PaymentId.Value);
+                    if (subscription != null)
                     {
-                        UserId = payment.Contract.RenterId,
-                        Title = "Thanh toán thành công",
-                        Message = $"Thanh toán {payment.PaymentCode} đã được xác nhận. Hợp đồng {payment.Contract.ContractNumber} đã được kích hoạt.",
-                        Type = "PAYMENT_COMPLETED",
-                        ReferenceId = payment.ContractId,
-                        ReferenceType = "CONTRACT",
-                        CreatedAt = DateTime.UtcNow
-                    };
+                        var notification = new Notification
+                        {
+                            UserId = subscription.UserId,
+                            Title = "Đăng ký gói thành công",
+                            Message = $"Giao dịch {result.PaymentCode} thành công. Gói {subscription.Plan} đã được kích hoạt/gia hạn đến {subscription.EndDate?.ToString("dd/MM/yyyy")}.",
+                            Type = "SUBSCRIPTION_ACTIVE",
+                            ReferenceId = subscription.SubscriptionId,
+                            ReferenceType = "SUBSCRIPTION",
+                            CreatedAt = DateTime.UtcNow
+                        };
 
-                    await _notificationRepo.AddAsync(notification);
-                    await _notificationSender.SendToUserAsync(payment.Contract.RenterId, notification);
+                        await _notificationRepo.AddAsync(notification);
+                        await _notificationSender.SendToUserAsync(subscription.UserId, notification);
+                        _logger.LogInformation("Sent subscription notification to user {UserId}", subscription.UserId);
+                    }
+                }
+                else
+                {
+                    // Get contract to send notification
+                    var payment = await _paymentRepo.GetByIdAsync(result.PaymentId.Value);
 
-                    _logger.LogInformation("Sent payment notification to user {UserId}", payment.Contract.RenterId);
+                    if (payment != null && payment.Contract != null)
+                    {
+                        // Send notification to renter
+                        var notification = new Notification
+                        {
+                            UserId = payment.Contract.RenterId,
+                            Title = "Thanh toán thành công",
+                            Message = $"Thanh toán {result.PaymentCode} đã được xác nhận. Hợp đồng {payment.Contract.ContractNumber} đã được kích hoạt.",
+                            Type = "PAYMENT_COMPLETED",
+                            ReferenceId = payment.ContractId,
+                            ReferenceType = "CONTRACT",
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        await _notificationRepo.AddAsync(notification);
+                        await _notificationSender.SendToUserAsync(payment.Contract.RenterId, notification);
+
+                        _logger.LogInformation("Sent payment notification to user {UserId}", payment.Contract.RenterId);
+                    }
                 }
             }
 
