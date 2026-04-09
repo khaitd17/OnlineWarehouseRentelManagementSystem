@@ -1,14 +1,14 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using WMS.Application.Features.Staff.CreateStaff;
 using WMS.Application.Features.Staff.ListStaff;
 using WMS.Application.Features.Staff.ReassignMembership;
 using WMS.Application.Features.Staff.ToggleMembership;
+using WMS.Application.Features.Warehouses.GetMyWarehouses;
+using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
-using WMS.Infrastructure.Persistence;
 
 namespace WMS.API.Controllers;
 
@@ -18,12 +18,17 @@ namespace WMS.API.Controllers;
 public class StaffController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly ApplicationDbContext _db;
+    private readonly IUserRepository _userRepo;
+    private readonly IStaffMembershipRepository _membershipRepo;
 
-    public StaffController(IMediator mediator, ApplicationDbContext db)
+    public StaffController(
+        IMediator mediator,
+        IUserRepository userRepo,
+        IStaffMembershipRepository membershipRepo)
     {
-        _mediator = mediator;
-        _db = db;
+        _mediator      = mediator;
+        _userRepo      = userRepo;
+        _membershipRepo = membershipRepo;
     }
 
     /// <summary>
@@ -70,10 +75,7 @@ public class StaffController : ControllerBase
         if (string.IsNullOrWhiteSpace(email))
             return BadRequest(new { message = "Email không được để trống." });
 
-        var user = await _db.Users
-            .Where(u => u.Email.ToLower() == email.Trim().ToLower())
-            .Select(u => new { u.UserId, u.FullName, u.Email, u.Phone })
-            .FirstOrDefaultAsync(ct);
+        var user = await _userRepo.GetByEmailAsync(email.Trim(), ct);
 
         if (user == null)
             return Ok(new { exists = false });
@@ -167,10 +169,7 @@ public class StaffController : ControllerBase
         [FromQuery] int warehouseId,
         CancellationToken ct)
     {
-        var skills = await _db.Skills
-            .Select(s => new { s.Id, s.Code, s.Name })
-            .ToListAsync(ct);
-
+        var skills = await _membershipRepo.GetSkillsAsync(ct);
         return Ok(new { skills });
     }
 
@@ -235,20 +234,8 @@ public class StaffController : ControllerBase
         if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
             return Unauthorized();
 
-        var list = await _db.WarehouseMemberships
-            .Where(m => m.UserId == userId && m.IsActive)
-            .Include(m => m.Role)
-            .Include(m => m.Warehouse)
-            .Select(m => new
-            {
-                warehouseId   = m.WarehouseId,
-                warehouseName = m.Warehouse.Name,
-                roleCode      = m.Role.Code,
-                hasZone       = m.Warehouse.HasZone,
-            })
-            .ToListAsync(ct);
-
-        return Ok(list);
+        var result = await _mediator.Send(new GetMyWarehousesQuery { UserId = userId }, ct);
+        return Ok(result);
     }
 
     [HttpGet("scoped-list")]

@@ -291,4 +291,32 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             })
             .ToListAsync(ct);
     }
+
+    // ── GetMyWarehousesAsync ───────────────────────────────────────────────────
+    public async Task<List<MyWarehouseItemDto>> GetMyWarehousesAsync(
+        int userId,
+        CancellationToken ct = default)
+    {
+        return await _db.WarehouseMemberships
+            .Where(m => m.UserId == userId && m.IsActive)
+            .Include(m => m.Role)
+            .Include(m => m.Warehouse)
+            .Select(m => new MyWarehouseItemDto
+            {
+                WarehouseId   = m.WarehouseId,
+                WarehouseName = m.Warehouse.Name,
+                RoleCode      = m.Role.Code,
+                HasZone       = m.Warehouse.HasZone,
+            })
+            .ToListAsync(ct);
+    }
+
+    // ── GetSkillsAsync ────────────────────────────────────────────────────────
+    public async Task<List<SkillDto>> GetSkillsAsync(CancellationToken ct = default)
+    {
+        return await _db.Skills
+            .OrderBy(s => s.Name)
+            .Select(s => new SkillDto { Id = s.Id, Code = s.Code, Name = s.Name })
+            .ToListAsync(ct);
+    }
 }

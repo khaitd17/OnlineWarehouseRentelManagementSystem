@@ -299,4 +299,83 @@ public class StaffShiftRepository : IStaffShiftRepository
 
     private static string? NullIfEmpty(string? v)
         => string.IsNullOrWhiteSpace(v) ? null : v;
+
+    public async Task<List<WarehouseShiftLookupDto>> GetWarehouseShiftsAsync(
+        int warehouseId,
+        CancellationToken ct = default)
+    {
+        return await _db.WarehouseShifts
+            .Where(s => s.WarehouseId == null || s.WarehouseId == warehouseId)
+            .OrderBy(s => s.StartTime)
+            .Select(s => new WarehouseShiftLookupDto
+            {
+                Id          = s.Id,
+                Name        = s.Name,
+                StartTime   = s.StartTime,
+                EndTime     = s.EndTime,
+                WarehouseId = s.WarehouseId,
+            })
+            .ToListAsync(ct);
+    }
+
+    public async Task<GenerateScheduleSummary> GenerateScheduleAsync(
+        int warehouseId,
+        DateOnly from,
+        DateOnly to,
+        CancellationToken ct = default)
+    {
+        var memberships = await _db.WarehouseMemberships
+            .Include(m => m.Role)
+            .Where(m => m.WarehouseId == warehouseId
+                     && m.IsActive
+                     && m.WarehouseShiftId != null
+                     && m.Role.Code == "STAFF")
+            .Include(m => m.WarehouseShift)
+            .ToListAsync(ct);
+
+        if (memberships.Count == 0)
+            return new GenerateScheduleSummary
+            {
+                Message = "Không có nhân viên nào có loại ca được gán.",
+                Created = 0,
+                Skipped = 0,
+            };
+
+        var mids = memberships.Select(m => m.Id).ToList();
+        var existing = await _db.StaffShifts
+            .Where(s => mids.Contains(s.MembershipId)
+                     && s.ShiftDate >= from
+                     && s.ShiftDate <= to)
+            .Select(s => new { s.MembershipId, s.ShiftDate })
+            .ToListAsync(ct);
+        var existingSet = existing.Select(s => (s.MembershipId, s.ShiftDate)).ToHashSet();
+
+        int created = 0, skipped = 0;
+        for (var date = from; date <= to; date = date.AddDays(1))
+        {
+            foreach (var m in memberships)
+            {
+                if (existingSet.Contains((m.Id, date))) { skipped++; continue; }
+                _db.StaffShifts.Add(new WMS.Domain.Entities.StaffShift
+                {
+                    MembershipId = m.Id,
+                    ShiftDate    = date,
+                    TimeIn1      = m.WarehouseShift!.StartTime,
+                    TimeOut1     = m.WarehouseShift!.EndTime,
+                    TimeIn2      = null,
+                    TimeOut2     = null,
+                    ShiftType    = null,
+                });
+                created++;
+            }
+        }
+        await _db.SaveChangesAsync(ct);
+
+        return new GenerateScheduleSummary
+        {
+            Message = $"Generate hoàn tất: {created} mới, {skipped} đã có.",
+            Created = created,
+            Skipped = skipped,
+        };
+    }
 }

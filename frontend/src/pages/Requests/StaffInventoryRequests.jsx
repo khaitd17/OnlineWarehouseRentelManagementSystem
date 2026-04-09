@@ -10,7 +10,6 @@ const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN', { day:'2-digit'
 const STATUS_MAP = {
   PENDING:   { label: 'Chờ duyệt',   bg:'#fef3c7', color:'#d97706', border:'#fde68a', dot:'#f59e0b' },
   CONFIRMED: { label: 'Đã duyệt',    bg:'#dcfce7', color:'#166534', border:'#bbf7d0', dot:'#22c55e' },
-  ASSIGNED:  { label: 'Đã giao',     bg:'#dbeafe', color:'#1d4ed8', border:'#bfdbfe', dot:'#3b82f6' },
   COMPLETED: { label: 'Hoàn thành',  bg:'#f0fdf4', color:'#15803d', border:'#86efac', dot:'#16a34a' },
   REJECTED:  { label: 'Từ chối',     bg:'#fee2e2', color:'#dc2626', border:'#fecaca', dot:'#ef4444' },
 };
@@ -34,7 +33,7 @@ const ApproveModal = ({ req, onClose, onApprove, loading }) => {
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:460, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'1.1rem', color:'#166534' }}>OK</div>
+          <div style={{ width:48, height:48, borderRadius:14, background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'1.4rem' }}>✓</div>
           <div>
             <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Duyệt yêu cầu</h2>
             <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>
@@ -58,7 +57,7 @@ const ApproveModal = ({ req, onClose, onApprove, loading }) => {
         <div style={{ marginBottom:20 }}>
           <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Ghi chú phê duyệt (tùy chọn)</label>
           <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
-            placeholder="Ghi chú hướng dẫn thêm trước khi giao việc..."
+            placeholder="Ghi chú hướng dẫn thêm trước khi giao kho..."
             style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1.5px solid #e2e8f0', fontSize:'0.875rem', outline:'none', resize:'vertical', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s' }}
             onFocus={e=>e.target.style.borderColor=accent} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
         </div>
@@ -76,58 +75,6 @@ const ApproveModal = ({ req, onClose, onApprove, loading }) => {
   );
 };
 
-/* ── Assign Modal ───────────────────────────────────────────── */
-const AssignModal = ({ req, staffList, staffLoading, onClose, onAssign, loading }) => {
-  const [selectedStaffId, setSelectedStaffId] = useState('');
-  const [note, setNote] = useState('');
-  if (!req) return null;
-  const accent = req.type === 'INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
-  return (
-    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
-      <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:480, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:'#dbeafe', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'1.1rem', color:'#1d4ed8' }}>NV</div>
-          <div>
-            <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Giao nhiệm vụ cho Staff</h2>
-            <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>#{req.invReqId} · {req.warehouseName}</p>
-          </div>
-        </div>
-
-        <div style={{ marginBottom:16 }}>
-          <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Chọn nhân viên *</label>
-          <select value={selectedStaffId} onChange={e=>setSelectedStaffId(e.target.value)}
-            style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid #e2e8f0', fontSize:'0.9rem', outline:'none', background:'#f8fafc', cursor:'pointer', fontFamily:'Inter,sans-serif' }}
-            disabled={staffLoading}>
-            <option value="">{staffLoading ? 'Đang tải...' : '-- Chọn nhân viên --'}</option>
-            {!staffLoading && staffList.map(s=>(
-              <option key={s.userId} value={s.userId}>{s.fullName} — {s.email}</option>
-            ))}
-          </select>
-          {!staffLoading && staffList.length===0 && <p style={{ margin:'6px 0 0', fontSize:'0.78rem', color:'#f59e0b' }}>Không tìm thấy nhân viên thuộc kho này.</p>}
-        </div>
-
-        <div style={{ marginBottom:24 }}>
-          <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Ghi chú cho nhân viên</label>
-          <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
-            placeholder="Ví dụ: Thực hiện vào sáng thứ 2, xếp vào khu A..."
-            style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1.5px solid #e2e8f0', fontSize:'0.875rem', outline:'none', resize:'vertical', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s' }}
-            onFocus={e=>e.target.style.borderColor=accent} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
-        </div>
-
-        <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
-          <button onClick={onClose} disabled={loading} style={{ padding:'10px 22px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', cursor:'pointer', fontWeight:600, fontSize:'0.875rem', color:'#64748b' }}>Hủy</button>
-          <button onClick={()=>{ if(!selectedStaffId){alert('Vui lòng chọn nhân viên.');return;} onAssign(req.invReqId,parseInt(selectedStaffId),note); }}
-            disabled={loading||!selectedStaffId}
-            style={{ padding:'10px 24px', borderRadius:10, border:'none', background:loading||!selectedStaffId?'#e2e8f0':`linear-gradient(135deg,${accent},${accent}cc)`, color:loading||!selectedStaffId?'#94a3b8':'#fff', cursor:loading||!selectedStaffId?'not-allowed':'pointer', fontWeight:700, fontSize:'0.875rem', display:'flex', alignItems:'center', gap:8, boxShadow:selectedStaffId?`0 4px 14px ${accent}35`:'none', transition:'all 0.2s' }}>
-            {loading && <span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }}/>}
-            {loading ? 'Đang giao...' : 'Xác nhận giao việc'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 /* ── Reject Modal ───────────────────────────────────────────── */
 const RejectModal = ({ req, onClose, onReject, loading }) => {
   const [reason, setReason] = useState('');
@@ -136,7 +83,7 @@ const RejectModal = ({ req, onClose, onReject, loading }) => {
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:440, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'1.1rem', color:'#dc2626' }}>X</div>
+          <div style={{ width:48, height:48, borderRadius:14, background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:'1.4rem', color:'#dc2626' }}>✕</div>
           <div>
             <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#dc2626' }}>Từ chối yêu cầu</h2>
             <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>Yêu cầu #{req.invReqId} từ {req.renterName}</p>
@@ -168,7 +115,6 @@ const DetailModal = ({ req, onClose }) => {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, padding:0, width:'100%', maxWidth:600, maxHeight:'88vh', overflowY:'auto', boxShadow:'0 24px 60px rgba(0,0,0,0.15)' }} onClick={e=>e.stopPropagation()}>
-        {/* Modal header */}
         <div style={{ padding:'24px 28px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'flex-start', justifyContent:'space-between', position:'sticky', top:0, background:'#fff', zIndex:10 }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
@@ -183,10 +129,9 @@ const DetailModal = ({ req, onClose }) => {
         </div>
 
         <div style={{ padding:'20px 28px' }}>
-          {/* Info grid */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:20 }}>
             {[['Người thuê', req.renterName||'—'], ['Email', req.renterEmail||'—'],
-              ['Ngày tạo', fmtDate(req.createdAt)], ['Ngày dự kiến', req.scheduledDate ? fmtDate(req.scheduledDate) : 'Chưa xác định']
+              ['Ngày tạo', fmtDate(req.createdAt)], ['Trạng thái', req.status||'—']
             ].map(([k,v])=>(
               <div key={k} style={{ background:'#f8fafc', borderRadius:10, padding:'10px 14px' }}>
                 <p style={{ margin:'0 0 2px', fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{k}</p>
@@ -202,16 +147,14 @@ const DetailModal = ({ req, onClose }) => {
             </div>
           )}
 
-          {req.assignedStaffName && (
-            <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:10, padding:'12px 14px', marginBottom:16 }}>
-              <p style={{ margin:'0 0 4px', fontSize:'0.68rem', color:'#1d4ed8', fontWeight:700, textTransform:'uppercase' }}>Đã giao cho</p>
-              <p style={{ margin:'0 0 2px', fontSize:'0.9rem', color:'#1e40af', fontWeight:700 }}>{req.assignedStaffName}</p>
-              {req.assignedNote && <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#4b5563' }}>{req.assignedNote}</p>}
-              <p style={{ margin:'4px 0 0', fontSize:'0.72rem', color:'#6b7280' }}>{req.assignedAt ? new Date(req.assignedAt).toLocaleString('vi-VN') : ''}</p>
+          {req.confirmedByName && (
+            <div style={{ background:'#f0fdf4', border:'1px solid #86efac', borderRadius:10, padding:'12px 14px', marginBottom:16 }}>
+              <p style={{ margin:'0 0 4px', fontSize:'0.68rem', color:'#15803d', fontWeight:700, textTransform:'uppercase' }}>Đã hoàn thành bởi</p>
+              <p style={{ margin:'0 0 2px', fontSize:'0.9rem', color:'#14532d', fontWeight:700 }}>{req.confirmedByName}</p>
+              <p style={{ margin:'4px 0 0', fontSize:'0.72rem', color:'#6b7280' }}>{req.confirmedAt ? new Date(req.confirmedAt).toLocaleString('vi-VN') : ''}</p>
             </div>
           )}
 
-          {/* Items */}
           <p style={{ margin:'0 0 10px', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
             Danh sách hàng hóa ({req.items?.length||0} mặt hàng)
           </p>
@@ -232,7 +175,7 @@ const DetailModal = ({ req, onClose }) => {
   );
 };
 
-/* ── Main Component ─────────────────────────────────────────── */
+/* ── Main Component (Manager view) ──────────────────────────── */
 const ManagerInventoryRequests = () => {
   const [activeTab, setActiveTab]       = useState('INBOUND');
   const [statusFilter, setStatusFilter] = useState('');
@@ -243,10 +186,7 @@ const ManagerInventoryRequests = () => {
   const [tabCounts, setTabCounts]       = useState({ INBOUND:0, OUTBOUND:0 });
   const [detailReq, setDetailReq]       = useState(null);
   const [approveReq, setApproveReq]     = useState(null);
-  const [assignReq, setAssignReq]       = useState(null);
   const [rejectReq, setRejectReq]       = useState(null);
-  const [staffList, setStaffList]       = useState([]);
-  const [staffLoading, setStaffLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast]               = useState(null);
 
@@ -256,26 +196,6 @@ const ManagerInventoryRequests = () => {
   const showToast = (msg, isError=false) => {
     setToast({ msg, isError });
     setTimeout(()=>setToast(null), 4000);
-  };
-
-  // Load staff theo đúng warehouseId của request được chọn
-  const loadStaffForWarehouse = async (warehouseId) => {
-    setStaffList([]);
-    setStaffLoading(true);
-    try {
-      const r = await axiosClient.get(`/staff/scoped-list?warehouseId=${warehouseId}`);
-      const items = r.data?.items || (Array.isArray(r.data) ? r.data : []);
-      setStaffList(Array.isArray(items) ? items : []);
-    } catch {
-      setStaffList([]);
-    } finally {
-      setStaffLoading(false);
-    }
-  };
-
-  const openAssignModal = (req) => {
-    setAssignReq(req);
-    if (req?.warehouseId) loadStaffForWarehouse(req.warehouseId);
   };
 
   const fetchData = useCallback(async()=>{
@@ -289,7 +209,6 @@ const ManagerInventoryRequests = () => {
 
   useEffect(()=>{ fetchData(); },[fetchData]);
 
-  // Fetch tổng số lượng mỗi loại để hiển thị badge trên tab
   useEffect(()=>{
     const fetchTabCounts = async () => {
       try {
@@ -314,7 +233,6 @@ const ManagerInventoryRequests = () => {
     total:     data.totalCount,
     pending:   data.items.filter(r=>r.status==='PENDING').length,
     confirmed: data.items.filter(r=>r.status==='CONFIRMED').length,
-    assigned:  data.items.filter(r=>r.status==='ASSIGNED').length,
     completed: data.items.filter(r=>r.status==='COMPLETED').length,
   };
 
@@ -322,21 +240,10 @@ const ManagerInventoryRequests = () => {
     setActionLoading(true);
     try {
       await axiosClient.post(`/InventoryRequests/${id}/approve`, { note });
-      showToast(`Đã duyệt yêu cầu #${id}!`);
+      showToast(`Đã duyệt yêu cầu #${id} — nhân viên kho có thể xử lý ngay!`);
       setApproveReq(null); fetchData();
       window.dispatchEvent(new Event('inventoryRequestUpdated'));
     } catch(err){ showToast(err?.response?.data?.message||'Duyệt thất bại.', true); }
-    finally{ setActionLoading(false); }
-  };
-
-  const handleAssign = async(id, staffId, note)=>{
-    setActionLoading(true);
-    try {
-      await axiosClient.post(`/InventoryRequests/${id}/assign`, { staffId, note });
-      showToast(`Đã giao yêu cầu #${id} cho nhân viên!`);
-      setAssignReq(null); fetchData();
-      window.dispatchEvent(new Event('inventoryRequestUpdated'));
-    } catch(err){ showToast(err?.response?.data?.message||'Giao việc thất bại.', true); }
     finally{ setActionLoading(false); }
   };
 
@@ -353,11 +260,11 @@ const ManagerInventoryRequests = () => {
 
   const card = { background:'#fff', borderRadius:16, border:'1px solid #e2e8f0', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' };
 
+  // Status filter chips — bỏ ASSIGNED
   const STATUS_FILTERS = [
     { key:'', label:'Tất cả', count: counts.total },
     { key:'PENDING',   ...STATUS_MAP.PENDING,   count: counts.pending },
     { key:'CONFIRMED', ...STATUS_MAP.CONFIRMED,  count: counts.confirmed },
-    { key:'ASSIGNED',  ...STATUS_MAP.ASSIGNED,   count: counts.assigned },
     { key:'COMPLETED', ...STATUS_MAP.COMPLETED,  count: counts.completed },
   ];
 
@@ -372,28 +279,30 @@ const ManagerInventoryRequests = () => {
       {/* Header */}
       <div style={{ marginBottom:28 }}>
         <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>Yêu cầu nhập / xuất kho</h1>
-        <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>Duyệt và giao nhiệm vụ cho nhân viên thực hiện các yêu cầu từ người thuê.</p>
+        <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>
+          Duyệt các yêu cầu từ người thuê. Sau khi duyệt, toàn bộ nhân viên kho có thể xử lý và xác nhận hoàn thành.
+        </p>
       </div>
 
       {/* Toast */}
       {toast && (
         <div style={{ marginBottom:16, padding:'12px 18px', borderRadius:12, background:toast.isError?'#fee2e2':'#dcfce7', border:`1px solid ${toast.isError?'#fecaca':'#bbf7d0'}`, display:'flex', alignItems:'center', gap:10, animation:'slide-in 0.25s ease' }}>
-          <span style={{ fontSize:'1rem', fontWeight:700, color:toast.isError?'#991b1b':'#166534' }}>{toast.isError?'X':'+'}  </span>
+          <span style={{ fontSize:'1rem' }}>{toast.isError?'❌':'✅'}</span>
           <span style={{ fontSize:'0.87rem', fontWeight:600, color:toast.isError?'#991b1b':'#166534' }}>{toast.msg}</span>
         </div>
       )}
 
-      {/* Stat Cards */}
+      {/* Stat Cards — bỏ "Đã giao Staff", thêm "Đã duyệt" */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
         {[
-          { label:'Tổng yêu cầu',   val:counts.total,     color:'#0ea5e9' },
-          { label:'Chờ duyệt',       val:counts.pending,   color:'#f59e0b' },
-          { label:'Đã giao Staff',   val:counts.assigned,  color:'#3b82f6' },
-          { label:'Hoàn thành',      val:counts.completed, color:'#22c55e' },
-        ].map(({label,val,color})=>(
+          { label:'Tổng yêu cầu',   val:counts.total,     color:'#0ea5e9', emoji:'📋' },
+          { label:'Chờ duyệt',       val:counts.pending,   color:'#f59e0b', emoji:'⏳' },
+          { label:'Đã duyệt',        val:counts.confirmed, color:'#22c55e', emoji:'✅' },
+          { label:'Hoàn thành',      val:counts.completed, color:'#16a34a', emoji:'🏁' },
+        ].map(({label,val,color,emoji})=>(
           <div key={label} style={{ ...card, padding:'18px 22px', display:'flex', alignItems:'center', gap:14 }}>
-            <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <div style={{ width:10, height:10, borderRadius:'50%', background:color }} />
+            <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.25rem', flexShrink:0 }}>
+              {emoji}
             </div>
             <div>
               <p style={{ margin:0, fontSize:'0.75rem', color:'#64748b', fontWeight:500 }}>{label}</p>
@@ -403,7 +312,7 @@ const ManagerInventoryRequests = () => {
         ))}
       </div>
 
-      {/* Tab Switcher — pill style đồng bộ */}
+      {/* Tab Switcher */}
       <div style={{ display:'flex', gap:8, padding:'11px 16px', borderRadius:12, background:activeTab==='INBOUND'?'#e0f7fa':'#fff8e1', border:`1.5px solid ${accent}30`, marginBottom:20, alignItems:'center' }}>
         <span style={{ fontSize:'0.82rem', fontWeight:600, color:'#64748b' }}>Loại yêu cầu:</span>
         {[
@@ -429,7 +338,6 @@ const ManagerInventoryRequests = () => {
 
       {/* Status chips + Search */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12, marginBottom:16 }}>
-        {/* Status filters */}
         <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
           {STATUS_FILTERS.map(({key,label,bg,color,dot,count})=>(
             <button key={key} onClick={()=>{ setStatusFilter(key); setPage(1); }}
@@ -439,9 +347,8 @@ const ManagerInventoryRequests = () => {
             </button>
           ))}
         </div>
-        {/* Search */}
         <div style={{ position:'relative', minWidth:240 }}>
-          <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize:'0.8rem' }}>T</span>
+          <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}>🔍</span>
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Mã YC, tên khách, kho..."
             style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px 9px 34px', borderRadius:10, border:'1.5px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s' }}
             onFocus={e=>e.target.style.borderColor=accent} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
@@ -463,7 +370,7 @@ const ManagerInventoryRequests = () => {
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
               <tr style={{ background:'#f8fafc' }}>
-                {[['#ID','60px'],['Kho bãi','140px'],['Người thuê','160px'],['Hàng hóa','auto'],['SL','70px','center'],['Trạng thái','120px'],['Nhân viên','130px'],['Ngày tạo','110px'],['Thao tác','180px','center']].map(([h,w,align])=>(
+                {[['#ID','60px'],['Kho bãi','140px'],['Người thuê','160px'],['Hàng hóa','auto'],['SL','70px','center'],['Trạng thái','120px'],['Ngày tạo','110px'],['Thao tác','150px','center']].map(([h,w,align])=>(
                   <th key={h} style={{ padding:'11px 14px', textAlign:align||'left', fontSize:'0.68rem', fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', whiteSpace:'nowrap', width:w }}>{h}</th>
                 ))}
               </tr>
@@ -475,37 +382,26 @@ const ManagerInventoryRequests = () => {
                 const typeAccent = req.type==='INBOUND'?INBOUND_COLOR:OUTBOUND_COLOR;
                 return (
                   <tr key={req.invReqId} className="mgr-row" style={{ borderBottom:'1px solid #f1f5f9', transition:'background 0.15s' }}>
-                    {/* ID */}
                     <td style={{ padding:'13px 14px' }}>
                       <span style={{ fontWeight:800, color:typeAccent, fontSize:'0.87rem' }}>#{req.invReqId}</span>
                     </td>
-                    {/* Kho */}
                     <td style={{ padding:'13px 14px', maxWidth:140 }}>
                       <div style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:'0.85rem', fontWeight:500, color:'#374151' }}>{req.warehouseName||'—'}</div>
                     </td>
-                    {/* Renter */}
                     <td style={{ padding:'13px 14px' }}>
                       <p style={{ margin:0, fontSize:'0.85rem', fontWeight:600, color:'#1e293b' }}>{req.renterName||'—'}</p>
                       <p style={{ margin:0, fontSize:'0.72rem', color:'#94a3b8' }}>{req.renterEmail||''}</p>
                     </td>
-                    {/* Hàng hóa */}
                     <td style={{ padding:'13px 14px' }}>
                       <div style={{ fontWeight:600, color:'#1e293b', fontSize:'0.85rem' }}>{firstItem?.itemName||'—'}</div>
                       {req.items?.length>1 && <div style={{ fontSize:'0.72rem', color:'#94a3b8', marginTop:2 }}>+{req.items.length-1} mặt hàng</div>}
                     </td>
-                    {/* SL */}
                     <td style={{ padding:'13px 14px', textAlign:'center' }}>
                       <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:26, height:26, borderRadius:'50%', background:`${typeAccent}18`, color:typeAccent, fontWeight:700, fontSize:'0.78rem', padding:'0 6px' }}>{totalQty}</span>
                     </td>
-                    {/* Status */}
                     <td style={{ padding:'13px 14px' }}><StatusBadge status={req.status}/></td>
-                    {/* Staff */}
-                    <td style={{ padding:'13px 14px', fontSize:'0.82rem', color:req.assignedStaffName?'#1d4ed8':'#94a3b8', fontWeight:req.assignedStaffName?600:400 }}>
-                      {req.assignedStaffName||'—'}
-                    </td>
-                    {/* Date */}
                     <td style={{ padding:'13px 14px', fontSize:'0.78rem', color:'#64748b' }}>{fmtDate(req.createdAt)}</td>
-                    {/* Actions */}
+                    {/* Actions — chỉ Duyệt và Từ chối, bỏ Giao */}
                     <td style={{ padding:'13px 14px' }}>
                       <div style={{ display:'flex', gap:6, alignItems:'center', justifyContent:'center' }}>
                         {/* Xem chi tiết */}
@@ -515,32 +411,29 @@ const ManagerInventoryRequests = () => {
                           onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.borderColor='#e2e8f0';}}>
                           👁
                         </button>
-                        {/* Duyệt (PENDING) */}
+                        {/* Duyệt — chỉ PENDING */}
                         {req.status==='PENDING' && (
                           <button onClick={()=>setApproveReq(req)} title="Duyệt yêu cầu"
-                            style={{ padding:'5px 10px', border:'1.5px solid #bbf7d0', background:'#dcfce7', borderRadius:8, cursor:'pointer', color:'#166534', fontSize:'0.78rem', fontWeight:700, display:'flex', alignItems:'center', gap:4, transition:'all 0.15s' }}
+                            style={{ padding:'5px 12px', border:'1.5px solid #bbf7d0', background:'#dcfce7', borderRadius:8, cursor:'pointer', color:'#166534', fontSize:'0.78rem', fontWeight:700, display:'flex', alignItems:'center', gap:4, transition:'all 0.15s' }}
                             onMouseEnter={e=>{e.currentTarget.style.background='#bbf7d0';}}
                             onMouseLeave={e=>{e.currentTarget.style.background='#dcfce7';}}>
-                            Duyệt
+                            ✓ Duyệt
                           </button>
                         )}
-                        {/* Giao Staff (CONFIRMED) */}
-                        {req.status==='CONFIRMED' && (
-                          <button onClick={()=>openAssignModal(req)} title="Giao cho Staff"
-                            style={{ padding:'5px 10px', border:'1.5px solid #bfdbfe', background:'#dbeafe', borderRadius:8, cursor:'pointer', color:'#1d4ed8', fontSize:'0.78rem', fontWeight:700, display:'flex', alignItems:'center', gap:4, transition:'all 0.15s' }}
-                            onMouseEnter={e=>{e.currentTarget.style.background='#bfdbfe';}}
-                            onMouseLeave={e=>{e.currentTarget.style.background='#dbeafe';}}>
-                            Giao
-                          </button>
-                        )}
-                        {/* Từ chối (PENDING or CONFIRMED) */}
+                        {/* Từ chối — PENDING hoặc CONFIRMED */}
                         {(req.status==='PENDING'||req.status==='CONFIRMED') && (
                           <button onClick={()=>setRejectReq(req)} title="Từ chối"
                             style={{ width:30, height:30, border:'1.5px solid #fecaca', background:'#fef2f2', borderRadius:8, cursor:'pointer', color:'#dc2626', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.9rem', transition:'all 0.15s' }}
                             onMouseEnter={e=>{e.currentTarget.style.background='#fee2e2';}}
                             onMouseLeave={e=>{e.currentTarget.style.background='#fef2f2';}}>
-                            ×
+                            ✕
                           </button>
+                        )}
+                        {/* Badge "Đang xử lý" khi CONFIRMED */}
+                        {req.status==='CONFIRMED' && (
+                          <span style={{ padding:'4px 10px', borderRadius:8, background:'#f0fdf4', border:'1.5px solid #86efac', color:'#15803d', fontSize:'0.72rem', fontWeight:700, whiteSpace:'nowrap' }}>
+                            Chờ Staff
+                          </span>
                         )}
                       </div>
                     </td>
@@ -573,7 +466,6 @@ const ManagerInventoryRequests = () => {
       {/* Modals */}
       <DetailModal  req={detailReq}  onClose={()=>setDetailReq(null)}/>
       <ApproveModal req={approveReq} onClose={()=>setApproveReq(null)} onApprove={handleApprove} loading={actionLoading}/>
-      <AssignModal  req={assignReq}  staffList={staffList} staffLoading={staffLoading} onClose={()=>setAssignReq(null)} onAssign={handleAssign} loading={actionLoading}/>
       <RejectModal  req={rejectReq}  onClose={()=>setRejectReq(null)} onReject={handleReject} loading={actionLoading}/>
     </div>
   );

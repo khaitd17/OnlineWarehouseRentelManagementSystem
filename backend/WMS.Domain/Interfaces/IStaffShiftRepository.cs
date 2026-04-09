@@ -6,6 +6,8 @@ public interface IStaffShiftRepository
     Task SaveShiftsAsync(List<UpsertShiftDto> shifts, CancellationToken ct = default);
     Task<List<StaffScheduleDto>> GetStaffScheduleAsync(int warehouseId, int callerId, DateOnly from, DateOnly to, CancellationToken ct = default);
     Task<StaffScheduleDto?> GetMyScheduleAsync(int userId, int warehouseId, DateOnly from, DateOnly to, CancellationToken ct = default);
+    Task<List<WarehouseShiftLookupDto>> GetWarehouseShiftsAsync(int warehouseId, CancellationToken ct = default);
+    Task<GenerateScheduleSummary> GenerateScheduleAsync(int warehouseId, DateOnly from, DateOnly to, CancellationToken ct = default);
 }
 
 public class StaffScheduleDto
@@ -52,3 +54,19 @@ public class StaffShiftDto
 }
 
 public class UpsertShiftDto : StaffShiftDto { }
+
+public class WarehouseShiftLookupDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = null!;
+    public string StartTime { get; set; } = null!;
+    public string EndTime { get; set; } = null!;
+    public int? WarehouseId { get; set; }
+}
+
+public class GenerateScheduleSummary
+{
+    public string Message { get; set; } = null!;
+    public int Created { get; set; }
+    public int Skipped { get; set; }
+}
