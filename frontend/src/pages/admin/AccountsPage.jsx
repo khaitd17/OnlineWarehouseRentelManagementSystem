@@ -83,7 +83,7 @@ export default function AccountsPage() {
   ];
 
   const filterConfig = [
-    { key: "status", label: "Trạng thái", options: [{ value: "ACTIVE", label: "Hoạt động" }, { value: "LOCKED", label: "Bị khóa" }, { value: "PENDING", label: "Chờ duyệt" }] },
+    { key: "status", label: "Trạng thái", options: [{ value: "ACTIVE", label: "Hoạt động" }, { value: "LOCKED", label: "Bị khóa" }] },
     { key: "roleId", label: "Vai trò", options: roles.map(r => ({ value: r.roleId, label: r.roleName })) },
   ];
 

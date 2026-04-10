@@ -102,11 +102,12 @@ export default function StaffAuditSessionDetailPage() {
   const handleRecord = async () => {
     const itemsToRecord = recordModal.items.filter(i => i.actualQty !== "");
 
-    let hasError = false;
     for (const item of itemsToRecord) {
-      if (parseInt(item.actualQty) < 0) { hasError = true; break; }
+      if (parseInt(item.actualQty) < 0) { showToast("Số lượng thực tế phải >= 0", "error"); return; }
+      if (parseInt(item.actualQty) !== parseInt(item.expectedQty) && (!item.discrepancyReason || !item.discrepancyReason.trim())) {
+        showToast(`Hàng hóa "${item.itemName || "vô danh"}" có chênh lệch, vui lòng nhập lý do`, "error"); return;
+      }
     }
-    if (hasError) { showToast("Số lượng thực tế phải >= 0", "error"); return; }
     if (itemsToRecord.length === 0) { showToast("Vui lòng nhập số lượng thực tế cho ít nhất 1 mục", "error"); return; }
 
     setRecordModal(p => ({ ...p, loading: true }));
@@ -122,15 +123,7 @@ export default function StaffAuditSessionDetailPage() {
     setRecordModal(p => ({ ...p, loading: false }));
   };
 
-  const handleExport = async () => {
-    try {
-      const res = await adminService.exportAuditReport(id);
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a"); a.href = url; a.download = `BaoCaoKiemKe_${id}.csv`; a.click();
-      window.URL.revokeObjectURL(url);
-      showToast("Xuất báo cáo thành công");
-    } catch { showToast("Lỗi khi xuất báo cáo", "error"); }
-  };
+
 
   const statusLabel = (s) => {
     const map = { APPROVED: "Chờ kiểm kê", IN_PROGRESS: "Đang kiểm kê", COMPLETED: "Hoàn thành", PENDING_APPROVAL: "Chờ duyệt", OPEN: "Đang mở" };
@@ -168,7 +161,7 @@ export default function StaffAuditSessionDetailPage() {
               <span className="material-symbols-outlined text-lg">edit_note</span> Ghi nhận kết quả
             </button>
           )}
-          <button onClick={handleExport} className="px-4 py-2 rounded-lg font-bold text-sm border border-slate-200 text-slate-600 bg-white hover:bg-slate-50">Xuất CSV</button>
+
         </div>
       </div>
 
@@ -277,7 +270,7 @@ export default function StaffAuditSessionDetailPage() {
       {/* Record Results Modal */}
       {recordModal.open && (
         <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setRecordModal(defaultRecordModal)}>
-          <div style={{ backgroundColor: "#fff", borderRadius: 12, padding: 24, width: "100%", maxWidth: 750, maxHeight: "80vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+          <div style={{ backgroundColor: "#fff", borderRadius: 12, padding: 24, width: "100%", maxWidth: "80%", maxHeight: "80vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-slate-900 mb-1">Ghi nhận kết quả kiểm kê</h3>
             <p className="text-xs text-slate-500 mb-4">Chọn hàng hóa từ danh sách kho, số lượng dự kiến sẽ được tự động điền.</p>
 

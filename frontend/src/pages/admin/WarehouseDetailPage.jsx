@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Clock, Ruler, Star, FileText, Image, User, CheckCircle, XCircle, ExternalLink } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Ruler, Star, FileText, Image, User, CheckCircle, XCircle, ExternalLink, Eye, EyeOff, Trash2 } from "lucide-react";
 import adminService from "../../services/adminService";
 import StatusBadge from "../../components/StatusBadge";
 import Modal from "../../components/Modal";
@@ -55,6 +55,21 @@ export default function WarehouseDetailPage() {
     setApproveModal(defaultApproveModal);
   };
 
+  const handleManageListing = async (action) => {
+    try {
+      const res = await adminService.manageListing(id, action);
+      if (res.data.success) {
+        showToast(res.data.message);
+        if (action === "DELETE") navigate("/admin/warehouses");
+        else fetchDetail();
+      } else {
+        showToast(res.data.message, "error");
+      }
+    } catch (error) {
+      showToast(error.response?.data?.message || `Lỗi khi thực hiện hành động ${action}`, "error");
+    }
+  };
+
   if (loading) return <div style={{ textAlign: "center", padding: 60, color: "#6b7280" }}>Đang tải...</div>;
   if (!wh) return <div style={{ textAlign: "center", padding: 60, color: "#ef4444" }}>Không tìm thấy kho.</div>;
 
@@ -83,6 +98,28 @@ export default function WarehouseDetailPage() {
                 <XCircle size={14} style={{ marginRight: 4 }} /> Từ chối
               </button>
             </>
+          )}
+
+          {wh.status === "APPROVED" && (
+            <button className="admin-btn admin-btn-warning" onClick={() => handleManageListing("HIDE")}>
+              <EyeOff size={14} style={{ marginRight: 4 }} /> Ẩn kho
+            </button>
+          )}
+
+          {wh.status === "HIDDEN" && (
+            <button className="admin-btn admin-btn-info" onClick={() => handleManageListing("SHOW")}>
+              <Eye size={14} style={{ marginRight: 4 }} /> Hiện kho
+            </button>
+          )}
+
+          {wh.status !== "DELETED" && (
+            <button className="admin-btn admin-btn-danger" onClick={() => {
+              if (window.confirm(`Bạn có chắc muốn xóa kho ${wh.name}? Hành động này không thể hoàn tác.`)) {
+                handleManageListing("DELETE");
+              }
+            }}>
+              <Trash2 size={14} style={{ marginRight: 4 }} /> Xóa kho
+            </button>
           )}
         </div>
       </div>

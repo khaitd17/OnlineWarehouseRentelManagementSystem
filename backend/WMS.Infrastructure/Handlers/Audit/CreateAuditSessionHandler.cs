@@ -54,7 +54,8 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
             var hasCreatedThisMonth = await _db.AuditSessions
                 .AnyAsync(a => a.WarehouseId == request.WarehouseId
                     && a.CreatedBy == request.CreatedBy
-                    && a.CreatedAt >= startOfMonth, cancellationToken);
+                    && a.CreatedAt >= startOfMonth
+                    && a.Status != "REJECTED", cancellationToken);
             if (hasCreatedThisMonth)
                 return ApiResponse<int>.ErrorResponse(
                     "Bạn chỉ được tạo yêu cầu kiểm kê 1 lần/tháng cho mỗi kho. Vui lòng đợi sang tháng sau.");
