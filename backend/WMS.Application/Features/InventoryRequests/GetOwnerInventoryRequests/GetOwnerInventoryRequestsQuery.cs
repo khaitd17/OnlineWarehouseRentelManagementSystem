@@ -35,6 +35,25 @@ public class InventoryRequestDto
     public string? Notes { get; set; }
     public int TotalItems { get; set; }
     public List<InventoryItemDto> Items { get; set; } = new();
+
+    // ── Timeline fields ──────────────────────────────────────────
+    /// <summary>Tên Manager đã duyệt yêu cầu</summary>
+    public string? ConfirmedByName { get; set; }
+
+    /// <summary>Tên Staff được giao xử lý yêu cầu</summary>
+    public string? AssignedStaffName { get; set; }
+
+    /// <summary>Email của Staff được giao</summary>
+    public string? AssignedStaffEmail { get; set; }
+
+    /// <summary>Thời điểm Manager giao việc cho Staff</summary>
+    public DateTime? AssignedAt { get; set; }
+
+    /// <summary>Ghi chú nội bộ từ Manager khi giao việc</summary>
+    public string? AssignedNote { get; set; }
+
+    /// <summary>Thời điểm yêu cầu hoàn thành hoặc bị từ chối (UpdatedAt khi status thay đổi lần cuối)</summary>
+    public DateTime? UpdatedAt { get; set; }
 }
 
 public class InventoryItemDto

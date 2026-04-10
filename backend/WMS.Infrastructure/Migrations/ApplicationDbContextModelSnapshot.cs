@@ -884,6 +884,9 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("renter_id");
 
+                    b.Property<DateTime?>("ScheduledDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
@@ -1921,6 +1924,51 @@ namespace WMS.Infrastructure.Migrations
                         .HasDatabaseName("UQ_staff_shifts_membership_date");
 
                     b.ToTable("staff_shifts", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.Subscription", b =>
+                {
+                    b.Property<int>("SubscriptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("subscription_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SubscriptionId"));
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("plan");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("start_date");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TransactionReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("transaction_reference");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("SubscriptionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("subscriptions", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.TaskType", b =>
@@ -3447,6 +3495,16 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Membership");
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.Subscription", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.User", "User")
+                        .WithMany("Subscriptions")
+                        .HasForeignKey("UserId")
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.TaskType", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.Skill", "Skill")
@@ -3760,6 +3818,8 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("RentalRequestRenters");
 
                     b.Navigation("RentalRequestReviewedByNavigations");
+
+                    b.Navigation("Subscriptions");
 
                     b.Navigation("WarehouseApprovedByNavigations");
 

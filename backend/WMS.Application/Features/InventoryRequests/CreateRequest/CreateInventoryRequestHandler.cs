@@ -23,10 +23,11 @@ public record CreateInventoryRequestCommand : IRequest<InventoryRequestDto>
 {
     public int RenterId { get; init; }
     public int WarehouseId { get; init; }
-    public string Type { get; init; } = "INBOUND";    // INBOUND | OUTBOUND
+    public string Type { get; init; } = "INBOUND";
     public string? Notes { get; init; }
     public List<string>? DocumentUrls { get; init; }
     public List<CreateInventoryItemInput> Items { get; init; } = new();
+    public DateTime? ScheduledDate { get; init; }
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -136,16 +137,18 @@ public class CreateInventoryRequestHandler
                 : null,
             Status         = "PENDING",
             InventoryItems = inventoryItems,
+            ScheduledDate  = cmd.ScheduledDate,
         };
 
         var created = await _repo.CreateAsync(request, cancellationToken);
 
         // Tự động tạo WarehouseTask + UnitTasks phản chiếu luồng nghiệp vụ
+        var taskScheduledAt = cmd.ScheduledDate ?? created.CreatedAt ?? DateTime.UtcNow;
         await _taskRepo.CreateWorkflowTaskAsync(
             cmd.Type.ToUpper(),
             created.InvReqId,
             cmd.WarehouseId,
-            created.CreatedAt,          // ScheduledAt gắn với ngày tạo đơn
+            taskScheduledAt,
             cancellationToken);
 
         var full = await _repo.GetByIdAsync(created.InvReqId, cancellationToken);

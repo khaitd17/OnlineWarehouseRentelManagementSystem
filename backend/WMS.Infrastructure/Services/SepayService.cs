@@ -34,17 +34,21 @@ public class SepayService : ISepayService
     public QrPaymentInfo GenerateQrInfo(string paymentCode, decimal amount, string description)
     {
         // VietQR URL format
-        var encodedAccountName = Uri.EscapeDataString(_settings.AccountName);
+        var accountName = _settings.AccountName ?? "TRAN DINH KHAI";
+        var bankName = _settings.BankName ?? "MB";
+        var accountNumber = _settings.AccountNumber ?? "7758672937405";
+
+        var encodedAccountName = Uri.EscapeDataString(accountName);
         var encodedDescription = Uri.EscapeDataString(paymentCode);
 
-        var qrImageUrl = $"https://img.vietqr.io/image/{_settings.BankName}-{_settings.AccountNumber}-compact2.png" +
+        var qrImageUrl = $"https://img.vietqr.io/image/{bankName}-{accountNumber}-compact2.png" +
                          $"?amount={(int)amount}&addInfo={encodedDescription}&accountName={encodedAccountName}";
 
         return new QrPaymentInfo
         {
-            BankName = _settings.BankName,
-            AccountNumber = _settings.AccountNumber,
-            AccountName = _settings.AccountName,
+            BankName = bankName,
+            AccountNumber = accountNumber,
+            AccountName = accountName,
             Amount = amount,
             PaymentCode = paymentCode,
             Description = description,
@@ -76,48 +80,104 @@ public class SepayService : ISepayService
                 return WebhookResult.Ok(existingPayment.PaymentCode, existingPayment.PaymentId);
             }
 
-            // Extract payment code from content (format: WMS123456)
-            var paymentCode = ExtractPaymentCode(payload.Content);
+            // Extract code and type
+            var identifier = ExtractIdentifierCode(payload.Content);
 
-            if (string.IsNullOrEmpty(paymentCode))
+            if (identifier == null)
             {
                 _logger.LogWarning("Could not extract payment code from content: {Content}", payload.Content);
                 return WebhookResult.Ignored("No valid payment code found in content");
             }
 
-            // Find pending payment
-            var payment = _db.RentalPayments
-                .FirstOrDefault(p => p.PaymentCode == paymentCode && p.Status == PaymentStatus.Pending);
+            var type = identifier.Value.Type;
+            var paymentCode = identifier.Value.Code;
 
-            if (payment == null)
+            if (type == "WMS")
             {
-                _logger.LogWarning("Payment not found or not pending: {PaymentCode}", paymentCode);
-                return WebhookResult.Ignored($"Payment {paymentCode} not found or not pending");
+                // RENTAL PAYMENT logic
+                var payment = _db.RentalPayments.FirstOrDefault(p => p.PaymentCode == paymentCode && p.Status == PaymentStatus.Pending);
+                if (payment == null) return WebhookResult.Ignored($"Payment {paymentCode} not found or not pending");
+                
+                payment.CompleteFromSepay(payload.Id, payload.ReferenceCode ?? "");
+                var contract = await _db.RentalContracts.FindAsync(payment.ContractId);
+                if (contract != null && contract.IsPendingPayment) contract.ActivateAfterPayment();
+                
+                await _db.SaveChangesAsync();
+                return WebhookResult.Ok(paymentCode, payment.PaymentId, "RENTAL");
+            }
+            else if (type == "SUB")
+            {
+                // SUBSCRIPTION logic
+                var subscription = _db.Subscriptions.FirstOrDefault(s => s.TransactionReference == paymentCode && s.Status == SubscriptionStatus.Pending);
+                if (subscription == null) return WebhookResult.Ignored($"Subscription {paymentCode} not found or not pending");
+
+                subscription.Status = SubscriptionStatus.Active;
+
+                // Find if there is an existing active subscription to extend
+                var lastActiveSub = _db.Subscriptions
+                    .Where(s => s.UserId == subscription.UserId && s.Status == SubscriptionStatus.Active && s.SubscriptionId != subscription.SubscriptionId)
+                    .OrderByDescending(s => s.EndDate)
+                    .FirstOrDefault();
+
+                if (lastActiveSub != null && lastActiveSub.EndDate > DateTime.UtcNow)
+                {
+                    subscription.StartDate = lastActiveSub.EndDate;
+                    subscription.EndDate = lastActiveSub.EndDate.Value.AddDays(30);
+                }
+                else
+                {
+                    subscription.StartDate = DateTime.UtcNow;
+                    subscription.EndDate = DateTime.UtcNow.AddDays(30);
+                }
+
+                // Create or unlock warehouses
+                var existingWarehouses = _db.Warehouses.Where(w => w.OwnerId == subscription.UserId).ToList();
+                if (!existingWarehouses.Any())
+                {
+                    var user = _db.Users.Find(subscription.UserId);
+                    var newWarehouse = new Warehouse
+                    {
+                        Name = $"Kho mới của {user?.FullName ?? "bạn"}",
+                        Address = "Chưa cập nhật",
+                        OwnerId = subscription.UserId,
+                        TotalArea = 0,
+                        AvailableArea = 0,
+                        Status = "APPROVED",
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _db.Warehouses.Add(newWarehouse);
+                    await _db.SaveChangesAsync();
+
+                    var ownerWhRole = _db.WarehouseRoles.FirstOrDefault(r => r.Code == "OWNER");
+                    if (ownerWhRole != null)
+                    {
+                        var membership = new WarehouseMembership
+                        {
+                            UserId = subscription.UserId,
+                            WarehouseId = newWarehouse.WarehouseId,
+                            WarehouseRoleId = ownerWhRole.Id,
+                            IsActive = true,
+                            IsAllSkill = true,
+                            IsAllZone = true,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _db.WarehouseMemberships.Add(membership);
+                    }
+                }
+                else
+                {
+                    foreach (var w in existingWarehouses)
+                    {
+                        if (w.Status == "LOCKED") w.Status = "APPROVED"; // Unlock
+                    }
+                }
+
+                await _db.SaveChangesAsync();
+                return WebhookResult.Ok(paymentCode, subscription.SubscriptionId, "SUBSCRIPTION");
             }
 
-            // Verify amount matches (with small tolerance for rounding)
-            if (Math.Abs(payment.Amount - payload.TransferAmount) > 1)
-            {
-                _logger.LogWarning("Amount mismatch: Expected {Expected}, Got {Actual}",
-                    payment.Amount, payload.TransferAmount);
-                // Still process but log warning - bank might have different formatting
-            }
-
-            // Complete payment
-            payment.CompleteFromSepay(payload.Id, payload.ReferenceCode ?? "");
-
-            // Find and activate contract
-            var contract = await _db.RentalContracts.FindAsync(payment.ContractId);
-            if (contract != null && contract.IsPendingPayment)
-            {
-                contract.ActivateAfterPayment();
-                _logger.LogInformation("Contract {ContractId} activated after payment", contract.ContractId);
-            }
-
-            await _db.SaveChangesAsync();
-
-            _logger.LogInformation("Payment {PaymentCode} completed successfully", paymentCode);
-            return WebhookResult.Ok(paymentCode, payment.PaymentId);
+            return WebhookResult.Ignored("Unknown type");
         }
         catch (Exception ex)
         {
@@ -181,14 +241,17 @@ public class SepayService : ISepayService
         return _whitelistIps.Contains(ipAddress);
     }
 
-    private static string? ExtractPaymentCode(string? content)
+    private static (string Type, string Code)? ExtractIdentifierCode(string? content)
     {
-        if (string.IsNullOrEmpty(content))
-            return null;
+        if (string.IsNullOrEmpty(content)) return null;
 
-        // Match WMS followed by 6 digits (e.g., WMS123456)
-        var match = Regex.Match(content, @"WMS\d{6}", RegexOptions.IgnoreCase);
-        return match.Success ? match.Value.ToUpper() : null;
+        var wmsMatch = Regex.Match(content, @"WMS\d{6}", RegexOptions.IgnoreCase);
+        if (wmsMatch.Success) return ("WMS", wmsMatch.Value.ToUpper());
+
+        var subMatch = Regex.Match(content, @"SUB\d{6}", RegexOptions.IgnoreCase);
+        if (subMatch.Success) return ("SUB", subMatch.Value.ToUpper());
+
+        return null;
     }
 
     // Response models for SePay API

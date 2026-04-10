@@ -20,6 +20,7 @@ const MENU_BY_ROLE = {
     { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions" },
     { icon: "pending_actions", label: "Yêu cầu thuê kho", path: "/pending-rental-requests" },
     { icon: "receipt_long", label: "Lịch sử thanh toán", path: "/payment-history", section: "TÀI CHÍNH" },
+    { icon: "workspace_premium", label: "Mua gói dịch vụ", path: "/subscriptions", section: "DỊCH VỤ" },
     { icon: "group", label: "Quản lý nhân viên", path: "/list-staff", section: "NHÂN SỰ" },
     { icon: "person_add", label: "Thêm nhân viên", path: "/create-staff" },
     { icon: "schedule", label: "Phân ca", path: "/shift-scheduling", section: "VẬN HÀNH" },
@@ -38,6 +39,7 @@ const MENU_BY_ROLE = {
     { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions" },
     { icon: "pending_actions", label: "Yêu cầu thuê kho", path: "/pending-rental-requests" },
     { icon: "receipt_long", label: "Lịch sử thanh toán", path: "/payment-history", section: "TÀI CHÍNH" },
+    { icon: "workspace_premium", label: "Mua gói dịch vụ", path: "/subscriptions", section: "DỊCH VỤ" },
     { icon: "group", label: "Quản lý nhân viên", path: "/list-staff", section: "NHÂN SỰ" },
     { icon: "person_add", label: "Thêm nhân viên", path: "/create-staff" },
     { icon: "schedule", label: "Phân ca", path: "/shift-scheduling", section: "VẬN HÀNH" },
@@ -83,8 +85,9 @@ const MENU_BY_ROLE = {
   ],
   USER: [
     { icon: "search", label: "Tìm kho thuê", path: "/search" },
-    { icon: "description", label: "Hợp đồng của tôi", path: "/my-contracts" },
+    { icon: "description", label: "Hợp đồng của tôi", path: "/my-contracts", section: "HỢP ĐỒNG" },
     { icon: "list_alt", label: "Yêu cầu thuê", path: "/my-rental-requests" },
+    { icon: "workspace_premium", label: "Đăng ký làm chủ kho", path: "/subscriptions", section: "TRỞ THÀNH ĐỐI TÁC" },
     { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
   ],
   ADMIN: [

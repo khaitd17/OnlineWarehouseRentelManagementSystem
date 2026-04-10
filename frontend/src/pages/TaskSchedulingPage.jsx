@@ -3,7 +3,6 @@ import {
   getTasks,
   getMyWarehouses,
   getTaskTypes,
-  getWarehouseZones,
   createTask,
 } from "../services/taskSchedulingService";
 
@@ -33,14 +32,32 @@ const TYPE_PALETTE = {
 };
 const tp = code => TYPE_PALETTE[code] || TYPE_PALETTE.OTHER;
 
-const STATUS_STYLES = {
-  Pending:   { bg: "#fef9c3", color: "#92400e", label: "Cho xu ly" },
-  Done:      { bg: "#dcfce7", color: "#15803d", label: "Hoan thanh" },
-  Cancelled: { bg: "#fee2e2", color: "#b91c1c", label: "Da huy"    },
+// Task status color system — based on completion state
+const TASK_STATUS = {
+  done:      { card: "#f0fdf4", cardBorder: "#22c55e", badge: "#dcfce7", badgeText: "#15803d", badgeBorder: "#86efac", label: "Hoan thanh" },
+  inprogress:{ card: "#eff6ff", cardBorder: "#3b82f6", badge: "#dbeafe", badgeText: "#1d4ed8", badgeBorder: "#93c5fd", label: "Dang xu ly" },
+  pending:   { card: "#fafafa", cardBorder: "#e2e8f0", badge: "#f1f5f9", badgeText: "#64748b", badgeBorder: "#cbd5e1", label: "Chua bat dau" },
+};
+const getTaskStatus = (steps, taskStatus) => {
+  if (!steps || steps.length === 0) {
+    if (taskStatus === "Done") return "done";
+    return "pending";
+  }
+  const done = steps.filter(s => s.status === "Done").length;
+  if (done === steps.length) return "done";
+  if (done > 0) return "inprogress";
+  return "pending";
 };
 
 
 const WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+
+function parseNote(note) {
+  if (!note) return { renter: null, items: null, raw: null };
+  const m = note.match(/^\[(.+?)\]\s*(.*)$/);
+  if (m) return { renter: m[1].trim(), items: m[2].trim() || null, raw: note };
+  return { renter: null, items: null, raw: note };
+}
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 function getMon(ref) {
@@ -93,6 +110,9 @@ function TaskDetailModal({ task, onClose }) {
   const steps   = task.unitTasks ? [...task.unitTasks].sort((a, b) => a.order - b.order) : [];
   const total   = steps.length;
   const done    = steps.filter(u => u.status === "Done").length;
+  const tStatus = getTaskStatus(steps, task.status);
+  const tStyle  = TASK_STATUS[tStatus];
+  const { renter, items, raw } = parseNote(task.note);
 
   const fmtDateTime = (iso) => {
     if (!iso) return "—";
@@ -100,27 +120,44 @@ function TaskDetailModal({ task, onClose }) {
     return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
   };
 
+  // Header color: status overrides type palette
+  const headerBg     = tStatus === "done" ? "linear-gradient(135deg,#bbf7d0,#f0fdf4)" : `linear-gradient(135deg,${col.border}22,${col.bg})`;
+  const headerBorder = tStatus === "done" ? "#22c55e" : col.border;
+
   return (
     <div onClick={e => e.target === e.currentTarget && onClose()}
       style={{ position:"fixed", inset:0, background:"rgba(15,23,42,0.5)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
       <div style={{ background:"#fff", borderRadius:16, width:"100%", maxWidth:520, boxShadow:"0 24px 60px rgba(0,0,0,0.2)", overflow:"hidden" }}>
 
         {/* Header */}
-        <div style={{ background:`linear-gradient(135deg,${col.border}22,${col.bg})`, borderBottom:`2px solid ${col.border}`, padding:"20px 24px" }}>
+        <div style={{ background:headerBg, borderBottom:`2px solid ${headerBorder}`, padding:"20px 24px" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-            <div>
-              <span style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:".6px", color:col.text, background:col.badge, padding:"2px 8px", borderRadius:99, border:`1px solid ${col.border}` }}>
-                {task.taskTypeName}
-              </span>
-              {task.note && task.note !== task.taskTypeName && (
-                <h2 style={{ margin:"8px 0 4px", fontSize:16, fontWeight:800, color:"#0f172a" }}>
-                  {task.note}
-                </h2>
+            <div style={{ flex:1, minWidth:0 }}>
+              {/* Type badge + status badge */}
+              <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                <span style={{ fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:".6px", color:col.text, background:col.badge, padding:"2px 8px", borderRadius:99, border:`1px solid ${col.border}` }}>
+                  {task.taskTypeName}
+                </span>
+                <span style={{ fontSize:10, fontWeight:700, padding:"2px 10px", borderRadius:99, background:tStyle.badge, color:tStyle.badgeText, border:`1px solid ${tStyle.badgeBorder}` }}>
+                  {total > 0 ? `${done}/${total} buoc` : tStyle.label}
+                </span>
+              </div>
+              {renter && (
+                <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:11, color:"#64748b" }}>Nguoi thue:</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:"#0f172a" }}>{renter}</span>
+                </div>
+              )}
+              {items && (
+                <div style={{ marginTop:4, fontSize:11, color:"#475569", lineHeight:1.5 }}>
+                  <span style={{ color:"#94a3b8" }}>Hang hoa: </span>{items}
+                </div>
+              )}
+              {!renter && raw && (
+                <h2 style={{ margin:"8px 0 4px", fontSize:16, fontWeight:800, color:"#0f172a" }}>{raw}</h2>
               )}
               {task.scheduledAt && (
-                <p style={{ margin:"6px 0 0", fontSize:11, color:"#64748b" }}>
-                  {fmtDateTime(task.scheduledAt)}
-                </p>
+                <p style={{ margin:"6px 0 0", fontSize:11, color:"#64748b" }}>{fmtDateTime(task.scheduledAt)}</p>
               )}
             </div>
             <button onClick={onClose}
@@ -130,70 +167,60 @@ function TaskDetailModal({ task, onClose }) {
           </div>
         </div>
 
-        {/* Steps */}
-        <div style={{ padding:"16px 24px", maxHeight:380, overflowY:"auto" }}>
-          <p style={{ margin:"0 0 12px", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:".5px", color:"#94a3b8" }}>Các bước công việc</p>
-          {steps.map((u, i) => {
-            const isDone      = u.status === "Done";
-            const isCurrent   = !isDone && steps.slice(0, i).every(prev => prev.status === "Done");
-            const stepLabel   = STEP_STATUS[u.unitTaskTypeCode] || u.description;
-            return (
-              <div key={u.id} style={{
-                display:"flex", gap:12, marginBottom:12,
-                padding:"12px 14px", borderRadius:10,
-                border:`1.5px solid ${isDone ? "#86efac" : isCurrent ? col.border : "#e2e8f0"}`,
-                background: isDone ? "#f0fdf4" : isCurrent ? col.bg : "#f8fafc",
-                transition:"all .2s",
-              }}>
-                {/* Step number / check */}
-                <div style={{
-                  width:28, height:28, borderRadius:"50%", flexShrink:0,
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  fontSize: isDone ? 13 : 11, fontWeight:800,
-                  background: isDone ? "#22c55e" : isCurrent ? col.border : "#e2e8f0",
-                  color: isDone || isCurrent ? "#fff" : "#94a3b8",
-                  boxShadow: isCurrent ? `0 0 0 3px ${col.border}44` : "none",
-                }}>
-                  {isDone ? "v" : i + 1}
-                </div>
+        {/* Progress bar (nếu có steps) */}
+        {total > 0 && (
+          <div style={{ padding:"10px 24px 0", background:"#fafafa", borderBottom:`1px solid ${C.border}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:C.sub, marginBottom:4 }}>
+              <span>Tien do</span>
+              <span style={{ fontWeight:700, color: tStatus === "done" ? "#15803d" : tStatus === "inprogress" ? "#1d4ed8" : C.sub }}>{Math.round(done/total*100)}%</span>
+            </div>
+            <div style={{ height:5, borderRadius:99, background:"#e2e8f0", marginBottom:10, overflow:"hidden" }}>
+              <div style={{ height:"100%", borderRadius:99, width:`${Math.round(done/total*100)}%`,
+                background: tStatus === "done" ? "#22c55e" : tStatus === "inprogress" ? "#3b82f6" : "#e2e8f0",
+                transition:"width .3s" }} />
+            </div>
+          </div>
+        )}
 
-                {/* Step content */}
+        {/* Steps */}
+        <div style={{ padding:"16px 24px", maxHeight:360, overflowY:"auto" }}>
+          <p style={{ margin:"0 0 12px", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:".5px", color:"#94a3b8" }}>Cac buoc cong viec</p>
+          {steps.map((u, i) => {
+            const isDone    = u.status === "Done";
+            const isCur     = !isDone && steps.slice(0, i).every(prev => prev.status === "Done");
+            const stepLabel = STEP_STATUS[u.unitTaskTypeCode] || u.description;
+            const stepBg    = isDone ? "#f0fdf4" : isCur ? "#eff6ff" : "#f8fafc";
+            const stepBorder= isDone ? "#86efac" : isCur ? "#93c5fd" : "#e2e8f0";
+            const circBg    = isDone ? "#22c55e" : isCur ? "#3b82f6" : "#e2e8f0";
+            const circClr   = isDone || isCur ? "#fff" : "#94a3b8";
+            const badgeBg   = isDone ? "#dcfce7" : isCur ? "#dbeafe" : "#f1f5f9";
+            const badgeTxt  = isDone ? "#166534" : isCur ? "#1d4ed8" : "#94a3b8";
+            const badgeBdr  = isDone ? "#86efac" : isCur ? "#93c5fd" : "#e2e8f0";
+            return (
+              <div key={u.id} style={{ display:"flex", gap:12, marginBottom:10, padding:"10px 12px", borderRadius:10, border:`1.5px solid ${stepBorder}`, background:stepBg, transition:"all .2s" }}>
+                <div style={{ width:28, height:28, borderRadius:"50%", flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize: isDone ? 13 : 11, fontWeight:800, background:circBg, color:circClr, boxShadow: isCur ? "0 0 0 3px #93c5fd55" : "none" }}>
+                  {isDone ? "✓" : i + 1}
+                </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
-                    <span style={{ fontSize:13, fontWeight: isDone ? 700 : 600, color: isDone ? "#166534" : "#1e293b" }}>
-                      {stepLabel}
-                    </span>
-                    <span style={{
-                      fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99, flexShrink:0,
-                      background: isDone ? "#dcfce7" : isCurrent ? col.badge : "#f1f5f9",
-                      color:      isDone ? "#166534" : isCurrent ? col.text   : "#94a3b8",
-                      border:`1px solid ${isDone ? "#86efac" : isCurrent ? col.border : "#e2e8f0"}`,
-                    }}>
-                      {isDone ? "Hoàn thành" : isCurrent ? "Đang xử lý" : "Chưa xử lý"}
+                    <span style={{ fontSize:13, fontWeight: isDone ? 700 : 600, color: isDone ? "#166534" : "#1e293b" }}>{stepLabel}</span>
+                    <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99, flexShrink:0, background:badgeBg, color:badgeTxt, border:`1px solid ${badgeBdr}` }}>
+                      {isDone ? "Hoan thanh" : isCur ? "Dang xu ly" : "Chua xu ly"}
                     </span>
                   </div>
-
-                  {/* Performer info */}
                   {isDone && (
-                    <div style={{ marginTop:5, fontSize:11, color:"#64748b", display:"flex", flexWrap:"wrap", gap:"4px 12px" }}>
-                      {u.completedByName && (
-                        <span><strong>{u.completedByName}</strong></span>
-                      )}
-                      {u.completedAt && (
-                        <span>{fmtDateTime(u.completedAt)}</span>
-                      )}
+                    <div style={{ marginTop:4, fontSize:11, color:"#64748b", display:"flex", flexWrap:"wrap", gap:"3px 10px" }}>
+                      {u.completedByName && <span><strong>{u.completedByName}</strong></span>}
+                      {u.completedAt && <span>{fmtDateTime(u.completedAt)}</span>}
                     </div>
                   )}
-
-                  {isCurrent && (
-                    <p style={{ margin:"4px 0 0", fontSize:11, color:col.text, fontStyle:"italic" }}>Bước đang chờ xử lý...</p>
-                  )}
+                  {isCur && <p style={{ margin:"3px 0 0", fontSize:11, color:"#3b82f6", fontStyle:"italic" }}>Dang cho xu ly...</p>}
                 </div>
               </div>
             );
           })}
           {steps.length === 0 && (
-            <p style={{ textAlign:"center", color:"#94a3b8", fontSize:12, padding:"20px 0" }}>Chưa có bước nào.</p>
+            <p style={{ textAlign:"center", color:"#94a3b8", fontSize:12, padding:"20px 0" }}>Chua co buoc nao.</p>
           )}
         </div>
       </div>
@@ -203,62 +230,75 @@ function TaskDetailModal({ task, onClose }) {
 
 // ─── Single task card ─────────────────────────────────────────────────────────
 function TaskCard({ task, onOpenModal }) {
-  const col   = tp(task.taskTypeCode);
-  const steps = task.unitTasks ? [...task.unitTasks].sort((a, b) => a.order - b.order) : [];
-  const total = steps.length;
-  const done  = steps.filter(u => u.status === "Done").length;
-
-  // Last completed step label = "Trạng thái" hiển thị trên card
-  const lastDoneStep = [...steps].reverse().find(u => u.status === "Done");
-  const statusLabel  = lastDoneStep
-    ? (STEP_STATUS[lastDoneStep.unitTaskTypeCode] || lastDoneStep.description)
-    : (done === total && total > 0 ? "Hoàn thành" : "Chờ xử lý");
-  const statusColor  = lastDoneStep ? col.text : "#92400e";
-  const statusBg     = lastDoneStep ? col.badge : "#fef9c3";
+  const col     = tp(task.taskTypeCode);
+  const steps   = task.unitTasks ? [...task.unitTasks].sort((a, b) => a.order - b.order) : [];
+  const total   = steps.length;
+  const done    = steps.filter(u => u.status === "Done").length;
+  const tStatus = getTaskStatus(steps, task.status);
+  const tStyle  = TASK_STATUS[tStatus];
 
   const time = task.scheduledAt
     ? new Date(task.scheduledAt).toLocaleTimeString("vi-VN", { hour:"2-digit", minute:"2-digit" })
     : null;
 
+  const { renter, items, raw } = parseNote(task.note);
+
   return (
     <div
       onClick={() => onOpenModal(task)}
       style={{
-        background:col.bg, border:`1.5px solid ${col.border}`,
+        background: tStyle.card,
+        border: `1.5px solid ${tStyle.cardBorder}`,
         borderRadius:10, padding:"10px 12px", marginBottom:6,
         cursor:"pointer", transition:"box-shadow .15s, transform .1s",
+        overflow:"hidden", minWidth:0,
       }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,.12)"; e.currentTarget.style.transform="translateY(-1px)"; }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow="none"; e.currentTarget.style.transform="translateY(0)"; }}
     >
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:8 }}>
-        <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:12, fontWeight:700, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:4 }}>
-            {task.note || task.taskTypeName}
-          </div>
-          <div style={{ display:"flex", gap:5, flexWrap:"wrap", alignItems:"center", marginBottom: total > 0 ? 6 : 0 }}>
-            <span style={{ fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:99, background:col.badge, color:col.text, border:`1px solid ${col.border}` }}>
-              {task.taskTypeName}
-            </span>
-            {time && <span style={{ fontSize:9, color:C.sub }}>{time}</span>}
-          </div>
-          {/* Status = bước cuối cùng đã hoàn thành */}
-          <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99, background:statusBg, color:statusColor, border:`1px solid ${col.border}` }}>
-            {lastDoneStep ? statusLabel : statusLabel}
-          </span>
-        </div>
+      {/* Type badge + time */}
+      <div style={{ display:"flex", gap:5, alignItems:"center", marginBottom:5, flexWrap:"wrap" }}>
+        <span style={{ fontSize:9, fontWeight:700, padding:"2px 7px", borderRadius:99, background:col.badge, color:col.text, border:`1px solid ${col.border}` }}>
+          {task.taskTypeName}
+        </span>
+        {time && <span style={{ fontSize:9, color:C.sub }}>{time}</span>}
+      </div>
 
+      {/* Note/title */}
+      {renter && <div style={{ fontSize:11, fontWeight:700, color:"#0f172a", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:2 }}>{renter}</div>}
+      <div style={{ fontSize:11, color:C.sub, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", marginBottom:6 }}>
+        {items || raw || task.taskTypeName}
+      </div>
+
+      {/* Status badge */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:4 }}>
+        <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99, background:tStyle.badge, color:tStyle.badgeText, border:`1px solid ${tStyle.badgeBorder}` }}>
+          {tStyle.label}
+        </span>
+        {/* Mini progress dots */}
+        {total > 0 && (
+          <div style={{ display:"flex", gap:3 }}>
+            {steps.map((s, i) => (
+              <div key={i} style={{ width:6, height:6, borderRadius:"50%",
+                background: s.status === "Done" ? "#22c55e" : i === done ? "#3b82f6" : "#e2e8f0" }} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // ─── Create task modal ────────────────────────────────────────────────────────
-function CreateTaskModal({ warehouseId, taskTypes, zones, hasZone, defaultDate, onClose, onCreated }) {
+// Chỉ cho phép tạo thủ công các loại task nội bộ — INBOUND/OUTBOUND/AUDIT tự động từ workflow
+const MANUAL_TASK_CODES = ["EQUIP_MAINT", "GENERAL_CLEAN", "ZONE_INSPECT", "OTHER"];
+
+function CreateTaskModal({ warehouseId, taskTypes, defaultDate, onClose, onCreated }) {
+  const manualTypes = taskTypes.filter(tt => MANUAL_TASK_CODES.includes(tt.code?.toUpperCase?.() || tt.code));
   const inp = { width:"100%", padding:"8px 10px", borderRadius:7, border:`1px solid ${C.border}`, fontSize:12, color:C.text, background:"#f8fafc", boxSizing:"border-box", outline:"none" };
   const lbl = { display:"block", fontSize:10, fontWeight:700, color:C.sub, textTransform:"uppercase", letterSpacing:".5px", marginBottom:4 };
   const grp = { marginBottom:12 };
-  const [form, setForm] = useState({ taskTypeId:taskTypes[0]?.id??"", isAllZone:!hasZone, zoneIds:[], note:"", scheduledAt:defaultDate, scheduledTime:"08:00" });
+  const [form, setForm] = useState({ taskTypeId:manualTypes[0]?.id??"", note:"", scheduledAt:defaultDate, scheduledTime:"08:00" });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -270,8 +310,6 @@ function CreateTaskModal({ warehouseId, taskTypes, zones, hasZone, defaultDate, 
     try {
       await createTask(warehouseId, {
         taskTypeId: Number(form.taskTypeId),
-        isAllZone: form.isAllZone,
-        zoneIds: form.isAllZone ? [] : form.zoneIds,
         note: form.note || null,
         scheduledAt: new Date(`${form.scheduledAt}T${form.scheduledTime}:00`).toISOString(),
       });
@@ -288,7 +326,7 @@ function CreateTaskModal({ warehouseId, taskTypes, zones, hasZone, defaultDate, 
         <div style={grp}>
           <label style={lbl}>Loai task *</label>
           <select value={form.taskTypeId} onChange={e => setForm(f=>({...f,taskTypeId:e.target.value}))} style={inp}>
-            {taskTypes.map(tt => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
+            {manualTypes.map(tt => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
           </select>
         </div>
         <div style={{ display:"flex", gap:10, marginBottom:12 }}>
@@ -301,28 +339,6 @@ function CreateTaskModal({ warehouseId, taskTypes, zones, hasZone, defaultDate, 
             <input type="time" value={form.scheduledTime} onChange={e => setForm(f=>({...f,scheduledTime:e.target.value}))} style={inp} />
           </div>
         </div>
-        {hasZone && (
-          <div style={grp}>
-            <label style={lbl}>Khu vuc</label>
-            <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, marginBottom:6, color:C.text, cursor:"pointer" }}>
-              <input type="checkbox" checked={form.isAllZone} onChange={e => setForm(f=>({...f,isAllZone:e.target.checked,zoneIds:[]}))} style={{ accentColor:C.accent }} />
-              Toan bo khu vuc
-            </label>
-            {!form.isAllZone && (
-              <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
-                {zones.map(z => {
-                  const on = form.zoneIds.includes(z.id);
-                  return (
-                    <span key={z.id} onClick={() => setForm(f => ({ ...f, zoneIds: on ? f.zoneIds.filter(id=>id!==z.id) : [...f.zoneIds,z.id] }))}
-                      style={{ padding:"2px 9px", borderRadius:99, cursor:"pointer", fontSize:11, fontWeight:600, border:`1px solid ${on?C.accent:C.border}`, background:on?C.accentBg:C.surface, color:on?C.accent:C.sub }}>
-                      {z.name}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
         <div style={grp}>
           <label style={lbl}>Ghi chu</label>
           <textarea value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={3}
@@ -348,8 +364,8 @@ export default function TaskSchedulingPage() {
   const [warehouses, setWarehouses]   = useState([]);
   const [selWh, setSelWh]             = useState(null);
   const [taskTypes, setTaskTypes]     = useState([]);
-  const [zones, setZones]             = useState([]);
   const [tasks, setTasks]             = useState([]);
+  const [filterType, setFilterType]   = useState(null); // null = tat ca
   const [loading, setLoading]         = useState(false);
   const [showCreate, setShowCreate]   = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -373,11 +389,6 @@ export default function TaskSchedulingPage() {
     getTaskTypes().then(setTaskTypes).catch(() => {});
   }, []);
 
-  // Load zones when warehouse changes
-  useEffect(() => {
-    if (selWh?.warehouseId) getWarehouseZones(selWh.warehouseId).then(setZones).catch(() => setZones([]));
-  }, [selWh]);
-
   // Load tasks when warehouse or week changes
   const loadTasks = useCallback(async () => {
     if (!selWh?.warehouseId) return;
@@ -391,17 +402,20 @@ export default function TaskSchedulingPage() {
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
-  // Group tasks by date
+  // Group tasks by date (backend da filter isManual=true)
+  const filteredTasks = filterType
+    ? tasks.filter(t => (t.taskTypeCode || "").toUpperCase() === filterType)
+    : tasks; // khong filter FE, backend da bao dam
+
   const tasksByDate = {};
   weekDays.forEach(d => { tasksByDate[isoDate(d)] = []; });
-  tasks.forEach(t => {
+  filteredTasks.forEach(t => {
     if (!t.scheduledAt) return;
     const k = isoDate(new Date(t.scheduledAt));
     if (tasksByDate[k]) tasksByDate[k].push(t);
   });
 
   const whId = selWh?.warehouseId;
-  const hasZone = selWh?.hasZone ?? false;
   const weekLabel = `${fmtDateFull(weekStart)} - ${fmtDateFull(weekDays[6])}`;
 
   const btnBase = {
@@ -449,7 +463,46 @@ export default function TaskSchedulingPage() {
         </div>
       </div>
 
-      {/* ── Week grid ── */}
+      {/* ── Filter bar ── */}
+      <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"8px 24px", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
+        <span style={{ fontSize:10, fontWeight:700, color:C.sub, textTransform:"uppercase", letterSpacing:".5px", marginRight:4 }}>Loai task:</span>
+        {/* Tat ca manual */}
+        <button
+          onClick={() => setFilterType(null)}
+          style={{
+            padding:"3px 12px", borderRadius:99, fontSize:11, fontWeight:700, cursor:"pointer",
+            border:`1.5px solid ${!filterType ? C.accent : C.border}`,
+            background: !filterType ? C.accentBg : "transparent",
+            color: !filterType ? C.accent : C.sub,
+            transition:"all .15s",
+          }}
+        >Tat ca manual</button>
+        {/* Tung loai manual */}
+        {taskTypes
+          .filter(tt => tt.isManual)
+          .map(tt => {
+            const code = (tt.code || tt.Code || "").toUpperCase();
+            const pal  = tp(code);
+            const active = filterType === code;
+            return (
+              <button key={tt.id}
+                onClick={() => setFilterType(active ? null : code)}
+                style={{
+                  padding:"3px 12px", borderRadius:99, fontSize:11, fontWeight:700, cursor:"pointer",
+                  border:`1.5px solid ${active ? pal.border : C.border}`,
+                  background: active ? pal.badge : "transparent",
+                  color: active ? pal.text : C.sub,
+                  transition:"all .15s",
+                }}
+              >{tt.name}</button>
+            );
+          })
+        }
+        <span style={{ marginLeft:"auto", fontSize:10, color:C.subLight }}>
+          {filteredTasks.length} task hien thi
+        </span>
+      </div>
+
       <div style={{ padding:"20px 24px" }}>
         <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", boxShadow:C.shadow }}>
 
@@ -484,7 +537,7 @@ export default function TaskSchedulingPage() {
               Dang tai task...
             </div>
           ) : (
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", minHeight:200 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", alignItems:"start", minHeight:200 }}>
               {weekDays.map((d, i) => {
                 const iso = isoDate(d);
                 const dayTasks = tasksByDate[iso] || [];
@@ -494,11 +547,12 @@ export default function TaskSchedulingPage() {
                     padding:"10px 8px",
                     borderRight: i < 6 ? `1px solid ${C.border}` : "none",
                     background: isToday ? "#fafbff" : "transparent",
-                    verticalAlign:"top",
                     minHeight: 180,
+                    minWidth: 0,
+                    overflow: "hidden",
                   }}>
                     {dayTasks.length === 0 ? (
-                      <div style={{ height:"100%", display:"flex", alignItems:"center", justifyContent:"center", minHeight:60 }}>
+                      <div style={{ paddingTop:8, textAlign:"center" }}>
                         <span style={{ fontSize:10, color:C.subLight }}>—</span>
                       </div>
                     ) : dayTasks.map(t => (
@@ -513,7 +567,7 @@ export default function TaskSchedulingPage() {
 
         {/* Task count summary */}
         <div style={{ marginTop:12, fontSize:11, color:C.sub, textAlign:"right" }}>
-          Tong: {tasks.length} task trong tuan nay
+          Tong: {filteredTasks.length}/{tasks.length} task trong tuan nay
         </div>
       </div>
 
@@ -525,8 +579,6 @@ export default function TaskSchedulingPage() {
         <CreateTaskModal
           warehouseId={whId}
           taskTypes={taskTypes}
-          zones={zones}
-          hasZone={hasZone}
           defaultDate={isoDate(weekStart)}
           onClose={() => setShowCreate(false)}
           onCreated={() => { setShowCreate(false); loadTasks(); }}

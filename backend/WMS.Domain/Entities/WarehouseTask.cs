@@ -12,12 +12,10 @@ public class WarehouseTask
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ScheduledAt { get; set; }
     public string? Note { get; set; }
-    public bool IsAllZone { get; set; } = true;
 
     public string? RefType { get; set; }
     public int? RefId { get; set; }
     public Warehouse Warehouse { get; set; } = null!;
     public TaskType TaskType { get; set; } = null!;
-    public ICollection<Zone> Zones { get; set; } = new List<Zone>();
     public ICollection<UnitTask> UnitTasks { get; set; } = new List<UnitTask>();
 }

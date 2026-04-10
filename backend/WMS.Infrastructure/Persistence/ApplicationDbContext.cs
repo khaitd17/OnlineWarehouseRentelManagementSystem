@@ -65,6 +65,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<VWarehouseOccupancy> VWarehouseOccupancies { get; set; }
 
+    public virtual DbSet<Subscription> Subscriptions { get; set; }
+
     public virtual DbSet<Warehouse> Warehouses { get; set; }
 
     public virtual DbSet<WarehouseDocument> WarehouseDocuments { get; set; }
@@ -598,7 +600,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.ScheduledAt).HasColumnName("scheduled_at").IsRequired(false);
             entity.Property(e => e.Note).HasColumnName("note").IsRequired(false);
-            entity.Property(e => e.IsAllZone).HasColumnName("is_all_zone").HasDefaultValue(false);
             entity.Property(e => e.RefType).HasMaxLength(20).HasColumnName("ref_type").IsRequired(false);
             entity.Property(e => e.RefId).HasColumnName("ref_id").IsRequired(false);
             entity.HasOne(e => e.Warehouse).WithMany(p => p.Tasks).HasForeignKey(e => e.WarehouseId);
@@ -689,6 +690,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
             entity.Property(e => e.Description).HasColumnName("description").IsRequired(false);
             entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
+            entity.Property(e => e.IsManual).HasColumnName("is_manual").HasDefaultValue(false);
             entity.Property(e => e.SkillId).HasColumnName("skill_id").IsRequired(false);
             entity.HasOne(e => e.Skill).WithMany().HasForeignKey(e => e.SkillId).IsRequired(false);
         });
@@ -713,15 +715,6 @@ public class ApplicationDbContext : DbContext
 
 
 
-        modelBuilder.Entity<WarehouseTask>()
-            .HasMany(t => t.Zones)
-            .WithMany()
-            .UsingEntity<Dictionary<string, object>>(
-                "task_zones",
-                j => j.HasOne<Zone>().WithMany().HasForeignKey("zone_id"),
-                j => j.HasOne<WarehouseTask>().WithMany().HasForeignKey("task_id"),
-                j => { j.HasKey("task_id", "zone_id"); });
-
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.UserId).HasName("PK__users__B9BE370FD71B3418");
@@ -743,6 +736,24 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.HasOne(d => d.Role).WithMany(p => p.Users).HasForeignKey(d => d.RoleId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_users_roles");
+        });
+
+        modelBuilder.Entity<Subscription>(entity =>
+        {
+            entity.ToTable("subscriptions");
+            entity.HasKey(e => e.SubscriptionId);
+            entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Plan).HasMaxLength(50).HasConversion<string>().HasColumnName("plan");
+            entity.Property(e => e.Status).HasMaxLength(50).HasConversion<string>().HasColumnName("status");
+            entity.Property(e => e.StartDate).HasColumnName("start_date");
+            entity.Property(e => e.EndDate).HasColumnName("end_date");
+            entity.Property(e => e.TransactionReference).HasMaxLength(100).HasColumnName("transaction_reference");
+            
+            entity.HasOne(d => d.User)
+                  .WithMany(p => p.Subscriptions)
+                  .HasForeignKey(d => d.UserId)
+                  .OnDelete(DeleteBehavior.ClientSetNull);
         });
 
         modelBuilder.Entity<VActiveWarehouse>(entity =>

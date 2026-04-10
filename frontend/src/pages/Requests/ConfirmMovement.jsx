@@ -36,12 +36,12 @@ const ConfirmModal = ({ req, onClose, onConfirm, loading }) => {
 
         <div style={{ padding:'20px 28px' }}>
           {/* Manager note */}
-          {req.assignedNote && (
-            <div style={{ display:'flex', gap:10, background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:12, padding:'12px 16px', marginBottom:18 }}>
+          {req.notes && (
+            <div style={{ display:'flex', gap:10, background:'#fffbeb', border:'1px solid #fde68a', borderRadius:12, padding:'12px 16px', marginBottom:18 }}>
               <span style={{ fontSize:'1rem', flexShrink:0 }}>📋</span>
               <div>
-                <p style={{ margin:'0 0 3px', fontSize:'0.7rem', fontWeight:700, color:'#1d4ed8', textTransform:'uppercase', letterSpacing:'0.05em' }}>Ghi chú từ Manager</p>
-                <p style={{ margin:0, fontSize:'0.87rem', color:'#1e40af' }}>{req.assignedNote}</p>
+                <p style={{ margin:'0 0 3px', fontSize:'0.7rem', fontWeight:700, color:'#92400e', textTransform:'uppercase', letterSpacing:'0.05em' }}>Ghi chú yêu cầu</p>
+                <p style={{ margin:0, fontSize:'0.87rem', color:'#78350f' }}>{req.notes}</p>
               </div>
             </div>
           )}
@@ -52,7 +52,7 @@ const ConfirmModal = ({ req, onClose, onConfirm, loading }) => {
               ['👤 Người thuê', req.renterName||'—'],
               ['📅 Ngày tạo',   fmtDate(req.createdAt)],
               ['📧 Email',      req.renterEmail||'—'],
-              ['🕐 Nhận việc',  fmtDT(req.assignedAt)],
+              ['📦 Số mặt hàng', `${req.items?.length||0} loại`],
             ].map(([k,v])=>(
               <div key={k} style={{ background:'#f8fafc', borderRadius:10, padding:'10px 14px' }}>
                 <p style={{ margin:'0 0 2px', fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>{k}</p>
@@ -117,20 +117,30 @@ const ConfirmMovement = () => {
   const [confirming, setConfirming] = useState(false);
   const [toast, setToast]           = useState(null);
 
+  // Lấy warehouseId từ user info đã lưu (membership hiện tại)
+  const warehouseId = (() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || '{}');
+      return u.currentWarehouseId || u.warehouseId || null;
+    } catch { return null; }
+  })();
+
   const showToast = (msg, isError=false) => {
     setToast({ msg, isError });
     setTimeout(()=>setToast(null), 4000);
   };
 
   const fetchAssigned = useCallback(async () => {
+    if (!warehouseId) { setRequests([]); return; }
     setLoading(true);
     try {
-      const res = await axiosClient.get('/InventoryRequests/assigned-to-me',
-        { params: typeTab ? { type: typeTab } : {} });
+      const params = { warehouseId };
+      if (typeTab) params.type = typeTab;
+      const res = await axiosClient.get('/InventoryRequests/assigned-to-me', { params });
       setRequests(Array.isArray(res.data) ? res.data : []);
     } catch { setRequests([]); }
     finally  { setLoading(false); }
-  }, [typeTab]);
+  }, [typeTab, warehouseId]);
 
   useEffect(() => { fetchAssigned(); }, [fetchAssigned]);
 
@@ -177,7 +187,7 @@ const ConfirmMovement = () => {
       {/* Header */}
       <div style={{ marginBottom:28 }}>
         <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>Yêu cầu nhập / xuất kho</h1>
-        <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>Danh sách yêu cầu Manager giao cho bạn. Thực hiện và xác nhận hoàn thành từng nhiệm vụ.</p>
+        <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>Danh sách đơn đã được Manager duyệt — bất kỳ nhân viên nào trong kho đều có thể xử lý và xác nhận hoàn thành.</p>
       </div>
 
       {/* Toast */}
@@ -247,8 +257,8 @@ const ConfirmMovement = () => {
       ) : filtered.length === 0 ? (
         <div style={{ ...card, padding:72, textAlign:'center' }}>
           <div style={{ fontSize:'3rem', marginBottom:12 }}>✅</div>
-          <p style={{ fontWeight:700, color:'#0f172a', margin:'0 0 6px', fontSize:'1.05rem' }}>Không có nhiệm vụ nào</p>
-          <p style={{ color:'#94a3b8', fontSize:'0.87rem', margin:0 }}>Bạn chưa được giao yêu cầu nào. Vui lòng chờ Manager phân công.</p>
+          <p style={{ fontWeight:700, color:'#0f172a', margin:'0 0 6px', fontSize:'1.05rem' }}>Không có đơn nào cần xử lý</p>
+          <p style={{ color:'#94a3b8', fontSize:'0.87rem', margin:0 }}>Hiện chưa có đơn nào được duyệt. Manager cần duyệt trước rồi bạn mới xử lý được.</p>
         </div>
       ) : (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(340px, 1fr))', gap:18 }}>
@@ -282,7 +292,7 @@ const ConfirmMovement = () => {
                     </div>
                     <div style={{ display:'flex', alignItems:'center', gap:7, fontSize:'0.83rem', color:'#64748b' }}>
                       <span>📦</span><span>{req.totalItems} mặt hàng</span>
-                      {req.assignedAt && <span style={{ marginLeft:6, color:'#94a3b8' }}>· Nhận {fmtDT(req.assignedAt)}</span>}
+                      <span style={{ marginLeft:6, color:'#94a3b8' }}>· Ngày tạo: {fmtDate(req.createdAt)}</span>
                     </div>
                   </div>
 

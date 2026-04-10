@@ -1,0 +1,20 @@
+﻿  Determining projects to restore...
+  Restored D:\doan5\OnlineWarehouseRentelManagementSystem\backend\tests\WMS.UnitTests\WMS.UnitTests.csproj (in 672 ms).
+  4 of 5 projects are up-to-date for restore.
+  WMS.Domain -> D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Domain\bin\Debug\net9.0\WMS.Domain.dll
+  WMS.Application -> D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Application\bin\Debug\net9.0\WMS.Application.dll
+  WMS.UnitTests -> D:\doan5\OnlineWarehouseRentelManagementSystem\backend\tests\WMS.UnitTests\bin\Debug\net9.0\WMS.UnitTests.dll
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Infrastructure\Persistence\DatabaseSeeder.cs(178,34): warning EF1002: Method 'ExecuteSqlRaw' inserts interpolated strings directly into the SQL, without any protection against SQL injection. Consider using 'ExecuteSql' instead, which protects against SQL injection, or make sure that the value is sanitized and suppress the warning. [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Infrastructure\WMS.Infrastructure.csproj]
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Infrastructure\Persistence\DatabaseSeeder.cs(179,34): warning EF1002: Method 'ExecuteSqlRaw' inserts interpolated strings directly into the SQL, without any protection against SQL injection. Consider using 'ExecuteSql' instead, which protects against SQL injection, or make sure that the value is sanitized and suppress the warning. [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Infrastructure\WMS.Infrastructure.csproj]
+  WMS.Infrastructure -> D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Infrastructure\bin\Debug\net9.0\WMS.Infrastructure.dll
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.API\Controllers\InventoryRequestsController.cs(7,50): error CS0234: The type or namespace name 'AssignRequest' does not exist in the namespace 'WMS.Application.Features.InventoryRequests' (are you missing an assembly reference?) [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.API\WMS.API.csproj]
+
+Build FAILED.
+
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Infrastructure\Persistence\DatabaseSeeder.cs(178,34): warning EF1002: Method 'ExecuteSqlRaw' inserts interpolated strings directly into the SQL, without any protection against SQL injection. Consider using 'ExecuteSql' instead, which protects against SQL injection, or make sure that the value is sanitized and suppress the warning. [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Infrastructure\WMS.Infrastructure.csproj]
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Infrastructure\Persistence\DatabaseSeeder.cs(179,34): warning EF1002: Method 'ExecuteSqlRaw' inserts interpolated strings directly into the SQL, without any protection against SQL injection. Consider using 'ExecuteSql' instead, which protects against SQL injection, or make sure that the value is sanitized and suppress the warning. [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.Infrastructure\WMS.Infrastructure.csproj]
+D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.API\Controllers\InventoryRequestsController.cs(7,50): error CS0234: The type or namespace name 'AssignRequest' does not exist in the namespace 'WMS.Application.Features.InventoryRequests' (are you missing an assembly reference?) [D:\doan5\OnlineWarehouseRentelManagementSystem\backend\WMS.API\WMS.API.csproj]
+    2 Warning(s)
+    1 Error(s)
+
+Time Elapsed 00:00:18.84

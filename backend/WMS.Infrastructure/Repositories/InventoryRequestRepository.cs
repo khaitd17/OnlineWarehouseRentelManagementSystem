@@ -23,6 +23,8 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.Renter)
             .Include(r => r.Warehouse)
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
+            .Include(r => r.ConfirmedByNavigation)   // Manager đã duyệt
+            .Include(r => r.AssignedStaff)            // Staff được giao việc
             .Where(r => r.Warehouse.OwnerId == ownerId && r.Type == type);
 
         if (!string.IsNullOrEmpty(status))
@@ -93,17 +95,23 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.AssignedStaff)
             .FirstOrDefaultAsync(r => r.InvReqId == id, cancellationToken);
 
-    // ── ASSIGNED TO STAFF ───────────────────────────────────────────────────
-    public async Task<List<InventoryRequest>> GetAssignedToStaffAsync(
-        int staffId, CancellationToken cancellationToken)
-        => await _context.InventoryRequests
+
+    public async Task<List<InventoryRequest>> GetConfirmedByWarehouseAsync(
+        int warehouseId, string? type, CancellationToken cancellationToken)
+    {
+        var query = _context.InventoryRequests
             .Include(r => r.Renter)
             .Include(r => r.Warehouse)
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
-            .Include(r => r.AssignedStaff)
-            .Where(r => r.AssignedStaffId == staffId && r.Status == "ASSIGNED")
-            .OrderByDescending(r => r.AssignedAt)
+            .Where(r => r.WarehouseId == warehouseId && r.Status == "CONFIRMED");
+
+        if (!string.IsNullOrEmpty(type))
+            query = query.Where(r => r.Type == type.ToUpper());
+
+        return await query
+            .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(cancellationToken);
+    }
     // ── CREATE ──────────────────────────────────────────────────────────────
     public async Task<InventoryRequest> CreateAsync(InventoryRequest request, CancellationToken cancellationToken)
     {

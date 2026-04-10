@@ -49,7 +49,7 @@ const DashboardLayout = () => {
       setUnreadCount(prev => prev + 1);
       
       // When payment is confirmed/rejected, refresh warehouse context to update role
-      if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+      if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED' || notification.type === 'SUBSCRIPTION_ACTIVE') {
         try {
           await authService.refreshWarehouseContext();
           // Trigger authChange event to refresh Sidebar menu
@@ -445,6 +445,12 @@ const DashboardLayout = () => {
                 </div>
 
                 <Link to="/profile" className="nav-dropdown-item">Hồ sơ</Link>
+                {userRole === 'RENTER' && (
+                  <Link to="/my-favorites" className="nav-dropdown-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#f43f5e' }}>favorite</span>
+                    Kho yêu thích
+                  </Link>
+                )}
                 <div className="nav-dropdown-divider" />
                 <button className="nav-dropdown-item logout" onClick={handleLogout}>Đăng xuất</button>
               </div>
