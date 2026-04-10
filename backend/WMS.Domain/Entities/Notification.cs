@@ -13,4 +13,26 @@ public class Notification
     public DateTime? CreatedAt { get; set; }
 
     public virtual User User { get; set; } = null!;
+    
+    // Factory method
+    public static Notification Create(
+        int receiverUserId,
+        string title,
+        string message,
+        string notificationType = "IN_APP",
+        int? referenceId = null,
+        string? referenceType = null)
+    {
+        return new Notification
+        {
+            UserId = receiverUserId,
+            Title = title,
+            Message = message,
+            Type = notificationType,
+            ReferenceId = referenceId,
+            ReferenceType = referenceType,
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
 }

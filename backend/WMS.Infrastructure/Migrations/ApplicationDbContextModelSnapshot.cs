@@ -1336,9 +1336,18 @@ namespace WMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ContractId"));
 
+                    b.Property<decimal?>("CancellationFee")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<string>("CancellationReason")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CancelledBy")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ContractFileUrl")
                         .HasMaxLength(500)
@@ -1367,6 +1376,9 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("datetime2")
                         .HasColumnName("end_date");
+
+                    b.Property<int>("GracePeriodHours")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("MonthlyPayment")
                         .HasColumnType("decimal(15, 2)")
@@ -1506,6 +1518,12 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("expired_at");
 
+                    b.Property<DateTime?>("LastRetryAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MaxRetry")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("datetime2")
                         .HasColumnName("paid_at");
@@ -1529,6 +1547,9 @@ namespace WMS.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)")
                         .HasColumnName("payment_type");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("int");
 
                     b.Property<string>("SepayReferenceCode")
                         .HasMaxLength(100)
@@ -1570,6 +1591,15 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("request_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
+
+                    b.Property<string>("CancellationReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CancelledBy")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ContractImageUrl")
                         .HasMaxLength(500)

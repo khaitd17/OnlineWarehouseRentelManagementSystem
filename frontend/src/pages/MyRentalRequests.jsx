@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
+import CancelRequestButton from "../components/CancelRequestButton";
 
 const statusConfig = {
   DRAFT:     { bg: "#e0f2fe", color: "#0369a1", label: "Nháp" },
@@ -50,17 +51,6 @@ const MyRentalRequests = () => {
       fetchRequests();
     } catch (err) {
       alert(err.response?.data?.message || "Có lỗi xảy ra khi gửi yêu cầu");
-    }
-  };
-
-  const handleCancel = async (e, requestId) => {
-    e.stopPropagation();
-    if (!window.confirm("Bạn có chắc muốn hủy yêu cầu này?")) return;
-    try {
-      await rentalService.cancelRentalRequest(requestId);
-      fetchRequests();
-    } catch (err) {
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi hủy yêu cầu");
     }
   };
 
@@ -184,17 +174,20 @@ const MyRentalRequests = () => {
 
                 {/* PENDING */}
                 {req.status === "PENDING" && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.6rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.6rem" }}
+                    onClick={(e) => e.stopPropagation()}>
                     <span style={{ color: "#92400e", fontSize: "0.85rem" }}>
                       ⏳ Đang chờ chủ kho xem xét...
                     </span>
-                    <button
-                      onClick={(e) => handleCancel(e, req.requestId)}
-                      style={{ padding: "0.4rem 0.9rem", borderRadius: "8px",
-                        border: "1px solid #fecaca", backgroundColor: "#fff",
-                        color: "#dc2626", fontWeight: 600, cursor: "pointer", fontSize: "0.82rem" }}>
-                      Hủy yêu cầu
-                    </button>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <CancelRequestButton 
+                        requestId={req.requestId}
+                        requestStatus={req.status}
+                        onCancelSuccess={() => fetchRequests()}
+                        onCancelError={(error) => alert(error)}
+                        variant="button"
+                      />
+                    </div>
                   </div>
                 )}
 

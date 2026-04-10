@@ -280,14 +280,15 @@ public class RentalRequestsController : ControllerBase
     /// Cancel a rental request (Renter only)
     /// </summary>
     [HttpPost("{id}/cancel")]
-    public async Task<IActionResult> CancelRentalRequest(int id)
+    public async Task<IActionResult> CancelRentalRequest(int id, [FromBody] CancelRequestDto? dto)
     {
         try
         {
             var command = new CancelRentalRequestCommand
             {
                 RequestId = id,
-                RenterId = GetUserId()
+                RenterId = GetUserId(),
+                CancellationReason = dto?.Reason // NEW - Accept reason from body
             };
 
             await _mediator.Send(command);
@@ -306,5 +307,11 @@ public class RentalRequestsController : ControllerBase
         {
             return StatusCode(500, new { message = "An error occurred", error = ex.Message });
         }
+    }
+    
+    // DTO for cancel request
+    public class CancelRequestDto
+    {
+        public string? Reason { get; set; }
     }
 }

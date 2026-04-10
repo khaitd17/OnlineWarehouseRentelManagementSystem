@@ -97,6 +97,8 @@ builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.Infrastructure.Repositories.NotificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.ICancellationLogRepository, WMS.Infrastructure.Repositories.CancellationLogRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IRefundRepository, WMS.Infrastructure.Repositories.RefundRepository>();
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IPaymentRepository, WMS.Infrastructure.Repositories.PaymentRepository>();
@@ -140,7 +142,6 @@ builder.Services.Configure<WMS.Infrastructure.Services.SepaySettings>(builder.Co
 // Background job classes
 builder.Services.AddScoped<ContractNotificationJob>();
 builder.Services.AddScoped<ContractExpiryJob>();
-builder.Services.AddScoped<SubscriptionExpiryJob>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -202,7 +203,8 @@ using (var scope = app.Services.CreateScope())
     try
     {
         // 1. Apply any pending migrations automatically
-        context.Database.Migrate();
+        // DISABLED: Migrations causing conflicts - use manual SQL scripts instead
+        // context.Database.Migrate();
 
         // Patch: Thêm các cột termination còn thiếu vào bảng contracts
         var patchSqls = new[]
@@ -285,12 +287,6 @@ RecurringJob.AddOrUpdate<ContractNotificationJob>(
     "payment-reminders",
     job => job.SendPaymentReminders(),
     "0 */6 * * *",  // Run every 6 hours
-    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
-
-RecurringJob.AddOrUpdate<SubscriptionExpiryJob>(
-    "subscription-expiry-job",
-    job => job.ProcessExpiries(),
-    "0 0 * * *",  // Run daily at midnight
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Tạm vô hiệu hóa contract expiry job để fix API trước

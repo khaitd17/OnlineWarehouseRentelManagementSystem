@@ -19,6 +19,11 @@ public class RentalPayment
     public DateTime? ExpiredAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
+    
+    // NEW - Retry tracking
+    public int RetryCount { get; private set; } = 0;
+    public int MaxRetry { get; private set; } = 3;
+    public DateTime? LastRetryAt { get; private set; }
 
     // Navigation properties - maps to 'contracts' table (not rental_contracts)
     public Contract? Contract { get; set; }
@@ -118,4 +123,18 @@ public class RentalPayment
 
     // Check if payment is pending
     public bool IsPending => Status == PaymentStatus.Pending;
+    
+    // NEW - Retry methods
+    public void IncrementRetry()
+    {
+        if (RetryCount >= MaxRetry)
+            throw new InvalidOperationException($"Maximum retry attempts ({MaxRetry}) reached");
+            
+        RetryCount++;
+        LastRetryAt = DateTime.UtcNow;
+        Status = PaymentStatus.Pending; // Reset to pending for retry
+        UpdatedAt = DateTime.UtcNow;
+    }
+    
+    public bool CanRetry => RetryCount < MaxRetry && (Status == PaymentStatus.Failed || Status == PaymentStatus.Expired);
 }

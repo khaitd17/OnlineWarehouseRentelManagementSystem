@@ -11,6 +11,8 @@ using WMS.Application.Features.RentalContracts.VerifyContractOtp;
 using WMS.Application.Features.RentalContracts.SignContract;
 using WMS.Application.Features.RentalContracts.GetContractLogs;
 using WMS.Application.Features.RentalContracts.OwnerSignContract;
+using WMS.Application.Features.RentalContracts.DeclineContract;
+using WMS.Application.Features.RentalContracts.ExtendContract;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
@@ -429,6 +431,74 @@ public class RentalContractsController : ControllerBase
             return StatusCode(500, new { message = "An error occurred", error = ex.Message });
         }
     }
+    
+    /// <summary>
+    /// Decline contract before signing (Renter or Owner)
+    /// </summary>
+    [HttpPost("{id}/decline")]
+    public async Task<IActionResult> DeclineContract(int id, [FromBody] DeclineContractDto dto)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(dto.Reason))
+                return BadRequest(new { message = "Decline reason is required" });
+
+            var command = new DeclineContractCommand
+            {
+                ContractId = id,
+                UserId = GetUserId(),
+                Reason = dto.Reason
+            };
+
+            await _mediator.Send(command);
+
+            return Ok(new { message = "Contract declined successfully" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Extend contract (creates extension payment)
+    /// </summary>
+    [HttpPost("{id}/extend")]
+    public async Task<IActionResult> ExtendContract(int id, [FromBody] ExtendContractRequest request)
+    {
+        try
+        {
+            var userId = GetUserId();
+
+            var command = new ExtendContractCommand
+            {
+                ContractId = id,
+                ExtensionMonths = request.ExtensionMonths,
+                RequestedBy = userId
+            };
+
+            var result = await _mediator.Send(command);
+
+            if (!result.Success)
+            {
+                return BadRequest(new { message = result.Message });
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
 }
 
 public class VerifyOtpRequest
@@ -439,4 +509,14 @@ public class VerifyOtpRequest
 public class SignContractRequest
 {
     public string SignatureBase64 { get; set; } = null!;
+}
+
+public class DeclineContractDto
+{
+    public string Reason { get; set; } = null!;
+}
+
+public class ExtendContractRequest
+{
+    public int ExtensionMonths { get; set; }
 }

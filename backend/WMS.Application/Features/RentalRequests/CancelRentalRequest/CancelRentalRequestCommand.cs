@@ -6,4 +6,5 @@ public class CancelRentalRequestCommand : IRequest<Unit>
 {
     public int RequestId { get; set; }
     public int RenterId { get; set; }
+    public string? CancellationReason { get; set; } // NEW - Optional reason
 }

@@ -84,6 +84,10 @@ public class ApplicationDbContext : DbContext
     public virtual DbSet<ContractVerification> ContractVerifications { get; set; }
 
     public virtual DbSet<ContractLog> ContractLogs { get; set; }
+    
+    public virtual DbSet<CancellationLog> CancellationLogs { get; set; }
+    
+    public virtual DbSet<Refund> Refunds { get; set; }
 
     public virtual DbSet<StaffShift> StaffShifts { get; set; }
 
@@ -180,8 +184,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.OwnerSignedFileUrl).HasMaxLength(500).HasColumnName("owner_signed_file_url");
             entity.Property(e => e.OwnerSignedAt).HasColumnName("owner_signed_at");
             entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
-            entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
-            entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
             entity.Property(e => e.TerminationRequestedBy).HasMaxLength(20).HasColumnName("termination_requested_by");
             entity.Property(e => e.TerminationRequestedAt).HasColumnName("termination_requested_at");
             entity.Property(e => e.RenterApprovedTermination).HasDefaultValue(false).HasColumnName("renter_approved_termination");
@@ -258,8 +260,6 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ParentContractId).HasColumnName("parent_contract_id");
             entity.Property(e => e.ReturnedAt).HasColumnName("returned_at");
             entity.Property(e => e.CancellationReason).HasColumnName("cancellation_reason");
-            entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
-            entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
             entity.Property(e => e.OwnerSignatureExpiry).HasColumnName("owner_signature_expiry");
             entity.Property(e => e.RenterSignatureExpiry).HasColumnName("RenterSignatureExpiry");
             entity.Property(e => e.PaymentExpiry).HasColumnName("PaymentExpiry");
@@ -1029,6 +1029,70 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_ri_asset");
             entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_ri_warehouse");
+        });
+
+        // ── CancellationLog Configuration ──
+        modelBuilder.Entity<CancellationLog>(entity =>
+        {
+            entity.HasKey(e => e.LogId).HasName("PK_cancellation_logs");
+            entity.ToTable("cancellation_logs");
+            entity.HasIndex(e => e.RentalRequestId, "IX_cancellation_logs_rental_request_id");
+            entity.HasIndex(e => e.RentalContractId, "IX_cancellation_logs_rental_contract_id");
+            entity.HasIndex(e => e.CreatedAt, "IX_cancellation_logs_created_at");
+            
+            entity.Property(e => e.LogId).HasColumnName("log_id");
+            entity.Property(e => e.RentalRequestId).HasColumnName("rental_request_id");
+            entity.Property(e => e.RentalContractId).HasColumnName("rental_contract_id");
+            entity.Property(e => e.CancelledStage).HasMaxLength(50).HasColumnName("cancelled_stage");
+            entity.Property(e => e.CancelledBy).HasMaxLength(50).HasColumnName("cancelled_by");
+            entity.Property(e => e.CancellationReason).HasColumnName("cancellation_reason");
+            entity.Property(e => e.RefundAmount).HasColumnType("decimal(18, 2)").HasColumnName("refund_amount");
+            entity.Property(e => e.CancellationFee).HasColumnType("decimal(18, 2)").HasColumnName("cancellation_fee");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getutcdate())").HasColumnName("created_at");
+            
+            entity.HasOne(d => d.RentalRequest)
+                .WithMany()
+                .HasForeignKey(d => d.RentalRequestId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_cancellation_logs_rental_requests");
+                
+            entity.HasOne(d => d.RentalContract)
+                .WithMany()
+                .HasForeignKey(d => d.RentalContractId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_cancellation_logs_rental_contracts");
+        });
+
+        // ── Refund Configuration ──
+        modelBuilder.Entity<Refund>(entity =>
+        {
+            entity.HasKey(e => e.RefundId).HasName("PK_refunds");
+            entity.ToTable("refunds");
+            entity.HasIndex(e => e.PaymentId, "IX_refunds_payment_id");
+            entity.HasIndex(e => e.ContractId, "IX_refunds_contract_id");
+            entity.HasIndex(e => e.Status, "IX_refunds_status");
+            entity.HasIndex(e => e.CreatedAt, "IX_refunds_created_at");
+            
+            entity.Property(e => e.RefundId).HasColumnName("refund_id");
+            entity.Property(e => e.PaymentId).HasColumnName("payment_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)").HasColumnName("amount");
+            entity.Property(e => e.Reason).HasMaxLength(200).HasColumnName("reason");
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
+            entity.Property(e => e.ProcessedAt).HasColumnName("processed_at");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getutcdate())").HasColumnName("created_at");
+            
+            entity.HasOne(d => d.Payment)
+                .WithMany()
+                .HasForeignKey(d => d.PaymentId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_refunds_rental_payments");
+                
+            entity.HasOne(d => d.Contract)
+                .WithMany()
+                .HasForeignKey(d => d.ContractId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_refunds_rental_contracts");
         });
     }
 }

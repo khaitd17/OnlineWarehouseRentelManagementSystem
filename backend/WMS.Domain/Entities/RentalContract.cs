@@ -1,3 +1,5 @@
+using WMS.Domain.Enums;
+
 namespace WMS.Domain.Entities;
 
 public class RentalContract
@@ -31,6 +33,12 @@ public class RentalContract
     public string? CancellationReason { get; private set; }
     public DateTime? TerminatedAt { get; private set; }
     public string? TerminationReason { get; private set; }
+    
+    // NEW - Cancel tracking
+    public DateTime? CancelledAt { get; private set; }
+    public string? CancelledBy { get; private set; } // USER, OWNER, SYSTEM
+    public int GracePeriodHours { get; private set; } = 24; // Default 24h
+    public decimal? CancellationFee { get; private set; }
 
     // Expiry tracking for background jobs
     public DateTime? OwnerSignatureExpiry { get; private set; }
@@ -222,6 +230,26 @@ public class RentalContract
 
         Status = "CANCELLED";
         CancellationReason = reason;
+        UpdatedAt = DateTime.UtcNow;
+    }
+    
+    // NEW - Cancel with detailed tracking
+    public void CancelWithReason(string reason, string cancelledBy = "USER")
+    {
+        if (Status == "TERMINATED" || Status == "COMPLETED" || Status == "EXPIRED")
+            throw new InvalidOperationException($"Cannot cancel contract with status {Status}");
+
+        Status = cancelledBy switch
+        {
+            "USER" => RentalContractStatus.CancelledByUser,
+            "OWNER" => RentalContractStatus.CancelledByOwner,
+            "SYSTEM" => RentalContractStatus.CancelledNoPayment,
+            _ => RentalContractStatus.Cancelled
+        };
+        
+        CancellationReason = reason;
+        CancelledAt = DateTime.UtcNow;
+        CancelledBy = cancelledBy;
         UpdatedAt = DateTime.UtcNow;
     }
 

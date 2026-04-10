@@ -8,6 +8,7 @@ using WMS.Application.Features.Payments.GetPaymentQrInfo;
 using WMS.Application.Features.Payments.GetPaymentStatus;
 using WMS.Application.Features.Payments.GetPaymentsByContract;
 using WMS.Application.Features.Payments.ProcessSepayWebhook;
+using WMS.Application.Features.Payments.RetryPayment;
 using WMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -207,6 +208,78 @@ public class PaymentsController : ControllerBase
 
         // SePay expects {"success": true} with HTTP 200
         return Ok(new { success = result.Success });
+    }
+
+    /// <summary>
+    /// Retry a failed/expired payment (max 3 retries)
+    /// </summary>
+    [HttpPost("{paymentId}/retry")]
+    [Authorize]
+    public async Task<IActionResult> RetryPayment(int paymentId)
+    {
+        try
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                        ?? User.FindFirst("sub")?.Value ?? "0");
+
+            var command = new RetryPaymentCommand
+            {
+                PaymentId = paymentId,
+                UserId = userId
+            };
+
+            var result = await _mediator.Send(command);
+
+            if (!result.Success)
+            {
+                return BadRequest(new { message = result.Message, retryCount = result.RetryCount, maxRetry = result.MaxRetry });
+            }
+
+            return Ok(new
+            {
+                message = result.Message,
+                paymentCode = result.PaymentCode,
+                qrCodeUrl = result.QrCodeUrl,
+                retryCount = result.RetryCount,
+                maxRetry = result.MaxRetry,
+                newExpiry = result.NewExpiry
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrying payment {PaymentId}", paymentId);
+            return StatusCode(500, new { message = "An error occurred while retrying payment", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get retry info for a payment
+    /// </summary>
+    [HttpGet("{paymentId}/retry-info")]
+    [Authorize]
+    public async Task<IActionResult> GetRetryInfo(int paymentId)
+    {
+        try
+        {
+            var payment = await _db.RentalPayments.FindAsync(paymentId);
+            if (payment == null)
+                return NotFound(new { message = "Payment not found" });
+
+            return Ok(new
+            {
+                paymentId = payment.PaymentId,
+                status = payment.Status,
+                retryCount = payment.RetryCount,
+                maxRetry = payment.MaxRetry,
+                canRetry = payment.CanRetry,
+                expiredAt = payment.ExpiredAt
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting retry info for payment {PaymentId}", paymentId);
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
     }
 }
 

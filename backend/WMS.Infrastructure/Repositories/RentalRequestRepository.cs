@@ -21,6 +21,7 @@ public class RentalRequestRepository : IRentalRequestRepository
     public async Task<DomainRentalRequest?> GetByIdAsync(int requestId)
     {
         var dbRequest = await _context.RentalRequests
+            .Include(r => r.Warehouse)  // Include Warehouse for notifications
             .FirstOrDefaultAsync(r => r.RequestId == requestId);
 
         return dbRequest != null ? MapToDomain(dbRequest) : null;
@@ -156,6 +157,7 @@ public class RentalRequestRepository : IRentalRequestRepository
         var rejectionReasonProp = typeof(DomainRentalRequest).GetProperty("RejectionReason");
         var contractImageUrlProp = typeof(DomainRentalRequest).GetProperty("ContractImageUrl");
         var rentalAreaIdProp = typeof(DomainRentalRequest).GetProperty("RentalAreaId");
+        var warehouseProp = typeof(DomainRentalRequest).GetProperty("Warehouse");
 
         requestIdProp?.SetValue(domainRequest, dbRequest.RequestId);
         renterIdProp?.SetValue(domainRequest, dbRequest.RenterId);
@@ -171,6 +173,7 @@ public class RentalRequestRepository : IRentalRequestRepository
         rejectionReasonProp?.SetValue(domainRequest, dbRequest.RejectionReason);
         contractImageUrlProp?.SetValue(domainRequest, dbRequest.ContractImageUrl);
         rentalAreaIdProp?.SetValue(domainRequest, dbRequest.RentalAreaId);
+        warehouseProp?.SetValue(domainRequest, dbRequest.Warehouse);  // Map Warehouse navigation
 
         return domainRequest;
     }
