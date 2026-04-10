@@ -193,17 +193,17 @@ const rentalService = {
     return response.data;
   },
 
-  terminateContractEarly: async (contractId, reason, earlyTerminationFee) => {
+  terminateContractEarly: async (contractId, reason) => {
     const response = await axiosClient.post(`/contracts/${contractId}/terminate`, {
-      terminationReason: reason,
-      earlyTerminationFee
+      terminationReason: reason
     });
     return response.data;
   },
 
   // Approve termination or close request
-  approveTermination: async (contractId) => {
-    const response = await axiosClient.post(`/contracts/${contractId}/approve-termination`);
+  approveTermination: async (contractId, earlyTerminationFee) => {
+    const payload = earlyTerminationFee ? { earlyTerminationFee } : {};
+    const response = await axiosClient.post(`/contracts/${contractId}/approve-termination`, payload);
     return response.data;
   },
 

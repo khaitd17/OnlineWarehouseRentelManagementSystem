@@ -6,7 +6,6 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
     {
         public int ContractId { get; set; }
         public string TerminationReason { get; set; } = string.Empty;
-        public decimal EarlyTerminationFee { get; set; }
-        public int UserId { get; set; } // Who is terminating
+        public int UserId { get; set; } // Who is requesting termination
     }
 }

@@ -92,7 +92,6 @@ namespace WMS.API.Controllers
             {
                 ContractId = id,
                 TerminationReason = request.TerminationReason,
-                EarlyTerminationFee = request.EarlyTerminationFee,
                 UserId = GetUserId()
             };
 
@@ -167,12 +166,13 @@ namespace WMS.API.Controllers
         }
 
         [HttpPost("{id}/approve-termination")]
-        public async Task<ActionResult<ApproveTerminationResponse>> ApproveTermination(int id)
+        public async Task<ActionResult<ApproveTerminationResponse>> ApproveTermination(int id, [FromBody] ApproveTerminationRequest request)
         {
             var command = new ApproveTerminationCommand
             {
                 ContractId = id,
-                UserId = GetUserId()
+                UserId = GetUserId(),
+                EarlyTerminationFee = request.EarlyTerminationFee
             };
 
             var result = await _mediator.Send(command);
@@ -227,7 +227,6 @@ namespace WMS.API.Controllers
     public class TerminateEarlyRequest
     {
         public string TerminationReason { get; set; } = string.Empty;
-        public decimal EarlyTerminationFee { get; set; }
     }
 
     public class CompleteContractRequest
@@ -239,6 +238,11 @@ namespace WMS.API.Controllers
     {
         public decimal? DamageCompensation { get; set; }
         public string? Notes { get; set; }
+    }
+
+    public class ApproveTerminationRequest
+    {
+        public decimal? EarlyTerminationFee { get; set; } // Optional fee when owner approves
     }
 
     public class RejectTerminationRequest

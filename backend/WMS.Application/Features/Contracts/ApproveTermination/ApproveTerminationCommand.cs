@@ -6,5 +6,6 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
     {
         public int ContractId { get; set; }
         public int UserId { get; set; } // Who is approving
+        public decimal? EarlyTerminationFee { get; set; } // Optional: fee set by approver
     }
 }

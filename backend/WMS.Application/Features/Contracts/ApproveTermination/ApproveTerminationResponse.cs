@@ -7,5 +7,6 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
         public int ContractId { get; set; }
         public string Status { get; set; } = string.Empty;
         public bool IsFullyApproved { get; set; }
+        public decimal? EarlyTerminationFee { get; set; }
     }
 }

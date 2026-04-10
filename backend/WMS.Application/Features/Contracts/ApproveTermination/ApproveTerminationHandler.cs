@@ -82,8 +82,10 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
                 // Remember the original status to determine notification type
                 bool isPendingClose = contract.Status == RentalContractStatus.PendingClose;
 
-                // Use direct DB update to bypass reflection issues
-                await _contractRepository.ApproveTerminationAsync(request.ContractId, approvedBy);
+                // Approve termination with optional fee (only owner can set fee)
+                contract.ApproveTermination(approvedBy, isOwner ? request.EarlyTerminationFee : null);
+
+                await _contractRepository.UpdateAsync(contract);
                 
                 // Re-fetch to get updated status
                 contract = await _contractRepository.GetByIdAsync(request.ContractId);
@@ -105,6 +107,10 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
                 var approverType = isRenter ? "Người thuê" : "Chủ kho";
                 var actionType = isPendingClose ? "kết thúc" : "kết thúc sớm";
 
+                string feeMessage = request.EarlyTerminationFee.HasValue 
+                    ? $" Phí kết thúc sớm: {request.EarlyTerminationFee:N0}đ." 
+                    : "";
+
                 var notification = new WMS.Domain.Entities.Notification
                 {
                     UserId = notifyUserId,
@@ -112,8 +118,8 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
                         ? $"Hợp đồng đã được {actionType}" 
                         : $"Đã chấp nhận yêu cầu {actionType}",
                     Message = isFullyApproved
-                        ? $"Hợp đồng {contract.ContractNumber} đã được cả hai bên đồng ý {actionType}."
-                        : $"{approverType} đã chấp nhận yêu cầu {actionType} hợp đồng {contract.ContractNumber}.",
+                        ? $"Hợp đồng {contract.ContractNumber} đã được cả hai bên đồng ý {actionType}.{feeMessage}"
+                        : $"{approverType} đã chấp nhận yêu cầu {actionType} hợp đồng {contract.ContractNumber}.{feeMessage}",
                     Type = isFullyApproved ? "contract_terminated" : "termination_approved",
                     ReferenceType = "Contract",
                     ReferenceId = contract.ContractId,
@@ -131,7 +137,8 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
                         : "Bạn đã chấp nhận yêu cầu. Đang chờ bên còn lại xác nhận.",
                     ContractId = request.ContractId,
                     Status = contract.Status.ToString(),
-                    IsFullyApproved = isFullyApproved
+                    IsFullyApproved = isFullyApproved,
+                    EarlyTerminationFee = request.EarlyTerminationFee
                 };
             }
             catch (Exception ex)

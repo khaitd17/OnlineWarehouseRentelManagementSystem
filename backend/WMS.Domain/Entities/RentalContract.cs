@@ -171,7 +171,7 @@ public class RentalContract
     }
 
     // Approve termination request
-    public void ApproveTermination(string approvedBy)
+    public void ApproveTermination(string approvedBy, decimal? earlyTerminationFee = null)
     {
         if (Status != "PENDING_TERMINATION")
             throw new InvalidOperationException($"Cannot approve termination for contract with status {Status}");
@@ -179,7 +179,12 @@ public class RentalContract
         if (approvedBy == "RENTER")
             RenterApprovedTermination = true;
         else if (approvedBy == "OWNER")
+        {
             OwnerApprovedTermination = true;
+            // Only owner can set the fee when approving
+            if (earlyTerminationFee.HasValue)
+                EarlyTerminationFee = earlyTerminationFee.Value;
+        }
         else
             throw new ArgumentException("ApprovedBy must be RENTER or OWNER");
 
