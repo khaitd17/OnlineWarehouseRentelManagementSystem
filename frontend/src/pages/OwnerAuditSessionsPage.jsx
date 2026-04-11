@@ -80,6 +80,7 @@ export default function OwnerAuditSessionsPage() {
   };
 
   const handleReject = async () => {
+    if (!rejectModal.reason || !rejectModal.reason.trim()) { showToast("Vui lòng nhập lý do từ chối", "error"); return; }
     setRejectModal(p => ({ ...p, loading: true }));
     try {
       const res = await adminService.rejectAuditSession(rejectModal.auditId, { reason: rejectModal.reason || null });
@@ -89,17 +90,10 @@ export default function OwnerAuditSessionsPage() {
     setRejectModal(p => ({ ...p, loading: false }));
   };
 
-  const handleExport = async (auditId) => {
-    try {
-      const res = await adminService.exportAuditReport(auditId);
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a"); a.href = url; a.download = `BaoCaoKiemKe_${auditId}.csv`; a.click();
-      window.URL.revokeObjectURL(url);
-      showToast("Xuất báo cáo thành công");
-    } catch { showToast("Lỗi khi xuất báo cáo", "error"); }
-  };
+
 
   const handleCloseSession = async () => {
+    if (!closeModal.notes || !closeModal.notes.trim()) { showToast("Vui lòng nhập ghi chú/lý do để đóng phiên", "error"); return; }
     setCloseModal(p => ({ ...p, loading: true }));
     try {
       const res = await adminService.closeAuditSession(closeModal.auditId, { notes: closeModal.notes || null });
@@ -197,7 +191,7 @@ export default function OwnerAuditSessionsPage() {
                       {(row.status === "IN_PROGRESS" || row.status === "OPEN") && (
                         <button onClick={() => setCloseModal({ open: true, auditId: row.auditId, notes: "", loading: false })} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-600 transition-all hover:bg-red-100" title="Đóng phiên">🔒</button>
                       )}
-                      <button onClick={() => handleExport(row.auditId)} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 transition-all hover:bg-slate-200">CSV</button>
+
                     </div>
                   </td>
                 </tr>
@@ -276,7 +270,7 @@ export default function OwnerAuditSessionsPage() {
           <div style={{ backgroundColor: "#fff", borderRadius: 12, padding: 24, width: "100%", maxWidth: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-slate-900 mb-4">Từ chối yêu cầu kiểm kê</h3>
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Lý do từ chối (tùy chọn)</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Lý do từ chối *</label>
               <textarea className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none" rows={3} value={rejectModal.reason} onChange={e => setRejectModal(p => ({ ...p, reason: e.target.value }))} placeholder="Nhập lý do..." />
             </div>
             <div className="flex justify-end gap-2">
@@ -297,7 +291,7 @@ export default function OwnerAuditSessionsPage() {
               <span className="text-xs text-red-700">Sau khi đóng, phiên kiểm kê <strong>#{closeModal.auditId}</strong> sẽ <strong>không thể ghi nhận thêm</strong> kết quả.</span>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Ghi chú khi đóng (tùy chọn)</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Ghi chú khi đóng *</label>
               <textarea className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none" rows={3} value={closeModal.notes} onChange={e => setCloseModal(p => ({ ...p, notes: e.target.value }))} placeholder="Nhập ghi chú..." />
             </div>
             <div className="flex justify-end gap-2">

@@ -18,49 +18,9 @@ public record SystemReportDto(
     int TotalWarehouses,
     int ApprovedWarehouses,
     int PendingWarehouses,
-    // Contract stats
-    int TotalContracts,
-    int ActiveContracts,
-    int ExpiringContracts,
-    // Financial stats
+    int HiddenWarehouses,
+    // Subscription & Financial stats
     decimal TotalRevenue,
-    decimal PendingPayments,
-    decimal OverduePayments,
-    decimal CollectionRate,
-    double RevenueGrowthRate,
-    // Period stats
-    int NewUsersThisPeriod,
-    int NewWarehousesThisPeriod,
-    // Detailed data
-    List<MonthlyRevenueDto> MonthlyRevenue,
-    List<TopWarehouseRevenueDto> TopWarehousesByRevenue,
-    // Smart alerts & recommendations
-    List<AlertDto> Alerts,
-    List<RecommendationDto> Recommendations
-);
-
-public record MonthlyRevenueDto(
-    string Period,
-    decimal Amount
-);
-
-public record TopWarehouseRevenueDto(
-    int WarehouseId,
-    string Name,
-    decimal Revenue,
-    int ContractCount
-);
-
-public record AlertDto(
-    string Level,   // CRITICAL, WARNING, INFO
-    string Title,
-    string Message,
-    string Icon
-);
-
-public record RecommendationDto(
-    string Type,        // REVENUE, OCCUPANCY, CONTRACT, PAYMENT
-    string Title,
-    string Description,
-    string Priority     // HIGH, MEDIUM, LOW
+    int TotalNewSubscriptionsThisMonth,
+    int ExpiringSubscriptions
 );

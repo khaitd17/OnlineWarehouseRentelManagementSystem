@@ -21,7 +21,7 @@ public class LoginHandler : IRequestHandler<LoginCommand, LoginResult>
         if (user == null)
             throw new UnauthorizedAccessException("Email/SĐT hoặc mật khẩu không đúng.");
 
-        if (user.Status == "SUSPENDED" || user.Status == "DELETED")
+        if (user.Status == "LOCKED" || user.Status == "SUSPENDED" || user.Status == "DELETED")
             throw new UnauthorizedAccessException("Tài khoản của bạn đã bị khóa hoặc xóa.");
 
         bool isValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);

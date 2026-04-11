@@ -247,6 +247,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.MonthlyPayment).HasColumnType("decimal(15, 2)").HasColumnName("monthly_payment");
             entity.Property(e => e.TotalValue).HasColumnType("decimal(15, 2)").HasColumnName("total_value");
             entity.Property(e => e.DepositAmount).HasColumnType("decimal(15, 2)").HasColumnName("deposit_amount");
+            entity.Property(e => e.CancellationFee).HasColumnType("decimal(15, 2)").HasColumnName("cancellation_fee");
+            entity.Property(e => e.EarlyTerminationFee).HasColumnType("decimal(15, 2)").HasColumnName("early_termination_fee");
             entity.Property(e => e.Status).HasMaxLength(50).HasColumnName("status");
             entity.Property(e => e.Terms).HasColumnName("terms");
             entity.Property(e => e.ContractFileUrl).HasMaxLength(500).HasColumnName("contract_file_url");

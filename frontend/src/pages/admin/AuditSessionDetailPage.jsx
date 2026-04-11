@@ -55,15 +55,7 @@ export default function AuditSessionDetailPage() {
 
   useEffect(() => { fetchResults(); }, [fetchResults]);
 
-  const handleExport = async () => {
-    try {
-      const res = await adminService.exportAuditReport(id);
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a"); a.href = url; a.download = `BaoCaoKiemKe_${id}.csv`; a.click();
-      window.URL.revokeObjectURL(url);
-      showToast("Xuất báo cáo thành công");
-    } catch { showToast("Lỗi khi xuất báo cáo", "error"); }
-  };
+
 
   // Record results
   const addItem = () => setRecordModal(p => ({ ...p, items: [...p.items, { itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }] }));
@@ -139,7 +131,7 @@ export default function AuditSessionDetailPage() {
               <button className="admin-btn admin-btn-danger" onClick={() => setCloseModal({ open: true, notes: "", loading: false })}>🔒 Đóng phiên kiểm kê</button>
             </>
           )}
-          <button className="admin-btn admin-btn-outline" onClick={handleExport}>Xuất CSV</button>
+
         </div>
       </div>
 

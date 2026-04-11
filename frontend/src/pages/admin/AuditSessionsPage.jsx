@@ -61,15 +61,7 @@ export default function AuditSessionsPage() {
     setCreateModal(p => ({ ...p, loading: false }));
   };
 
-  const handleExport = async (auditId) => {
-    try {
-      const res = await adminService.exportAuditReport(auditId);
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a"); a.href = url; a.download = `BaoCaoKiemKe_${auditId}.csv`; a.click();
-      window.URL.revokeObjectURL(url);
-      showToast("Xuất báo cáo thành công");
-    } catch { showToast("Lỗi khi xuất báo cáo", "error"); }
-  };
+
 
   const handleCloseSession = async () => {
     setCloseModal(p => ({ ...p, loading: true }));
@@ -98,7 +90,6 @@ export default function AuditSessionsPage() {
         {isOwner && row.status === "OPEN" && (
           <button className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => setCloseModal({ open: true, auditId: row.auditId, notes: "", loading: false })} title="Đóng phiên kiểm kê">🔒</button>
         )}
-        <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={() => handleExport(row.auditId)}>CSV</button>
       </div>
     )},
   ];
