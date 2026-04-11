@@ -100,37 +100,51 @@ export default function StaffAuditSessionDetailPage() {
   };
 
   const handleRecord = async () => {
-    const itemsToRecord = recordModal.items.filter(i => i.actualQty !== "");
+    // Validation: tất cả items phải có actualQty
+    const emptyItems = recordModal.items.filter(i => i.actualQty === "" || i.actualQty === null || i.actualQty === undefined);
+    if (emptyItems.length > 0) {
+      showToast(`Vui lòng nhập số lượng thực tế cho tất cả ${recordModal.items.length} mục hàng hóa. Còn ${emptyItems.length} mục chưa nhập.`, "error");
+      return;
+    }
 
-    for (const item of itemsToRecord) {
+    for (const item of recordModal.items) {
       if (parseInt(item.actualQty) < 0) { showToast("Số lượng thực tế phải >= 0", "error"); return; }
+      if (parseInt(item.actualQty) > parseInt(item.expectedQty)) { showToast(`Hàng hóa "${item.itemName}" — Số lượng thực tế (${item.actualQty}) không được lớn hơn số lượng dự kiến (${item.expectedQty})`, "error"); return; }
       if (parseInt(item.actualQty) !== parseInt(item.expectedQty) && (!item.discrepancyReason || !item.discrepancyReason.trim())) {
         showToast(`Hàng hóa "${item.itemName || "vô danh"}" có chênh lệch, vui lòng nhập lý do`, "error"); return;
       }
     }
-    if (itemsToRecord.length === 0) { showToast("Vui lòng nhập số lượng thực tế cho ít nhất 1 mục", "error"); return; }
 
     setRecordModal(p => ({ ...p, loading: true }));
     try {
       const payload = {
-        items: itemsToRecord.map(i => ({ itemName: i.itemName.trim(), expectedQty: parseInt(i.expectedQty), actualQty: parseInt(i.actualQty), discrepancyReason: i.discrepancyReason || null })),
+        items: recordModal.items.map(i => ({ itemName: i.itemName.trim(), expectedQty: parseInt(i.expectedQty), actualQty: parseInt(i.actualQty), discrepancyReason: i.discrepancyReason || null })),
         completeSession: recordModal.completeSession,
       };
       const res = await adminService.recordAuditResults(id, payload);
       if (res.data.success) { showToast(res.data.message); fetchDetail(); fetchResults(); setRecordModal(defaultRecordModal); }
       else showToast(res.data.message, "error");
-    } catch (e) { showToast(e.response?.data?.message || "Lỗi", "error"); }
+    } catch (e) {
+      const msg = e.response?.data?.message || "Lỗi";
+      // Hiển thị thông báo rõ ràng khi phiên đã bị đóng/hủy
+      if (msg.includes("đã đóng") || msg.includes("đã hủy") || msg.includes("Thất bại")) {
+        showToast(msg, "error");
+        fetchDetail(); // Refresh lại để cập nhật trạng thái
+      } else {
+        showToast(msg, "error");
+      }
+    }
     setRecordModal(p => ({ ...p, loading: false }));
   };
 
 
 
   const statusLabel = (s) => {
-    const map = { APPROVED: "Chờ kiểm kê", IN_PROGRESS: "Đang kiểm kê", COMPLETED: "Hoàn thành", PENDING_APPROVAL: "Chờ duyệt", OPEN: "Đang mở" };
+    const map = { APPROVED: "Chờ kiểm kê", IN_PROGRESS: "Đang kiểm kê", COMPLETED: "Hoàn thành", PENDING_APPROVAL: "Chờ duyệt", OPEN: "Đang mở", CANCELLED: "Đã hủy", REJECTED: "Từ chối" };
     return map[s] || s;
   };
   const statusColor = (s) => {
-    const map = { APPROVED: "bg-blue-100 text-blue-700", IN_PROGRESS: "bg-purple-100 text-purple-700", COMPLETED: "bg-emerald-100 text-emerald-700", PENDING_APPROVAL: "bg-yellow-100 text-yellow-700", OPEN: "bg-blue-100 text-blue-700" };
+    const map = { APPROVED: "bg-blue-100 text-blue-700", IN_PROGRESS: "bg-purple-100 text-purple-700", COMPLETED: "bg-emerald-100 text-emerald-700", PENDING_APPROVAL: "bg-yellow-100 text-yellow-700", OPEN: "bg-blue-100 text-blue-700", CANCELLED: "bg-red-100 text-red-700", REJECTED: "bg-red-100 text-red-700" };
     return map[s] || "bg-slate-100 text-slate-600";
   };
 
@@ -298,7 +312,7 @@ export default function StaffAuditSessionDetailPage() {
                         {item.itemName}
                       </div>
                       <input className="px-2 py-1.5 rounded border border-slate-200 text-sm bg-slate-50 text-slate-500" type="number" min="0" placeholder="SL dự kiến" value={item.expectedQty} readOnly tabIndex={-1} />
-                      <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" type="number" min="0" placeholder="SL thực tế *" value={item.actualQty} onChange={e => updateItem(idx, "actualQty", e.target.value)} />
+                      <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" type="number" min="0" max={item.expectedQty} placeholder="SL thực tế *" value={item.actualQty} onChange={e => { const val = e.target.value; if (val !== "" && parseInt(val) > parseInt(item.expectedQty)) { showToast(`SL thực tế không được lớn hơn SL dự kiến (${item.expectedQty})`, "error"); return; } updateItem(idx, "actualQty", val); }} />
                       <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" placeholder="Lý do chênh lệch" value={item.discrepancyReason} onChange={e => updateItem(idx, "discrepancyReason", e.target.value)} />
                     </div>
                   ))}

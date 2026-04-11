@@ -64,8 +64,9 @@ public class ApplicationDbContext : DbContext
     public virtual DbSet<VContractPayment> VContractPayments { get; set; }
 
     public virtual DbSet<VWarehouseOccupancy> VWarehouseOccupancies { get; set; }
-
     public virtual DbSet<Subscription> Subscriptions { get; set; }
+
+    public virtual DbSet<SubscriptionPackage> SubscriptionPackages { get; set; }
 
     public virtual DbSet<Warehouse> Warehouses { get; set; }
 
@@ -746,7 +747,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.SubscriptionId);
             entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Plan).HasMaxLength(50).HasConversion<string>().HasColumnName("plan");
+            entity.Property(e => e.Plan).HasMaxLength(50).HasColumnName("plan");
             entity.Property(e => e.Status).HasMaxLength(50).HasConversion<string>().HasColumnName("status");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
             entity.Property(e => e.EndDate).HasColumnName("end_date");
@@ -756,6 +757,20 @@ public class ApplicationDbContext : DbContext
                   .WithMany(p => p.Subscriptions)
                   .HasForeignKey(d => d.UserId)
                   .OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<SubscriptionPackage>(entity =>
+        {
+            entity.ToTable("subscription_packages", tb => tb.HasTrigger("TR_subscription_packages_updated_at"));
+            entity.HasKey(e => e.PackageId);
+            entity.Property(e => e.PackageId).HasColumnName("package_id");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Price).HasColumnType("decimal(15, 2)").HasColumnName("price");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.DurationMonths).HasColumnName("duration_months").HasDefaultValue(1);
+            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
         });
 
         modelBuilder.Entity<VActiveWarehouse>(entity =>

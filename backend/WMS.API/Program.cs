@@ -109,6 +109,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IRentalPaymentRepository, WMS.I
 builder.Services.AddScoped<IEquipmentIncidentRepository, EquipmentIncidentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionRepository, WMS.Infrastructure.Repositories.SubscriptionRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionPackageRepository, WMS.Infrastructure.Repositories.SubscriptionPackageRepository>();
 
 // Services
 builder.Services.AddScoped<IJwtService, JwtService>();

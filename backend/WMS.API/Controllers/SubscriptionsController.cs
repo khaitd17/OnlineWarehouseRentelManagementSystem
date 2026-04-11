@@ -13,10 +13,20 @@ namespace WMS.API.Controllers;
 public class SubscriptionsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly WMS.Domain.Interfaces.ISubscriptionPackageRepository _packageRepo;
 
-    public SubscriptionsController(IMediator mediator)
+    public SubscriptionsController(IMediator mediator, WMS.Domain.Interfaces.ISubscriptionPackageRepository packageRepo)
     {
         _mediator = mediator;
+        _packageRepo = packageRepo;
+    }
+
+    [HttpGet("packages")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetPackages()
+    {
+        var packages = await _packageRepo.GetAllAsync();
+        return Ok(new { success = true, data = packages.Where(p => p.IsActive).OrderBy(p => p.Price) });
     }
 
     [HttpPost("create")]
@@ -47,5 +57,5 @@ public class SubscriptionsController : ControllerBase
 
 public class CreateSubscriptionRequest
 {
-    public SubscriptionPlan Plan { get; set; }
+    public string Plan { get; set; } = null!;
 }

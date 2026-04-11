@@ -96,7 +96,7 @@ export default function AuditSessionsPage() {
 
   const filterConfig = [
     { key: "warehouseId", label: "Kho", options: warehouses.map(w => ({ value: w.warehouseId, label: w.name })) },
-    { key: "status", label: "Trạng thái", options: [{ value: "OPEN", label: "Đang mở" }, { value: "COMPLETED", label: "Hoàn thành" }] },
+    { key: "status", label: "Trạng thái", options: [{ value: "OPEN", label: "Đang mở" }, { value: "COMPLETED", label: "Hoàn thành" }, { value: "CANCELLED", label: "Đã hủy" }] },
   ];
 
   return (

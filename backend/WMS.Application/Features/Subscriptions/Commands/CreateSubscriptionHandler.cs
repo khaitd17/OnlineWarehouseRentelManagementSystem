@@ -12,19 +12,29 @@ public class CreateSubscriptionHandler : IRequestHandler<CreateSubscriptionComma
     private readonly ISepayService _sepayService;
     private readonly ILogger<CreateSubscriptionHandler> _logger;
 
-    public CreateSubscriptionHandler(ISubscriptionRepository subscriptionRepo, ISepayService sepayService, ILogger<CreateSubscriptionHandler> logger)
+    private readonly ISubscriptionPackageRepository _packageRepo;
+    public CreateSubscriptionHandler(ISubscriptionRepository subscriptionRepo, ISepayService sepayService, ILogger<CreateSubscriptionHandler> logger, ISubscriptionPackageRepository packageRepo)
     {
         _subscriptionRepo = subscriptionRepo;
         _sepayService = sepayService;
         _logger = logger;
+        _packageRepo = packageRepo;
     }
 
     public async Task<CreateSubscriptionResult> Handle(CreateSubscriptionCommand request, CancellationToken cancellationToken)
     {
         try
         {
-            // Calculate price based on plan
-            decimal amount = request.Plan == SubscriptionPlan.Premium ? 500000 : 2000;
+            var package = await _packageRepo.GetByNameAsync(request.Plan);
+            if (package == null)
+            {
+                return new CreateSubscriptionResult
+                {
+                    Success = false,
+                    Message = $"Gói cước {request.Plan} không tồn tại."
+                };
+            }
+            decimal amount = package.Price;
 
             // Generate unique transaction reference SUB + 6 digits
             var random = new Random();

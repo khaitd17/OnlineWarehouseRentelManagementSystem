@@ -31,6 +31,15 @@ public class RecordAuditResultsHandler : IRequestHandler<RecordAuditResultsComma
         if (!isOwner && !isAssignedStaff)
             return ApiResponse<bool>.ErrorResponse("Bạn không có quyền ghi nhận kết quả cho phiên kiểm kê này.");
 
+        if (session.Status == "CANCELLED")
+            return ApiResponse<bool>.ErrorResponse("Thất bại! Chủ kho đã đóng phiên kiểm kê này. Kết quả của bạn không thể ghi nhận.");
+
+        if (session.Status == "COMPLETED")
+            return ApiResponse<bool>.ErrorResponse("Phiên kiểm kê đã hoàn thành, không thể ghi nhận thêm kết quả.");
+
+        if (session.Status == "REJECTED")
+            return ApiResponse<bool>.ErrorResponse("Phiên kiểm kê đã bị từ chối, không thể ghi nhận kết quả.");
+
         if (session.Status != "APPROVED" && session.Status != "IN_PROGRESS" && session.Status != "OPEN")
             return ApiResponse<bool>.ErrorResponse("Phiên kiểm kê chưa được duyệt hoặc đã hoàn thành, không thể ghi nhận kết quả.");
 
