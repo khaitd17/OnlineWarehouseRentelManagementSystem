@@ -19,6 +19,7 @@ public class CloseAuditSessionHandler : IRequestHandler<CloseAuditSessionCommand
     {
         var session = await _db.AuditSessions
             .Include(s => s.Warehouse)
+            .Include(s => s.AuditResults)
             .FirstOrDefaultAsync(s => s.AuditId == request.AuditId, cancellationToken);
 
         if (session == null)
@@ -34,7 +35,19 @@ public class CloseAuditSessionHandler : IRequestHandler<CloseAuditSessionCommand
         if (session.Status == "CANCELLED")
             return ApiResponse<bool>.ErrorResponse("Phiên kiểm kê đã bị hủy, không thể đóng.");
 
-        session.Status = "COMPLETED";
+        // Nếu chưa có kết quả kiểm kê nào được ghi nhận → CANCELLED
+        // Nếu đã có kết quả → COMPLETED
+        bool hasResults = session.AuditResults != null && session.AuditResults.Count > 0;
+
+        if (hasResults)
+        {
+            session.Status = "COMPLETED";
+        }
+        else
+        {
+            session.Status = "CANCELLED";
+        }
+
         session.CompletedAt = DateTime.UtcNow;
 
         if (!string.IsNullOrWhiteSpace(request.Notes))
@@ -46,6 +59,10 @@ public class CloseAuditSessionHandler : IRequestHandler<CloseAuditSessionCommand
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        return ApiResponse<bool>.SuccessResponse(true, "Đóng phiên kiểm kê thành công.");
+        var message = hasResults
+            ? "Đã đóng phiên kiểm kê thành công (Hoàn thành)."
+            : "Đã hủy phiên kiểm kê (chưa có kết quả ghi nhận).";
+
+        return ApiResponse<bool>.SuccessResponse(true, message);
     }
 }

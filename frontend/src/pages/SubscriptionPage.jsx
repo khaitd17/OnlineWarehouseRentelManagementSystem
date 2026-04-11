@@ -7,8 +7,26 @@ const { Title, Text, Paragraph } = Typography;
 
 const SubscriptionPage = () => {
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [packages, setPackages] = useState([]);
   const [qrModalVisible, setQrModalVisible] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState(null);
+
+  React.useEffect(() => {
+    const loadPackages = async () => {
+      try {
+        const res = await subscriptionService.getPackages();
+        if (res.data?.success) {
+          setPackages(res.data.data || []);
+        }
+      } catch (err) {
+        console.error("Failed to load packages", err);
+      } finally {
+        setFetchLoading(false);
+      }
+    };
+    loadPackages();
+  }, []);
 
   const handleSubscribe = async (planValue) => {
     try {
@@ -70,135 +88,88 @@ const SubscriptionPage = () => {
       </div>
 
       <Row gutter={[32, 32]} justify="center">
-        {/* Basic Plan */}
-        <Col xs={24} md={11}>
-          <div style={{
-            position: 'relative',
-            background: '#f8fafc',
-            border: '2px solid #e2e8f0',
-            borderRadius: '24px',
-            padding: '32px',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            transition: 'all 0.3s ease',
-            cursor: 'pointer'
-          }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px)'; e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
-          >
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '16px',
-              background: '#e0f2fe',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '24px'
-            }}>
-              <StarOutlined style={{ fontSize: '28px', color: '#38bdf8' }} />
+        {fetchLoading ? (
+            <div style={{ textAlign: 'center', width: '100%', padding: '40px' }}>
+                <Spin size="large" />
+                <p style={{ marginTop: '16px', color: '#64748b' }}>Đang tải gói cước...</p>
             </div>
+        ) : packages.length === 0 ? (
+            <div style={{ textAlign: 'center', width: '100%', padding: '40px' }}>
+                <p style={{ color: '#64748b' }}>Hiện chưa có gói cước nào.</p>
+            </div>
+        ) : (
+            packages.map((pkg, idx) => {
+                const isPremium = pkg.price > 100000;
+                return (
+                    <Col xs={24} md={11} key={pkg.packageId}>
+                      <div style={{
+                        position: 'relative',
+                        background: isPremium ? 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)' : '#f8fafc',
+                        border: isPremium ? 'none' : '2px solid #e2e8f0',
+                        borderRadius: '24px',
+                        padding: '32px',
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        transition: 'all 0.3s ease',
+                        cursor: 'pointer',
+                        boxShadow: isPremium ? '0 20px 40px rgba(15, 23, 42, 0.4)' : 'none'
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px)'; if (!isPremium) e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; if (!isPremium) e.currentTarget.style.boxShadow = 'none'; }}
+                      >
+                        {isPremium && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '-16px', left: '50%', transform: 'translateX(-50%)',
+                              background: 'linear-gradient(90deg, #38bdf8 0%, #818cf8 100%)',
+                              color: '#fff', padding: '6px 20px', borderRadius: '30px',
+                              fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px'
+                            }}>
+                              Đề xuất
+                            </div>
+                        )}
             
-            <Title level={3} style={{ marginTop: 0, color: '#0f172a', fontWeight: 700 }}>
-              Gói Tiêu Chuẩn
-            </Title>
-            <div style={{ margin: '16px 0 24px' }}>
-              <span style={{ fontSize: '36px', fontWeight: 800, color: '#0f172a' }}>2.000₫</span>
-              <span style={{ fontSize: '16px', color: '#64748b', fontWeight: 500 }}> / 30 ngày</span>
-            </div>
-
-            <Paragraph style={{ color: '#475569', fontSize: '15px' }}>
-              Dành cho cá nhân hoặc doanh nghiệp nhỏ mới bắt đầu quản lý.
-            </Paragraph>
-
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0', flex: 1 }}>
-               {['Quản lý 1 nhà kho', 'Số lượng nhân viên tối đa: 5', 'Giới hạn biểu đồ thống kê cơ bản', 'Hỗ trợ khách hàng qua email'].map((feature, idx) => (
-                  <li key={idx} style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <CheckCircleOutlined style={{ color: '#10b981', fontSize: '18px' }} />
-                    <span style={{ color: '#334155', fontSize: '15px', fontWeight: 500 }}>{feature}</span>
-                  </li>
-               ))}
-            </ul>
-
-            <Button size="large" onClick={() => handleSubscribe(0)} loading={loading} style={{
-              height: '52px', borderRadius: '12px', fontSize: '16px', fontWeight: 600,
-              background: '#fff', color: '#0f172a', border: '2px solid #cbd5e1'
-            }} block>
-              Mua Gói Tiêu Chuẩn
-            </Button>
-          </div>
-        </Col>
-
-        {/* Premium Plan */}
-        <Col xs={24} md={11}>
-          <div style={{
-            position: 'relative',
-            background: 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)',
-            borderRadius: '24px',
-            padding: '32px',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            transition: 'all 0.3s ease',
-            cursor: 'pointer',
-            boxShadow: '0 20px 40px rgba(15, 23, 42, 0.4)'
-          }}
-          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px)'; }}
-          onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}
-          >
-            <div style={{
-              position: 'absolute',
-              top: '-16px', left: '50%', transform: 'translateX(-50%)',
-              background: 'linear-gradient(90deg, #38bdf8 0%, #818cf8 100%)',
-              color: '#fff', padding: '6px 20px', borderRadius: '30px',
-              fontSize: '13px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px'
-            }}>
-              Đề xuất
-            </div>
-
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '16px',
-              background: 'rgba(255,255,255,0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '24px'
-            }}>
-              <RocketOutlined style={{ fontSize: '28px', color: '#818cf8' }} />
-            </div>
+                        <div style={{
+                          width: '56px',
+                          height: '56px',
+                          borderRadius: '16px',
+                          background: isPremium ? 'rgba(255,255,255,0.1)' : '#e0f2fe',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto 24px auto'
+                        }}>
+                          {isPremium ? <RocketOutlined style={{ fontSize: '28px', color: '#818cf8' }} /> : <StarOutlined style={{ fontSize: '28px', color: '#38bdf8' }} />}
+                        </div>
+                        
+                        <Title level={3} style={{ marginTop: 0, color: isPremium ? '#fff' : '#0f172a', fontWeight: 700, textAlign: 'center' }}>
+                          {pkg.name}
+                        </Title>
+                        <div style={{ margin: '16px 0 24px', textAlign: 'center' }}>
+                          <span style={{ fontSize: '36px', fontWeight: 800, color: isPremium ? '#fff' : '#0f172a' }}>{pkg.price.toLocaleString()}₫</span>
+                          <span style={{ fontSize: '16px', color: isPremium ? '#94a3b8' : '#64748b', fontWeight: 500 }}> / {pkg.durationMonths * 30} ngày</span>
+                        </div>
             
-            <Title level={3} style={{ marginTop: 0, color: '#fff', fontWeight: 700 }}>
-              Gói Nâng Cao
-            </Title>
-            <div style={{ margin: '16px 0 24px' }}>
-              <span style={{ fontSize: '36px', fontWeight: 800, color: '#fff' }}>500.000₫</span>
-              <span style={{ fontSize: '16px', color: '#94a3b8', fontWeight: 500 }}> / 30 ngày</span>
-            </div>
-
-            <Paragraph style={{ color: '#cbd5e1', fontSize: '15px' }}>
-              Trải nghiệm không giới hạn mọi nhu cầu và tùy chọn nâng cao.
-            </Paragraph>
-
-            <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 32px 0', flex: 1 }}>
-               {['Quản lý số lượng kho mở rộng', 'Không giới hạn nhân viên', 'Biểu đồ công suất theo thời gian thực', 'Phân ca nhân viên tự động', 'Hỗ trợ ưu tiên 24/7'].map((feature, idx) => (
-                  <li key={idx} style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <CheckCircleOutlined style={{ color: '#38bdf8', fontSize: '18px' }} />
-                    <span style={{ color: '#f1f5f9', fontSize: '15px', fontWeight: 500 }}>{feature}</span>
-                  </li>
-               ))}
-            </ul>
-
-            <Button type="primary" size="large" onClick={() => handleSubscribe(1)} loading={loading} style={{
-              height: '52px', borderRadius: '12px', fontSize: '16px', fontWeight: 700,
-              background: 'linear-gradient(90deg, #38bdf8 0%, #818cf8 100%)', border: 'none'
-            }} block>
-              Mua Gói Nâng Cao
-            </Button>
-          </div>
-        </Col>
+                        <Paragraph style={{ color: isPremium ? '#cbd5e1' : '#475569', fontSize: '15px', textAlign: 'center', minHeight: '44px' }}>
+                          {pkg.description || "Gói dịch vụ mặc định."}
+                        </Paragraph>
+            
+                        <div style={{ flex: 1 }}></div>
+                        <Button type={isPremium ? "primary" : "default"} size="large" onClick={() => handleSubscribe(pkg.name)} loading={loading} style={{
+                          height: '52px', borderRadius: '12px', fontSize: '16px', fontWeight: isPremium ? 700 : 600,
+                          background: isPremium ? 'linear-gradient(90deg, #38bdf8 0%, #818cf8 100%)' : '#fff', 
+                          color: isPremium ? '#fff' : '#0f172a', 
+                          border: isPremium ? 'none' : '2px solid #cbd5e1',
+                          marginTop: '24px'
+                        }} block>
+                          Mua Gói {pkg.name}
+                        </Button>
+                      </div>
+                    </Col>
+                );
+            })
+        )}
       </Row>
 
       <Modal

@@ -11,6 +11,21 @@ namespace WMS.Infrastructure.Persistence
         public static void Seed(ApplicationDbContext context)
         {
             // ══════════════════════════════════════════════════
+            // 0. SUBSCRIPTION PACKAGES
+            // ══════════════════════════════════════════════════
+            var packages = new[]
+            {
+                new SubscriptionPackage { Name = "Basic", Price = 2000, Description = "Gói cơ bản", DurationMonths = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
+                new SubscriptionPackage { Name = "Premium", Price = 500000, Description = "Gói cao cấp", DurationMonths = 1, IsActive = true, CreatedAt = DateTime.UtcNow }
+            };
+            foreach (var package in packages)
+            {
+                if (!context.SubscriptionPackages.Any(p => p.Name == package.Name))
+                    context.SubscriptionPackages.Add(package);
+            }
+            context.SaveChanges();
+
+            // ══════════════════════════════════════════════════
             // 1. ROLES
             // ══════════════════════════════════════════════════
             var roles = new[]

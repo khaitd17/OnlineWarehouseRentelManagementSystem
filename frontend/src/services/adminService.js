@@ -18,6 +18,17 @@ const adminService = {
     manageListing: (id,action) => axiosClient.put(`/admin/warehouses/${id}/listing`,{ action }),
     approveWarehouse: (id,data) => axiosClient.put(`/admin/warehouses/${id}/approve`,data),
 
+    // === SUBSCRIPTIONS ===
+    getSubscriptions: (params) => axiosClient.get("/admin/subscriptions", { params }),
+    updateSubscription: (id, data) => axiosClient.put(`/admin/subscriptions/${id}`, data),
+    deleteSubscription: (id) => axiosClient.delete(`/admin/subscriptions/${id}`),
+
+    // === SUBSCRIPTION PACKAGES ===
+    getSubscriptionPackages: () => axiosClient.get("/admin/subscription-packages"),
+    createSubscriptionPackage: (data) => axiosClient.post("/admin/subscription-packages", data),
+    updateSubscriptionPackage: (id, data) => axiosClient.put(`/admin/subscription-packages/${id}`, data),
+    deleteSubscriptionPackage: (id) => axiosClient.delete(`/admin/subscription-packages/${id}`),
+
     // === REPORTS ===
     getSystemReports: (params) => axiosClient.get("/admin/reports",{ params }),
     exportSystemReports: (params) => axiosClient.get("/admin/reports/export",{ params,responseType: "blob" }),
@@ -37,3 +48,4 @@ const adminService = {
 };
 
 export default adminService;
+

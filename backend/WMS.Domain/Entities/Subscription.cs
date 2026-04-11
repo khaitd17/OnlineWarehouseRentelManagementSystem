@@ -3,12 +3,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WMS.Domain.Entities;
 
-public enum SubscriptionPlan
-{
-    Basic,
-    Premium
-}
-
 public enum SubscriptionStatus
 {
     Pending,
@@ -23,7 +17,7 @@ public partial class Subscription
 
     public int UserId { get; set; }
 
-    public SubscriptionPlan Plan { get; set; }
+    public string Plan { get; set; } = null!;
 
     public SubscriptionStatus Status { get; set; } = SubscriptionStatus.Pending;
 
