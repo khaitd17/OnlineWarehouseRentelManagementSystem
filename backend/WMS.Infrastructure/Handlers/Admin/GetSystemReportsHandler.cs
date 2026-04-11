@@ -33,16 +33,29 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
         var hiddenWarehouses = await _db.Warehouses.CountAsync(w => w.Status == "HIDDEN", cancellationToken);
 
         // ── Subscription & Financial Stats ──
-        // Total Revenue: For mock purposes, using sum of payments or subscriptions. Since we removed pending stuff, we just sum paid payments.
-        var totalRevenue = await _db.Payments
-            .Where(p => p.Status == "PAID")
-            .SumAsync(p => (decimal?)p.Amount ?? 0, cancellationToken);
-        
-        var rentalPaymentRevenue = await _db.RentalPayments
-            .Where(p => p.Status == "PAID")
-            .SumAsync(p => (decimal?)p.Amount ?? 0, cancellationToken);
+        var subscriptions = await _db.Subscriptions
+            .Where(s => (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Expired) && s.StartDate >= fromDate && s.StartDate <= toDate)
+            .Join(_db.SubscriptionPackages, s => s.Plan, p => p.Name, (s, p) => new { Date = s.StartDate, Amount = p.Price, PackageName = p.Name })
+            .ToListAsync(cancellationToken);
 
-        totalRevenue += rentalPaymentRevenue;
+        var revenueByPackage = subscriptions
+            .GroupBy(s => s.PackageName)
+            .Select(g => new PackageRevenueDto(g.Key, g.Sum(x => x.Amount)))
+            .ToList();
+
+        var allRevenues = subscriptions
+            .Select(s => new { s.Date, s.Amount })
+            .Where(x => x.Date.HasValue)
+            .ToList();
+
+        var totalRevenue = subscriptions.Sum(x => x.Amount);
+
+        var monthlyRevenue = allRevenues
+            .GroupBy(x => new { x.Date.Value.Year, x.Date.Value.Month })
+            .Select(g => new MonthlyRevenueDto($"{g.Key.Month:D2}/{g.Key.Year}", g.Sum(x => x.Amount)))
+            .OrderBy(x => x.Month.Substring(3, 4))
+            .ThenBy(x => x.Month.Substring(0, 2))
+            .ToList();
 
         // New subscriptions this month
         var currentMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
@@ -57,7 +70,8 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
         var report = new SystemReportDto(
             totalUsers, activeUsers, lockedUsers,
             totalWarehouses, approvedWarehouses, pendingWarehouses, hiddenWarehouses,
-            totalRevenue, totalNewSubscriptionsThisMonth, expiringSubscriptions);
+            totalRevenue, totalNewSubscriptionsThisMonth, expiringSubscriptions,
+            revenueByPackage, monthlyRevenue);
 
         return ApiResponse<SystemReportDto>.SuccessResponse(report, "Lấy báo cáo hệ thống thành công.");
     }
