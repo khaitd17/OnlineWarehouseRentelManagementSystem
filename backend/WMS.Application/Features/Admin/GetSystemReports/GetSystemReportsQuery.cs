@@ -9,6 +9,9 @@ public class GetSystemReportsQuery : IRequest<ApiResponse<SystemReportDto>>
     public DateTime? ToDate { get; set; }
 }
 
+public record PackageRevenueDto(string PackageName, decimal Revenue);
+public record MonthlyRevenueDto(string Month, decimal Revenue);
+
 public record SystemReportDto(
     // User stats
     int TotalUsers,
@@ -22,5 +25,8 @@ public record SystemReportDto(
     // Subscription & Financial stats
     decimal TotalRevenue,
     int TotalNewSubscriptionsThisMonth,
-    int ExpiringSubscriptions
+    int ExpiringSubscriptions,
+    // Chart data
+    List<PackageRevenueDto> RevenueByPackage,
+    List<MonthlyRevenueDto> MonthlyRevenue
 );

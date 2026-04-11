@@ -2,6 +2,10 @@ import React, { useEffect, useState } from "react";
 import {
   Users, UserCheck, Lock, Warehouse, Clock, EyeOff, CheckCircle, Target, DollarSign
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from "recharts";
 import adminService from "../../services/adminService";
 import StatCard from "../../components/StatCard";
 
@@ -11,6 +15,8 @@ const formatCurrency = (value) => {
   if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
   return value?.toLocaleString("vi-VN") || "0";
 };
+
+const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function AdminDashboard() {
   const [report, setReport] = useState(null);
@@ -53,7 +59,7 @@ export default function AdminDashboard() {
       </div>
 
       <h3 style={{ marginBottom: 15, marginTop: 25, fontSize: "1.2rem", fontWeight: 600, color: "#374151" }}>Doanh Thu & Tài Chính</h3>
-      <div className="admin-stats-grid">
+      <div className="admin-stats-grid" style={{ marginBottom: 25 }}>
         <StatCard
           icon={<DollarSign size={20} />}
           value={
@@ -66,6 +72,68 @@ export default function AdminDashboard() {
         />
         <StatCard icon={<Target size={20} />} value={report.totalNewSubscriptionsThisMonth} label="Lượt đăng ký mới (Tháng này)" color="blue" />
         <StatCard icon={<Clock size={20} />} value={report.expiringSubscriptions} label="Chủ kho sắp hết hạn gói cước" color="orange" />
+      </div>
+
+      {/* ── Charts ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
+        {/* Monthly Revenue Chart */}
+        <div style={{ background: "#fff", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", border: "1px solid #e2e8f0" }}>
+          <h4 style={{ marginBottom: "20px", fontSize: "1.1rem", fontWeight: 600, color: "#1e293b" }}>Doanh thu mỗi tháng</h4>
+          {report.monthlyRevenue && report.monthlyRevenue.length > 0 ? (
+            <div style={{ width: "100%", height: 300 }}>
+              <ResponsiveContainer>
+                <BarChart data={report.monthlyRevenue} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} dy={10} />
+                  <YAxis tickFormatter={(val) => formatCurrency(val)} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} />
+                  <RechartsTooltip
+                    cursor={{ fill: "#f1f5f9" }}
+                    formatter={(value) => [`${value.toLocaleString()} VNĐ`, "Doanh thu"]}
+                    labelStyle={{ color: "#334155", fontWeight: 600, marginBottom: 4 }}
+                    contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}
+                  />
+                  <Bar dataKey="revenue" fill="#4f46e5" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#94a3b8" }}>Chưa có dữ liệu</div>
+          )}
+        </div>
+
+        {/* Revenue by Subscription Package Chart */}
+        <div style={{ background: "#fff", padding: "20px", borderRadius: "12px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)", border: "1px solid #e2e8f0" }}>
+          <h4 style={{ marginBottom: "20px", fontSize: "1.1rem", fontWeight: 600, color: "#1e293b" }}>Phân bổ doanh thu theo gói</h4>
+          {report.revenueByPackage && report.revenueByPackage.length > 0 ? (
+            <div style={{ width: "100%", height: 300 }}>
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={report.revenueByPackage}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="revenue"
+                    nameKey="packageName"
+                  >
+                    {report.revenueByPackage.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(value) => [`${value.toLocaleString()} VNĐ`, "Doanh thu"]}
+                    contentStyle={{ borderRadius: 8, border: "none", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}
+                  />
+                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: "0.85rem", color: "#475569" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300, color: "#94a3b8" }}>Chưa có dữ liệu</div>
+          )}
+        </div>
       </div>
 
     </div>

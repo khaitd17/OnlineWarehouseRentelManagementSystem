@@ -221,14 +221,6 @@ export default function SubscriptionsPage() {
     { key: "transactionReference", label: "Mã GD", render: (v) => v ? (
       <code style={{ fontSize: "0.75rem", background: "#f1f5f9", padding: "2px 6px", borderRadius: 4 }}>{v}</code>
     ) : "—" },
-    {
-      key: "actions", label: "Thao tác", sortable: false, render: (_, row) => (
-        <div className="admin-btn-group">
-          <button className="admin-btn admin-btn-sm admin-btn-primary" onClick={() => openEdit(row)}>Sửa</button>
-          <button className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => openDelete(row)}>Xóa</button>
-        </div>
-      ),
-    },
   ];
 
   const pkgColumns = [
