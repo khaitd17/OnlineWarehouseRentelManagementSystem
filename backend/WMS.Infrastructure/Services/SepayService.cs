@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -12,6 +15,18 @@ namespace WMS.Infrastructure.Services;
 
 public class SepayService : ISepayService
 {
+    private static readonly ConcurrentDictionary<string, DateTime> TransactionCheckCooldowns =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly TimeSpan DefaultCheckCooldown = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan RateLimitCheckCooldown = TimeSpan.FromSeconds(90);
+
+    private static readonly JsonSerializerOptions SepayJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString
+    };
+
     private readonly SepaySettings _settings;
     private readonly ApplicationDbContext _db;
     private readonly ILogger<SepayService> _logger;
@@ -64,7 +79,7 @@ public class SepayService : ISepayService
                 payload.Id, payload.TransferAmount, payload.Content);
 
             // Only process incoming transfers
-            if (payload.TransferType != "in")
+            if (!string.Equals(payload.TransferType, "in", StringComparison.OrdinalIgnoreCase))
             {
                 _logger.LogInformation("Ignoring outgoing transfer");
                 return WebhookResult.Ignored("Outgoing transfer ignored");
@@ -95,12 +110,44 @@ public class SepayService : ISepayService
             if (type == "WMS")
             {
                 // RENTAL PAYMENT logic
-                var payment = _db.RentalPayments.FirstOrDefault(p => p.PaymentCode == paymentCode && p.Status == PaymentStatus.Pending);
-                if (payment == null) return WebhookResult.Ignored($"Payment {paymentCode} not found or not pending");
+                var acceptedStatuses = new[]
+                {
+                    PaymentStatus.Pending,
+                    PaymentStatus.Failed,
+                    PaymentStatus.Expired,
+                    PaymentStatus.RetryPending
+                };
+
+                var payment = _db.RentalPayments.FirstOrDefault(p => p.PaymentCode == paymentCode && acceptedStatuses.Contains(p.Status));
+                if (payment == null) return WebhookResult.Ignored($"Payment {paymentCode} not found or not in acceptable status");
                 
                 payment.CompleteFromSepay(payload.Id, payload.ReferenceCode ?? "");
-                var contract = await _db.RentalContracts.FindAsync(payment.ContractId);
-                if (contract != null && contract.IsPendingPayment) contract.ActivateAfterPayment();
+
+                // Primary contract source for rental_payments is contracts table.
+                var contract = await _db.Contracts.FindAsync(payment.ContractId);
+                if (contract != null && contract.Status == RentalContractStatus.PendingPayment)
+                {
+                    contract.Status = RentalContractStatus.Active;
+                    contract.UpdatedAt = DateTime.UtcNow;
+                }
+                else if (contract != null &&
+                         payment.PaymentType == PaymentType.Penalty &&
+                         contract.Status == RentalContractStatus.PendingTermination &&
+                         contract.OwnerApprovedTermination &&
+                         contract.RenterApprovedTermination &&
+                         (contract.EarlyTerminationFee ?? 0) > 0)
+                {
+                    contract.Status = RentalContractStatus.Terminated;
+                    contract.TerminatedAt = DateTime.UtcNow;
+                    contract.UpdatedAt = DateTime.UtcNow;
+                }
+
+                // Backward compatibility: keep legacy rental_contracts in sync if still used.
+                var legacyContract = await _db.RentalContracts.FindAsync(payment.ContractId);
+                if (legacyContract != null && legacyContract.IsPendingPayment)
+                {
+                    legacyContract.ActivateAfterPayment();
+                }
                 
                 await _db.SaveChangesAsync();
                 return WebhookResult.Ok(paymentCode, payment.PaymentId, "RENTAL");
@@ -190,35 +237,50 @@ public class SepayService : ISepayService
     {
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get,
-                $"https://my.sepay.vn/userapi/transactions/list?reference_number={paymentCode}");
+            if (string.IsNullOrWhiteSpace(paymentCode))
+                return null;
 
-            request.Headers.Authorization = new AuthenticationHeaderValue("Apikey", _settings.ApiToken);
-
-            var response = await _httpClient.SendAsync(request);
-
-            if (!response.IsSuccessStatusCode)
+            if (TryGetRemainingCooldown(paymentCode, out var remainingCooldown))
             {
-                _logger.LogWarning("SePay API returned {StatusCode}", response.StatusCode);
+                _logger.LogDebug("Skip SePay lookup for {PaymentCode} due to cooldown {RemainingSeconds}s", paymentCode, (int)remainingCooldown.TotalSeconds);
                 return null;
             }
 
-            var content = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<SepayTransactionResponse>(content,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var encodedCode = Uri.EscapeDataString(paymentCode);
+            var isRateLimited = false;
 
-            if (result?.Transactions?.Any() == true)
+            // Fast path: reference number match.
+            var byReferenceResult = await QueryTransactionsAsync($"reference_number={encodedCode}&limit=20");
+            isRateLimited |= byReferenceResult.IsRateLimited;
+
+            var referenceMatch = byReferenceResult.Transactions
+                .FirstOrDefault(t => IsIncomingTransaction(t)
+                                     && MatchesPaymentCode(t, paymentCode));
+
+            if (referenceMatch != null)
             {
-                var transaction = result.Transactions.First();
-                return new TransactionInfo
-                {
-                    Id = transaction.Id,
-                    TransactionDate = transaction.TransactionDate,
-                    Amount = transaction.AmountIn ?? 0,
-                    Content = transaction.TransactionContent,
-                    ReferenceCode = transaction.ReferenceNumber
-                };
+                TransactionCheckCooldowns.TryRemove(paymentCode, out _);
+                return MapToTransactionInfo(referenceMatch);
             }
+
+            // Robust path: scan recent incoming transactions for the payment code in transfer content.
+            var accountNumber = Uri.EscapeDataString(_settings.AccountNumber ?? string.Empty);
+            var minDate = Uri.EscapeDataString(DateTime.UtcNow.AddDays(-7).ToString("yyyy-MM-dd"));
+            var recentResult = await QueryTransactionsAsync($"account_number={accountNumber}&transaction_date_min={minDate}&limit=200");
+            isRateLimited |= recentResult.IsRateLimited;
+
+            var contentMatch = recentResult.Transactions
+                .Where(IsIncomingTransaction)
+                .FirstOrDefault(t => MatchesPaymentCode(t, paymentCode));
+
+            if (contentMatch != null)
+            {
+                TransactionCheckCooldowns.TryRemove(paymentCode, out _);
+                return MapToTransactionInfo(contentMatch);
+            }
+
+            var cooldown = isRateLimited ? RateLimitCheckCooldown : DefaultCheckCooldown;
+            SetCooldown(paymentCode, cooldown);
 
             return null;
         }
@@ -227,6 +289,81 @@ public class SepayService : ISepayService
             _logger.LogError(ex, "Error checking transaction from SePay API");
             return null;
         }
+    }
+
+    private async Task<SepayQueryResult> QueryTransactionsAsync(string queryString)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get,
+            $"https://my.sepay.vn/userapi/transactions/list?{queryString}");
+
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiToken);
+
+        var response = await _httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogWarning("SePay API returned {StatusCode} for query {Query}", response.StatusCode, queryString);
+            return new SepayQueryResult
+            {
+                StatusCode = response.StatusCode
+            };
+        }
+
+        var content = await response.Content.ReadAsStringAsync();
+        var result = JsonSerializer.Deserialize<SepayTransactionResponse>(content, SepayJsonOptions);
+
+        return new SepayQueryResult
+        {
+            StatusCode = response.StatusCode,
+            Transactions = result?.Transactions ?? new List<SepayTransaction>()
+        };
+    }
+
+    private static bool TryGetRemainingCooldown(string paymentCode, out TimeSpan remaining)
+    {
+        remaining = TimeSpan.Zero;
+
+        if (!TransactionCheckCooldowns.TryGetValue(paymentCode, out var nextAllowedAt))
+            return false;
+
+        if (nextAllowedAt <= DateTime.UtcNow)
+        {
+            TransactionCheckCooldowns.TryRemove(paymentCode, out _);
+            return false;
+        }
+
+        remaining = nextAllowedAt - DateTime.UtcNow;
+        return true;
+    }
+
+    private static void SetCooldown(string paymentCode, TimeSpan cooldown)
+    {
+        TransactionCheckCooldowns[paymentCode] = DateTime.UtcNow.Add(cooldown);
+    }
+
+    private static bool IsIncomingTransaction(SepayTransaction transaction)
+        => (transaction.AmountIn ?? 0) > 0;
+
+    private static bool MatchesPaymentCode(SepayTransaction transaction, string paymentCode)
+    {
+        var inContent = !string.IsNullOrWhiteSpace(transaction.TransactionContent)
+                        && transaction.TransactionContent.Contains(paymentCode, StringComparison.OrdinalIgnoreCase);
+
+        var inReference = !string.IsNullOrWhiteSpace(transaction.ReferenceNumber)
+                          && transaction.ReferenceNumber.Contains(paymentCode, StringComparison.OrdinalIgnoreCase);
+
+        return inContent || inReference;
+    }
+
+    private static TransactionInfo MapToTransactionInfo(SepayTransaction transaction)
+    {
+        return new TransactionInfo
+        {
+            Id = transaction.Id,
+            TransactionDate = transaction.TransactionDate,
+            Amount = transaction.AmountIn ?? 0,
+            Content = transaction.TransactionContent,
+            ReferenceCode = transaction.ReferenceNumber
+        };
     }
 
     public bool IsValidSepayIp(string ipAddress)
@@ -257,19 +394,48 @@ public class SepayService : ISepayService
     // Response models for SePay API
     private class SepayTransactionResponse
     {
+        [JsonPropertyName("status")]
         public int Status { get; set; }
+
+        [JsonPropertyName("transactions")]
         public List<SepayTransaction>? Transactions { get; set; }
+    }
+
+    private class SepayQueryResult
+    {
+        public HttpStatusCode? StatusCode { get; set; }
+        public List<SepayTransaction> Transactions { get; set; } = new();
+        public bool IsRateLimited => StatusCode == HttpStatusCode.TooManyRequests;
     }
 
     private class SepayTransaction
     {
+        [JsonPropertyName("id")]
         public int Id { get; set; }
+
+        [JsonPropertyName("transaction_date")]
         public string? TransactionDate { get; set; }
+
+        [JsonPropertyName("account_number")]
         public string? AccountNumber { get; set; }
+
+        [JsonPropertyName("amount_in")]
         public decimal? AmountIn { get; set; }
+
+        [JsonPropertyName("amount_out")]
         public decimal? AmountOut { get; set; }
+
+        [JsonPropertyName("accumulated")]
+        public decimal? Accumulated { get; set; }
+
+        [JsonPropertyName("transaction_content")]
         public string? TransactionContent { get; set; }
+
+        [JsonPropertyName("reference_number")]
         public string? ReferenceNumber { get; set; }
+
+        [JsonPropertyName("bank_brand_name")]
         public string? BankBrandName { get; set; }
     }
+
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
 import PaymentRetryButton from "../components/PaymentRetryButton";
@@ -13,6 +13,10 @@ const formatCurrency = (amount) => {
 const ContractPayment = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const purpose = new URLSearchParams(location.search).get("purpose");
+  const isTerminationPayment = purpose === "termination";
+  const targetPaymentType = isTerminationPayment ? "PENALTY" : "DEPOSIT";
 
   const [contract, setContract] = useState(null);
   const [payment, setPayment] = useState(null);
@@ -20,7 +24,6 @@ const ContractPayment = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState('PENDING');
-  const [countdown, setCountdown] = useState(5 * 60); // 5 minutes in seconds
 
   // Load contract and create payment
   useEffect(() => {
@@ -30,46 +33,81 @@ const ContractPayment = () => {
         const contractData = await rentalService.getContractById(id);
         setContract(contractData);
 
-        // Check if already paid
-        if (contractData.status === 'ACTIVE') {
-          navigate(`/contracts/${id}`);
-          return;
+        if (isTerminationPayment) {
+          if (contractData.status === 'TERMINATED') {
+            navigate(`/contracts/${id}`);
+            return;
+          }
+
+          if (contractData.status !== 'PENDING_TERMINATION') {
+            throw new Error('Hợp đồng không ở trạng thái chờ kết thúc sớm để thanh toán phí.');
+          }
+
+          if (!contractData.ownerApprovedTermination || !contractData.renterApprovedTermination) {
+            throw new Error('Hai bên chưa xác nhận kết thúc sớm, chưa thể thanh toán phí.');
+          }
+
+          if (Number(contractData.earlyTerminationFee || 0) <= 0) {
+            navigate(`/contracts/${id}`);
+            return;
+          }
+        } else {
+          // Check if already paid for activation flow
+          if (contractData.status === 'ACTIVE') {
+            navigate(`/contracts/${id}`);
+            return;
+          }
         }
 
         // Get or create payment
         const existingPayments = await paymentService.getPaymentsByContract(id);
         let currentPayment;
+        const relevantPayments = Array.isArray(existingPayments)
+          ? existingPayments.filter((p) => p.paymentType === targetPaymentType)
+          : [];
 
-        if (existingPayments && existingPayments.length > 0) {
+        if (relevantPayments.length > 0) {
           // Use existing pending payment
-          currentPayment = existingPayments.find(p => 
-            p.status === 'PENDING' || p.status === 'RETRY_PENDING'
+          currentPayment = relevantPayments.find(p => 
+            (p.status === 'PENDING' || p.status === 'RETRY_PENDING') && Number(p.amount) > 0
           );
           
           if (!currentPayment) {
             // Check for failed/expired payments that can be retried
-            const failedPayment = existingPayments.find(p => 
-              p.status === 'FAILED' || p.status === 'EXPIRED'
+            const failedPayment = relevantPayments.find(p => 
+              (p.status === 'FAILED' || p.status === 'EXPIRED') && Number(p.amount) > 0
             );
             
             if (failedPayment) {
               // Show the failed payment with retry option
               currentPayment = failedPayment;
             } else {
-              // All payments completed, create new one
-              currentPayment = await paymentService.createPayment({
-                contractId: parseInt(id),
-                amount: contractData.depositAmount || contractData.monthlyPayment,
-                paymentType: 'DEPOSIT'
-              });
+              const completedPayment = relevantPayments
+                .filter(p => p.status === 'COMPLETED')
+                .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+
+              if (completedPayment) {
+                currentPayment = completedPayment;
+              } else {
+                // No reusable payment found, create new one
+                currentPayment = await paymentService.createPayment({
+                  contractId: parseInt(id, 10),
+                  amountOverride: isTerminationPayment
+                    ? contractData.earlyTerminationFee
+                    : (contractData.depositAmount || contractData.monthlyPayment),
+                  paymentType: targetPaymentType
+                });
+              }
             }
           }
         } else {
           // Create new payment
           currentPayment = await paymentService.createPayment({
-            contractId: parseInt(id),
-            amount: contractData.depositAmount || contractData.monthlyPayment,
-            paymentType: 'DEPOSIT'
+            contractId: parseInt(id, 10),
+            amountOverride: isTerminationPayment
+              ? contractData.earlyTerminationFee
+              : (contractData.depositAmount || contractData.monthlyPayment),
+            paymentType: targetPaymentType
           });
         }
 
@@ -91,7 +129,7 @@ const ContractPayment = () => {
     };
 
     initPayment();
-  }, [id, navigate]);
+  }, [id, navigate, isTerminationPayment, targetPaymentType]);
 
   // Poll payment status
   useEffect(() => {
@@ -101,12 +139,13 @@ const ContractPayment = () => {
       try {
         const status = await paymentService.getPaymentStatus(payment.paymentId);
         setPaymentStatus(status.status);
+        setPayment(prev => prev ? { ...prev, ...status } : prev);
 
         if (status.status === 'COMPLETED') {
           clearInterval(pollInterval);
           // Redirect to success page after 2 seconds
           setTimeout(() => {
-            navigate(`/payment-result?success=true&contractId=${id}`);
+            navigate(`/payment-result?success=true&contractId=${id}&purpose=${isTerminationPayment ? 'termination' : 'contract'}`);
           }, 2000);
         }
       } catch (err) {
@@ -115,31 +154,7 @@ const ContractPayment = () => {
     }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(pollInterval);
-  }, [payment, paymentStatus, id, navigate]);
-
-  // Countdown timer
-  useEffect(() => {
-    if (!payment) return;
-
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [payment]);
-
-  const formatCountdown = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, [payment, paymentStatus, id, navigate, isTerminationPayment]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -182,7 +197,7 @@ const ContractPayment = () => {
       {/* Header */}
       <div style={{ marginBottom: "2rem", textAlign: "center" }}>
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.5rem" }}>
-          💳 Thanh toán hợp đồng
+          💳 {isTerminationPayment ? "Thanh toán phí kết thúc sớm" : "Thanh toán hợp đồng"}
         </h1>
         <p style={{ color: "#64748b", fontSize: "0.95rem" }}>
           Hợp đồng {contract?.contractNumber}
@@ -211,15 +226,16 @@ const ContractPayment = () => {
             onRetrySuccess={async (result) => {
               // Reload payment info after retry
               try {
-                const updatedPayment = await paymentService.getPaymentById(payment.paymentId);
-                setPayment(updatedPayment);
-                setPaymentStatus(updatedPayment.status);
+                const updatedStatus = await paymentService.getPaymentStatus(payment.paymentId);
+                setPayment(prev => prev ? { ...prev, ...updatedStatus } : prev);
+                setPaymentStatus(updatedStatus.status);
                 
                 // Get new QR code
-                if (updatedPayment.status === 'PENDING' || updatedPayment.status === 'RETRY_PENDING') {
-                  const qr = await paymentService.getPaymentQrInfo(updatedPayment.paymentId);
+                if (updatedStatus.status === 'PENDING' || updatedStatus.status === 'RETRY_PENDING') {
+                  const qr = await paymentService.getPaymentQrInfo(payment.paymentId);
                   setQrInfo(qr);
-                  setCountdown(5 * 60); // Reset countdown
+                } else {
+                  setQrInfo(null);
                 }
               } catch (err) {
                 console.error('Failed to reload payment:', err);
@@ -234,12 +250,16 @@ const ContractPayment = () => {
       )}
 
       {/* Payment Status - Completed */}
+      {paymentStatus === 'COMPLETED' && (
         <div style={{
           padding: "1rem 1.5rem", backgroundColor: "#dcfce7",
           borderRadius: "12px", border: "1px solid #86efac",
           color: "#166534", marginBottom: "2rem", textAlign: "center"
         }}>
-          <strong>✅ Thanh toán thành công!</strong> Đang chuyển đến trang xác nhận...
+          <strong>✅ Thanh toán thành công!</strong>
+          {isTerminationPayment
+            ? " Hệ thống đang cập nhật trạng thái kết thúc sớm hợp đồng..."
+            : " Đang chuyển đến trang xác nhận..."}
         </div>
       )}
 
@@ -280,7 +300,11 @@ const ContractPayment = () => {
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "#64748b" }}>Loại thanh toán:</span>
             <span style={{ fontWeight: 600, color: "#0f172a" }}>
-              {payment?.paymentType === 'DEPOSIT' ? 'Đặt cọc' : 'Thanh toán hàng tháng'}
+              {payment?.paymentType === 'DEPOSIT'
+                ? 'Đặt cọc'
+                : payment?.paymentType === 'PENALTY'
+                  ? 'Phí kết thúc sớm'
+                  : 'Thanh toán hàng tháng'}
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -319,7 +343,7 @@ const ContractPayment = () => {
           </h2>
 
           <img
-            src={qrInfo.qrCodeUrl}
+            src={qrInfo.qrImageUrl || qrInfo.qrCodeUrl}
             alt="QR Code"
             style={{
               width: "300px", height: "300px",
@@ -412,7 +436,11 @@ const ContractPayment = () => {
           <li>Quét mã QR hoặc nhập thông tin chuyển khoản</li>
           <li><strong>Đảm bảo nội dung chuyển khoản chính xác: {payment?.paymentCode}</strong></li>
           <li>Xác nhận và hoàn tất giao dịch</li>
-          <li>Hệ thống sẽ tự động xác nhận sau khi nhận được thanh toán (trong vòng 30 giây)</li>
+          <li>
+            {isTerminationPayment
+              ? 'Hệ thống sẽ tự động xác nhận và kết thúc sớm hợp đồng sau khi nhận được thanh toán.'
+              : 'Hệ thống sẽ tự động xác nhận sau khi nhận được thanh toán (trong vòng 30 giây)'}
+          </li>
         </ol>
       </div>
 

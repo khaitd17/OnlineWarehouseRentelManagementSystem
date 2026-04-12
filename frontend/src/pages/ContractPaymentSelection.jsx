@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
 
@@ -11,6 +11,9 @@ const formatCurrency = (amount) => {
 const ContractPaymentSelection = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const purpose = new URLSearchParams(location.search).get("purpose");
+  const isTerminationPayment = purpose === "termination";
 
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,15 +22,18 @@ const ContractPaymentSelection = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [cashPaymentSuccess, setCashPaymentSuccess] = useState(false);
 
-  // Load contract
   useEffect(() => {
     const loadContract = async () => {
       try {
         const contractData = await rentalService.getContractById(id);
         setContract(contractData);
 
-        // Check if already paid
-        if (contractData.status === 'ACTIVE') {
+        if (isTerminationPayment) {
+          navigate(`/contracts/${id}/payment/online?purpose=termination`, { replace: true });
+          return;
+        }
+
+        if (contractData.status === "ACTIVE") {
           navigate(`/contracts/${id}`);
           return;
         }
@@ -41,13 +47,13 @@ const ContractPaymentSelection = () => {
     };
 
     loadContract();
-  }, [id, navigate]);
+  }, [id, navigate, isTerminationPayment]);
 
   const handleOnlinePayment = () => {
-    navigate(`/contracts/${id}/payment/online`);
+    navigate(`/contracts/${id}/payment/online${isTerminationPayment ? "?purpose=termination" : ""}`);
   };
 
-  const handleCashPayment = async () => {
+  const handleCashPayment = () => {
     setShowConfirmModal(true);
   };
 
@@ -55,14 +61,13 @@ const ContractPaymentSelection = () => {
     try {
       setConfirmingCash(true);
       setShowConfirmModal(false);
-      
-      const result = await paymentService.createCashPayment({
-        contractId: parseInt(id),
+
+      await paymentService.createCashPayment({
+        contractId: parseInt(id, 10),
         amount: contract.depositAmount || contract.monthlyPayment,
-        paymentType: 'DEPOSIT'
+        paymentType: "DEPOSIT"
       });
 
-      console.log("Cash payment created:", result);
       setCashPaymentSuccess(true);
     } catch (err) {
       console.error("Error confirming cash payment:", err);
@@ -103,11 +108,12 @@ const ContractPaymentSelection = () => {
     );
   }
 
-  const paymentAmount = contract?.depositAmount || contract?.monthlyPayment || 0;
+  const paymentAmount = isTerminationPayment
+    ? (contract?.earlyTerminationFee || 0)
+    : (contract?.depositAmount || contract?.monthlyPayment || 0);
 
   return (
     <div style={{ padding: "2rem", maxWidth: "700px", margin: "0 auto" }}>
-      {/* Success Message */}
       {cashPaymentSuccess && (
         <div style={{
           backgroundColor: "#dcfce7",
@@ -142,8 +148,7 @@ const ContractPaymentSelection = () => {
         </div>
       )}
 
-      {/* Confirm Modal */}
-      {showConfirmModal && (
+      {showConfirmModal && !isTerminationPayment && (
         <div style={{
           position: "fixed",
           top: 0,
@@ -208,7 +213,6 @@ const ContractPaymentSelection = () => {
         </div>
       )}
 
-      {/* Header */}
       <div style={{ marginBottom: "2rem" }}>
         <button
           onClick={() => navigate(`/contracts/${id}`)}
@@ -228,7 +232,7 @@ const ContractPaymentSelection = () => {
         >
           ← Quay lại
         </button>
-        
+
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.5rem" }}>
           💳 Chọn phương thức thanh toán
         </h1>
@@ -237,10 +241,8 @@ const ContractPaymentSelection = () => {
         </p>
       </div>
 
-      {/* Payment Methods - Only show if not success */}
       {!cashPaymentSuccess && (
         <>
-          {/* Payment Amount */}
           <div style={{
             backgroundColor: "#f8fafc",
             borderRadius: "12px",
@@ -255,12 +257,11 @@ const ContractPaymentSelection = () => {
               {formatCurrency(paymentAmount)}
             </div>
             <div style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "0.5rem" }}>
-              {contract?.depositAmount ? "Tiền đặt cọc" : "Thanh toán tháng đầu"}
+              {isTerminationPayment ? "Phí kết thúc sớm" : (contract?.depositAmount ? "Tiền đặt cọc" : "Thanh toán tháng đầu")}
             </div>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {/* Online Payment Option */}
             <button
               onClick={handleOnlinePayment}
               style={{
@@ -314,66 +315,66 @@ const ContractPaymentSelection = () => {
               </span>
             </button>
 
-            {/* Cash Payment Option */}
-            <button
-              onClick={handleCashPayment}
-              disabled={confirmingCash}
-              style={{
-                padding: "1.5rem",
-                borderRadius: "12px",
-                border: "2px solid #16a34a",
-                backgroundColor: "#fff",
-                cursor: confirmingCash ? "not-allowed" : "pointer",
-                opacity: confirmingCash ? 0.6 : 1,
-                transition: "all 0.2s",
-                textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem"
-              }}
-              onMouseEnter={(e) => {
-                if (!confirmingCash) {
-                  e.currentTarget.style.backgroundColor = "#f0fdf4";
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(22, 163, 74, 0.2)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#fff";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              <div style={{
-                width: "60px",
-                height: "60px",
-                borderRadius: "12px",
-                backgroundColor: "#dcfce7",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "2rem"
-              }}>
-                💵
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.3rem" }}>
-                  {confirmingCash ? "Đang xác nhận..." : "Thanh toán trực tiếp"}
+            {!isTerminationPayment && (
+              <button
+                onClick={handleCashPayment}
+                disabled={confirmingCash}
+                style={{
+                  padding: "1.5rem",
+                  borderRadius: "12px",
+                  border: "2px solid #16a34a",
+                  backgroundColor: "#fff",
+                  cursor: confirmingCash ? "not-allowed" : "pointer",
+                  opacity: confirmingCash ? 0.6 : 1,
+                  transition: "all 0.2s",
+                  textAlign: "left",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem"
+                }}
+                onMouseEnter={(e) => {
+                  if (!confirmingCash) {
+                    e.currentTarget.style.backgroundColor = "#f0fdf4";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(22, 163, 74, 0.2)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#fff";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                <div style={{
+                  width: "60px",
+                  height: "60px",
+                  borderRadius: "12px",
+                  backgroundColor: "#dcfce7",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "2rem"
+                }}>
+                  💵
                 </div>
-                <div style={{ fontSize: "0.9rem", color: "#64748b" }}>
-                  Đã thanh toán tiền mặt tại kho
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.3rem" }}>
+                    {confirmingCash ? "Đang xác nhận..." : "Thanh toán trực tiếp"}
+                  </div>
+                  <div style={{ fontSize: "0.9rem", color: "#64748b" }}>
+                    Đã thanh toán tiền mặt tại kho
+                  </div>
+                  <div style={{ fontSize: "0.85rem", color: "#16a34a", marginTop: "0.5rem", fontWeight: 600 }}>
+                    💰 Tiền mặt • Cần xác nhận từ chủ kho
+                  </div>
                 </div>
-                <div style={{ fontSize: "0.85rem", color: "#16a34a", marginTop: "0.5rem", fontWeight: 600 }}>
-                  💰 Tiền mặt • Cần xác nhận từ chủ kho
-                </div>
-              </div>
-              <span className="material-symbols-outlined" style={{ fontSize: "24px", color: "#16a34a" }}>
-                check_circle
-              </span>
-            </button>
+                <span className="material-symbols-outlined" style={{ fontSize: "24px", color: "#16a34a" }}>
+                  check_circle
+                </span>
+              </button>
+            )}
           </div>
 
-          {/* Note */}
           <div style={{
             marginTop: "2rem",
             padding: "1rem 1.5rem",
@@ -386,9 +387,10 @@ const ContractPaymentSelection = () => {
           }}>
             <strong>📌 Lưu ý:</strong>
             <ul style={{ marginTop: "0.5rem", marginBottom: 0, paddingLeft: "1.5rem" }}>
-              <li>Thanh toán trực tuyến: Hợp đồng được kích hoạt ngay sau khi thanh toán thành công</li>
-              <li>Thanh toán trực tiếp: Cần chủ kho xác nhận trước khi hợp đồng được kích hoạt</li>
-              <li>Vui lòng thanh toán trong vòng 5 phút để giữ chỗ</li>
+              <li>Vui lòng thanh toán đúng số tiền hiển thị trên màn hình.</li>
+              <li>Nội dung chuyển khoản phải chính xác theo mã thanh toán.</li>
+              <li>Thanh toán online sẽ được hệ thống xác nhận tự động sau khi nhận giao dịch.</li>
+              {!isTerminationPayment && <li>Thanh toán tiền mặt cần chủ kho xác nhận trước khi hệ thống ghi nhận hoàn tất.</li>}
             </ul>
           </div>
         </>

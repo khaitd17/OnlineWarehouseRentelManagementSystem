@@ -114,18 +114,74 @@ const ContractDetail = () => {
   
   // Approval action states
   const [processingApproval, setProcessingApproval] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [terminationFee, setTerminationFee] = useState('');
 
   const reloadContract = () => {
     setRefreshKey(k => k + 1);
   };
 
   // Handle approve termination/close
-  const handleApprove = async () => {
+  const handleApprove = async ({ useModalFee = false } = {}) => {
     if (!window.confirm("Bạn có chắc chắn muốn đồng ý yêu cầu này?")) return;
     setProcessingApproval(true);
     try {
-      await rentalService.approveTermination(contract.contractId);
-      alert("Đã xác nhận thành công!");
+      const fee = useModalFee
+        ? (terminationFee === "" ? null : Number(terminationFee))
+        : null;
+
+      if (useModalFee && fee !== null && (Number.isNaN(fee) || fee < 0)) {
+        alert("Phí kết thúc sớm không hợp lệ");
+        return;
+      }
+
+      const result = await rentalService.approveTermination(contract.contractId, fee);
+
+      const success = result?.success ?? result?.Success;
+      const message = result?.message ?? result?.Message;
+      const isFullyApproved = result?.isFullyApproved ?? result?.IsFullyApproved;
+      const earlyTerminationFee = result?.earlyTerminationFee ?? result?.EarlyTerminationFee ?? 0;
+      const requiresPayment = result?.requiresPayment ?? result?.RequiresPayment;
+
+      if (!success) {
+        alert(message || "Có lỗi xảy ra khi xác nhận");
+        return;
+      }
+
+      if (requiresPayment) {
+        setTerminationFee('');
+        setShowApprovalModal(false);
+
+        if (contract?.isCurrentUserRenter) {
+          alert(message || "Vui lòng thanh toán phí kết thúc sớm để hoàn tất.");
+          navigate(`/contracts/${contract.contractId}/payment/online?purpose=termination`);
+          return;
+        }
+
+        alert(message || "Đã xác nhận thành công. Đang chờ người thuê thanh toán.");
+        reloadContract();
+        return;
+      }
+
+      if (isFullyApproved) {
+        alert(message || "Hợp đồng đã kết thúc thành công!");
+        setTerminationFee('');
+        setShowApprovalModal(false);
+        reloadContract();
+        return;
+      }
+
+      if (contract?.isCurrentUserOwner && useModalFee) {
+        const feeText = Number(earlyTerminationFee) > 0
+          ? `mức phí ${formatCurrency(earlyTerminationFee)}`
+          : "mức phí 0đ";
+        alert(message || `Đã duyệt yêu cầu và gửi ${feeText} cho người thuê.`);
+      } else {
+        alert(message || "Đã xác nhận thành công! Đang chờ bên còn lại xác nhận.");
+      }
+
+      setTerminationFee('');
+      setShowApprovalModal(false);
       reloadContract();
     } catch (err) {
       alert(err.response?.data?.message || "Có lỗi xảy ra khi xác nhận");
@@ -229,22 +285,29 @@ const ContractDetail = () => {
   const canReturn = ["ACTIVE", "COMPLETED"].includes(contract?.status);
 
   // Check if current user can approve/reject termination or close request
-  const isPendingApproval = ["PENDING_TERMINATION", "PENDING_CLOSE"].includes(contract?.status);
+  const isPendingTermination = contract?.status === "PENDING_TERMINATION";
+  const isPendingClose = contract?.status === "PENDING_CLOSE";
+  const isPendingApproval = isPendingTermination || isPendingClose;
   const isRequester = (contract?.terminationRequestedBy === "RENTER" && contract?.isCurrentUserRenter) ||
                       (contract?.terminationRequestedBy === "OWNER" && contract?.isCurrentUserOwner);
-  const canApproveOrReject = isPendingApproval && !isRequester;
-
-  // Debug log
-  if (isPendingApproval) {
-    console.log('Pending Approval Debug:', {
-      status: contract?.status,
-      terminationRequestedBy: contract?.terminationRequestedBy,
-      isCurrentUserRenter: contract?.isCurrentUserRenter,
-      isCurrentUserOwner: contract?.isCurrentUserOwner,
-      isRequester,
-      canApproveOrReject
-    });
-  }
+  const isRenterInitiatedTermination = isPendingTermination && contract?.terminationRequestedBy === "RENTER";
+  const hasCurrentUserApproved = (contract?.isCurrentUserOwner && contract?.ownerApprovedTermination) ||
+                                 (contract?.isCurrentUserRenter && contract?.renterApprovedTermination);
+  const canOwnerReviewRenterTermination = isRenterInitiatedTermination && contract?.isCurrentUserOwner && !contract?.ownerApprovedTermination;
+  const canRenterRespondToOwnerReview = isRenterInitiatedTermination && contract?.isCurrentUserRenter && contract?.ownerApprovedTermination && !contract?.renterApprovedTermination;
+  const canPayTerminationFee = isPendingTermination &&
+                               contract?.isCurrentUserRenter &&
+                               contract?.ownerApprovedTermination &&
+                               contract?.renterApprovedTermination &&
+                               Number(contract?.earlyTerminationFee || 0) > 0;
+  const canStandardApproveOrReject = isPendingApproval &&
+                                     !isRequester &&
+                                     !hasCurrentUserApproved &&
+                                     !canOwnerReviewRenterTermination &&
+                                     !canRenterRespondToOwnerReview;
+  const canApproveOrReject = canOwnerReviewRenterTermination || canRenterRespondToOwnerReview || canStandardApproveOrReject;
+  const waitingForCounterparty = isPendingApproval && !isRequester && hasCurrentUserApproved && !canPayTerminationFee;
+  const shouldShowApprovalModal = canOwnerReviewRenterTermination;
 
   const handleDeclineContract = async () => {
     if (!declineReason.trim()) {
@@ -530,12 +593,23 @@ const ContractDetail = () => {
           <p style={{ color: "#92400e", fontSize: "0.9rem", marginBottom: "1rem" }}>
             {contract.terminationRequestedBy === "RENTER" ? "Người thuê" : "Chủ kho"} đã gửi yêu cầu {contract.status === "PENDING_TERMINATION" ? "kết thúc sớm" : "kết thúc"} hợp đồng.
             {contract.terminationReason && <><br/><strong>Lý do:</strong> {contract.terminationReason}</>}
-            {contract.earlyTerminationFee && <><br/><strong>Phí kết thúc sớm:</strong> {formatCurrency(contract.earlyTerminationFee)}</>}
+            {isRenterInitiatedTermination && contract.ownerApprovedTermination && (
+              <>
+                <br />
+                <strong>Phí kết thúc sớm được đề xuất:</strong> {formatCurrency(contract.earlyTerminationFee ?? 0)}
+              </>
+            )}
           </p>
           {canApproveOrReject && (
             <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
               <button
-                onClick={handleApprove}
+                onClick={() => {
+                  if (shouldShowApprovalModal) {
+                    setShowApprovalModal(true);
+                  } else {
+                    handleApprove();
+                  }
+                }}
                 disabled={processingApproval}
                 style={{
                   padding: "0.7rem 1.2rem",
@@ -553,7 +627,11 @@ const ContractDetail = () => {
                 }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>check_circle</span>
-                Đồng ý
+                {canOwnerReviewRenterTermination
+                  ? "Duyệt và đặt phí"
+                  : canRenterRespondToOwnerReview && (contract.earlyTerminationFee ?? 0) > 0
+                    ? "Đồng ý và thanh toán"
+                    : "Đồng ý"}
               </button>
               <button
                 onClick={handleReject}
@@ -574,13 +652,43 @@ const ContractDetail = () => {
                 }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>cancel</span>
-                Từ chối
+                {canRenterRespondToOwnerReview ? "Không đồng ý mức phí" : "Từ chối"}
               </button>
             </div>
           )}
-          {isRequester && (
+          {canPayTerminationFee && (
+            <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
+              <button
+                onClick={() => navigate(`/contracts/${contract.contractId}/payment/online?purpose=termination`)}
+                style={{
+                  padding: "0.7rem 1.2rem",
+                  borderRadius: "10px",
+                  border: "none",
+                  backgroundColor: "#16a34a",
+                  color: "#fff",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontSize: "0.9rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>payments</span>
+                Thanh toán phí kết thúc sớm
+              </button>
+            </div>
+          )}
+          {isRequester && !canRenterRespondToOwnerReview && (
             <p style={{ color: "#92400e", fontSize: "0.85rem", fontStyle: "italic" }}>
-              Bạn đã gửi yêu cầu này. Đang chờ bên còn lại xác nhận.
+              {isRenterInitiatedTermination && !contract.ownerApprovedTermination
+                ? "Bạn đã gửi yêu cầu này. Đang chờ chủ kho duyệt và đề xuất mức phí."
+                : "Bạn đã gửi yêu cầu này. Đang chờ bên còn lại xác nhận."}
+            </p>
+          )}
+          {waitingForCounterparty && (
+            <p style={{ color: "#92400e", fontSize: "0.85rem", fontStyle: "italic" }}>
+              Bạn đã xác nhận yêu cầu này. Đang chờ bên còn lại hoàn tất bước tiếp theo.
             </p>
           )}
         </div>
@@ -849,7 +957,117 @@ const ContractDetail = () => {
         />
       )}
 
-      {/* Extension Modal */}
+      {/* Approval Modal - Fee Input for Owner Approval */}
+      {showApprovalModal && shouldShowApprovalModal && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+        }}>
+          <div style={{
+            backgroundColor: "#fff",
+            borderRadius: "16px",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+            maxWidth: "450px",
+            width: "90%",
+            padding: "2rem",
+          }}>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#0f172a", marginBottom: "1rem" }}>
+              Xác nhận yêu cầu kết thúc sớm
+            </h2>
+
+            <div style={{
+              backgroundColor: "#f8fafc",
+              borderRadius: "10px",
+              padding: "1rem",
+              marginBottom: "1.5rem",
+              border: "1px solid #f1f5f9",
+            }}>
+              <div style={{ marginBottom: "0.5rem" }}>
+                <span style={{ color: "#94a3b8" }}>Lý do:</span>
+                <div style={{ fontWeight: 500, color: "#0f172a" }}>{contract.terminationReason}</div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "1.5rem" }}>
+              <label style={{
+                fontSize: "0.88rem",
+                fontWeight: 600,
+                color: "#64748b",
+                marginBottom: "0.5rem",
+                display: "block",
+              }}>
+                Phí kết thúc sớm (VND) - Tùy chọn
+              </label>
+              <input
+                type="number"
+                value={terminationFee}
+                onChange={(e) => setTerminationFee(e.target.value)}
+                placeholder="0"
+                min="0"
+                style={{
+                  width: "100%",
+                  padding: "0.8rem",
+                  borderRadius: "10px",
+                  border: "1px solid #e2e8f0",
+                  fontSize: "0.9rem",
+                  boxSizing: "border-box",
+                }}
+              />
+              <p style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: "0.3rem" }}>
+                Nhập 0 hoặc để trống nếu không thu phí
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.8rem", justifyContent: "flex-end" }}>
+              <button
+                onClick={() => {
+                  setShowApprovalModal(false);
+                  setTerminationFee('');
+                }}
+                disabled={processingApproval}
+                style={{
+                  padding: "0.7rem 1.5rem",
+                  borderRadius: "10px",
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#fff",
+                  color: "#64748b",
+                  fontWeight: 600,
+                  cursor: processingApproval ? "not-allowed" : "pointer",
+                  opacity: processingApproval ? 0.6 : 1,
+                }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => handleApprove({ useModalFee: true })}
+                disabled={processingApproval}
+                style={{
+                  padding: "0.7rem 1.5rem",
+                  borderRadius: "10px",
+                  border: "none",
+                  backgroundColor: "#16a34a",
+                  color: "#fff",
+                  fontWeight: 600,
+                  cursor: processingApproval ? "not-allowed" : "pointer",
+                  opacity: processingApproval ? 0.6 : 1,
+                }}
+              >
+                {processingApproval ? "Đang xử lý..." : "Xác nhận"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terminate Modal */}
       {showExtensionModal && (
         <ExtensionRequestModal
           contract={contract}

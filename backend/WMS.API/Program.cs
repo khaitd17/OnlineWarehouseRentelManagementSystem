@@ -111,7 +111,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, W
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionRepository, WMS.Infrastructure.Repositories.SubscriptionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionPackageRepository, WMS.Infrastructure.Repositories.SubscriptionPackageRepository>();
 
-// Services
+// Services   
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();

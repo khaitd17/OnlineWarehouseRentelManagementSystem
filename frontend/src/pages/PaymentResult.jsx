@@ -10,6 +10,8 @@ const PaymentResult = () => {
   const contractId = searchParams.get('contractId');
   const paymentId = searchParams.get('paymentId');
   const message = searchParams.get('message');
+  const purpose = searchParams.get('purpose');
+  const isTerminationPayment = purpose === 'termination';
 
   useEffect(() => {
     // Play success/error sound (optional)
@@ -48,7 +50,7 @@ const PaymentResult = () => {
             color: "#166534",
             marginBottom: "1rem"
           }}>
-            Thanh toán thành công!
+            {isTerminationPayment ? "Thanh toán phí kết thúc sớm thành công!" : "Thanh toán thành công!"}
           </h1>
 
           <p style={{
@@ -57,7 +59,9 @@ const PaymentResult = () => {
             marginBottom: "2rem",
             lineHeight: 1.6
           }}>
-            {message || "Hợp đồng của bạn đã được kích hoạt thành công. Bạn có thể bắt đầu sử dụng kho ngay bây giờ."}
+            {message || (isTerminationPayment
+              ? "Yêu cầu kết thúc sớm đã hoàn tất và trạng thái hợp đồng đã được cập nhật."
+              : "Hợp đồng của bạn đã được kích hoạt thành công. Bạn có thể bắt đầu sử dụng kho ngay bây giờ.")}
           </p>
 
           <div style={{
@@ -81,9 +85,19 @@ const PaymentResult = () => {
               lineHeight: 1.8,
               color: "#166534"
             }}>
-              <li>Kiểm tra email để xem chi tiết hợp đồng</li>
-              <li>Liên hệ với chủ kho để nhận chìa khóa</li>
-              <li>Bắt đầu sử dụng kho theo thời gian đã thỏa thuận</li>
+              {isTerminationPayment ? (
+                <>
+                  <li>Kiểm tra lại trạng thái hợp đồng ở trang chi tiết</li>
+                  <li>Lưu lại biên nhận thanh toán để đối soát khi cần</li>
+                  <li>Trao đổi với chủ kho về thủ tục bàn giao cuối cùng (nếu có)</li>
+                </>
+              ) : (
+                <>
+                  <li>Kiểm tra email để xem chi tiết hợp đồng</li>
+                  <li>Liên hệ với chủ kho để nhận chìa khóa</li>
+                  <li>Bắt đầu sử dụng kho theo thời gian đã thỏa thuận</li>
+                </>
+              )}
             </ul>
           </div>
 
@@ -212,9 +226,9 @@ const PaymentResult = () => {
               <PaymentRetryButton
                 paymentId={parseInt(paymentId)}
                 onRetrySuccess={(result) => {
-                  // Redirect to payment page with new QR code
-                  if (result.payment && contractId) {
-                    navigate(`/contracts/${contractId}/payment`);
+                  // Redirect to online payment page with refreshed QR flow
+                  if (contractId) {
+                    navigate(`/contracts/${contractId}/payment/online${isTerminationPayment ? '?purpose=termination' : ''}`);
                   }
                 }}
                 onRetryError={(error) => {
@@ -226,7 +240,7 @@ const PaymentResult = () => {
             {/* Manual retry if no paymentId */}
             {!paymentId && contractId && (
               <button
-                onClick={() => navigate(`/contracts/${contractId}/payment`)}
+                onClick={() => navigate(`/contracts/${contractId}/payment${isTerminationPayment ? '?purpose=termination' : ''}`)}
                 style={{
                   padding: "0.875rem 1.75rem",
                   borderRadius: "10px",

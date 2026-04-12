@@ -79,21 +79,24 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
                     };
                 }
 
-                // Request termination (2-party approval flow)
-                contract.RequestTerminationEarly(requestedBy, request.TerminationReason, request.EarlyTerminationFee);
-
-                await _contractRepository.UpdateAsync(contract);
+                // Request termination using direct DB update (ensure status is set correctly)
+                // This is more reliable than UpdateAsync which uses reflection
+                await _contractRepository.RequestTerminationAsync(request.ContractId, requestedBy, request.TerminationReason, fee: null);
 
                 // Determine the other party to notify
                 int notifyUserId = isRenter ? warehouse.OwnerId : contract.RenterId;
                 var requesterType = isRenter ? "Người thuê" : "Chủ kho";
 
-                // Gửi thông báo cho bên còn lại
+                // Gửi thông báo cho chủ kho để review
+                var notifyMessage = isRenter 
+                    ? $"Người thuê yêu cầu kết thúc sớm hợp đồng {contract.ContractNumber}. Lý do: {request.TerminationReason}. Vui lòng xác nhận hoặc từ chối."
+                    : $"Chủ kho yêu cầu kết thúc sớm hợp đồng {contract.ContractNumber}. Lý do: {request.TerminationReason}. Vui lòng xác nhận hoặc từ chối.";
+
                 var notification = new WMS.Domain.Entities.Notification
                 {
                     UserId = notifyUserId,
                     Title = "Yêu cầu kết thúc hợp đồng sớm",
-                    Message = $"{requesterType} yêu cầu kết thúc sớm hợp đồng {contract.ContractNumber}. Lý do: {request.TerminationReason}. Phí kết thúc sớm: {request.EarlyTerminationFee:N0}đ. Vui lòng xác nhận hoặc từ chối.",
+                    Message = notifyMessage,
                     Type = "termination_request",
                     ReferenceType = "Contract",
                     ReferenceId = contract.ContractId,
@@ -106,10 +109,11 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
                 return new TerminateEarlyResponse
                 {
                     Success = true,
-                    Message = "Yêu cầu kết thúc sớm đã được gửi. Đang chờ bên còn lại xác nhận.",
+                    Message = isRenter
+                        ? "Yêu cầu kết thúc sớm đã được gửi. Đang chờ chủ kho duyệt mức phí."
+                        : "Yêu cầu kết thúc sớm đã được gửi. Đang chờ người thuê xác nhận.",
                     ContractId = request.ContractId,
-                    Status = contract.Status,
-                    EarlyTerminationFee = request.EarlyTerminationFee,
+                    Status = RentalContractStatus.PendingTermination,
                     PendingApproval = true
                 };
             }

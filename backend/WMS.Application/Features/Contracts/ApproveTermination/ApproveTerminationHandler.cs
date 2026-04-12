@@ -82,12 +82,34 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
                 // Remember the original status to determine notification type
                 bool isPendingClose = contract.Status == RentalContractStatus.PendingClose;
 
-                // Use direct DB update to bypass reflection issues
-                await _contractRepository.ApproveTerminationAsync(request.ContractId, approvedBy);
+                // In renter-initiated early termination, renter must wait for owner review first.
+                if (contract.Status == RentalContractStatus.PendingTermination &&
+                    contract.TerminationRequestedBy == "RENTER" &&
+                    isRenter &&
+                    !contract.OwnerApprovedTermination)
+                {
+                    return new ApproveTerminationResponse
+                    {
+                        Success = false,
+                        Message = "Yêu cầu cần được chủ kho duyệt trước khi bạn xác nhận.",
+                        ContractId = request.ContractId,
+                        Status = contract.Status,
+                        IsFullyApproved = false,
+                        EarlyTerminationFee = contract.EarlyTerminationFee,
+                        RequiresPayment = false,
+                        PaymentAmount = 0
+                    };
+                }
+
+                // Approve termination with optional fee (only owner can set fee)
+                await _contractRepository.ApproveTerminationAsync(
+                    request.ContractId,
+                    approvedBy,
+                    isOwner ? request.EarlyTerminationFee : null);
                 
                 // Re-fetch to get updated status
-                contract = await _contractRepository.GetByIdAsync(request.ContractId);
-                if (contract == null)
+                var updatedContract = await _contractRepository.GetByIdAsync(request.ContractId);
+                if (updatedContract == null)
                 {
                     return new ApproveTerminationResponse
                     {
@@ -97,41 +119,81 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
                     };
                 }
 
-                bool isFullyApproved = contract.Status == RentalContractStatus.Terminated || 
-                                       contract.Status == RentalContractStatus.Closed;
+                bool bothApproved = updatedContract.RenterApprovedTermination && updatedContract.OwnerApprovedTermination;
+                bool hasPositiveTerminationFee = (updatedContract.EarlyTerminationFee ?? 0) > 0;
+                bool requiresPayment = updatedContract.Status == RentalContractStatus.PendingTermination &&
+                                       bothApproved &&
+                                       hasPositiveTerminationFee;
+                bool isFullyApproved = updatedContract.Status == RentalContractStatus.Terminated ||
+                                       updatedContract.Status == RentalContractStatus.Closed;
 
                 // Notify the other party
-                int notifyUserId = isRenter ? warehouse.OwnerId : contract.RenterId;
+                int notifyUserId = isRenter ? warehouse.OwnerId : updatedContract.RenterId;
                 var approverType = isRenter ? "Người thuê" : "Chủ kho";
                 var actionType = isPendingClose ? "kết thúc" : "kết thúc sớm";
+
+                string feeMessage = updatedContract.EarlyTerminationFee.HasValue
+                    ? $" Phí kết thúc sớm: {updatedContract.EarlyTerminationFee:N0}đ."
+                    : "";
+
+                string notificationTitle;
+                string notificationMessage;
+                string notificationType;
+
+                if (isFullyApproved)
+                {
+                    notificationTitle = $"Hợp đồng đã được {actionType}";
+                    notificationMessage = $"Hợp đồng {updatedContract.ContractNumber} đã được cả hai bên đồng ý {actionType}.{feeMessage}";
+                    notificationType = "contract_terminated";
+                }
+                else if (requiresPayment)
+                {
+                    notificationTitle = "Đã xác nhận kết thúc sớm, chờ thanh toán";
+                    notificationMessage = $"{approverType} đã xác nhận kết thúc sớm hợp đồng {updatedContract.ContractNumber}.{feeMessage} Đang chờ người thuê thanh toán để hoàn tất.";
+                    notificationType = "termination_approved";
+                }
+                else
+                {
+                    notificationTitle = $"Đã chấp nhận yêu cầu {actionType}";
+                    notificationMessage = $"{approverType} đã chấp nhận yêu cầu {actionType} hợp đồng {updatedContract.ContractNumber}.{feeMessage}";
+                    notificationType = "termination_approved";
+                }
 
                 var notification = new WMS.Domain.Entities.Notification
                 {
                     UserId = notifyUserId,
-                    Title = isFullyApproved 
-                        ? $"Hợp đồng đã được {actionType}" 
-                        : $"Đã chấp nhận yêu cầu {actionType}",
-                    Message = isFullyApproved
-                        ? $"Hợp đồng {contract.ContractNumber} đã được cả hai bên đồng ý {actionType}."
-                        : $"{approverType} đã chấp nhận yêu cầu {actionType} hợp đồng {contract.ContractNumber}.",
-                    Type = isFullyApproved ? "contract_terminated" : "termination_approved",
+                    Title = notificationTitle,
+                    Message = notificationMessage,
+                    Type = notificationType,
                     ReferenceType = "Contract",
-                    ReferenceId = contract.ContractId,
+                    ReferenceId = updatedContract.ContractId,
                     CreatedAt = DateTime.UtcNow
                 };
 
                 await _notificationRepository.AddAsync(notification);
                 await _notificationSender.SendToUserAsync(notifyUserId, notification);
 
+                var responseMessage = isFullyApproved
+                    ? $"Hợp đồng đã được {actionType} thành công."
+                    : requiresPayment
+                        ? "Hai bên đã xác nhận. Vui lòng thanh toán phí kết thúc sớm để hoàn tất."
+                        : "Bạn đã chấp nhận yêu cầu. Đang chờ bên còn lại xác nhận.";
+
+                if (!isOwner && contract.Status == RentalContractStatus.PendingTermination && contract.TerminationRequestedBy == "RENTER" && !requiresPayment && !isFullyApproved)
+                {
+                    responseMessage = "Bạn đã xác nhận yêu cầu. Đang chờ chủ kho xem xét.";
+                }
+
                 return new ApproveTerminationResponse
                 {
                     Success = true,
-                    Message = isFullyApproved 
-                        ? $"Hợp đồng đã được {actionType} thành công." 
-                        : "Bạn đã chấp nhận yêu cầu. Đang chờ bên còn lại xác nhận.",
+                    Message = responseMessage,
                     ContractId = request.ContractId,
-                    Status = contract.Status.ToString(),
-                    IsFullyApproved = isFullyApproved
+                    Status = updatedContract.Status,
+                    IsFullyApproved = isFullyApproved,
+                    EarlyTerminationFee = updatedContract.EarlyTerminationFee,
+                    RequiresPayment = requiresPayment,
+                    PaymentAmount = requiresPayment ? (updatedContract.EarlyTerminationFee ?? 0) : 0
                 };
             }
             catch (Exception ex)

@@ -90,9 +90,17 @@ public class AuthController : ControllerBase
             }).ToList();
 
             // Include warehouses where the user has an active/pending rental contract (RENTER role)
-            // Use _db.Contracts which maps to "contracts" table where actual data is stored
+            // Only add RENTER role if user has active contracts
+            // Exclude terminated and cancelled contracts
             var activeContracts = await _db.Contracts
-                .Where(c => c.RenterId == userId && (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT"))
+                .Where(c => c.RenterId == userId && 
+                           (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT") &&
+                           c.Status != "TERMINATED" &&
+                           c.Status != "CANCELLED_BY_USER" &&
+                           c.Status != "CLOSED" &&
+                           c.Status != "COMPLETED" &&
+                           c.Status != "CANCELLED" &&
+                           c.Status != "CANCELLED_BY_OWNER")
                 .Include(c => c.Warehouse)
                 .ToListAsync();
 

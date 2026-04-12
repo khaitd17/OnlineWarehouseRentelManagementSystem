@@ -32,7 +32,6 @@ const formatCurrency = (amount) => {
 
 const TerminateContractModal = ({ contract, onClose, onSuccess }) => {
   const [reason, setReason] = useState("");
-  const [earlyTerminationFee, setEarlyTerminationFee] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,8 +46,7 @@ const TerminateContractModal = ({ contract, onClose, onSuccess }) => {
       setError("");
       await rentalService.terminateContractEarly(
         contract.contractId,
-        reason,
-        earlyTerminationFee ? parseFloat(earlyTerminationFee) : null
+        reason
       );
       onSuccess?.();
       onClose();
@@ -153,35 +151,6 @@ const TerminateContractModal = ({ contract, onClose, onSuccess }) => {
               boxSizing: "border-box",
               resize: "vertical",
               lineHeight: 1.6,
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: "1.5rem" }}>
-          <label
-            style={{
-              fontSize: "0.88rem",
-              fontWeight: 600,
-              color: "#64748b",
-              marginBottom: "0.5rem",
-              display: "block",
-            }}
-          >
-            Phí kết thúc sớm (VND) - Tùy chọn
-          </label>
-          <input
-            type="number"
-            value={earlyTerminationFee}
-            onChange={(e) => setEarlyTerminationFee(e.target.value)}
-            placeholder="0"
-            min="0"
-            style={{
-              width: "100%",
-              padding: "0.8rem",
-              borderRadius: "10px",
-              border: "1px solid #e2e8f0",
-              fontSize: "0.9rem",
-              boxSizing: "border-box",
             }}
           />
         </div>

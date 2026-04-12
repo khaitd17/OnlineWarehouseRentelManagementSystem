@@ -41,10 +41,6 @@ namespace WMS.Application.Features.Contracts.Validators
                 .MinimumLength(10)
                 .WithMessage("Termination reason must be at least 10 characters");
 
-            RuleFor(x => x.EarlyTerminationFee)
-                .GreaterThanOrEqualTo(0)
-                .WithMessage("Early termination fee must be non-negative");
-
             RuleFor(x => x.UserId)
                 .GreaterThan(0)
                 .WithMessage("User ID must be greater than 0");

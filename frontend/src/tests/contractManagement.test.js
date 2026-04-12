@@ -176,4 +176,13 @@ console.log('🔧 Total Utility Functions: 15+');
 console.log('📋 All contract statuses supported');
 console.log('✨ Ready for production use!');
 
+describe('Contract Management Smoke Tests', () => {
+  test('core services should be available', () => {
+    expect(rentalService).toBeDefined();
+    expect(contractManagementService).toBeDefined();
+    expect(typeof rentalService.getContractStatusDisplay).toBe('function');
+    expect(typeof contractManagementService.generateContractSummary).toBe('function');
+  });
+});
+
 export default {};

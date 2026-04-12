@@ -9,7 +9,12 @@ const paymentService = {
    * @returns {Promise} payment info với paymentId, paymentCode, status
    */
   createPayment: async (data) => {
-    const response = await axiosClient.post("/payments/create", data);
+    const payload = { ...data };
+    if (payload.amountOverride == null && payload.amount != null) {
+      payload.amountOverride = payload.amount;
+    }
+
+    const response = await axiosClient.post("/payments/create", payload);
     return response.data;
   },
 
@@ -49,7 +54,12 @@ const paymentService = {
    * @returns {Promise} payment info
    */
   createCashPayment: async (data) => {
-    const response = await axiosClient.post("/payments/cash", data);
+    const payload = { ...data };
+    if (payload.amountOverride == null && payload.amount != null) {
+      payload.amountOverride = payload.amount;
+    }
+
+    const response = await axiosClient.post("/payments/cash", payload);
     return response.data;
   },
 

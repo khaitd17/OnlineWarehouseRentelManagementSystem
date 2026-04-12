@@ -6,7 +6,6 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
         public string Message { get; set; } = string.Empty;
         public int ContractId { get; set; }
         public string Status { get; set; } = string.Empty;
-        public decimal? EarlyTerminationFee { get; set; }
         public bool PendingApproval { get; set; }
     }
 }

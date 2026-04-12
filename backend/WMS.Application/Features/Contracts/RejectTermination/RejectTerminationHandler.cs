@@ -84,13 +84,11 @@ namespace WMS.Application.Features.Contracts.RejectTermination
                 // Use direct DB update to bypass reflection issues
                 await _contractRepository.RejectTerminationAsync(request.ContractId);
 
-                // Notify the requester (the other party) that their request was rejected
-                // Find who requested it
-                int notifyUserId = contract.RenterId; // default
-                if (contract.TerminationRequestedBy == "RENTER")
-                    notifyUserId = contract.RenterId;
-                else if (contract.TerminationRequestedBy == "OWNER")
-                    notifyUserId = warehouse.OwnerId;
+                // Re-load to get final status after rejection rollback
+                var updatedContract = await _contractRepository.GetByIdAsync(request.ContractId) ?? contract;
+
+                // Notify the opposite party (counterparty in this negotiation step).
+                int notifyUserId = isRenter ? warehouse.OwnerId : contract.RenterId;
 
                 var rejecterType = isRenter ? "Người thuê" : "Chủ kho";
                 var actionType = isPendingClose ? "kết thúc" : "kết thúc sớm";
@@ -115,7 +113,7 @@ namespace WMS.Application.Features.Contracts.RejectTermination
                     Success = true,
                     Message = $"Bạn đã từ chối yêu cầu {actionType}. Hợp đồng tiếp tục có hiệu lực.",
                     ContractId = request.ContractId,
-                    Status = contract.Status.ToString()
+                    Status = updatedContract.Status
                 };
             }
             catch (Exception ex)

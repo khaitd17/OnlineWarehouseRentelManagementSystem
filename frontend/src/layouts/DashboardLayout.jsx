@@ -170,6 +170,11 @@ const DashboardLayout = () => {
         } else {
           navigate(`/sign-contract/${notification.referenceId}`);
         }
+      } else if (notification.type === 'contract_terminated' || 
+                 notification.type === 'termination_approved' ||
+                 notification.type === 'termination_request') {
+        // Navigate to contract detail for termination-related notifications
+        navigate(`/contracts/${notification.referenceId}`);
       }
     } else if (notification.type === 'CONTRACT_REJECTED') {
       navigate('/my-rental-requests');

@@ -30,6 +30,7 @@ public interface IRentalContractRepository
     // Direct DB operations for termination (bypass domain model reflection issues)
     Task RequestTerminationAsync(int contractId, string requestedBy, string? reason = null, decimal? fee = null);
     Task RequestCloseAsync(int contractId, string requestedBy);
-    Task ApproveTerminationAsync(int contractId, string approvedBy);
+    Task ApproveTerminationAsync(int contractId, string approvedBy, decimal? earlyTerminationFee = null);
     Task RejectTerminationAsync(int contractId);
+    Task FinalizeTerminationAfterPaymentAsync(int contractId);
 }
