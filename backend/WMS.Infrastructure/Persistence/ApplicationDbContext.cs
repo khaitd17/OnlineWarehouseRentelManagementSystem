@@ -690,7 +690,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
             entity.Property(e => e.Description).HasColumnName("description").IsRequired(false);
             entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
-            entity.Property(e => e.IsManual).HasColumnName("is_manual").HasDefaultValue(false);
+            entity.Ignore(e => e.IsManual);
             entity.Property(e => e.SkillId).HasColumnName("skill_id").IsRequired(false);
             entity.HasOne(e => e.Skill).WithMany().HasForeignKey(e => e.SkillId).IsRequired(false);
         });

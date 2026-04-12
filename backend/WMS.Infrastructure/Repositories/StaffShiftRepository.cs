@@ -103,8 +103,7 @@ public class StaffShiftRepository : IStaffShiftRepository
             .Where(t => t.WarehouseId == warehouseId
                      && t.ScheduledAt.HasValue
                      && DateOnly.FromDateTime(t.ScheduledAt.Value) >= from
-                     && DateOnly.FromDateTime(t.ScheduledAt.Value) <= to
-                     && t.TaskType.IsManual)
+                     && DateOnly.FromDateTime(t.ScheduledAt.Value) <= to)
             .Include(t => t.TaskType)
             .ToListAsync(ct);
 
@@ -194,8 +193,7 @@ public class StaffShiftRepository : IStaffShiftRepository
             .Where(t => t.WarehouseId == warehouseId
                      && t.ScheduledAt.HasValue
                      && DateOnly.FromDateTime(t.ScheduledAt.Value) >= from
-                     && DateOnly.FromDateTime(t.ScheduledAt.Value) <= to
-                     && t.TaskType.IsManual)
+                     && DateOnly.FromDateTime(t.ScheduledAt.Value) <= to)
             .Include(t => t.TaskType)
             .ToListAsync(ct);
 
