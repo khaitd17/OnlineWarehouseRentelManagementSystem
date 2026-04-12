@@ -202,7 +202,9 @@ const rentalService = {
 
   // Approve termination or close request
   approveTermination: async (contractId, earlyTerminationFee) => {
-    const payload = earlyTerminationFee ? { earlyTerminationFee } : {};
+    const payload = earlyTerminationFee !== undefined && earlyTerminationFee !== null
+      ? { earlyTerminationFee }
+      : {};
     const response = await axiosClient.post(`/contracts/${contractId}/approve-termination`, payload);
     return response.data;
   },

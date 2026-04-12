@@ -35,13 +35,45 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
         if (contract == null)
             throw new InvalidOperationException($"Contract {request.ContractId} not found");
 
-        // Calculate amount based on payment type
-        decimal amount = request.AmountOverride ?? request.PaymentType switch
+        var requestedAmount = request.AmountOverride ?? request.Amount;
+
+        // Calculate contract-based amount with safe fallback when deposit/monthly values are missing or zero.
+        var defaultDepositAmount = contract.DepositAmount.GetValueOrDefault();
+        if (defaultDepositAmount <= 0)
+            defaultDepositAmount = contract.MonthlyPayment;
+
+        var defaultMonthlyAmount = contract.MonthlyPayment > 0
+            ? contract.MonthlyPayment
+            : defaultDepositAmount;
+
+        var defaultPenaltyAmount = contract.EarlyTerminationFee.GetValueOrDefault();
+
+        if (request.PaymentType == PaymentType.Penalty)
         {
-            PaymentType.Deposit => contract.DepositAmount ?? contract.MonthlyPayment,
-            PaymentType.Monthly => contract.MonthlyPayment,
-            _ => contract.MonthlyPayment
+            if (contract.Status != RentalContractStatus.PendingTermination)
+                throw new InvalidOperationException("Only pending termination contracts can create penalty payments.");
+
+            if (!contract.OwnerApprovedTermination || !contract.RenterApprovedTermination)
+                throw new InvalidOperationException("Both parties must approve early termination before creating penalty payment.");
+
+            if (defaultPenaltyAmount <= 0)
+                throw new InvalidOperationException("Early termination fee is not configured or invalid.");
+        }
+
+        var calculatedAmount = request.PaymentType switch
+        {
+            PaymentType.Deposit => defaultDepositAmount,
+            PaymentType.Monthly => defaultMonthlyAmount,
+            PaymentType.Penalty => defaultPenaltyAmount,
+            _ => defaultMonthlyAmount
         };
+
+        var amount = requestedAmount.HasValue && requestedAmount.Value > 0
+            ? requestedAmount.Value
+            : calculatedAmount;
+
+        if (amount <= 0)
+            throw new InvalidOperationException("Payment amount must be greater than 0. Please check contract pricing information.");
 
         // Check if there's already a pending payment for this contract
         var existingPendingPayment = await _paymentRepo.GetPendingPaymentByContractAsync(
@@ -50,6 +82,14 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
 
         if (existingPendingPayment != null)
         {
+            // Recover from stale/invalid pending records (e.g., old amount = 0) by regenerating payment.
+            if (existingPendingPayment.Amount <= 0)
+            {
+                existingPendingPayment.MarkFailed();
+                await _paymentRepo.UpdateAsync(existingPendingPayment);
+            }
+            else
+            {
             // Return existing pending payment
             return new CreatePaymentResult
             {
@@ -59,6 +99,7 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
                 Status = existingPendingPayment.Status,
                 ExpiredAt = existingPendingPayment.ExpiredAt
             };
+            }
         }
 
         // Create new payment

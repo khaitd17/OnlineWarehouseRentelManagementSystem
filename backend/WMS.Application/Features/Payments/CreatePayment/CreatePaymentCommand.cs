@@ -6,6 +6,8 @@ public class CreatePaymentCommand : IRequest<CreatePaymentResult>
 {
     public int ContractId { get; set; }
     public string PaymentType { get; set; } = "DEPOSIT";
+    // Backward-compatible alias for legacy frontend payloads using { amount }.
+    public decimal? Amount { get; set; }
     public decimal? AmountOverride { get; set; }
     public string PaymentMethod { get; set; } = "BANK_TRANSFER"; // BANK_TRANSFER, CASH
     public string? Status { get; set; } // null = use default (PENDING), or PENDING_CONFIRMATION for cash

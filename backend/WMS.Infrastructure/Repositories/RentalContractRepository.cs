@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
+using WMS.Domain.Enums;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 using SystemTask = System.Threading.Tasks.Task;
@@ -263,11 +264,20 @@ public class RentalContractRepository : IRentalContractRepository
         dbContract.TerminationRequestedAt = DateTime.UtcNow;
         dbContract.TerminationReason = reason;
         dbContract.EarlyTerminationFee = fee;
-        
-        if (requestedBy == "RENTER")
-            dbContract.RenterApprovedTermination = true;
-        else
+
+        // Workflow:
+        // - Renter requests early termination -> owner reviews and sets fee, renter confirms later.
+        // - Owner requests termination -> owner intent is considered pre-approved.
+        if (requestedBy == "OWNER")
+        {
             dbContract.OwnerApprovedTermination = true;
+            dbContract.RenterApprovedTermination = false;
+        }
+        else
+        {
+            dbContract.RenterApprovedTermination = false;
+            dbContract.OwnerApprovedTermination = false;
+        }
         
         dbContract.UpdatedAt = DateTime.UtcNow;
 
@@ -294,24 +304,38 @@ public class RentalContractRepository : IRentalContractRepository
         await _context.SaveChangesAsync();
     }
 
-    public async SystemTask ApproveTerminationAsync(int contractId, string approvedBy)
+    public async SystemTask ApproveTerminationAsync(int contractId, string approvedBy, decimal? earlyTerminationFee = null)
     {
         var dbContract = await _context.Contracts.FindAsync(contractId);
         if (dbContract == null)
             throw new InvalidOperationException($"Contract {contractId} not found");
+
+        if (dbContract.Status != RentalContractStatus.PendingTermination &&
+            dbContract.Status != RentalContractStatus.PendingClose)
+        {
+            throw new InvalidOperationException($"Contract is not pending termination/close. Status: {dbContract.Status}");
+        }
 
         if (approvedBy == "RENTER")
             dbContract.RenterApprovedTermination = true;
         else
             dbContract.OwnerApprovedTermination = true;
 
+        // Owner sets/updates fee while reviewing renter's termination request.
+        if (approvedBy == "OWNER" && earlyTerminationFee.HasValue)
+            dbContract.EarlyTerminationFee = earlyTerminationFee.Value;
+
         // If both parties approved, change status
         if (dbContract.RenterApprovedTermination && dbContract.OwnerApprovedTermination)
         {
             if (dbContract.Status == "PENDING_TERMINATION")
             {
-                dbContract.Status = "TERMINATED";
-                dbContract.TerminatedAt = DateTime.UtcNow;
+                // If an early termination fee exists, wait for payment completion before terminating.
+                if ((dbContract.EarlyTerminationFee ?? 0) <= 0)
+                {
+                    dbContract.Status = "TERMINATED";
+                    dbContract.TerminatedAt = DateTime.UtcNow;
+                }
             }
             else if (dbContract.Status == "PENDING_CLOSE")
             {
@@ -337,6 +361,28 @@ public class RentalContractRepository : IRentalContractRepository
         dbContract.OwnerApprovedTermination = false;
         dbContract.TerminationReason = null;
         dbContract.EarlyTerminationFee = null;
+        dbContract.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
+    public async SystemTask FinalizeTerminationAfterPaymentAsync(int contractId)
+    {
+        var dbContract = await _context.Contracts.FindAsync(contractId);
+        if (dbContract == null)
+            throw new InvalidOperationException($"Contract {contractId} not found");
+
+        if (dbContract.Status != RentalContractStatus.PendingTermination)
+            return;
+
+        if (!dbContract.RenterApprovedTermination || !dbContract.OwnerApprovedTermination)
+            return;
+
+        if ((dbContract.EarlyTerminationFee ?? 0) <= 0)
+            return;
+
+        dbContract.Status = RentalContractStatus.Terminated;
+        dbContract.TerminatedAt = DateTime.UtcNow;
         dbContract.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

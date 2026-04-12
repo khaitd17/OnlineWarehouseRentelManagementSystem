@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
+using WMS.Domain.Enums;
 using WMS.Domain.Interfaces;
 
 
@@ -103,13 +104,19 @@ public class ProcessSepayWebhookHandler : IRequestHandler<ProcessSepayWebhookCom
 
                     if (payment != null && payment.Contract != null)
                     {
+                        var isTerminationFeePayment = payment.PaymentType == PaymentType.Penalty;
+
                         // Send notification to renter
                         var notification = new Notification
                         {
                             UserId = payment.Contract.RenterId,
-                            Title = "Thanh toán thành công",
-                            Message = $"Thanh toán {result.PaymentCode} đã được xác nhận. Hợp đồng {payment.Contract.ContractNumber} đã được kích hoạt.",
-                            Type = "PAYMENT_COMPLETED",
+                            Title = isTerminationFeePayment
+                                ? "Thanh toán phí kết thúc sớm thành công"
+                                : "Thanh toán thành công",
+                            Message = isTerminationFeePayment
+                                ? $"Thanh toán {result.PaymentCode} đã được xác nhận. Hợp đồng {payment.Contract.ContractNumber} đã được kết thúc sớm."
+                                : $"Thanh toán {result.PaymentCode} đã được xác nhận. Hợp đồng {payment.Contract.ContractNumber} đã được kích hoạt.",
+                            Type = isTerminationFeePayment ? "TERMINATION_FEE_PAID" : "PAYMENT_COMPLETED",
                             ReferenceId = payment.ContractId,
                             ReferenceType = "CONTRACT",
                             CreatedAt = DateTime.UtcNow

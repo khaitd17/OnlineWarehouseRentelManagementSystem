@@ -232,11 +232,18 @@ public class PaymentsController : ControllerBase
 
             if (!result.Success)
             {
-                return BadRequest(new { message = result.Message, retryCount = result.RetryCount, maxRetry = result.MaxRetry });
+                return BadRequest(new
+                {
+                    success = false,
+                    message = result.Message,
+                    retryCount = result.RetryCount,
+                    maxRetry = result.MaxRetry
+                });
             }
 
             return Ok(new
             {
+                success = true,
                 message = result.Message,
                 paymentCode = result.PaymentCode,
                 qrCodeUrl = result.QrCodeUrl,
@@ -248,7 +255,12 @@ public class PaymentsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrying payment {PaymentId}", paymentId);
-            return StatusCode(500, new { message = "An error occurred while retrying payment", error = ex.Message });
+            return StatusCode(500, new
+            {
+                success = false,
+                message = "An error occurred while retrying payment",
+                error = ex.Message
+            });
         }
     }
 

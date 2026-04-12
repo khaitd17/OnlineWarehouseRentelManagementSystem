@@ -160,7 +160,7 @@ public class ApproveTerminationHandlerTests
             .ReturnsAsync(contract);
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
-        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER"))
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER", It.IsAny<decimal?>()))
             .Returns(Task.CompletedTask);
         _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
             .ReturnsAsync(contract)
@@ -185,7 +185,7 @@ public class ApproveTerminationHandlerTests
             .ReturnsAsync(contract);
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
-        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER"))
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER", It.IsAny<decimal?>()))
             .Returns(Task.CompletedTask);
         _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
             .ReturnsAsync(contract)
@@ -210,7 +210,7 @@ public class ApproveTerminationHandlerTests
             .ReturnsAsync(contract);
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
-        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "OWNER"))
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "OWNER", It.IsAny<decimal?>()))
             .Returns(Task.CompletedTask);
         _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
             .ReturnsAsync(contract)
@@ -235,7 +235,7 @@ public class ApproveTerminationHandlerTests
             .ReturnsAsync(contract);
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
-        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER"))
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER", It.IsAny<decimal?>()))
             .Returns(Task.CompletedTask);
         _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
             .ReturnsAsync(contract)
@@ -264,7 +264,7 @@ public class ApproveTerminationHandlerTests
             .ReturnsAsync(contract);
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
-        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "OWNER"))
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "OWNER", It.IsAny<decimal?>()))
             .Returns(Task.CompletedTask);
         _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
             .ReturnsAsync(contract)
@@ -289,7 +289,7 @@ public class ApproveTerminationHandlerTests
             .ReturnsAsync(contract);
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
-        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER"))
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER", It.IsAny<decimal?>()))
             .Returns(Task.CompletedTask);
         _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
             .ReturnsAsync(contract)
@@ -334,7 +334,7 @@ public class ApproveTerminationHandlerTests
             .ReturnsAsync(contract);
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
-        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER"))
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER", It.IsAny<decimal?>()))
             .Returns(Task.CompletedTask);
         _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
             .ReturnsAsync(contract)
@@ -361,7 +361,7 @@ public class ApproveTerminationHandlerTests
             .ReturnsAsync(contract);
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
-        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER"))
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER", It.IsAny<decimal?>()))
             .Returns(Task.CompletedTask);
         _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
             .ReturnsAsync(contract)

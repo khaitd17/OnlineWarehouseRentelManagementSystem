@@ -79,11 +79,9 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
                     };
                 }
 
-                // Request termination (2-party approval flow)
-                // Renter/Owner requests, owner approves with fee
-                contract.RequestTerminationEarly(requestedBy, request.TerminationReason, fee: null);
-
-                await _contractRepository.UpdateAsync(contract);
+                // Request termination using direct DB update (ensure status is set correctly)
+                // This is more reliable than UpdateAsync which uses reflection
+                await _contractRepository.RequestTerminationAsync(request.ContractId, requestedBy, request.TerminationReason, fee: null);
 
                 // Determine the other party to notify
                 int notifyUserId = isRenter ? warehouse.OwnerId : contract.RenterId;
@@ -111,9 +109,11 @@ namespace WMS.Application.Features.Contracts.TerminateEarly
                 return new TerminateEarlyResponse
                 {
                     Success = true,
-                    Message = "Yêu cầu kết thúc sớm đã được gửi. Đang chờ bên còn lại xác nhận.",
+                    Message = isRenter
+                        ? "Yêu cầu kết thúc sớm đã được gửi. Đang chờ chủ kho duyệt mức phí."
+                        : "Yêu cầu kết thúc sớm đã được gửi. Đang chờ người thuê xác nhận.",
                     ContractId = request.ContractId,
-                    Status = contract.Status,
+                    Status = RentalContractStatus.PendingTermination,
                     PendingApproval = true
                 };
             }

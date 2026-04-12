@@ -110,7 +110,7 @@ builder.Services.AddScoped<IEquipmentIncidentRepository, EquipmentIncidentReposi
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionRepository, WMS.Infrastructure.Repositories.SubscriptionRepository>();
 
-// Services
+// Services   
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
