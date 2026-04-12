@@ -7,7 +7,7 @@ namespace WMS.Application.Features.Subscriptions.Commands;
 public class CreateSubscriptionCommand : IRequest<CreateSubscriptionResult>
 {
     public int UserId { get; set; }
-    public SubscriptionPlan Plan { get; set; }
+    public string Plan { get; set; } = null!;
 }
 
 public class CreateSubscriptionResult

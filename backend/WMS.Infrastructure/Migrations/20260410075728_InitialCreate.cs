@@ -128,6 +128,7 @@ namespace WMS.Infrastructure.Migrations
                     name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     is_all_skill = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    is_manual = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     skill_id = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
@@ -206,6 +207,29 @@ namespace WMS.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "FK_ra_renter",
                         column: x => x.renter_id,
+                        principalTable: "users",
+                        principalColumn: "user_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "subscriptions",
+                columns: table => new
+                {
+                    subscription_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    plan = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    start_date = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    end_date = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    transaction_reference = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_subscriptions", x => x.subscription_id);
+                    table.ForeignKey(
+                        name: "FK_subscriptions_users_user_id",
+                        column: x => x.user_id,
                         principalTable: "users",
                         principalColumn: "user_id");
                 });
@@ -404,7 +428,6 @@ namespace WMS.Infrastructure.Migrations
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
                     scheduled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     note = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    is_all_zone = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     ref_type = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     ref_id = table.Column<int>(type: "int", nullable: true)
                 },
@@ -701,7 +724,10 @@ namespace WMS.Infrastructure.Migrations
                     reviewed_by = table.Column<int>(type: "int", nullable: true),
                     reviewed_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     rejection_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    contract_image_url = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
+                    contract_image_url = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CancellationReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CancelledAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CancelledBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -800,30 +826,6 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "task_zones",
-                columns: table => new
-                {
-                    task_id = table.Column<int>(type: "int", nullable: false),
-                    zone_id = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_task_zones", x => new { x.task_id, x.zone_id });
-                    table.ForeignKey(
-                        name: "FK_task_zones_tasks_task_id",
-                        column: x => x.task_id,
-                        principalTable: "tasks",
-                        principalColumn: "task_id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_task_zones_zones_zone_id",
-                        column: x => x.zone_id,
-                        principalTable: "zones",
-                        principalColumn: "zone_id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "equipment_incidents",
                 columns: table => new
                 {
@@ -911,8 +913,8 @@ namespace WMS.Infrastructure.Migrations
                     owner_signed_file_url = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     owner_signed_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     owner_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    terminated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    termination_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TerminatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    TerminationReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     termination_requested_by = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
                     termination_requested_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     renter_approved_termination = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
@@ -967,8 +969,12 @@ namespace WMS.Infrastructure.Migrations
                     parent_contract_id = table.Column<int>(type: "int", nullable: true),
                     returned_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     cancellation_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    terminated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    termination_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TerminatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    TerminationReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CancelledAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    CancelledBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    GracePeriodHours = table.Column<int>(type: "int", nullable: false),
+                    cancellation_fee = table.Column<decimal>(type: "decimal(15,2)", nullable: true),
                     owner_signature_expiry = table.Column<DateTime>(type: "datetime2", nullable: true),
                     RenterSignatureExpiry = table.Column<DateTime>(type: "datetime2", nullable: true),
                     PaymentExpiry = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -976,7 +982,7 @@ namespace WMS.Infrastructure.Migrations
                     TerminationRequestedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     RenterApprovedTermination = table.Column<bool>(type: "bit", nullable: false),
                     OwnerApprovedTermination = table.Column<bool>(type: "bit", nullable: false),
-                    EarlyTerminationFee = table.Column<decimal>(type: "decimal(18,2)", nullable: true)
+                    early_termination_fee = table.Column<decimal>(type: "decimal(15,2)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1275,7 +1281,10 @@ namespace WMS.Infrastructure.Migrations
                     paid_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     expired_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
-                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RetryCount = table.Column<int>(type: "int", nullable: false),
+                    MaxRetry = table.Column<int>(type: "int", nullable: false),
+                    LastRetryAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1285,6 +1294,38 @@ namespace WMS.Infrastructure.Migrations
                         column: x => x.contract_id,
                         principalTable: "contracts",
                         principalColumn: "contract_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "cancellation_logs",
+                columns: table => new
+                {
+                    log_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    rental_request_id = table.Column<int>(type: "int", nullable: true),
+                    rental_contract_id = table.Column<int>(type: "int", nullable: true),
+                    cancelled_stage = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    cancelled_by = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    cancellation_reason = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    refund_amount = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    cancellation_fee = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getutcdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_cancellation_logs", x => x.log_id);
+                    table.ForeignKey(
+                        name: "FK_cancellation_logs_rental_contracts",
+                        column: x => x.rental_contract_id,
+                        principalTable: "rental_contracts",
+                        principalColumn: "contract_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_cancellation_logs_rental_requests",
+                        column: x => x.rental_request_id,
+                        principalTable: "rental_requests",
+                        principalColumn: "request_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -1320,6 +1361,37 @@ namespace WMS.Infrastructure.Migrations
                         column: x => x.inspector_id,
                         principalTable: "users",
                         principalColumn: "user_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "refunds",
+                columns: table => new
+                {
+                    refund_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    payment_id = table.Column<int>(type: "int", nullable: true),
+                    contract_id = table.Column<int>(type: "int", nullable: false),
+                    amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    reason = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "PENDING"),
+                    processed_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getutcdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_refunds", x => x.refund_id);
+                    table.ForeignKey(
+                        name: "FK_refunds_rental_contracts",
+                        column: x => x.contract_id,
+                        principalTable: "rental_contracts",
+                        principalColumn: "contract_id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_refunds_rental_payments",
+                        column: x => x.payment_id,
+                        principalTable: "rental_payments",
+                        principalColumn: "payment_id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
@@ -1377,6 +1449,21 @@ namespace WMS.Infrastructure.Migrations
                 name: "IX_audit_sessions_created_by",
                 table: "audit_sessions",
                 column: "created_by");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_cancellation_logs_created_at",
+                table: "cancellation_logs",
+                column: "created_at");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_cancellation_logs_rental_contract_id",
+                table: "cancellation_logs",
+                column: "rental_contract_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_cancellation_logs_rental_request_id",
+                table: "cancellation_logs",
+                column: "rental_request_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_contract_extensions_new_contract_id",
@@ -1652,6 +1739,26 @@ namespace WMS.Infrastructure.Migrations
                 column: "contract_id");
 
             migrationBuilder.CreateIndex(
+                name: "IX_refunds_contract_id",
+                table: "refunds",
+                column: "contract_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_refunds_created_at",
+                table: "refunds",
+                column: "created_at");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_refunds_payment_id",
+                table: "refunds",
+                column: "payment_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_refunds_status",
+                table: "refunds",
+                column: "status");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_rental_areas_warehouse_id",
                 table: "rental_areas",
                 column: "warehouse_id");
@@ -1761,14 +1868,14 @@ namespace WMS.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_subscriptions_user_id",
+                table: "subscriptions",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_task_types_skill_id",
                 table: "task_types",
                 column: "skill_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_task_zones_zone_id",
-                table: "task_zones",
-                column: "zone_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_tasks_task_type_id",
@@ -1926,6 +2033,9 @@ namespace WMS.Infrastructure.Migrations
                 name: "audit_results");
 
             migrationBuilder.DropTable(
+                name: "cancellation_logs");
+
+            migrationBuilder.DropTable(
                 name: "contract_extensions");
 
             migrationBuilder.DropTable(
@@ -1965,7 +2075,7 @@ namespace WMS.Infrastructure.Migrations
                 name: "ratings");
 
             migrationBuilder.DropTable(
-                name: "rental_payments");
+                name: "refunds");
 
             migrationBuilder.DropTable(
                 name: "renter_inventory");
@@ -1977,7 +2087,7 @@ namespace WMS.Infrastructure.Migrations
                 name: "staff_shifts");
 
             migrationBuilder.DropTable(
-                name: "task_zones");
+                name: "subscriptions");
 
             migrationBuilder.DropTable(
                 name: "unit_tasks");
@@ -2007,7 +2117,7 @@ namespace WMS.Infrastructure.Migrations
                 name: "inventory_requests");
 
             migrationBuilder.DropTable(
-                name: "contracts");
+                name: "rental_payments");
 
             migrationBuilder.DropTable(
                 name: "renter_assets");
@@ -2026,6 +2136,9 @@ namespace WMS.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "equipments");
+
+            migrationBuilder.DropTable(
+                name: "contracts");
 
             migrationBuilder.DropTable(
                 name: "rental_contracts");

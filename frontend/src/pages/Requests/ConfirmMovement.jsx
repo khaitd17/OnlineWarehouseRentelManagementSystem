@@ -4,7 +4,6 @@ import axiosClient from '../../services/axiosClient';
 const INBOUND_COLOR  = '#0ea5e9';
 const OUTBOUND_COLOR = '#f59e0b';
 const fmtDate  = d => d ? new Date(d).toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
-const fmtDT    = d => d ? new Date(d).toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
 
 /* ── Confirm Modal ──────────────────────────────────────────── */
 const ConfirmModal = ({ req, onClose, onConfirm, loading }) => {
@@ -109,21 +108,26 @@ const ConfirmModal = ({ req, onClose, onConfirm, loading }) => {
 
 /* ── Main ───────────────────────────────────────────────────── */
 const ConfirmMovement = () => {
-  const [typeTab, setTypeTab]       = useState('');   // '' = tất cả
-  const [search, setSearch]         = useState('');
-  const [requests, setRequests]     = useState([]);
-  const [loading, setLoading]       = useState(false);
+  const [typeTab, setTypeTab]         = useState('');
+  const [search, setSearch]           = useState('');
+  const [requests, setRequests]       = useState([]);
+  const [loading, setLoading]         = useState(false);
   const [selectedReq, setSelectedReq] = useState(null);
-  const [confirming, setConfirming] = useState(false);
-  const [toast, setToast]           = useState(null);
+  const [confirming, setConfirming]   = useState(false);
+  const [toast, setToast]             = useState(null);
+  const [warehouses, setWarehouses]   = useState([]);
+  const [warehouseId, setWarehouseId] = useState(null);
 
-  // Lấy warehouseId từ user info đã lưu (membership hiện tại)
-  const warehouseId = (() => {
-    try {
-      const u = JSON.parse(localStorage.getItem('user') || '{}');
-      return u.currentWarehouseId || u.warehouseId || null;
-    } catch { return null; }
-  })();
+  // Fetch danh sách kho user có membership
+  useEffect(() => {
+    axiosClient.get('/staff/my-warehouses')
+      .then(res => {
+        const list = Array.isArray(res.data) ? res.data : [];
+        setWarehouses(list);
+        if (list.length > 0) setWarehouseId(list[0].warehouseId);
+      })
+      .catch(() => {});
+  }, []);
 
   const showToast = (msg, isError=false) => {
     setToast({ msg, isError });
@@ -185,10 +189,30 @@ const ConfirmMovement = () => {
       `}</style>
 
       {/* Header */}
-      <div style={{ marginBottom:28 }}>
+      <div style={{ marginBottom:20 }}>
         <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>Yêu cầu nhập / xuất kho</h1>
         <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>Danh sách đơn đã được Manager duyệt — bất kỳ nhân viên nào trong kho đều có thể xử lý và xác nhận hoàn thành.</p>
       </div>
+
+      {/* Warehouse selector */}
+      {warehouses.length > 0 && (
+        <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:20 }}>
+          <span style={{ fontSize:'0.8rem', color:'#94a3b8', fontWeight:600 }}>Kho:</span>
+          {warehouses.length === 1 ? (
+            <span style={{ padding:'5px 14px', borderRadius:20, background:'#e0f7fa', color:'#0ea5e9', fontWeight:700, fontSize:'0.82rem', border:'1.5px solid #b2ebf2' }}>
+              {warehouses[0].warehouseName}
+            </span>
+          ) : (
+            warehouses.map(w => (
+              <button key={w.warehouseId}
+                onClick={() => { setWarehouseId(w.warehouseId); setSearch(''); setTypeTab(''); }}
+                style={{ padding:'5px 16px', borderRadius:20, border:`1.5px solid ${warehouseId===w.warehouseId?'#0ea5e9':'#e2e8f0'}`, background:warehouseId===w.warehouseId?'#0ea5e9':'#fff', color:warehouseId===w.warehouseId?'#fff':'#64748b', fontWeight:700, fontSize:'0.82rem', cursor:'pointer', transition:'all 0.15s' }}>
+                {w.warehouseName}
+              </button>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Toast */}
       {toast && (
@@ -197,6 +221,7 @@ const ConfirmMovement = () => {
           <span style={{ fontSize:'0.87rem', fontWeight:600, color:toast.isError?'#991b1b':'#166534' }}>{toast.msg}</span>
         </div>
       )}
+
 
       {/* Stat Cards */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:24 }}>

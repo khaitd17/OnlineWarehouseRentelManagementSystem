@@ -59,15 +59,7 @@ export default function OwnerAuditSessionDetailPage() {
 
   useEffect(() => { fetchResults(); }, [fetchResults]);
 
-  const handleExport = async () => {
-    try {
-      const res = await adminService.exportAuditReport(id);
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const a = document.createElement("a"); a.href = url; a.download = `BaoCaoKiemKe_${id}.csv`; a.click();
-      window.URL.revokeObjectURL(url);
-      showToast("Xuất báo cáo thành công");
-    } catch { showToast("Lỗi khi xuất báo cáo", "error"); }
-  };
+
 
   const handleApprove = async () => {
     if (!approveModal.assignedTo) { showToast("Vui lòng chọn nhân viên", "error"); return; }
@@ -81,6 +73,7 @@ export default function OwnerAuditSessionDetailPage() {
   };
 
   const handleReject = async () => {
+    if (!rejectModal.reason || !rejectModal.reason.trim()) { showToast("Vui lòng nhập lý do từ chối", "error"); return; }
     setRejectModal(p => ({ ...p, loading: true }));
     try {
       const res = await adminService.rejectAuditSession(id, { reason: rejectModal.reason || null });
@@ -91,6 +84,7 @@ export default function OwnerAuditSessionDetailPage() {
   };
 
   const handleClose = async () => {
+    if (!closeModal.notes || !closeModal.notes.trim()) { showToast("Vui lòng nhập ghi chú/lý do để đóng phiên", "error"); return; }
     setCloseModal(p => ({ ...p, loading: true }));
     try {
       const res = await adminService.closeAuditSession(id, { notes: closeModal.notes || null });
@@ -101,11 +95,11 @@ export default function OwnerAuditSessionDetailPage() {
   };
 
   const statusLabel = (s) => {
-    const map = { PENDING_APPROVAL: "Chờ duyệt", APPROVED: "Đã duyệt", IN_PROGRESS: "Đang kiểm kê", COMPLETED: "Hoàn thành", REJECTED: "Từ chối", OPEN: "Đang mở" };
+    const map = { PENDING_APPROVAL: "Chờ duyệt", APPROVED: "Đã duyệt", IN_PROGRESS: "Đang kiểm kê", COMPLETED: "Hoàn thành", REJECTED: "Từ chối", OPEN: "Đang mở", CANCELLED: "Đã hủy" };
     return map[s] || s;
   };
   const statusColor = (s) => {
-    const map = { PENDING_APPROVAL: "bg-yellow-100 text-yellow-700", APPROVED: "bg-blue-100 text-blue-700", IN_PROGRESS: "bg-purple-100 text-purple-700", COMPLETED: "bg-emerald-100 text-emerald-700", REJECTED: "bg-red-100 text-red-700", OPEN: "bg-blue-100 text-blue-700" };
+    const map = { PENDING_APPROVAL: "bg-yellow-100 text-yellow-700", APPROVED: "bg-blue-100 text-blue-700", IN_PROGRESS: "bg-purple-100 text-purple-700", COMPLETED: "bg-emerald-100 text-emerald-700", REJECTED: "bg-red-100 text-red-700", OPEN: "bg-blue-100 text-blue-700", CANCELLED: "bg-red-100 text-red-700" };
     return map[s] || "bg-slate-100 text-slate-600";
   };
 
@@ -144,7 +138,6 @@ export default function OwnerAuditSessionDetailPage() {
               🔒 Đóng phiên
             </button>
           )}
-          <button onClick={handleExport} className="px-4 py-2 rounded-lg font-bold text-sm border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 transition-all">Xuất CSV</button>
         </div>
       </div>
 
@@ -291,7 +284,7 @@ export default function OwnerAuditSessionDetailPage() {
           <div style={{ backgroundColor: "#fff", borderRadius: 12, padding: 24, width: "100%", maxWidth: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-slate-900 mb-4">Từ chối yêu cầu kiểm kê</h3>
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Lý do từ chối</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Lý do từ chối *</label>
               <textarea className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none" rows={3} value={rejectModal.reason} onChange={e => setRejectModal(p => ({ ...p, reason: e.target.value }))} placeholder="Nhập lý do..." />
             </div>
             <div className="flex justify-end gap-2">
@@ -312,7 +305,7 @@ export default function OwnerAuditSessionDetailPage() {
               <span className="text-xs text-red-700">Phiên kiểm kê sẽ <strong>không thể ghi nhận thêm</strong> kết quả.</span>
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Ghi chú</label>
+              <label className="block text-sm font-semibold text-slate-700 mb-1">Ghi chú *</label>
               <textarea className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none" rows={3} value={closeModal.notes} onChange={e => setCloseModal(p => ({ ...p, notes: e.target.value }))} placeholder="Ghi chú..." />
             </div>
             <div className="flex justify-end gap-2">

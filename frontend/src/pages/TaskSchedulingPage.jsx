@@ -466,7 +466,7 @@ export default function TaskSchedulingPage() {
       {/* ── Filter bar ── */}
       <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"8px 24px", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
         <span style={{ fontSize:10, fontWeight:700, color:C.sub, textTransform:"uppercase", letterSpacing:".5px", marginRight:4 }}>Loai task:</span>
-        {/* Tat ca manual */}
+        {/* Tat ca */}
         <button
           onClick={() => setFilterType(null)}
           style={{
@@ -476,10 +476,9 @@ export default function TaskSchedulingPage() {
             color: !filterType ? C.accent : C.sub,
             transition:"all .15s",
           }}
-        >Tat ca manual</button>
-        {/* Tung loai manual */}
+        >Tat ca</button>
+        {/* Tung loai task */}
         {taskTypes
-          .filter(tt => tt.isManual)
           .map(tt => {
             const code = (tt.code || tt.Code || "").toUpperCase();
             const pal  = tp(code);

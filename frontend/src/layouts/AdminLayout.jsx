@@ -11,6 +11,7 @@ import {
   Star,
   Menu,
   X,
+  CreditCard,
 } from "lucide-react";
 import { ToastProvider } from "../components/Toast";
 import OWRMSLogo from "../components/OWRMSLogo";
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { label: "Tài khoản", path: "/admin/accounts", icon: Users },
   { label: "Duyệt kho", path: "/admin/pending-warehouses", icon: ClipboardCheck, badgeKey: "pending" },
   { label: "Kho bãi", path: "/admin/warehouses", icon: Warehouse },
+  { label: "Gói cước", path: "/admin/subscriptions", icon: CreditCard },
   { label: "Báo cáo", path: "/admin/reports", icon: BarChart3 },
   { label: "Đánh giá", path: "/admin/ratings", icon: Star },
 ];

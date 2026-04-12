@@ -14,6 +14,10 @@ using WMS.Application.Features.Admin.GetWarehousesLookup;
 using WMS.Application.Features.Admin.GetPendingWarehouses;
 using WMS.Application.Features.Admin.ManageListing;
 using WMS.Application.Features.Admin.UpdateAccountStatus;
+using WMS.Application.Features.Admin.GetSubscriptions;
+using WMS.Application.Features.Admin.UpdateSubscription;
+using WMS.Application.Features.Admin.DeleteSubscription;
+using WMS.Application.Features.Admin.SubscriptionPackages;
 
 namespace WMS.API.Controllers;
 
@@ -171,6 +175,87 @@ public class AdminController : ControllerBase
     }
 
     // ==============================
+    // SUBSCRIPTION MANAGEMENT
+    // ==============================
+
+    /// <summary>Xem danh sách gói cước (phân trang, lọc, tìm kiếm, sắp xếp)</summary>
+    [HttpGet("subscriptions")]
+    public async Task<IActionResult> GetSubscriptions([FromQuery] GetSubscriptionsQuery query)
+    {
+        var result = await _mediator.Send(query);
+        return Ok(result);
+    }
+
+    /// <summary>Cập nhật gói cước</summary>
+    [HttpPut("subscriptions/{id}")]
+    public async Task<IActionResult> UpdateSubscription(int id, [FromBody] UpdateSubscriptionRequest request)
+    {
+        var command = new UpdateSubscriptionCommand
+        {
+            SubscriptionId = id,
+            Plan = request.Plan,
+            Status = request.Status,
+            StartDate = request.StartDate,
+            EndDate = request.EndDate
+        };
+
+        var result = await _mediator.Send(command);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    /// <summary>Xóa gói cước</summary>
+    [HttpDelete("subscriptions/{id}")]
+    public async Task<IActionResult> DeleteSubscription(int id)
+    {
+        var result = await _mediator.Send(new DeleteSubscriptionCommand(id));
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    // ==============================
+    // SUBSCRIPTION PACKAGES MANAGEMENT
+    // ==============================
+
+    [HttpGet("subscription-packages")]
+    public async Task<IActionResult> GetSubscriptionPackages()
+    {
+        var result = await _mediator.Send(new GetSubscriptionPackagesQuery());
+        return Ok(result);
+    }
+
+    [HttpPost("subscription-packages")]
+    public async Task<IActionResult> CreateSubscriptionPackage([FromBody] CreateSubscriptionPackageCommand command)
+    {
+        var result = await _mediator.Send(command);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpPut("subscription-packages/{id}")]
+    public async Task<IActionResult> UpdateSubscriptionPackage(int id, [FromBody] UpdateSubscriptionPackageCommand command)
+    {
+        command.PackageId = id;
+        var result = await _mediator.Send(command);
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    [HttpDelete("subscription-packages/{id}")]
+    public async Task<IActionResult> DeleteSubscriptionPackage(int id)
+    {
+        var result = await _mediator.Send(new DeleteSubscriptionPackageCommand(id));
+        if (!result.Success) return BadRequest(result);
+        return Ok(result);
+    }
+
+    // ==============================
     // REPORTS
     // ==============================
 
@@ -210,3 +295,4 @@ public class AdminController : ControllerBase
 public record UpdateAccountStatusRequest(string Status);
 public record ManageListingRequest(string Action);
 public record ApproveWarehouseRequest(bool IsApproved, string? RejectionReason);
+public record UpdateSubscriptionRequest(string? Plan, string? Status, DateTime? StartDate, DateTime? EndDate);
