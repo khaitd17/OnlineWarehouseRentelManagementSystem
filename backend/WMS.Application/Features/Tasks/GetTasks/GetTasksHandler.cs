@@ -24,6 +24,6 @@ public class GetTasksHandler : IRequestHandler<GetTasksQuery, List<TaskDto>>
         if (!allowedRoles.Contains(caller.RoleCode))
             throw new UnauthorizedAccessException("Chỉ Manager/Operator mới có quyền xem task.");
 
-        return await _repo.GetTasksAsync(request.WarehouseId, request.StartDate, request.EndDate, isManualOnly: true, ct);
+        return await _repo.GetTasksAsync(request.WarehouseId, request.StartDate, request.EndDate, isManualOnly: false, ct);
     }
 }
