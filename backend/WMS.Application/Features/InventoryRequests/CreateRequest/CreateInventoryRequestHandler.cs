@@ -131,7 +131,7 @@ public class CreateInventoryRequestHandler
             RenterId    = cmd.RenterId,
             WarehouseId = cmd.WarehouseId,
             Type        = cmd.Type.ToUpper(),
-            Notes       = cmd.Notes,
+            Notes       = string.IsNullOrWhiteSpace(cmd.Notes) ? null : $"[Người thuê] {cmd.Notes}",
             DocumentUrls = cmd.DocumentUrls != null && cmd.DocumentUrls.Count > 0
                 ? System.Text.Json.JsonSerializer.Serialize(cmd.DocumentUrls)
                 : null,

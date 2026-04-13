@@ -34,7 +34,7 @@ public class RejectInventoryRequestHandler
         req.Status    = "REJECTED";
         req.Notes     = string.IsNullOrEmpty(cmd.Reason)
             ? req.Notes
-            : $"[TỪ CHỐI] {cmd.Reason}\n{req.Notes}";
+            : $"[Owner] Từ chối: {cmd.Reason}\n{req.Notes}";
         req.UpdatedAt = DateTime.Now;
 
         await _repo.UpdateAsync(req, cancellationToken);
