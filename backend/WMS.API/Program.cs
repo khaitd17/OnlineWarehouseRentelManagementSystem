@@ -204,17 +204,21 @@ using (var scope = app.Services.CreateScope())
     try
     {
         // 1. Apply any pending migrations automatically
-        // Migrations conflicts resolved - Automatic migrations restored
-        context.Database.Migrate();
+        // DISABLED: Migrations causing conflicts - use manual SQL scripts instead
+        // context.Database.Migrate();
 
-        // Patch: Thêm các cột termination còn thiếu vào bảng contracts
+        // Patch: Thêm các cột còn thiếu cho contracts/rental_contracts để tránh lỗi runtime khi DB schema cũ.
         var patchSqls = new[]
         {
-            "IF OBJECT_ID('contracts') IS NOT NULL AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'early_termination_fee') ALTER TABLE contracts ADD early_termination_fee decimal(18,2) NULL;",
-            "IF OBJECT_ID('contracts') IS NOT NULL AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'owner_approved_termination') ALTER TABLE contracts ADD owner_approved_termination bit NOT NULL DEFAULT 0;",
-            "IF OBJECT_ID('contracts') IS NOT NULL AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'renter_approved_termination') ALTER TABLE contracts ADD renter_approved_termination bit NOT NULL DEFAULT 0;",
-            "IF OBJECT_ID('contracts') IS NOT NULL AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_at') ALTER TABLE contracts ADD termination_requested_at datetime2 NULL;",
-            "IF OBJECT_ID('contracts') IS NOT NULL AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_by') ALTER TABLE contracts ADD termination_requested_by nvarchar(50) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'early_termination_fee') ALTER TABLE contracts ADD early_termination_fee decimal(18,2) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'owner_approved_termination') ALTER TABLE contracts ADD owner_approved_termination bit NOT NULL DEFAULT 0;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'renter_approved_termination') ALTER TABLE contracts ADD renter_approved_termination bit NOT NULL DEFAULT 0;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_at') ALTER TABLE contracts ADD termination_requested_at datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_by') ALTER TABLE contracts ADD termination_requested_by nvarchar(50) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminatedAt') ALTER TABLE rental_contracts ADD TerminatedAt datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminationReason') ALTER TABLE rental_contracts ADD TerminationReason nvarchar(max) NULL;",
+            "IF OBJECT_ID('subscription_packages', 'U') IS NULL BEGIN CREATE TABLE subscription_packages (package_id int IDENTITY(1,1) NOT NULL PRIMARY KEY, name nvarchar(100) NOT NULL, price decimal(15,2) NOT NULL, description nvarchar(max) NULL, duration_months int NOT NULL CONSTRAINT DF_subscription_packages_duration_months DEFAULT 1, is_active bit NOT NULL CONSTRAINT DF_subscription_packages_is_active DEFAULT 1, created_at datetime2 NOT NULL CONSTRAINT DF_subscription_packages_created_at DEFAULT (getdate()), updated_at datetime2 NOT NULL CONSTRAINT DF_subscription_packages_updated_at DEFAULT (getdate())); END;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('task_types') AND name = 'is_manual') ALTER TABLE task_types ADD is_manual bit NOT NULL CONSTRAINT DF_task_types_is_manual DEFAULT 0;",
         };
         foreach (var sql in patchSqls)
         {
