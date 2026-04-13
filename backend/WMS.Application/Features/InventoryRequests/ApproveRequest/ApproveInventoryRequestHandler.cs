@@ -43,8 +43,8 @@ public class ApproveInventoryRequestHandler
         // Ghi chú phê duyệt (append vào Notes nếu có)
         if (!string.IsNullOrWhiteSpace(cmd.Note))
             req.Notes = string.IsNullOrEmpty(req.Notes)
-                ? $"[ĐÃ DUYỆT] {cmd.Note}"
-                : $"[ĐÃ DUYỆT] {cmd.Note}\n{req.Notes}";
+                ? $"[Owner] {cmd.Note}"
+                : $"[Owner] {cmd.Note}\n{req.Notes}";
 
         await _repo.UpdateAsync(req, cancellationToken);
 

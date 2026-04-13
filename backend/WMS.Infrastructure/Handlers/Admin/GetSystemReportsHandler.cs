@@ -18,8 +18,9 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
 
     public async Task<ApiResponse<SystemReportDto>> Handle(GetSystemReportsQuery request, CancellationToken cancellationToken)
     {
-        var toDate = request.ToDate ?? DateTime.UtcNow;
-        var fromDate = request.FromDate ?? toDate.AddMonths(-12);
+        var toDateRaw = request.ToDate ?? DateTime.UtcNow;
+        var toDate = toDateRaw.Date.AddDays(1).AddTicks(-1);
+        var fromDate = request.FromDate ?? toDate.Date.AddMonths(-12);
 
         // ── User Stats ──
         var totalUsers = await _db.Users.CountAsync(cancellationToken);

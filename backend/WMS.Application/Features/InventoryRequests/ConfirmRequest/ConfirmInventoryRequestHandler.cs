@@ -120,7 +120,7 @@ public class ConfirmInventoryRequestHandler
                 Quantity    = item.Quantity,
                 Unit        = item.Unit,
                 PerformedBy = cmd.StaffId,
-                Notes       = cmd.Notes,
+                Notes       = string.IsNullOrWhiteSpace(cmd.Notes) ? null : $"[Staff] {cmd.Notes}",
             }, cancellationToken);
         }
 

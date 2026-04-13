@@ -109,7 +109,7 @@ export default function StaffAuditSessionDetailPage() {
 
     for (const item of recordModal.items) {
       if (parseInt(item.actualQty) < 0) { showToast("Số lượng thực tế phải >= 0", "error"); return; }
-      if (parseInt(item.actualQty) > parseInt(item.expectedQty)) { showToast(`Hàng hóa "${item.itemName}" — Số lượng thực tế (${item.actualQty}) không được lớn hơn số lượng dự kiến (${item.expectedQty})`, "error"); return; }
+
       if (parseInt(item.actualQty) !== parseInt(item.expectedQty) && (!item.discrepancyReason || !item.discrepancyReason.trim())) {
         showToast(`Hàng hóa "${item.itemName || "vô danh"}" có chênh lệch, vui lòng nhập lý do`, "error"); return;
       }
@@ -312,7 +312,7 @@ export default function StaffAuditSessionDetailPage() {
                         {item.itemName}
                       </div>
                       <input className="px-2 py-1.5 rounded border border-slate-200 text-sm bg-slate-50 text-slate-500" type="number" min="0" placeholder="SL dự kiến" value={item.expectedQty} readOnly tabIndex={-1} />
-                      <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" type="number" min="0" max={item.expectedQty} placeholder="SL thực tế *" value={item.actualQty} onChange={e => { const val = e.target.value; if (val !== "" && parseInt(val) > parseInt(item.expectedQty)) { showToast(`SL thực tế không được lớn hơn SL dự kiến (${item.expectedQty})`, "error"); return; } updateItem(idx, "actualQty", val); }} />
+                      <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" type="number" min="0" placeholder="SL thực tế *" value={item.actualQty} onChange={e => { updateItem(idx, "actualQty", e.target.value); }} />
                       <input className="px-2 py-1.5 rounded border border-slate-200 text-sm" placeholder="Lý do chênh lệch" value={item.discrepancyReason} onChange={e => updateItem(idx, "discrepancyReason", e.target.value)} />
                     </div>
                   ))}
