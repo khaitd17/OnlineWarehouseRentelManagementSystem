@@ -67,6 +67,12 @@ public class CallerMembershipDto
     public string RoleCode { get; set; } = null!;
     public bool IsAllSkill { get; set; }
     public List<int> SkillIds { get; set; } = new();
+    /// <summary>Skill codes (e.g. "CHECKER", "INVENTORY_OPERATOR") — populated by GetCallerMembershipAsync.</summary>
+    public List<string> SkillCodes { get; set; } = new();
+
+    /// <summary>True nếu user có skill cụ thể hoặc IsAllSkill.</summary>
+    public bool HasSkill(string skillCode) =>
+        IsAllSkill || SkillCodes.Contains(skillCode, StringComparer.OrdinalIgnoreCase);
 }
 
 public class CreateMembershipDto

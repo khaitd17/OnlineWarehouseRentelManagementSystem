@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import axiosClient from '../services/axiosClient';
 import scheduleService from '../services/scheduleService';
 import { getTasks } from '../services/taskSchedulingService';
@@ -10,10 +10,10 @@ const add   = (d,n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r
 const getMon= d => { const r=new Date(d); const dw=r.getDay(); r.setDate(r.getDate()-(dw===0?6:dw-1)); r.setHours(0,0,0,0); return r; };
 const fmtDate = d => `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
 const DAY_NAMES = ['CN','Th 2','Th 3','Th 4','Th 5','Th 6','Th 7'];
-const MONTH_NAMES = ['Thang 1','Thang 2','Thang 3','Thang 4','Thang 5','Thang 6',
-                     'Thang 7','Thang 8','Thang 9','Thang 10','Thang 11','Thang 12'];
+const MONTH_NAMES = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
+                     'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
 
-const SHIFT_TYPE_LABEL = { NC:'Nghi ca', NP:'Nghi phep', OFF:'Ngay off' };
+const SHIFT_TYPE_LABEL = { NC:'Nghỉ ca', NP:'Nghỉ phép', OFF:'Ngày off' };
 const STATUS_STYLE = {
   Pending:    { bg:'#fef9c3', color:'#a16207' },
   InProgress: { bg:'#dbeafe', color:'#1d4ed8' },
@@ -30,9 +30,9 @@ function WeekTable({ monday, shifts }) {
     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.85rem' }}>
       <thead>
         <tr style={{ background:'#1e293b' }}>
-          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem', width:110 }}>Ngay</th>
-          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.78rem', width:150 }}>Ca lam</th>
-          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem' }}>Cong viec duoc giao</th>
+          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem', width:110 }}>Ngày</th>
+          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.78rem', width:150 }}>Ca làm</th>
+          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem' }}>Công việc được giao</th>
         </tr>
       </thead>
       <tbody>
@@ -61,7 +61,7 @@ function WeekTable({ monday, shifts }) {
                   {isToday && (
                     <span style={{ marginLeft:5, background:'#3b82f6', color:'#fff',
                       fontSize:'0.62rem', padding:'1px 5px', borderRadius:4, fontWeight:700 }}>
-                      Hom nay
+                      Hôm nay
                     </span>
                   )}
                 </div>
@@ -95,7 +95,7 @@ function WeekTable({ monday, shifts }) {
                       </div>
                     )}
                     {!slot.timeIn1 && !slot.timeIn2 && (
-                      <span style={{ color:'#94a3b8', fontSize:'0.75rem' }}>Co ca</span>
+                      <span style={{ color:'#94a3b8', fontSize:'0.75rem' }}>Có ca</span>
                     )}
                   </div>
                 )}
@@ -158,9 +158,9 @@ function MonthTable({ year, month, shifts }) {
     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.83rem' }}>
       <thead>
         <tr style={{ background:'#1e293b' }}>
-          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Ngay</th>
-          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Thu</th>
-          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Ca lam</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Ngày</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Thứ</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Ca làm</th>
           <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Task</th>
         </tr>
       </thead>
@@ -171,7 +171,7 @@ function MonthTable({ year, month, shifts }) {
               color: isToday?'#3b82f6': isWeekend?'#dc2626':'#0f172a', width:60 }}>
               {d}/{pad(month+1)}
               {isToday && <span style={{ marginLeft:4, fontSize:'0.62rem', background:'#3b82f6', color:'#fff',
-                padding:'1px 4px', borderRadius:3 }}>Hom nay</span>}
+                padding:'1px 4px', borderRadius:3 }}>Hôm nay</span>}
             </td>
             <td style={{ padding:'8px 12px', color: isWeekend?'#dc2626':'#64748b', width:60, fontSize:'0.75rem' }}>
               {DAY_NAMES[date.getDay()]}
@@ -247,13 +247,13 @@ export default function MySchedulePage() {
     if (!warehouseId) return;
     setLoading(true); setError('');
     try {
-      // API 1: ca lam viec
+      // API 1: ca làm việc
       const shiftData = await scheduleService.getMySchedule(warehouseId, from, to);
-      // API 2: task duoc gan
+      // API 2: task được gán
       let taskData = [];
       try { taskData = await getTasks(warehouseId, `${from}T00:00:00Z`, `${to}T23:59:59Z`); } catch {}
 
-      // Merge tasks vao slots theo ngay
+      // Merge tasks vào slots theo ngày
       const merged = { ...(shiftData?.shifts || {}) };
       const allTasks = Array.isArray(taskData) ? taskData : [];
       allTasks.forEach(t => {
@@ -269,7 +269,7 @@ export default function MySchedulePage() {
       });
       setSchedule({ ...shiftData, shifts: merged });
     } catch(e) {
-      setError(e?.response?.data?.message || 'Khong the tai lich.');
+      setError(e?.response?.data?.message || 'Không thể tải lịch.');
     } finally { setLoading(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [warehouseId, from, to, viewMode]);
@@ -286,7 +286,7 @@ export default function MySchedulePage() {
   if (loadingWh) {
     return (
       <div style={{ padding:40, textAlign:'center', color:'#94a3b8', fontFamily:'Inter,sans-serif' }}>
-        Dang tai...
+        Đang tải...
       </div>
     );
   }
@@ -294,7 +294,7 @@ export default function MySchedulePage() {
   if (warehouses.length === 0) {
     return (
       <div style={{ padding:40, textAlign:'center', color:'#94a3b8', fontFamily:'Inter,sans-serif' }}>
-        Ban chua duoc them vao kho nao.
+        Bạn chưa được thêm vào kho nào.
       </div>
     );
   }
@@ -313,7 +313,7 @@ export default function MySchedulePage() {
       {/* Header */}
       <div style={{ marginBottom:16, display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:10 }}>
         <div>
-          <h2 style={{ margin:0, fontSize:'1.25rem', fontWeight:800 }}>Lich lam viec cua toi</h2>
+          <h2 style={{ margin:0, fontSize:'1.25rem', fontWeight:800 }}>Lịch làm việc của tôi</h2>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5, flexWrap:'wrap' }}>
             {schedule?.fullName && <span style={{ fontSize:'0.82rem', color:'#64748b' }}>{schedule.fullName}</span>}
             {schedule?.roleCode && (
@@ -334,8 +334,8 @@ export default function MySchedulePage() {
           </div>
         </div>
         <div style={{ display:'flex', gap:6 }}>
-          <button style={btnStyle(viewMode==='week')}  onClick={() => setViewMode('week')}>Tuan</button>
-          <button style={btnStyle(viewMode==='month')} onClick={() => setViewMode('month')}>Thang</button>
+          <button style={btnStyle(viewMode==='week')}  onClick={() => setViewMode('week')}>Tuần</button>
+          <button style={btnStyle(viewMode==='month')} onClick={() => setViewMode('month')}>Tháng</button>
         </div>
       </div>
 
@@ -346,22 +346,22 @@ export default function MySchedulePage() {
           <button style={btnStyle(false)} onClick={() => {
             if (viewMode==='week') setCurrentDate(d => add(d,-7));
             else setCurrentDate(d => new Date(d.getFullYear(), d.getMonth()-1, 1));
-          }}>Truoc</button>
+          }}>Trước</button>
           <button style={btnStyle(false)} onClick={() => {
             if (viewMode==='week') setCurrentDate(d => add(d,7));
             else setCurrentDate(d => new Date(d.getFullYear(), d.getMonth()+1, 1));
           }}>Sau</button>
-          <button style={btnStyle(false)} onClick={() => setCurrentDate(new Date())}>Hom nay</button>
+          <button style={btnStyle(false)} onClick={() => setCurrentDate(new Date())}>Hôm nay</button>
         </div>
         <span style={{ fontWeight:700, fontSize:'0.93rem' }}>{periodLabel}</span>
-        <button style={btnStyle(false)} onClick={fetchAll}>Lam moi</button>
+        <button style={btnStyle(false)} onClick={fetchAll}>Làm mới</button>
       </div>
 
       {/* Table */}
       <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:10,
         overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.05)' }}>
         {loading ? (
-          <div style={{ padding:60, textAlign:'center', color:'#94a3b8' }}>Dang tai lich...</div>
+          <div style={{ padding:60, textAlign:'center', color:'#94a3b8' }}>Đang tải lịch...</div>
         ) : error ? (
           <div style={{ padding:20, color:'#dc2626', background:'#fef2f2', fontSize:'0.88rem' }}>{error}</div>
         ) : (
@@ -377,7 +377,7 @@ export default function MySchedulePage() {
         {!loading && !error && !hasData && viewMode === 'week' && (
           <div style={{ padding:'14px 18px', background:'#fffbeb', borderTop:'1px solid #fde68a',
             color:'#92400e', fontSize:'0.82rem', textAlign:'center' }}>
-            Chua co ca lam viec trong tuan nay. Lien he quan ly de duoc sap xep lich.
+            Chưa có ca làm việc trong tuần này. Liên hệ quản lý để được sắp xếp lịch.
           </div>
         )}
       </div>
@@ -388,7 +388,7 @@ export default function MySchedulePage() {
           {schedule.skills?.length > 0 && (
             <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:9,
               padding:'10px 14px', flex:1, minWidth:140 }}>
-              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KY NANG</div>
+              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KỸ NĂNG</div>
               <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                 {schedule.skills.map((s,i) => (
                   <span key={i} style={{ background:'#dbeafe', color:'#1d4ed8', padding:'2px 8px', borderRadius:4, fontSize:'0.72rem', fontWeight:600 }}>{s}</span>
@@ -399,7 +399,7 @@ export default function MySchedulePage() {
           {schedule.zones?.length > 0 && (
             <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:9,
               padding:'10px 14px', flex:1, minWidth:140 }}>
-              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KHU VUC</div>
+              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KHU VỰC</div>
               <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                 {schedule.zones.map((z,i) => (
                   <span key={i} style={{ background:'#d1fae5', color:'#065f46', padding:'2px 8px', borderRadius:4, fontSize:'0.72rem', fontWeight:600 }}>{z}</span>

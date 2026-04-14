@@ -62,7 +62,7 @@ const MENU_BY_ROLE = {
   ],
   STAFF: [
     { icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" },
-    { icon: "swap_horiz", label: "Yêu cầu nhập/xuất kho", path: "/confirm-movement", section: "KHO" },
+    { icon: "swap_horiz", label: "Xác nhận nhập/xuất kho", path: "/confirm-movement", section: "KHO" },
     { icon: "inventory", label: "Quản lí tồn kho", path: "/staff-inventory" },
     { icon: "fact_check", label: "Kiểm kê kho", path: "/staff-audit-sessions" },
     { icon: "calendar_month", label: "Lịch của tôi", path: "/my-schedule", section: "CÁ NHÂN" },

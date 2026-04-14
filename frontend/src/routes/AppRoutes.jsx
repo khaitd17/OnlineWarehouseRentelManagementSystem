@@ -149,7 +149,7 @@ function AppRoutes() {
         </Route>
 
         {/* ── OWNER / OPERATOR ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'USER', 'ADMIN']} />}>
+        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard" element={<DashboardRedirect />} />
             <Route path="/owner-dashboard" element={<Dashboard />} />
@@ -172,8 +172,9 @@ function AppRoutes() {
           </Route>
         </Route>
 
-        {/* ── OWNER / OPERATOR / MANAGER: staff management ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'MANAGER', 'ADMIN']} />}>
+
+        {/* ── OWNER / OPERATOR / MANAGER: quản lý nhân sự kho ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'MANAGER']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/create-staff" element={<CreateStaff />} />
             <Route path="/list-staff" element={<ListStaff />} />
@@ -182,25 +183,38 @@ function AppRoutes() {
           </Route>
         </Route>
 
-        {/* ── Warehouse members (Staff, Manager, Operator, Owner, Renter) ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'RENTER', 'ADMIN']} />}>
+        {/* ── MANAGER / OPERATOR / OWNER: quản lý yêu cầu nhập/xuất + lịch sử ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['MANAGER', 'OPERATOR', 'OWNER']} />}>
           <Route element={<DashboardLayout />}>
-            <Route path="/staff-dashboard" element={<StaffDashboard />} />
             <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
             <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
             <Route path="/outbound-requests" element={<OutboundRequestsList />} />
+            <Route path="/transaction-history" element={<TransactionHistory />} />
+          </Route>
+        </Route>
+
+        {/* ── Nhân viên kho (STAFF, MANAGER, OPERATOR, OWNER) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/staff-dashboard" element={<StaffDashboard />} />
             <Route path="/confirm-movement" element={<ConfirmMovement />} />
             <Route path="/staff-inventory" element={<StaffInventoryPage />} />
-            <Route path="/transaction-history" element={<TransactionHistory />} />
-            <Route path="/my-schedule" element={<MySchedulePage />} />
             <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
             <Route path="/staff-audit-sessions/:id" element={<StaffAuditSessionDetailPage />} />
             <Route path="/equipment-management" element={<EquipmentManagement />} />
           </Route>
         </Route>
 
-        {/* ── RENTER ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['RENTER', 'USER', 'ADMIN']} />}>
+        {/* ── Lịch cá nhân: chỉ STAFF và MANAGER (có ca làm việc cụ thể) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/my-schedule" element={<MySchedulePage />} />
+          </Route>
+        </Route>
+
+
+        {/* ── RENTER (có hợp đồng thuê kho) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['RENTER']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/renter-dashboard" element={<RenterDashboard />} />
             <Route path="/contract-extensions-renter" element={<RenterExtensionPage />} />
@@ -217,8 +231,8 @@ function AppRoutes() {
           </Route>
         </Route>
 
-        {/* ── Any warehouse member ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'RENTER', 'USER', 'ADMIN']} />}>
+        {/* ── Tất cả thành viên kho (tạo yêu cầu, thanh toán) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER', 'RENTER']} />}>
           <Route element={<DashboardLayout />}>
             {/* Merged create page (2 tabs) */}
             <Route path="/create-inventory" element={<CreateInventoryRequest />} />
@@ -229,16 +243,17 @@ function AppRoutes() {
           </Route>
         </Route>
 
-        {/* ── OWNER audit sessions ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'MANAGER', 'ADMIN']} />}>
+
+        {/* ── Kiểm kê kho ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'MANAGER']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/owner-audit-sessions" element={<OwnerAuditSessionsPage />} />
             <Route path="/owner-audit-sessions/:id" element={<OwnerAuditSessionDetailPage />} />
           </Route>
         </Route>
 
-        {/* Admin Routes */}
-        <Route element={<ProtectedRoute />}>
+        {/* ── Admin Routes: chỉ ADMIN hệ thống ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['ADMIN']} />}>
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/accounts" element={<AccountsPage />} />

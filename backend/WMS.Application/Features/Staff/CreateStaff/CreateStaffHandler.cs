@@ -70,12 +70,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
             // ── 3. Kiểm tra scope của MANAGER khi gán skill cho STAFF ─────────
             if (callerRole == "MANAGER")
             {
-                // MANAGER không được set isAllSkill vượt phạm vi của mình
-                if (request.IsAllSkill && !callerMembership.IsAllSkill)
-                    throw new UnauthorizedAccessException(
-                        "Manager không được phép gán 'tất cả skill' khi bản thân không có isAllSkill.");
-
-                // MANAGER không được set isAllSkill = true (chỉ OPERATOR)
+                // MANAGER không được phép gán isAllSkill cho nhân viên (chỉ OPERATOR mới có quyền này)
                 if (request.IsAllSkill)
                     throw new UnauthorizedAccessException(
                         "Manager không được phép gán toàn bộ skill. Chỉ Operator mới có quyền này.");
@@ -117,9 +112,23 @@ namespace WMS.Application.Features.Staff.CreateStaff
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);
 
-                // Gửi email mật khẩu tạm — bọc try/catch để lỗi email không block luồng chính
+                // Tạo reset-password token (hết hạn sau 7 ngày — đủ để nhân viên mới đăng nhập)
+                string rawToken = Convert.ToBase64String(
+                        System.Security.Cryptography.RandomNumberGenerator.GetBytes(64))
+                    .Replace("+", "-").Replace("/", "_").Replace("=", "");
+
+                // Gửi email kèm link reset password
                 try
                 {
+                    await _userRepository.InvalidateOldTokensAsync(staffUserId, cancellationToken);
+                    await _userRepository.SaveResetTokenAsync(
+                        userId:    staffUserId,
+                        rawToken:  rawToken,
+                        expiresAt: DateTime.UtcNow.AddDays(7),
+                        ct:        cancellationToken);
+
+                    string resetLink = $"http://localhost:3000/reset-password?token={rawToken}";
+
                     var subject = "[OWRMS] Tài khoản nhân viên đã được tạo";
                     var htmlBody = $@"
 <div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e2e8f0;border-radius:12px;border-top:4px solid #4f46e5'>
@@ -128,9 +137,14 @@ namespace WMS.Application.Features.Staff.CreateStaff
   <div style='background:#f5f3ff;padding:16px 20px;border-radius:8px;margin:20px 0;border-left:4px solid #4f46e5'>
     <p style='margin:0 0 8px;color:#6b7280;font-size:13px;text-transform:uppercase;letter-spacing:.04em'>Thông tin đăng nhập</p>
     <p style='margin:0 0 4px'><strong>Email:</strong> {request.Email}</p>
-    <p style='margin:0'><strong>Mật khẩu tạm:</strong> <span style='font-family:monospace;font-size:16px;color:#4f46e5'>{rawPassword}</span></p>
+    <p style='margin:0 0 4px'><strong>Mật khẩu tạm:</strong> <span style='font-family:monospace;font-size:16px;color:#4f46e5'>{rawPassword}</span></p>
   </div>
-  <p style='color:#ef4444;font-size:13px'>⚠️ Vui lòng đổi mật khẩu ngay sau lần đăng nhập đầu tiên.</p>
+  <div style='background:#fefce8;padding:16px 20px;border-radius:8px;margin:20px 0;border-left:4px solid #eab308'>
+    <p style='margin:0 0 8px;font-weight:700;color:#92400e'>⚠️ Đặt lại mật khẩu ngay</p>
+    <p style='margin:0 0 12px;color:#78350f;font-size:14px'>Vui lòng click vào nút bên dưới để đặt mật khẩu mới của bạn. Link có hiệu lực trong <strong>7 ngày</strong>.</p>
+    <a href='{resetLink}' style='display:inline-block;padding:10px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px'>🔑 Đặt lại mật khẩu</a>
+  </div>
+  <p style='color:#6b7280;font-size:13px'>Hoặc copy link: <span style='color:#4f46e5;word-break:break-all'>{resetLink}</span></p>
   <hr style='border:none;border-top:1px solid #f1f5f9;margin:20px 0'>
   <p style='color:#94a3b8;font-size:12px'>© 2024 Online Warehouse Rental Management System (OWRMS)</p>
 </div>";
@@ -138,7 +152,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
                 }
                 catch
                 {
-                    // Email gửi thất bại: không block tạo nhân viên, ghi log nếu cần
+                    // Email / token thất bại: không block tạo nhân viên
                 }
             }
             else

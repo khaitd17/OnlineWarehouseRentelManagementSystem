@@ -7,7 +7,8 @@ namespace WMS.Application.Features.InventoryRequests.GetRequests;
 // ─── Query ───────────────────────────────────────────────────────────────────
 public record GetInventoryRequestsQuery : IRequest<PagedResult<InventoryRequestDto>>
 {
-    public string ViewAs { get; init; } = "OWNER";   // OWNER | RENTER | STAFF
+    // ViewAs = RoleCode từ membership: OWNER | OPERATOR | MANAGER | STAFF | RENTER
+    public string ViewAs { get; init; } = "RENTER";
     public int UserId { get; init; }
     public string Type { get; init; } = "INBOUND";
     public string? Status { get; init; }
@@ -29,14 +30,28 @@ public class GetInventoryRequestsHandler
     {
         var (items, total) = q.ViewAs.ToUpper() switch
         {
-            "RENTER" => await _repo.GetForRenterAsync(
-                q.UserId, q.Type.ToUpper(), q.Status?.ToUpper(),
+            "OWNER"    => await _repo.GetByOwnerIdAsync(             // kho mình sở hữu
+                q.UserId, q.Type.ToUpper(), q.Status?.ToUpper(), q.WarehouseId,
                 q.Page, q.PageSize, cancellationToken),
-            "STAFF"  => await _repo.GetForStaffAsync(
+
+            "OPERATOR" => await _repo.GetForStaffAsync(              // vận hành toàn kho
                 q.Type.ToUpper(), q.Status?.ToUpper(), q.WarehouseId,
                 q.Page, q.PageSize, cancellationToken),
-            _        => await _repo.GetByOwnerIdAsync(
-                q.UserId, q.Type.ToUpper(), q.Status?.ToUpper(), q.WarehouseId,
+
+            "MANAGER"  => await _repo.GetForStaffAsync(              // duyệt / từ chối
+                q.Type.ToUpper(), q.Status?.ToUpper(), q.WarehouseId,
+                q.Page, q.PageSize, cancellationToken),
+
+            "STAFF"    => await _repo.GetForStaffAsync(              // thực hiện
+                q.Type.ToUpper(), q.Status?.ToUpper(), q.WarehouseId,
+                q.Page, q.PageSize, cancellationToken),
+
+            "RENTER"   => await _repo.GetForRenterAsync(             // của chính mình
+                q.UserId, q.Type.ToUpper(), q.Status?.ToUpper(),
+                q.Page, q.PageSize, cancellationToken),
+
+            _          => await _repo.GetForRenterAsync(             // fallback an toàn
+                q.UserId, q.Type.ToUpper(), q.Status?.ToUpper(),
                 q.Page, q.PageSize, cancellationToken),
         };
 

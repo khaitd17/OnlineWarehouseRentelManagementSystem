@@ -58,20 +58,23 @@ namespace WMS.Infrastructure.Persistence
             // ══════════════════════════════════════════════════
             // 2. USERS — đủ mỗi role, password: 123456
             // ══════════════════════════════════════════════════
-            var adminUser   = EnsureUser(context, "admin@owrms.com",    "Quản Trị Viên",       pw, adminRoleId,   "0900000001");
-            var ownerUser   = EnsureUser(context, "owner@owrms.com",    "Trần Văn B - Chủ Kho", pw, ownerRoleId,   "0900000002");
-            var ownerUser2  = EnsureUser(context, "owner2@owrms.com",   "Phạm Thị C - Chủ Kho 2", pw, ownerRoleId, "0900000003");
-            var renterUser  = EnsureUser(context, "renter@owrms.com",   "Lê Văn D - Người Thuê", pw, renterRoleId,  "0900000004");
-            var renterUser2 = EnsureUser(context, "renter2@owrms.com",  "Ngô Thị E - Người Thuê 2", pw, renterRoleId, "0900000005");
-            var staffUser   = EnsureUser(context, "staff@owrms.com",    "Nguyễn Văn F - Nhân Viên", pw, staffRoleId,  "0900000006");
-            var staffUser2  = EnsureUser(context, "staff2@owrms.com",   "Hoàng Văn G - Nhân Viên 2", pw, staffRoleId, "0900000007");
-            var managerUser = EnsureUser(context, "manager@owrms.com",  "Đỗ Thị H - Quản Lý", pw, managerRoleId, "0900000008");
-            // backward-compat old emails
-            EnsureUser(context, "user@owrms.com",     "Nguyễn Văn A",     pw, staffRoleId,   "0123456781");
-            EnsureUser(context, "manager1@owrms.com", "Lê Thị Manager",   pw, managerRoleId, "0905999888");
+            // ── Tài khoản hệ thống chính ──────────────────────────────────────────
+            var adminUser   = EnsureUser(context, "admin@owrms.com",     "Nguyễn Minh Quản Trị",  pw, adminRoleId,   "0900000001");
+            var ownerUser   = EnsureUser(context, "owner@owrms.com",     "Trần Văn Bình",          pw, ownerRoleId,   "0900000002");
+            var renterUser  = EnsureUser(context, "renter@owrms.com",    "Lê Văn Đạt",             pw, renterRoleId,  "0900000004");
+            var renterUser2 = EnsureUser(context, "renter2@owrms.com",   "Ngô Thị Thu",            pw, renterRoleId,  "0900000005");
+            var managerUser = EnsureUser(context, "manager@owrms.com",   "Đỗ Minh Khoa",           pw, managerRoleId, "0900000008");
+            // 3 nhân viên mẫu chính với email chuẩn theo skill
+            var checkerUser   = EnsureUser(context, "checker@owrms.com",   "Nguyễn Thị Lan",    pw, userRoleId, "0900000010");
+            var inventoryUser = EnsureUser(context, "inventory@owrms.com", "Phạm Văn Tuấn",     pw, userRoleId, "0900000011");
+            var workerUser    = EnsureUser(context, "worker@owrms.com",    "Hoàng Thị Mai",     pw, userRoleId, "0900000012");
+            var allSkillUser  = EnsureUser(context, "allskill@owrms.com",  "Lý Văn Toàn Năng",  pw, userRoleId, "0900000013");
+            // Giữ lại staff@owrms.com + staff2@owrms.com để tương thích dữ liệu cũ (nếu có)
+            var staffUser  = EnsureUser(context, "staff@owrms.com",  "Nguyễn Văn Phúc",  pw, userRoleId, "0900000006");
+            var staffUser2 = EnsureUser(context, "staff2@owrms.com", "Hoàng Văn Dũng",   pw, userRoleId, "0900000007");
             context.SaveChanges();
 
-            // Add warehouse — owned by ownerUser (USER role, not admin)
+            // ── Chỉ 1 kho chính: Kho Hà Nội ──────────────────────────────────────
             var warehouse = context.Warehouses.FirstOrDefault(w => w.Name == "Kho Hà Nội");
             if (warehouse == null)
             {
@@ -101,58 +104,9 @@ namespace WMS.Infrastructure.Persistence
                 context.SaveChanges();
             }
 
+            // Lấy warehouse2/warehouse3 nếu đã tồn tại trong DB (không tạo mới nữa)
             var warehouse2 = context.Warehouses.FirstOrDefault(w => w.Name == "Kho Hải Phòng");
-            if (warehouse2 == null)
-            {
-                warehouse2 = new Warehouse
-                {
-                    Name           = "Kho Hải Phòng",
-                    Address        = "45 Đường Lạch Tray, Ngô Quyền, Hải Phòng",
-                    OwnerId        = ownerUser.UserId,
-                    TotalArea      = 3000,
-                    AvailableArea  = 3000,
-                    Status         = "APPROVED",
-                    Description    = "Kho khu vực Hải Phòng",
-                    Lat            = 20.8449,
-                    Lng            = 106.6881,
-                    OperatingHours = "07:00 - 17:00",
-                    CreatedAt      = DateTime.UtcNow,
-                    ApprovedAt     = DateTime.UtcNow,
-                    ApprovedBy     = adminUser.UserId,
-                    HasZone        = true
-                };
-                context.Warehouses.Add(warehouse2);
-                context.SaveChanges();
-            }
-            else if (!warehouse2.HasZone)
-            {
-                warehouse2.HasZone = true;
-                context.SaveChanges();
-            }
-
             var warehouse3 = context.Warehouses.FirstOrDefault(w => w.Name == "Kho TP.HCM");
-            if (warehouse3 == null)
-            {
-                warehouse3 = new Warehouse
-                {
-                    Name           = "Kho TP.HCM",
-                    Address        = "789 Đường Nguyễn Văn Linh, Quận 7, TP.HCM",
-                    OwnerId        = ownerUser2.UserId,
-                    TotalArea      = 8000,
-                    AvailableArea  = 8000,
-                    Status         = "APPROVED",
-                    Description    = "Kho tổng khu vực phía Nam",
-                    Lat            = 10.7322,
-                    Lng            = 106.7225,
-                    OperatingHours = "06:00 - 22:00",
-                    CreatedAt      = DateTime.UtcNow,
-                    ApprovedAt     = DateTime.UtcNow,
-                    ApprovedBy     = adminUser.UserId,
-                    HasZone        = true
-                };
-                context.Warehouses.Add(warehouse3);
-                context.SaveChanges();
-            }
 
             // Add Zones for warehouse 1
             if (!context.Zones.Any(z => z.WarehouseId == warehouse.WarehouseId))
@@ -161,17 +115,6 @@ namespace WMS.Infrastructure.Persistence
                     new Zone { Code = "Z-A", Name = "Khu A - Thường",         WarehouseId = warehouse.WarehouseId, Description = "Khu vực lưu trữ hàng hóa chung",  IsActive = true, CreatedAt = DateTime.UtcNow },
                     new Zone { Code = "Z-B", Name = "Khu B - Lạnh",           WarehouseId = warehouse.WarehouseId, Description = "Khu vực lưu trữ hàng hóa lạnh",  IsActive = true, CreatedAt = DateTime.UtcNow },
                     new Zone { Code = "Z-C", Name = "Khu C - Hàng Nguy Hiểm", WarehouseId = warehouse.WarehouseId, Description = "Khu vực đặc biệt",               IsActive = true, CreatedAt = DateTime.UtcNow }
-                );
-                context.SaveChanges();
-            }
-
-            if (!context.Zones.Any(z => z.WarehouseId == warehouse2.WarehouseId))
-            {
-                context.Zones.AddRange(
-                    new Zone { Code = "Z-A", Name = "Khu A - Cảng",      WarehouseId = warehouse2.WarehouseId, Description = "Khu tiếp nhận container từ cảng",  IsActive = true, CreatedAt = DateTime.UtcNow },
-                    new Zone { Code = "Z-B", Name = "Khu B - Khô",       WarehouseId = warehouse2.WarehouseId, Description = "Khu lưu trữ hàng hóa khô",          IsActive = true, CreatedAt = DateTime.UtcNow },
-                    new Zone { Code = "Z-C", Name = "Khu C - Lạnh",      WarehouseId = warehouse2.WarehouseId, Description = "Khu lưu trữ hàng đông lạnh",         IsActive = true, CreatedAt = DateTime.UtcNow },
-                    new Zone { Code = "Z-D", Name = "Khu D - Xuất khẩu", WarehouseId = warehouse2.WarehouseId, Description = "Khu tập kết hàng chờ xuất khẩu",    IsActive = true, CreatedAt = DateTime.UtcNow }
                 );
                 context.SaveChanges();
             }
@@ -298,10 +241,12 @@ namespace WMS.Infrastructure.Persistence
             // ══════════════════════════════════════════════════
             // 8. WAREHOUSE MEMBERSHIPS
             // ══════════════════════════════════════════════════
-            // Owner → OPERATOR trên kho của mình
-            EnsureMembership(context, ownerUser.UserId,  warehouse.WarehouseId,  operatorWhRole.Id, true, true);
-            EnsureMembership(context, ownerUser.UserId,  warehouse2.WarehouseId, operatorWhRole.Id, true, true);
-            EnsureMembership(context, ownerUser2.UserId, warehouse3.WarehouseId, operatorWhRole.Id, true, true);
+            // Owner → cả 2 membership: OWNER (thương mại) + OPERATOR (vận hành)
+            // Nhất quán với CreateWarehouseHandler — tách biệt 2 role trong DB từ đầu.
+            EnsureMembership(context, ownerUser.UserId, warehouse.WarehouseId, ownerWhRole.Id,    true, true);
+            EnsureMembership(context, ownerUser.UserId, warehouse.WarehouseId, operatorWhRole.Id, true, true);
+            // warehouse2/warehouse3 memberships nếu tồn tại trong DB cũ sẽ được giữ nguyên, không tạo mới
+
 
             // Staff → STAFF membership (skill + zone cụ thể)
             var staffMembership = EnsureMembership(context, staffUser.UserId, warehouse.WarehouseId, staffWhRole.Id, false, false);
@@ -321,22 +266,12 @@ namespace WMS.Infrastructure.Persistence
                 if (zB != null) staffMembership.Zones.Add(zB);
                 context.SaveChanges();
             }
-            EnsureMembership(context, staffUser2.UserId, warehouse3.WarehouseId, staffWhRole.Id, true, true);
+            // staff@owrms.com → STAFF membership trong warehouse 1 (skill CHECKER)
+            EnsureMembership(context, staffUser.UserId, warehouse.WarehouseId, staffWhRole.Id, false, false);
 
-            // Manager → MANAGER membership
-            EnsureMembership(context, managerUser.UserId, warehouse.WarehouseId,  managerWhRole.Id, true, true);
-            EnsureMembership(context, managerUser.UserId, warehouse2.WarehouseId, managerWhRole.Id, true, true);
+            // Manager → MANAGER membership trong warehouse 1
+            EnsureMembership(context, managerUser.UserId, warehouse.WarehouseId, managerWhRole.Id, true, true);
 
-            // backwards compat old users
-            var oldStaff = context.Users.FirstOrDefault(u => u.Email == "user@owrms.com");
-            if (oldStaff != null)
-            {
-                EnsureMembership(context, oldStaff.UserId, warehouse.WarehouseId, staffWhRole.Id, false, false);
-                EnsureMembership(context, oldStaff.UserId, warehouse2.WarehouseId, managerWhRole.Id, true, true);
-            }
-            var oldManager = context.Users.FirstOrDefault(u => u.Email == "manager1@owrms.com");
-            if (oldManager != null)
-                EnsureMembership(context, oldManager.UserId, warehouse.WarehouseId, managerWhRole.Id, true, true);
 
             // ══════════════════════════════════════════════════
             // 9. RENTAL REQUESTS + CONTRACTS + PAYMENTS
@@ -399,119 +334,7 @@ namespace WMS.Infrastructure.Persistence
                 }
                 context.SaveChanges();
 
-                // RentalRequest 2: renter thuê kho 2, approved → contract active
-                var rr2 = new RentalRequest
-                {
-                    RenterId       = renterUser.UserId,
-                    WarehouseId    = warehouse2.WarehouseId,
-                    RequestedArea  = 300,
-                    StartDate      = now.AddMonths(-3),
-                    DurationMonths = 6,
-                    Status         = "APPROVED",
-                    Notes          = "Thuê kho Hải Phòng cho hàng xuất khẩu",
-                    CreatedAt      = now.AddMonths(-4),
-                    ReviewedBy     = ownerUser.UserId,
-                    ReviewedAt     = now.AddMonths(-3).AddDays(-2),
-                };
-                context.RentalRequests.Add(rr2);
-                context.SaveChanges();
-
-                var c2 = new Contract
-                {
-                    RequestId      = rr2.RequestId,
-                    RenterId       = renterUser.UserId,
-                    WarehouseId    = warehouse2.WarehouseId,
-                    ContractNumber = "HD-2025-002",
-                    StartDate      = DateOnly.FromDateTime(now.AddMonths(-3)),
-                    EndDate        = DateOnly.FromDateTime(now.AddMonths(3)),
-                    Status         = "ACTIVE",
-                    TotalValue     = 42_000_000m,
-                    DepositAmount  = 14_000_000m,
-                    MonthlyPayment = 7_000_000m,
-                    CreatedAt      = now.AddMonths(-3),
-                };
-                context.Contracts.Add(c2);
-                context.SaveChanges();
-
-                for (int i = 0; i < 3; i++)
-                {
-                    context.Payments.Add(new Payment
-                    {
-                        ContractId    = c2.ContractId,
-                        Amount        = 7_000_000m,
-                        PaymentPeriod = $"{now.AddMonths(-3 + i):MM/yyyy}",
-                        PaymentDate   = now.AddMonths(-3 + i),
-                        DueDate       = DateOnly.FromDateTime(now.AddMonths(-3 + i).AddDays(5)),
-                        PaymentMethod = "BANK_TRANSFER",
-                        Status        = "PAID",
-                        TransactionReference = $"TXN-{Guid.NewGuid().ToString()[..8].ToUpper()}",
-                        CreatedAt     = now.AddMonths(-3 + i).AddDays(-3),
-                    });
-                }
-                context.SaveChanges();
-
-                // RentalRequest 3: renter2 thuê kho 3, approved → contract expiring
-                var rr3 = new RentalRequest
-                {
-                    RenterId       = renterUser2.UserId,
-                    WarehouseId    = warehouse3.WarehouseId,
-                    RequestedArea  = 1000,
-                    StartDate      = now.AddMonths(-11),
-                    DurationMonths = 12,
-                    Status         = "APPROVED",
-                    Notes          = "Thuê kho lớn tại TP.HCM",
-                    CreatedAt      = now.AddMonths(-12),
-                    ReviewedBy     = ownerUser2.UserId,
-                    ReviewedAt     = now.AddMonths(-11).AddDays(-3),
-                };
-                context.RentalRequests.Add(rr3);
-                context.SaveChanges();
-
-                var c3 = new Contract
-                {
-                    RequestId      = rr3.RequestId,
-                    RenterId       = renterUser2.UserId,
-                    WarehouseId    = warehouse3.WarehouseId,
-                    ContractNumber = "HD-2025-003",
-                    StartDate      = DateOnly.FromDateTime(now.AddMonths(-11)),
-                    EndDate        = DateOnly.FromDateTime(now.AddMonths(1)),  // sắp hết hạn
-                    Status         = "ACTIVE",
-                    TotalValue     = 180_000_000m,
-                    DepositAmount  = 30_000_000m,
-                    MonthlyPayment = 15_000_000m,
-                    CreatedAt      = now.AddMonths(-11),
-                };
-                context.Contracts.Add(c3);
-                context.SaveChanges();
-
-                for (int i = 0; i < 11; i++)
-                {
-                    context.Payments.Add(new Payment
-                    {
-                        ContractId    = c3.ContractId,
-                        Amount        = 15_000_000m,
-                        PaymentPeriod = $"{now.AddMonths(-11 + i):MM/yyyy}",
-                        PaymentDate   = now.AddMonths(-11 + i),
-                        DueDate       = DateOnly.FromDateTime(now.AddMonths(-11 + i).AddDays(5)),
-                        PaymentMethod = "BANK_TRANSFER",
-                        Status        = "PAID",
-                        TransactionReference = $"TXN-{Guid.NewGuid().ToString()[..8].ToUpper()}",
-                        CreatedAt     = now.AddMonths(-11 + i).AddDays(-2),
-                    });
-                }
-                // 1 pending nữa
-                context.Payments.Add(new Payment
-                {
-                    ContractId    = c3.ContractId,
-                    Amount        = 15_000_000m,
-                    PaymentPeriod = $"{now:MM/yyyy}",
-                    DueDate       = DateOnly.FromDateTime(now.AddDays(10)),
-                    Status        = "PENDING",
-                    CreatedAt     = now.AddDays(-5),
-                });
-                context.SaveChanges();
-
-                // RentalRequest 4: pending — renter2 xin thuê thêm kho 1
+                // RentalRequest 2: renter2 xin thuê kho 1 (pending)
                 context.RentalRequests.Add(new RentalRequest
                 {
                     RenterId       = renterUser2.UserId,
@@ -526,63 +349,13 @@ namespace WMS.Infrastructure.Persistence
                 context.SaveChanges();
             }
 
-            // operator1@owrms.com — OPERATOR riêng biệt (không phải chủ kho)
+
+            // ── Membership operator1@owrms.com: giữ nếu đã tồn tại trong DB cũ (không tạo mới)
             var operatorUser = context.Users.FirstOrDefault(u => u.Email == "operator1@owrms.com");
-            if (operatorUser == null)
-            {
-                operatorUser = new User
-                {
-                    Email        = "operator1@owrms.com",
-                    FullName     = "Operator 1",
-                    PasswordHash = defaultPasswordHash,
-                    RoleId       = userRoleId,
-                    Status       = "ACTIVE",
-                    Phone        = "0912345678",
-                    CreatedAt    = DateTime.UtcNow
-                };
-                context.Users.Add(operatorUser);
-                context.SaveChanges();
-            }
+            if (operatorUser != null)
+                EnsureMembership(context, operatorUser.UserId, warehouse.WarehouseId, operatorWhRole.Id, true, true);
 
-            // operator1 → OPERATOR membership cho warehouse 1
-            var operatorMembership1 = context.WarehouseMemberships
-                .FirstOrDefault(m => m.UserId == operatorUser.UserId && m.WarehouseId == warehouse.WarehouseId);
-            if (operatorMembership1 == null)
-            {
-                operatorMembership1 = new WarehouseMembership
-                {
-                    UserId          = operatorUser.UserId,
-                    WarehouseId     = warehouse.WarehouseId,
-                    WarehouseRoleId = operatorWhRole.Id,
-                    IsActive        = true,
-                    IsAllSkill      = true,
-                    IsAllZone       = true,
-                    CreatedAt       = DateTime.UtcNow
-                };
-                context.WarehouseMemberships.Add(operatorMembership1);
-                context.SaveChanges();
-            }
-
-            // operator1 → OPERATOR membership cho warehouse 2
-            var operatorMembership2 = context.WarehouseMemberships
-                .FirstOrDefault(m => m.UserId == operatorUser.UserId && m.WarehouseId == warehouse2.WarehouseId);
-            if (operatorMembership2 == null)
-            {
-                operatorMembership2 = new WarehouseMembership
-                {
-                    UserId          = operatorUser.UserId,
-                    WarehouseId     = warehouse2.WarehouseId,
-                    WarehouseRoleId = operatorWhRole.Id,
-                    IsActive        = true,
-                    IsAllSkill      = true,
-                    IsAllZone       = true,
-                    CreatedAt       = DateTime.UtcNow
-                };
-                context.WarehouseMemberships.Add(operatorMembership2);
-                context.SaveChanges();
-            }
-
-            // trandinhkhai09072003 → STAFF membership trong warehouse 1 (skill PUTAWAY)
+            // staff@owrms.com → STAFF membership trong warehouse 1 (skill CHECKER)
             var membership = context.WarehouseMemberships
                 .Include(m => m.Skills)
                 .FirstOrDefault(m => m.UserId == staffUser.UserId && m.WarehouseId == warehouse.WarehouseId);
@@ -603,28 +376,88 @@ namespace WMS.Infrastructure.Persistence
                 context.SaveChanges();
             }
 
-            // trandinhkhai09072003 → MANAGER membership trong warehouse 2 (isAllSkill = true by default)
-            var membership2 = context.WarehouseMemberships
-                .FirstOrDefault(m => m.UserId == staffUser.UserId && m.WarehouseId == warehouse2.WarehouseId);
-            if (membership2 == null)
+            // checker@owrms.com → STAFF + skill CHECKER
+            var checkerMem = context.WarehouseMemberships
+                .Include(m => m.Skills)
+                .FirstOrDefault(m => m.UserId == checkerUser.UserId && m.WarehouseId == warehouse.WarehouseId);
+            if (checkerMem == null)
             {
-                membership2 = new WarehouseMembership
+                checkerMem = new WarehouseMembership
                 {
-                    UserId            = staffUser.UserId,
-                    WarehouseId       = warehouse2.WarehouseId,
-                    WarehouseRoleId   = managerWhRole.Id,
-                    WarehouseShiftId  = shiftNgay.Id,
+                    UserId            = checkerUser.UserId,
+                    WarehouseId       = warehouse.WarehouseId,
+                    WarehouseRoleId   = staffWhRole.Id,
+                    WarehouseShiftId  = shiftSang.Id,
                     IsActive          = true,
-                    IsAllSkill        = true,   // Manager mặc định quản lý toàn bộ skill
-                    IsAllZone         = false,
+                    IsAllSkill        = false,
                     CreatedAt         = DateTime.UtcNow
                 };
-                context.WarehouseMemberships.Add(membership2);
+                if (checkerSkill != null) checkerMem.Skills.Add(checkerSkill);
+                context.WarehouseMemberships.Add(checkerMem);
                 context.SaveChanges();
             }
 
-            // ══════════════════════════════════════════════════
-            // 10. AUDIT SESSIONS + RESULTS
+            // inventory@owrms.com → STAFF + skill INVENTORY_OPERATOR
+            var inventoryMem = context.WarehouseMemberships
+                .Include(m => m.Skills)
+                .FirstOrDefault(m => m.UserId == inventoryUser.UserId && m.WarehouseId == warehouse.WarehouseId);
+            if (inventoryMem == null)
+            {
+                inventoryMem = new WarehouseMembership
+                {
+                    UserId            = inventoryUser.UserId,
+                    WarehouseId       = warehouse.WarehouseId,
+                    WarehouseRoleId   = staffWhRole.Id,
+                    WarehouseShiftId  = shiftSang.Id,
+                    IsActive          = true,
+                    IsAllSkill        = false,
+                    CreatedAt         = DateTime.UtcNow
+                };
+                if (invOpSkill != null) inventoryMem.Skills.Add(invOpSkill);
+                context.WarehouseMemberships.Add(inventoryMem);
+                context.SaveChanges();
+            }
+
+            // worker@owrms.com → STAFF + skill WAREHOUSE_WORKER
+            var workerMem = context.WarehouseMemberships
+                .Include(m => m.Skills)
+                .FirstOrDefault(m => m.UserId == workerUser.UserId && m.WarehouseId == warehouse.WarehouseId);
+            if (workerMem == null)
+            {
+                workerMem = new WarehouseMembership
+                {
+                    UserId            = workerUser.UserId,
+                    WarehouseId       = warehouse.WarehouseId,
+                    WarehouseRoleId   = staffWhRole.Id,
+                    WarehouseShiftId  = shiftSang.Id,
+                    IsActive          = true,
+                    IsAllSkill        = false,
+                    CreatedAt         = DateTime.UtcNow
+                };
+                if (wwSkill != null) workerMem.Skills.Add(wwSkill);
+                context.WarehouseMemberships.Add(workerMem);
+                context.SaveChanges();
+            }
+
+            // allskill@owrms.com → STAFF + IsAllSkill = true (nhân viên toàn năng)
+            var allSkillMem = context.WarehouseMemberships
+                .FirstOrDefault(m => m.UserId == allSkillUser.UserId && m.WarehouseId == warehouse.WarehouseId);
+            if (allSkillMem == null)
+            {
+                allSkillMem = new WarehouseMembership
+                {
+                    UserId           = allSkillUser.UserId,
+                    WarehouseId      = warehouse.WarehouseId,
+                    WarehouseRoleId  = staffWhRole.Id,
+                    WarehouseShiftId = shiftNgay.Id,
+                    IsActive         = true,
+                    IsAllSkill       = true,   // toàn năng
+                    CreatedAt        = DateTime.UtcNow
+                };
+                context.WarehouseMemberships.Add(allSkillMem);
+                context.SaveChanges();
+            }
+
             // ══════════════════════════════════════════════════
             if (!context.AuditSessions.Any())
             {
@@ -690,26 +523,31 @@ namespace WMS.Infrastructure.Persistence
                 );
                 context.SaveChanges();
 
-                // Audit 4: COMPLETED — kho TP.HCM (owner2)
-                var a4 = new AuditSession
+                // Audit 4 (kho TP.HCM) — chỉ seed nếu warehouse3 tồn tại trong DB cũ
+                var w3 = context.Warehouses.FirstOrDefault(w => w.Name == "Kho TP.HCM");
+                if (w3 != null)
                 {
-                    WarehouseId = warehouse3.WarehouseId,
-                    CreatedBy   = ownerUser2.UserId,
-                    Status      = "COMPLETED",
-                    CreatedAt   = now.AddMonths(-1).AddDays(-10),
-                    CompletedAt = now.AddMonths(-1).AddDays(-8),
-                    Notes       = "Kiểm kê kho TP.HCM",
-                };
-                context.AuditSessions.Add(a4);
-                context.SaveChanges();
+                    var a4 = new AuditSession
+                    {
+                        WarehouseId = w3.WarehouseId,
+                        CreatedBy   = ownerUser.UserId,
+                        Status      = "COMPLETED",
+                        CreatedAt   = now.AddMonths(-1).AddDays(-10),
+                        CompletedAt = now.AddMonths(-1).AddDays(-8),
+                        Notes       = "Kiểm kê kho TP.HCM",
+                    };
+                    context.AuditSessions.Add(a4);
+                    context.SaveChanges();
 
-                context.AuditResults.AddRange(
-                    new AuditResult { AuditId = a4.AuditId, ItemName = "Gạo ST25 (bao 50kg)",  ExpectedQty = 400, ActualQty = 398, Discrepancy = -2, DiscrepancyReason = "2 bao bị rách", RecordedBy = ownerUser2.UserId, CreatedAt = now.AddMonths(-1).AddDays(-9) },
-                    new AuditResult { AuditId = a4.AuditId, ItemName = "Nước mắm Phú Quốc 1L", ExpectedQty = 1000, ActualQty = 1000, Discrepancy = 0, RecordedBy = ownerUser2.UserId, CreatedAt = now.AddMonths(-1).AddDays(-9) },
-                    new AuditResult { AuditId = a4.AuditId, ItemName = "Cà phê Trung Nguyên",  ExpectedQty = 300, ActualQty = 305, Discrepancy = 5, DiscrepancyReason = "Dư 5 thùng từ đơn hàng trả", RecordedBy = ownerUser2.UserId, CreatedAt = now.AddMonths(-1).AddDays(-9) }
-                );
-                context.SaveChanges();
+                    context.AuditResults.AddRange(
+                        new AuditResult { AuditId = a4.AuditId, ItemName = "Gạo ST25 (bao 50kg)",  ExpectedQty = 400, ActualQty = 398, Discrepancy = -2, DiscrepancyReason = "2 bao bị rách", RecordedBy = ownerUser.UserId, CreatedAt = now.AddMonths(-1).AddDays(-9) },
+                        new AuditResult { AuditId = a4.AuditId, ItemName = "Nước mắm Phú Quốc 1L", ExpectedQty = 1000, ActualQty = 1000, Discrepancy = 0, RecordedBy = ownerUser.UserId, CreatedAt = now.AddMonths(-1).AddDays(-9) },
+                        new AuditResult { AuditId = a4.AuditId, ItemName = "Cà phê Trung Nguyên",  ExpectedQty = 300, ActualQty = 305, Discrepancy = 5, DiscrepancyReason = "Dư 5 thùng từ đơn hàng trả", RecordedBy = ownerUser.UserId, CreatedAt = now.AddMonths(-1).AddDays(-9) }
+                    );
+                    context.SaveChanges();
+                }
             }
+
 
             var managerMembership = context.WarehouseMemberships
                 .FirstOrDefault(m => m.UserId == managerUser.UserId && m.WarehouseId == warehouse.WarehouseId);
@@ -818,15 +656,16 @@ namespace WMS.Infrastructure.Persistence
             {
                 var ttIds = context.TaskTypes.ToDictionary(t => t.Code, t => t.Id);
 
-                var t1 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["GENERAL_CLEAN"], Status = "Pending", ScheduledAt = new DateTime(2026,3,17,8,0,0,DateTimeKind.Utc),  Note = "Vệ sinh toàn bộ kho Hà Nội" };
-                var t2 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["ZONE_INSPECT"],  Status = "Pending", ScheduledAt = new DateTime(2026,3,15,7,30,0,DateTimeKind.Utc), Note = "Kiểm tra khu A và B" };
-                var t3 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["EQUIP_MAINT"],  Status = "Done",    ScheduledAt = new DateTime(2026,3,16,8,0,0,DateTimeKind.Utc),  Note = "Bảo trì xe nâng" };
-                var t4 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["GENERAL_CLEAN"], Status = "Pending", ScheduledAt = null, Note = "Vệ sinh khu B" };
-                var t5 = new WarehouseTask { WarehouseId = warehouse2.WarehouseId, TaskTypeId = ttIds["GENERAL_CLEAN"], Status = "Pending", ScheduledAt = null, Note = "Vệ sinh kho Hải Phòng" };
-                var t6 = new WarehouseTask { WarehouseId = warehouse.WarehouseId,  TaskTypeId = ttIds["OTHER"],         Status = "Pending", ScheduledAt = null, Note = "Hỗ trợ đặc biệt theo yêu cầu" };
+                var t1 = new WarehouseTask { WarehouseId = warehouse.WarehouseId, TaskTypeId = ttIds["GENERAL_CLEAN"], Status = "Pending", ScheduledAt = new DateTime(2026,3,17,8,0,0,DateTimeKind.Utc),  Note = "Vệ sinh toàn bộ kho Hà Nội" };
+                var t2 = new WarehouseTask { WarehouseId = warehouse.WarehouseId, TaskTypeId = ttIds["ZONE_INSPECT"],  Status = "Pending", ScheduledAt = new DateTime(2026,3,15,7,30,0,DateTimeKind.Utc), Note = "Kiểm tra khu A và B" };
+                var t3 = new WarehouseTask { WarehouseId = warehouse.WarehouseId, TaskTypeId = ttIds["EQUIP_MAINT"],  Status = "Done",    ScheduledAt = new DateTime(2026,3,16,8,0,0,DateTimeKind.Utc),  Note = "Bảo trì xe nâng" };
+                var t4 = new WarehouseTask { WarehouseId = warehouse.WarehouseId, TaskTypeId = ttIds["GENERAL_CLEAN"], Status = "Pending", ScheduledAt = null, Note = "Vệ sinh khu B" };
+                var t5 = new WarehouseTask { WarehouseId = warehouse.WarehouseId, TaskTypeId = ttIds["GENERAL_CLEAN"], Status = "Pending", ScheduledAt = null, Note = "Vệ sinh khu C" };
+                var t6 = new WarehouseTask { WarehouseId = warehouse.WarehouseId, TaskTypeId = ttIds["OTHER"],         Status = "Pending", ScheduledAt = null, Note = "Hỗ trợ đặc biệt theo yêu cầu" };
 
                 context.WarehouseTasks.AddRange(t1, t2, t3, t4, t5, t6);
                 context.SaveChanges();
+
             }
             // ─── 30 nhân viên STAFF cho Kho Hà Nội ─────────────────────────────────────
             // Skills: CHECKER, INVENTORY_OPERATOR, WAREHOUSE_WORKER
@@ -1014,7 +853,7 @@ namespace WMS.Infrastructure.Persistence
                     context.SaveChanges();
                 }
 
-                // Thêm membership RENTER cho warehouse 1
+                // Chỉ thêm membership RENTER cho warehouse 1 (kho Hà Nội)
                 if (!context.WarehouseMemberships.Any(m => m.UserId == renterU.UserId && m.WarehouseId == warehouse.WarehouseId))
                 {
                     context.WarehouseMemberships.Add(new WarehouseMembership
@@ -1028,23 +867,9 @@ namespace WMS.Infrastructure.Persistence
                         CreatedAt       = DateTime.UtcNow
                     });
                 }
-
-                // Thêm membership RENTER cho warehouse 2
-                if (!context.WarehouseMemberships.Any(m => m.UserId == renterU.UserId && m.WarehouseId == warehouse2.WarehouseId))
-                {
-                    context.WarehouseMemberships.Add(new WarehouseMembership
-                    {
-                        UserId          = renterU.UserId,
-                        WarehouseId     = warehouse2.WarehouseId,
-                        WarehouseRoleId = renterWhRole.Id,
-                        IsActive        = true,
-                        IsAllSkill      = false,
-                        IsAllZone       = false,
-                        CreatedAt       = DateTime.UtcNow
-                    });
-                }
             }
             context.SaveChanges();
+
 
             // ─── Seed Contract + Payment (để test) ──────────────────────────────────
             var renter1 = context.Users.FirstOrDefault(u => u.Email == "renter1@owrms.com");
