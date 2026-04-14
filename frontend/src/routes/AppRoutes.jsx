@@ -187,7 +187,7 @@ function AppRoutes() {
           <Route element={<DashboardLayout />}>
             <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
             <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
-            <Route path="/outbound-requests" element={<OutboundRequestsList />} />
+            <Route path="/outbound-requests" element={<StaffInventoryRequests defaultTab="OUTBOUND" />} />
             <Route path="/transaction-history" element={<TransactionHistory />} />
           </Route>
         </Route>

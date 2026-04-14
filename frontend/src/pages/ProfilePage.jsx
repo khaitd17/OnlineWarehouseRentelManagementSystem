@@ -86,9 +86,55 @@ const ProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [formData, setFormData] = useState({ fullName: "", phone: "" });
+  const [profileErrors, setProfileErrors] = useState({});
+  const [profileTouched, setProfileTouched] = useState({});
   const [pwForm, setPwForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [pwErrors, setPwErrors] = useState({});
+  const [pwTouched, setPwTouched] = useState({});
   const [pwLoading, setPwLoading] = useState(false);
   const [toast, setToast] = useState(null);
+
+  /* ── validators ── */
+  const validateProfile = (data) => ({
+    fullName: (() => {
+      const trimmed = data.fullName.trim();
+      if (!trimmed) return 'Họ và tên không được để trống.';
+      if (trimmed.length < 2) return 'Họ và tên phải có ít nhất 2 ký tự.';
+      if (trimmed.length > 50) return 'Họ và tên không được vượt quá 50 ký tự.';
+      if (!/^[\p{L}\s]+$/u.test(trimmed)) return 'Họ và tên chỉ được chứa chữ cái và khoảng trắng.';
+      const words = trimmed.split(/\s+/);
+      if (words.length < 2) return 'Vui lòng nhập đầy đủ họ và tên (ví dụ: Nguyễn Văn A).';
+      for (const word of words) {
+        if (word.length < 2) return 'Mỗi từ trong tên phải có ít nhất 2 ký tự.';
+        if (/(.{2,})\1/i.test(word)) return 'Tên không hợp lệ. Vui lòng nhập tên thật.';
+        if (/(.)\1{2,}/i.test(word)) return 'Tên không hợp lệ. Vui lòng nhập tên thật.';
+      }
+      return '';
+    })(),
+    phone: data.phone.trim() && !/^(0[3|5|7|8|9])\d{8}$/.test(data.phone.replace(/\s/g, ''))
+      ? 'Số điện thoại không hợp lệ (VD: 0901234567).'
+      : '',
+  });
+
+  const validatePw = (data) => ({
+    currentPassword: !data.currentPassword ? 'Vui lòng nhập mật khẩu hiện tại.' : '',
+    newPassword: !data.newPassword
+      ? 'Vui lòng nhập mật khẩu mới.'
+      : data.newPassword.length < 6
+        ? 'Mật khẩu mới phải có ít nhất 6 ký tự.'
+        : !/[A-Z]/.test(data.newPassword)
+          ? 'Mật khẩu phải chứa ít nhất 1 chữ hoa (A-Z).'
+          : !/[a-z]/.test(data.newPassword)
+            ? 'Mật khẩu phải chứa ít nhất 1 chữ thường (a-z).'
+            : !/[0-9]/.test(data.newPassword)
+              ? 'Mật khẩu phải chứa ít nhất 1 chữ số (0-9).'
+              : '',
+    confirmPassword: !data.confirmPassword
+      ? 'Vui lòng xác nhận mật khẩu.'
+      : data.confirmPassword !== data.newPassword
+        ? 'Mật khẩu xác nhận không khớp.'
+        : '',
+  });
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -138,6 +184,10 @@ const ProfilePage = () => {
   /* handlers */
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    const errs = validateProfile(formData);
+    setProfileErrors(errs);
+    setProfileTouched({ fullName: true, phone: true });
+    if (Object.values(errs).some(v => v)) return;
     setSaveLoading(true);
     try {
       await userService.updateProfile(formData);
@@ -145,6 +195,8 @@ const ProfilePage = () => {
       localStorage.setItem("user", JSON.stringify({ ...stored, ...formData }));
       window.dispatchEvent(new Event("authChange"));
       setIsEditing(false);
+      setProfileErrors({});
+      setProfileTouched({});
       loadAll();
       showToast("Cập nhật thông tin thành công!");
     } catch { showToast("Không thể cập nhật thông tin.", "error"); }
@@ -166,12 +218,17 @@ const ProfilePage = () => {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
-    if (pwForm.newPassword !== pwForm.confirmPassword) { showToast("Mật khẩu xác nhận không khớp!", "error"); return; }
+    const errs = validatePw(pwForm);
+    setPwErrors(errs);
+    setPwTouched({ currentPassword: true, newPassword: true, confirmPassword: true });
+    if (Object.values(errs).some(v => v)) return;
     setPwLoading(true);
     try {
       await userService.changePassword(pwForm);
       setPwForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      showToast("Đổi mật khẩu thành công!");
+      setPwErrors({});
+      setPwTouched({});
+      showToast("Dổi mật khẩu thành công!");
     } catch (err) { showToast(err.response?.data?.message || "Không thể đổi mật khẩu.", "error"); }
     setPwLoading(false);
   };
@@ -243,8 +300,48 @@ const ProfilePage = () => {
     <div style={{ background: "#f0f4f8", minHeight: "calc(100vh - 80px)", padding: "2rem 1rem", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto", display: "grid", gridTemplateColumns: "260px 1fr", gap: "1.5rem" }}>
 
-        {/* ── SIDEBAR ── */}
+        {/* \u2500\u2500 SIDEBAR \u2500\u2500 */}
         <aside style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+
+          {/* Back to home button */}
+          <button
+            onClick={() => navigate("/")}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "10px 16px", borderRadius: 12,
+              border: "1.5px solid #e0e7ff",
+              background: "linear-gradient(135deg, #eef2ff 0%, #f0f9ff 100%)",
+              color: "#3730a3", fontWeight: 700, fontSize: "0.85rem",
+              cursor: "pointer", textAlign: "left",
+              boxShadow: "0 2px 8px rgba(99,102,241,0.08)",
+              transition: "all 0.22s cubic-bezier(.22,.68,0,1.2)",
+              fontFamily: "inherit",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "linear-gradient(135deg, #6366f1 0%, #0ea5e9 100%)";
+              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.borderColor = "transparent";
+              e.currentTarget.style.transform = "translateX(-3px)";
+              e.currentTarget.style.boxShadow = "0 6px 20px rgba(99,102,241,0.3)";
+              e.currentTarget.querySelector("svg").style.transform = "translateX(-3px)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "linear-gradient(135deg, #eef2ff 0%, #f0f9ff 100%)";
+              e.currentTarget.style.color = "#3730a3";
+              e.currentTarget.style.borderColor = "#e0e7ff";
+              e.currentTarget.style.transform = "translateX(0)";
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(99,102,241,0.08)";
+              e.currentTarget.querySelector("svg").style.transform = "translateX(0)";
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.22s", flexShrink: 0 }}>
+              <line x1="19" y1="12" x2="5" y2="12"/>
+              <polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Về trang chủ
+          </button>
+
           {/* Avatar card */}
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", overflow: "hidden", marginBottom: 4 }}>
             <div style={{ height: 60, background: "linear-gradient(135deg,#1e40af,#0ea5e9)" }} />
@@ -389,19 +486,54 @@ const ProfilePage = () => {
                   ) : (
                     <form onSubmit={handleSaveProfile}>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.2rem", marginBottom: "1.5rem" }}>
-                        {[
-                          { label: "Họ và tên", key: "fullName", type: "text" },
-                          { label: "Số điện thoại", key: "phone", type: "tel" },
-                        ].map(f => (
-                          <div key={f.key}>
-                            <label style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "#374151", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{f.label}</label>
-                            <input type={f.type} value={formData[f.key]} onChange={e => setFormData(p => ({ ...p, [f.key]: e.target.value }))}
-                              style={inputStyle}
-                              onFocus={e => { e.target.style.borderColor = "#0095c7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,149,199,.1)"; }}
-                              onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
-                            />
-                          </div>
-                        ))}
+                        {/* Họ và tên */}
+                        <div>
+                          <label style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "#374151", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Họ và tên</label>
+                          <input
+                            type="text" value={formData.fullName} maxLength={51}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setFormData(p => ({ ...p, fullName: val }));
+                              if (profileTouched.fullName) setProfileErrors(p => ({ ...p, fullName: validateProfile({ ...formData, fullName: val }).fullName }));
+                            }}
+                            onBlur={e => {
+                              setProfileTouched(p => ({ ...p, fullName: true }));
+                              setProfileErrors(p => ({ ...p, fullName: validateProfile({ ...formData, fullName: e.target.value }).fullName }));
+                            }}
+                            style={{ ...inputStyle, borderColor: profileTouched.fullName && profileErrors.fullName ? '#ef4444' : '#e2e8f0' }}
+                            onFocus={e => { if (!(profileTouched.fullName && profileErrors.fullName)) { e.target.style.borderColor = "#0095c7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,149,199,.1)"; } }}
+                          />
+                          {profileTouched.fullName && profileErrors.fullName && (
+                            <div style={{ marginTop: 4, fontSize: "0.74rem", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              {profileErrors.fullName}
+                            </div>
+                          )}
+                        </div>
+                        {/* Số điện thoại */}
+                        <div>
+                          <label style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "#374151", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Số điện thoại</label>
+                          <input
+                            type="tel" value={formData.phone} maxLength={11} placeholder="0901234567"
+                            onChange={e => {
+                              const val = e.target.value;
+                              setFormData(p => ({ ...p, phone: val }));
+                              if (profileTouched.phone) setProfileErrors(p => ({ ...p, phone: validateProfile({ ...formData, phone: val }).phone }));
+                            }}
+                            onBlur={e => {
+                              setProfileTouched(p => ({ ...p, phone: true }));
+                              setProfileErrors(p => ({ ...p, phone: validateProfile({ ...formData, phone: e.target.value }).phone }));
+                            }}
+                            style={{ ...inputStyle, borderColor: profileTouched.phone && profileErrors.phone ? '#ef4444' : '#e2e8f0' }}
+                            onFocus={e => { if (!(profileTouched.phone && profileErrors.phone)) { e.target.style.borderColor = "#0095c7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,149,199,.1)"; } }}
+                          />
+                          {profileTouched.phone && profileErrors.phone && (
+                            <div style={{ marginTop: 4, fontSize: "0.74rem", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              {profileErrors.phone}
+                            </div>
+                          )}
+                        </div>
                         <div>
                           <label style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "#374151", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>Email</label>
                           <div style={readonlyStyle}>{profile?.email}</div>
@@ -412,7 +544,7 @@ const ProfilePage = () => {
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-                        <button type="button" onClick={() => setIsEditing(false)} style={{ padding: "9px 20px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 9, fontWeight: 600, fontSize: "0.85rem", cursor: "pointer", color: "#64748b" }}>Hủy</button>
+                        <button type="button" onClick={() => { setIsEditing(false); setProfileErrors({}); setProfileTouched({}); }} style={{ padding: "9px 20px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 9, fontWeight: 600, fontSize: "0.85rem", cursor: "pointer", color: "#64748b" }}>Hủy</button>
                         <button type="submit" disabled={saveLoading} style={{ padding: "9px 22px", background: "linear-gradient(135deg,#0095c7,#0369a1)", color: "#fff", border: "none", borderRadius: 9, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,149,199,.3)" }}>
                           {saveLoading ? "Đang lưu..." : "💾 Lưu thay đổi"}
                         </button>
@@ -436,11 +568,27 @@ const ProfilePage = () => {
                   ].map(f => (
                     <div key={f.key}>
                       <label style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "#374151", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{f.label}</label>
-                      <input type="password" value={pwForm[f.key]} onChange={e => setPwForm(p => ({ ...p, [f.key]: e.target.value }))}
-                        placeholder="••••••••" style={inputStyle}
-                        onFocus={e => { e.target.style.borderColor = "#0095c7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,149,199,.1)"; }}
-                        onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
+                      <input
+                        type="password" value={pwForm[f.key]}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setPwForm(p => ({ ...p, [f.key]: val }));
+                          if (pwTouched[f.key]) setPwErrors(p => ({ ...p, [f.key]: validatePw({ ...pwForm, [f.key]: val })[f.key] }));
+                        }}
+                        onBlur={e => {
+                          setPwTouched(p => ({ ...p, [f.key]: true }));
+                          setPwErrors(p => ({ ...p, [f.key]: validatePw({ ...pwForm, [f.key]: e.target.value })[f.key] }));
+                        }}
+                        placeholder="••••••••"
+                        style={{ ...inputStyle, borderColor: pwTouched[f.key] && pwErrors[f.key] ? '#ef4444' : '#e2e8f0' }}
+                        onFocus={e => { if (!(pwTouched[f.key] && pwErrors[f.key])) { e.target.style.borderColor = "#0095c7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,149,199,.1)"; } }}
                       />
+                      {pwTouched[f.key] && pwErrors[f.key] && (
+                        <div style={{ marginTop: 4, fontSize: "0.74rem", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                          {pwErrors[f.key]}
+                        </div>
+                      )}
                     </div>
                   ))}
                   <div style={{ gridColumn: "1/-1", display: "flex", justifyContent: "flex-end" }}>
