@@ -64,6 +64,7 @@ public class ApplicationDbContext : DbContext
     public virtual DbSet<VContractPayment> VContractPayments { get; set; }
 
     public virtual DbSet<VWarehouseOccupancy> VWarehouseOccupancies { get; set; }
+
     public virtual DbSet<Subscription> Subscriptions { get; set; }
 
     public virtual DbSet<SubscriptionPackage> SubscriptionPackages { get; set; }
@@ -248,8 +249,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.MonthlyPayment).HasColumnType("decimal(15, 2)").HasColumnName("monthly_payment");
             entity.Property(e => e.TotalValue).HasColumnType("decimal(15, 2)").HasColumnName("total_value");
             entity.Property(e => e.DepositAmount).HasColumnType("decimal(15, 2)").HasColumnName("deposit_amount");
-            entity.Property(e => e.CancellationFee).HasColumnType("decimal(15, 2)").HasColumnName("cancellation_fee");
-            entity.Property(e => e.EarlyTerminationFee).HasColumnType("decimal(15, 2)").HasColumnName("early_termination_fee");
+            entity.Property(e => e.CancellationFee).HasColumnType("decimal(18, 2)").HasColumnName("CancellationFee");
+            entity.Property(e => e.EarlyTerminationFee).HasColumnType("decimal(18, 2)").HasColumnName("EarlyTerminationFee");
             entity.Property(e => e.Status).HasMaxLength(50).HasColumnName("status");
             entity.Property(e => e.Terms).HasColumnName("terms");
             entity.Property(e => e.ContractFileUrl).HasMaxLength(500).HasColumnName("contract_file_url");
@@ -693,7 +694,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
             entity.Property(e => e.Description).HasColumnName("description").IsRequired(false);
             entity.Property(e => e.IsAllSkill).HasColumnName("is_all_skill").HasDefaultValue(false);
-            entity.Ignore(e => e.IsManual);
+            entity.Property(e => e.IsManual).HasColumnName("is_manual").HasDefaultValue(false);
             entity.Property(e => e.SkillId).HasColumnName("skill_id").IsRequired(false);
             entity.HasOne(e => e.Skill).WithMany().HasForeignKey(e => e.SkillId).IsRequired(false);
         });
@@ -747,7 +748,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.SubscriptionId);
             entity.Property(e => e.SubscriptionId).HasColumnName("subscription_id");
             entity.Property(e => e.UserId).HasColumnName("user_id");
-            entity.Property(e => e.Plan).HasMaxLength(50).HasColumnName("plan");
+            entity.Property(e => e.Plan).HasMaxLength(50).HasConversion<string>().HasColumnName("plan");
             entity.Property(e => e.Status).HasMaxLength(50).HasConversion<string>().HasColumnName("status");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
             entity.Property(e => e.EndDate).HasColumnName("end_date");
@@ -761,14 +762,14 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<SubscriptionPackage>(entity =>
         {
-            entity.ToTable("subscription_packages", tb => tb.HasTrigger("TR_subscription_packages_updated_at"));
             entity.HasKey(e => e.PackageId);
+            entity.ToTable("subscription_packages", tb => tb.HasTrigger("TR_subscription_packages_updated_at"));
             entity.Property(e => e.PackageId).HasColumnName("package_id");
             entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
             entity.Property(e => e.Price).HasColumnType("decimal(15, 2)").HasColumnName("price");
             entity.Property(e => e.Description).HasColumnName("description");
-            entity.Property(e => e.DurationMonths).HasColumnName("duration_months").HasDefaultValue(1);
-            entity.Property(e => e.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.Property(e => e.DurationMonths).HasDefaultValue(1).HasColumnName("duration_months");
+            entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
         });
