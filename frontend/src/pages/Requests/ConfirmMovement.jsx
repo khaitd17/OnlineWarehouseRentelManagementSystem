@@ -5,6 +5,11 @@ const INBOUND_COLOR  = '#0ea5e9';
 const OUTBOUND_COLOR = '#f59e0b';
 const fmtDate  = d => d ? new Date(d).toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
 
+const STATUS_BADGE = {
+  CONFIRMED: { label: 'Đã duyệt — chờ xử lý', bg:'#dcfce7', color:'#166534', dot:'#22c55e' },
+  ASSIGNED:  { label: 'Đã giao cho bạn',       bg:'#ede9fe', color:'#6d28d9', dot:'#8b5cf6' },
+};
+
 /* ── Confirm Modal ──────────────────────────────────────────── */
 const ConfirmModal = ({ req, onClose, onConfirm, loading }) => {
   const [note, setNote] = useState('');
@@ -190,8 +195,8 @@ const ConfirmMovement = () => {
 
       {/* Header */}
       <div style={{ marginBottom:20 }}>
-        <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>Yêu cầu nhập / xuất kho</h1>
-        <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>Danh sách đơn đã được Manager duyệt — bất kỳ nhân viên nào trong kho đều có thể xử lý và xác nhận hoàn thành.</p>
+        <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>Nhiệm vụ được giao</h1>
+        <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>Danh sách đơn nhập / xuất kho đã được Manager giao cho bạn — xác nhận hoàn thành sau khi thực hiện xong.</p>
       </div>
 
       {/* Warehouse selector */}
@@ -304,10 +309,21 @@ const ConfirmMovement = () => {
                       <p style={{ margin:0, fontSize:'0.7rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em' }}>Yêu cầu #{req.invReqId}</p>
                       <h3 style={{ margin:'4px 0 0', fontSize:'0.97rem', fontWeight:800, color:'#0f172a' }}>{req.warehouseName}</h3>
                     </div>
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 12px', borderRadius:999, fontSize:'0.73rem', fontWeight:700, background:`${ac}15`, color:ac, border:`1px solid ${ac}30`, flexShrink:0 }}>
-                      <span style={{ width:6, height:6, borderRadius:'50%', background:ac }}/>
-                      {isIn ? 'Nhập kho' : 'Xuất kho'}
-                    </span>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:5, flexShrink:0 }}>
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 12px', borderRadius:999, fontSize:'0.73rem', fontWeight:700, background:`${ac}15`, color:ac, border:`1px solid ${ac}30` }}>
+                        <span style={{ width:6, height:6, borderRadius:'50%', background:ac }}/>
+                        {isIn ? 'Nhập kho' : 'Xuất kho'}
+                      </span>
+                      {(() => {
+                        const sb = STATUS_BADGE[req.status];
+                        return sb ? (
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'3px 10px', borderRadius:999, fontSize:'0.7rem', fontWeight:700, background:sb.bg, color:sb.color, border:`1px solid ${sb.dot}40` }}>
+                            <span style={{ width:5, height:5, borderRadius:'50%', background:sb.dot }}/>
+                            {sb.label}
+                          </span>
+                        ) : null;
+                      })()}
+                    </div>
                   </div>
 
                   {/* Meta */}
@@ -321,7 +337,7 @@ const ConfirmMovement = () => {
                     </div>
                   </div>
 
-                  {/* Manager note */}
+                  {/* Manager note / assigned note */}
                   {req.assignedNote && (
                     <div style={{ background:'#eff6ff', borderRadius:10, padding:'9px 12px', marginBottom:14, borderLeft:`3px solid ${INBOUND_COLOR}` }}>
                       <p style={{ margin:0, fontSize:'0.72rem', fontWeight:700, color:'#1d4ed8', marginBottom:2 }}>📋 Ghi chú Manager</p>

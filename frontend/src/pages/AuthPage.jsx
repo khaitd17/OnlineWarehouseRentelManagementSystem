@@ -176,12 +176,97 @@ const STYLES = `
     transition: color 0.2s;
   }
   .forgot-link:hover { color: #a5b4fc; }
+
+  .back-home-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 50px;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(12px);
+    color: rgba(203,213,225,0.9);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.25s cubic-bezier(.22,.68,0,1.2);
+    letter-spacing: 0.01em;
+    margin-bottom: 20px;
+  }
+  .back-home-btn:hover {
+    background: rgba(99,102,241,0.18);
+    border-color: rgba(99,102,241,0.5);
+    color: #a5b4fc;
+    transform: translateX(-3px);
+    box-shadow: 0 4px 16px rgba(99,102,241,0.2);
+  }
+  .back-home-btn svg {
+    transition: transform 0.25s;
+  }
+  .back-home-btn:hover svg {
+    transform: translateX(-3px);
+  }
+
+  .close-card-btn {
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: rgba(148,163,184,0.6);
+    transition: all 0.2s;
+  }
+  .close-card-btn:hover {
+    background: rgba(239,68,68,0.15);
+    border-color: rgba(239,68,68,0.4);
+    color: #f87171;
+    transform: rotate(90deg);
+  }
+
+  .auth-input-wrap.error {
+    border-color: rgba(239,68,68,0.7) !important;
+    background: rgba(239,68,68,0.06) !important;
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.12) !important;
+  }
+
+  .field-error-msg {
+    margin-top: 5px;
+    font-size: 0.76rem;
+    color: #f87171;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    animation: slideUp 0.2s ease both;
+  }
+
+  .password-strength {
+    margin-top: 6px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .strength-bar {
+    flex: 1; height: 3px; border-radius: 2px;
+    transition: background 0.3s;
+  }
+  .strength-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    min-width: 60px;
+    text-align: right;
+  }
 `;
 
 /* ─── InputWrapper ─────────────────────────────────────── */
-const InputWrapper = ({ icon, children }) => (
-  <div className="auth-input-wrap">
-    <div style={{ color: 'rgba(148,163,184,0.8)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+const InputWrapper = ({ icon, children, hasError }) => (
+  <div className={`auth-input-wrap${hasError ? ' error' : ''}`}>
+    <div style={{ color: hasError ? 'rgba(239,68,68,0.8)' : 'rgba(148,163,184,0.8)', display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'color 0.25s' }}>
       {icon}
     </div>
     <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center' }}>
@@ -223,12 +308,87 @@ const IconEyeOff = () => (
   </svg>
 );
 
+/* ─── Validation helpers ─────────────────────────────────── */
+const VALIDATORS = {
+  fullName: (v) => {
+    const trimmed = v.trim();
+    if (!trimmed) return 'Họ và tên không được để trống.';
+    if (trimmed.length < 2) return 'Họ và tên phải có ít nhất 2 ký tự.';
+    if (trimmed.length > 50) return 'Họ và tên không được vượt quá 50 ký tự.';
+    if (!/^[\p{L}\s]+$/u.test(trimmed)) return 'Họ và tên chỉ được chứa chữ cái và khoảng trắng.';
+    const words = trimmed.split(/\s+/);
+    if (words.length < 2) return 'Vui lòng nhập đầy đủ họ và tên (ví dụ: Nguyễn Văn A).';
+    for (const word of words) {
+      if (word.length < 2) return 'Mỗi từ trong tên phải có ít nhất 2 ký tự.';
+      if (/(.{2,})\1/i.test(word)) return 'Tên không hợp lệ. Vui lòng nhập tên thật.';
+      if (/(.)\1{2,}/i.test(word)) return 'Tên không hợp lệ. Vui lòng nhập tên thật.';
+    }
+    return '';
+  },
+  phone: (v) => {
+    if (!v.trim()) return 'Số điện thoại không được để trống.';
+    const digits = v.replace(/\s/g, '');
+    if (!/^(0[3|5|7|8|9])\d{8}$/.test(digits)) return 'Số điện thoại không hợp lệ (VD: 0901234567).';
+    return '';
+  },
+  email: (v) => {
+    if (!v.trim()) return 'Email không được để trống.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) return 'Địa chỉ email không đúng định dạng.';
+    if (!v.trim().toLowerCase().endsWith('.com')) return 'Email phải kết thúc bằng .com (VD: example@gmail.com).';
+    if (v.trim().length > 100) return 'Email không được vượt quá 100 ký tự.';
+    return '';
+  },
+  password: (v) => {
+    if (!v) return 'Mật khẩu không được để trống.';
+    if (v.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự.';
+    if (v.length > 100) return 'Mật khẩu không được vượt quá 100 ký tự.';
+    if (!/[A-Z]/.test(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ hoa (A-Z).';
+    if (!/[a-z]/.test(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ thường (a-z).';
+    if (!/[0-9]/.test(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ số (0-9).';
+    return '';
+  },
+  loginEmail: (v) => {
+    if (!v.trim()) return 'Email không được để trống.';
+    return '';
+  },
+  loginPassword: (v) => {
+    if (!v) return 'Mật khẩu không được để trống.';
+    return '';
+  },
+};
+
+const getPasswordStrength = (v) => {
+  let score = 0;
+  if (v.length >= 6) score++;
+  if (v.length >= 10) score++;
+  if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+  if (/[0-9]/.test(v)) score++;
+  if (/[^A-Za-z0-9]/.test(v)) score++;
+  if (score <= 1) return { level: 1, label: 'Rất yếu', color: '#ef4444' };
+  if (score === 2) return { level: 2, label: 'Yếu', color: '#f97316' };
+  if (score === 3) return { level: 3, label: 'Trung bình', color: '#eab308' };
+  if (score === 4) return { level: 4, label: 'Mạnh', color: '#22c55e' };
+  return { level: 5, label: 'Rất mạnh', color: '#10b981' };
+};
+
+const FieldError = ({ msg }) =>
+  msg ? (
+    <span className="field-error-msg">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      {msg}
+    </span>
+  ) : null;
+
 /* ─── Main Component ─────────────────────────────────────── */
 const AuthPage = () => {
   const location = useLocation();
   const [isLogin, setIsLogin] = useState(location.state?.mode !== 'register');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ fullName: '', email: '', password: '', phone: '', roleName: 'USER' });
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -260,10 +420,52 @@ const AuthPage = () => {
     else if (location.state?.mode === 'register') setIsLogin(false);
   }, [location.state]);
 
-  const handleInputChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleInputChange = e => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (touched[name]) {
+      const validator = !isLogin
+        ? VALIDATORS[name]
+        : (name === 'email' ? VALIDATORS.loginEmail : name === 'password' ? VALIDATORS.loginPassword : null);
+      if (validator) setFieldErrors(prev => ({ ...prev, [name]: validator(value) }));
+    }
+  };
+
+  const handleBlur = e => {
+    const { name, value } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    const validator = !isLogin
+      ? VALIDATORS[name]
+      : (name === 'email' ? VALIDATORS.loginEmail : name === 'password' ? VALIDATORS.loginPassword : null);
+    if (validator) setFieldErrors(prev => ({ ...prev, [name]: validator(value) }));
+  };
+
+  const validateAll = () => {
+    if (!isLogin) {
+      const errs = {
+        fullName: VALIDATORS.fullName(formData.fullName),
+        phone: VALIDATORS.phone(formData.phone),
+        email: VALIDATORS.email(formData.email),
+        password: VALIDATORS.password(formData.password),
+      };
+      setFieldErrors(errs);
+      setTouched({ fullName: true, phone: true, email: true, password: true });
+      return Object.values(errs).every(e => !e);
+    } else {
+      const errs = {
+        email: VALIDATORS.loginEmail(formData.email),
+        password: VALIDATORS.loginPassword(formData.password),
+      };
+      setFieldErrors(errs);
+      setTouched({ email: true, password: true });
+      return Object.values(errs).every(e => !e);
+    }
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); setLoading(true); setError('');
+    e.preventDefault();
+    if (!validateAll()) return;
+    setLoading(true); setError('');
     try {
       const redirectAfterAuth = () => {
         const ctx = authService.getWarehouseContext();
@@ -291,13 +493,13 @@ const AuthPage = () => {
 
       {/* ── Full-page dark background ── */}
       <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         background: 'radial-gradient(ellipse at 20% 50%, #1e1b4b 0%, #0f172a 45%, #020617 100%)',
-        fontFamily: "'Inter', sans-serif", position: 'relative', overflow: 'hidden', padding: '20px',
+        fontFamily: "'Inter', sans-serif", position: 'relative', padding: '20px',
       }}>
 
-        {/* ── Animated background orbs ── */}
-        <div style={{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none' }}>
+        {/* ── Animated background orbs (absolute, pointer-events none) ── */}
+        <div style={{ position:'fixed', inset:0, overflow:'hidden', pointerEvents:'none', zIndex:0 }}>
           <div style={{
             position:'absolute', width:'500px', height:'500px',
             borderRadius:'50%', top:'-120px', left:'-100px',
@@ -324,9 +526,18 @@ const AuthPage = () => {
           }}/>
         </div>
 
+        {/* ── Back to homepage button (above card) ── */}
+        <button className="back-home-btn" onClick={() => navigate('/')} style={{ zIndex: 20, position: 'relative' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Về trang chủ
+        </button>
+
         {/* ── Glass Card ── */}
         <div className="auth-card" style={{
-          position:'relative', zIndex:10,
+          position:'relative', zIndex:20,
           width:'100%', maxWidth:'440px',
           background:'rgba(15,23,42,0.75)',
           backdropFilter:'blur(24px)',
@@ -338,18 +549,9 @@ const AuthPage = () => {
           boxSizing:'border-box',
         }}>
 
-          {/* Close / Back to home */}
-          <button onClick={() => navigate('/')} style={{
-            position:'absolute', top:'16px', right:'16px',
-            background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)',
-            borderRadius:'8px', width:'32px', height:'32px',
-            display:'flex', alignItems:'center', justifyContent:'center',
-            cursor:'pointer', color:'rgba(148,163,184,0.8)', transition:'all 0.2s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.12)'}
-            onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.06)'}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          {/* Close button (X) */}
+          <button className="close-card-btn" onClick={() => navigate('/')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
@@ -400,32 +602,63 @@ const AuthPage = () => {
               <>
                 <div>
                   <label style={{ display:'block', fontSize:'0.78rem', fontWeight:600, color:'rgba(148,163,184,0.9)', marginBottom:'6px', letterSpacing:'0.04em', textTransform:'uppercase' }}>Họ và tên</label>
-                  <InputWrapper icon={<IconUser />}>
-                    <input className="auth-input-field" name="fullName" type="text" placeholder="Nguyễn Văn A" required value={formData.fullName} onChange={handleInputChange} />
+                  <InputWrapper icon={<IconUser />} hasError={!!fieldErrors.fullName}>
+                    <input
+                      className="auth-input-field"
+                      name="fullName" type="text" placeholder="Nguyễn Văn A"
+                      value={formData.fullName}
+                      onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      maxLength={51}
+                    />
                   </InputWrapper>
+                  <FieldError msg={fieldErrors.fullName} />
                 </div>
                 <div>
                   <label style={{ display:'block', fontSize:'0.78rem', fontWeight:600, color:'rgba(148,163,184,0.9)', marginBottom:'6px', letterSpacing:'0.04em', textTransform:'uppercase' }}>Số điện thoại</label>
-                  <InputWrapper icon={<IconPhone />}>
-                    <input className="auth-input-field" name="phone" type="text" placeholder="0901 234 567" required value={formData.phone} onChange={handleInputChange} />
+                  <InputWrapper icon={<IconPhone />} hasError={!!fieldErrors.phone}>
+                    <input
+                      className="auth-input-field"
+                      name="phone" type="tel" placeholder="0901234567"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      maxLength={11}
+                    />
                   </InputWrapper>
+                  <FieldError msg={fieldErrors.phone} />
                 </div>
               </>
             )}
 
             <div>
               <label style={{ display:'block', fontSize:'0.78rem', fontWeight:600, color:'rgba(148,163,184,0.9)', marginBottom:'6px', letterSpacing:'0.04em', textTransform:'uppercase' }}>Email</label>
-              <InputWrapper icon={<IconMail />}>
-                <input className="auth-input-field" name="email" type="text" placeholder="example@email.com" required value={formData.email} onChange={handleInputChange} />
+              <InputWrapper icon={<IconMail />} hasError={!!fieldErrors.email}>
+                <input
+                  className="auth-input-field"
+                  name="email" type="text" placeholder="example@email.com"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  maxLength={101}
+                />
               </InputWrapper>
+              <FieldError msg={fieldErrors.email} />
             </div>
 
             <div>
               <div style={{ marginBottom:'6px' }}>
                 <label style={{ fontSize:'0.78rem', fontWeight:600, color:'rgba(148,163,184,0.9)', letterSpacing:'0.04em', textTransform:'uppercase' }}>Mật khẩu</label>
               </div>
-              <InputWrapper icon={<IconLock />}>
-                <input className="auth-input-field" name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" required value={formData.password} onChange={handleInputChange} />
+              <InputWrapper icon={<IconLock />} hasError={!!fieldErrors.password}>
+                <input
+                  className="auth-input-field"
+                  name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  maxLength={101}
+                />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} style={{
                   background:'none', border:'none', cursor:'pointer',
                   color:'rgba(148,163,184,0.7)', display:'flex', alignItems:'center',
@@ -437,6 +670,21 @@ const AuthPage = () => {
                   {showPassword ? <IconEye /> : <IconEyeOff />}
                 </button>
               </InputWrapper>
+              <FieldError msg={fieldErrors.password} />
+              {!isLogin && formData.password && (() => {
+                const s = getPasswordStrength(formData.password);
+                const bars = [1,2,3,4,5];
+                return (
+                  <div className="password-strength">
+                    {bars.map(i => (
+                      <div key={i} className="strength-bar"
+                        style={{ background: i <= s.level ? s.color : 'rgba(255,255,255,0.1)' }}
+                      />
+                    ))}
+                    <span className="strength-label" style={{ color: s.color }}>{s.label}</span>
+                  </div>
+                );
+              })()}
             </div>
 
             {isLogin && (

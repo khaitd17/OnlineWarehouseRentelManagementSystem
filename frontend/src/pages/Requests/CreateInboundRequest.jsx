@@ -1,20 +1,68 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
 import renterAssetService from '../../services/renterAssetService';
 
-const FIELD = ({ label, children }) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-sm font-semibold text-slate-700">{label}</label>
-    {children}
+/* ─── Validation rules ────────────────────────────────────────────── */
+const RULES = {
+  warehouseId:   (v)       => !v                                     ? 'Vui lòng chọn kho hàng.'                                       : '',
+  assetId:       (v, ctx)  => !v && !ctx.isNewAsset                  ? 'Vui lòng chọn tài sản hoặc chọn "Tạo tài sản mới".'             : '',
+  itemName:      (v, ctx)  => ctx.isNewAsset && !v.trim()            ? 'Tên tài sản không được để trống.'
+                            : ctx.isNewAsset && v.trim().length < 2  ? 'Tên tài sản phải có ít nhất 2 ký tự.'
+                            : ctx.isNewAsset && v.trim().length > 100 ? 'Tên tài sản không được vượt quá 100 ký tự.'                    : '',
+  unit:          (v, ctx)  => ctx.isNewAsset && !v.trim()            ? 'Đơn vị không được để trống.'
+                            : ctx.isNewAsset && v.trim().length > 30  ? 'Đơn vị không được vượt quá 30 ký tự.'                         : '',
+  qty:           (v)       => !v && v !== 0                          ? 'Số lượng không được để trống.'
+                            : isNaN(Number(v))                        ? 'Số lượng phải là số.'
+                            : Number(v) < 1                           ? 'Số lượng phải ít nhất là 1.'
+                            : !Number.isInteger(Number(v))            ? 'Số lượng phải là số nguyên.'
+                            : Number(v) > 99999                       ? 'Số lượng không được vượt quá 99.999.'                          : '',
+  weightPerUnit: (v, ctx)  => ctx.isNewAsset && v !== '' && isNaN(Number(v))  ? 'Khối lượng phải là số.'
+                            : ctx.isNewAsset && v !== '' && Number(v) < 0      ? 'Khối lượng không được âm.'
+                            : ctx.isNewAsset && v !== '' && Number(v) > 99999  ? 'Khối lượng không được vượt quá 99.999 kg.'             : '',
+  description:   (v)       => v.length > 500                         ? 'Mô tả không được vượt quá 500 ký tự.'                          : '',
+  notes:         (v)       => v.length > 1000                        ? 'Ghi chú không được vượt quá 1.000 ký tự.'                      : '',
+};
+
+const validate = (field, value, ctx) => (RULES[field] ? RULES[field](value, ctx) : '');
+
+const validateAll = (form, isNewAsset) => {
+  const ctx = { isNewAsset };
+  const errs = {};
+  Object.keys(RULES).forEach(k => { errs[k] = validate(k, form[k] ?? '', ctx); });
+  return errs;
+};
+
+const hasErrors = (errs) => Object.values(errs).some(e => e);
+
+/* ─── UI helpers ──────────────────────────────────────────────────── */
+const ERR_COLOR = '#dc2626';
+const ERR_BG    = '#fef2f2';
+const ERR_BORDER = '#fca5a5';
+
+const inputBase = (err) => ({
+  width: '100%', borderRadius: 8,
+  border: `1px solid ${err ? ERR_BORDER : '#e2e8f0'}`,
+  background: err ? ERR_BG : '#f8fafc',
+  padding: '10px 14px', fontSize: 13, color: '#1e293b',
+  outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.15s',
+  fontFamily: 'Inter, sans-serif',
+});
+
+const FieldError = ({ msg }) => msg ? (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+    <span className="material-symbols-outlined" style={{ fontSize: 13, color: ERR_COLOR }}>error</span>
+    <span style={{ fontSize: 11, color: ERR_COLOR }}>{msg}</span>
   </div>
+) : null;
+
+const Label = ({ children, required }) => (
+  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+    {children}{required && <span style={{ color: ERR_COLOR, marginLeft: 2 }}>*</span>}
+  </label>
 );
 
-const inputCls =
-  'w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-primary focus:ring-2 transition-all';
-
-// ── Helper: icon theo extension ──────────────────────────────────────────────
 const getFileIcon = (filename) => {
   const ext = filename.split('.').pop().toLowerCase();
   if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return { icon: 'image', color: '#7c3aed' };
@@ -30,40 +78,47 @@ const formatBytes = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+/* ─── Main Component ──────────────────────────────────────────────── */
 const CreateInboundRequest = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  const [warehouses, setWarehouses] = useState([]);
-  const [loadingWH, setLoadingWH] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [warehouses,    setWarehouses]    = useState([]);
+  const [loadingWH,     setLoadingWH]     = useState(true);
+  const [submitting,    setSubmitting]    = useState(false);
+  const [submitError,   setSubmitError]   = useState('');
 
-  // Asset catalogue
-  const [assets, setAssets] = useState([]);
+  const [assets,        setAssets]        = useState([]);
   const [loadingAssets, setLoadingAssets] = useState(false);
-  const [isNewAsset, setIsNewAsset] = useState(false);
+  const [isNewAsset,    setIsNewAsset]    = useState(false);
 
-  // Document upload state
-  const [docFiles, setDocFiles] = useState([]);
+  const [docFiles,      setDocFiles]      = useState([]);
   const [uploadingDocs, setUploadingDocs] = useState(false);
-  const [uploadedUrls, setUploadedUrls] = useState([]);
-  const [dragOver, setDragOver] = useState(false);
+  const [uploadedUrls,  setUploadedUrls]  = useState([]);
+  const [dragOver,      setDragOver]      = useState(false);
 
   const [form, setForm] = useState({
-    warehouseId: '',
-    assetId: '',
-    qty: 1,
-    unit: 'cái',
-    itemName: '',
-    weightPerUnit: '',
-    description: '',
-    notes: '',
+    warehouseId: '', assetId: '', qty: 1,
+    unit: 'cái', itemName: '', weightPerUnit: '', description: '', notes: '',
   });
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  // Validation state: errors + touched
+  const [errors,  setErrors]  = useState({});
+  const [touched, setTouched] = useState({});
 
-  // Tải danh sách kho renter đang thuê từ hợp đồng
+  // Live-validate a single field
+  const touch = useCallback((field) => {
+    setTouched(t => ({ ...t, [field]: true }));
+    setErrors(e => ({ ...e, [field]: validate(field, form[field] ?? '', { isNewAsset }) }));
+  }, [form, isNewAsset]);
+
+  const set = (k) => (e) => {
+    const val = e.target.value;
+    setForm(f => ({ ...f, [k]: val }));
+    if (touched[k]) setErrors(err => ({ ...err, [k]: validate(k, val, { isNewAsset }) }));
+  };
+
+  // Load warehouses
   useEffect(() => {
     axiosClient.get('/rental-contracts/my-contracts')
       .then(res => {
@@ -82,7 +137,7 @@ const CreateInboundRequest = () => {
       .finally(() => setLoadingWH(false));
   }, []);
 
-  // Tải danh sách tài sản (catalogue) khi mount
+  // Load assets
   useEffect(() => {
     setLoadingAssets(true);
     renterAssetService.getMyAssets()
@@ -91,76 +146,45 @@ const CreateInboundRequest = () => {
       .finally(() => setLoadingAssets(false));
   }, []);
 
-  // Khi chọn asset → autofill unit, weight
   const handleAssetChange = (e) => {
     const assetId = e.target.value;
     if (assetId === '__new__') {
       setIsNewAsset(true);
       setForm(f => ({ ...f, assetId: '', itemName: '', unit: 'cái', weightPerUnit: '' }));
+      setErrors(err => ({ ...err, assetId: '' }));
     } else {
       setIsNewAsset(false);
       const asset = assets.find(a => String(a.assetId) === assetId);
       if (asset) {
-        setForm(f => ({
-          ...f,
-          assetId: String(asset.assetId),
-          itemName: asset.assetName,
-          unit: asset.unit || 'cái',
-          weightPerUnit: asset.weightPerUnit ?? '',
-        }));
+        setForm(f => ({ ...f, assetId: String(asset.assetId), itemName: asset.assetName, unit: asset.unit || 'cái', weightPerUnit: asset.weightPerUnit ?? '' }));
+        setErrors(err => ({ ...err, assetId: '', itemName: '', unit: '' }));
       } else {
         setForm(f => ({ ...f, assetId: '', itemName: '' }));
       }
+      if (touched.assetId) setErrors(err => ({ ...err, assetId: validate('assetId', assetId, { isNewAsset: false }) }));
     }
   };
 
-  // ── File handling ──────────────────────────────────────────────────────────
-  const ALLOWED_TYPES = [
-    'application/pdf',
-    'image/jpeg', 'image/png',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  ];
+  // File upload
+  const ALLOWED_TYPES = ['application/pdf','image/jpeg','image/png','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
   const addFiles = (fileList) => {
     const incoming = Array.from(fileList);
-    const valid = incoming.filter(f => {
-      if (!ALLOWED_TYPES.includes(f.type) && !f.name.match(/\.(pdf|jpg|jpeg|png|xls|xlsx|doc|docx)$/i)) return false;
-      if (f.size > 10 * 1024 * 1024) return false;
-      return true;
-    });
-    if (valid.length !== incoming.length) {
-      setError('Một số file không hợp lệ (chỉ PDF, ảnh, Excel, Word) hoặc vượt 10MB và đã bị bỏ qua.');
-    }
-    setDocFiles(prev => {
-      const combined = [...prev, ...valid.map(f => ({ file: f, name: f.name, size: f.size }))];
-      return combined.slice(0, 10);
-    });
+    const valid = incoming.filter(f => (ALLOWED_TYPES.includes(f.type) || f.name.match(/\.(pdf|jpg|jpeg|png|xls|xlsx|doc|docx)$/i)) && f.size <= 10 * 1024 * 1024);
+    if (valid.length !== incoming.length) setSubmitError('Một số file không hợp lệ (chỉ PDF, ảnh, Excel, Word) hoặc vượt 10MB và đã bị bỏ qua.');
+    setDocFiles(prev => [...prev, ...valid.map(f => ({ file: f, name: f.name, size: f.size }))].slice(0, 10));
     setUploadedUrls([]);
   };
 
-  const removeFile = (idx) => {
-    setDocFiles(prev => prev.filter((_, i) => i !== idx));
-    setUploadedUrls([]);
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    addFiles(e.dataTransfer.files);
-  };
+  const removeFile = (idx) => { setDocFiles(prev => prev.filter((_, i) => i !== idx)); setUploadedUrls([]); };
 
   const uploadDocuments = async () => {
     if (docFiles.length === 0) return [];
     setUploadingDocs(true);
     try {
-      const formData = new FormData();
-      docFiles.forEach(({ file }) => formData.append('files', file));
-      const res = await axiosClient.post('/upload/inventory-documents', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const fd = new FormData();
+      docFiles.forEach(({ file }) => fd.append('files', file));
+      const res = await axiosClient.post('/upload/inventory-documents', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       const urls = res.data?.urls || [];
       setUploadedUrls(urls);
       return urls;
@@ -173,331 +197,306 @@ const CreateInboundRequest = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    if (!form.warehouseId) { setError('Vui lòng chọn kho hàng.'); return; }
-    if (!form.assetId && !form.itemName.trim()) { setError('Vui lòng chọn hoặc tạo tài sản mới.'); return; }
+    setSubmitError('');
+
+    // Mark all fields touched + validate all
+    const allTouched = Object.keys(RULES).reduce((acc, k) => ({ ...acc, [k]: true }), {});
+    setTouched(allTouched);
+    const errs = validateAll(form, isNewAsset);
+    setErrors(errs);
+    if (hasErrors(errs)) {
+      setSubmitError('Vui lòng kiểm tra lại các trường bị lỗi bên dưới.');
+      return;
+    }
 
     setSubmitting(true);
     try {
-      // Nếu tạo tài sản mới → gọi API tạo trước
       let assetId = form.assetId ? Number(form.assetId) : null;
       if (isNewAsset && form.itemName.trim()) {
         const createRes = await renterAssetService.createAsset({
-          assetName: form.itemName.trim(),
-          unit: form.unit,
+          assetName: form.itemName.trim(), unit: form.unit,
           weightPerUnit: form.weightPerUnit ? Number(form.weightPerUnit) : null,
           description: form.description || null,
         });
         assetId = createRes.data.assetId;
-        // Refresh catalogue
         const refreshed = await renterAssetService.getMyAssets();
         setAssets(Array.isArray(refreshed.data) ? refreshed.data : []);
       }
 
-      // Upload chứng từ trước (nếu có)
       let documentUrls = uploadedUrls;
-      if (docFiles.length > 0 && uploadedUrls.length === 0) {
-        documentUrls = await uploadDocuments();
-      }
+      if (docFiles.length > 0 && uploadedUrls.length === 0) documentUrls = await uploadDocuments();
 
       await inventoryService.createInventoryRequest({
         warehouseId: Number(form.warehouseId),
         type: 'INBOUND',
         notes: form.notes || null,
         documentUrls: documentUrls.length > 0 ? documentUrls : null,
-        items: [{
-          assetId: assetId,
-          itemName: form.itemName.trim(),
-          quantity: Number(form.qty),
-          unit: form.unit,
-          weight: form.weightPerUnit ? Number(form.weightPerUnit) * Number(form.qty) : null,
-          description: form.description || null,
-        }],
+        items: [{ assetId, itemName: form.itemName.trim(), quantity: Number(form.qty), unit: form.unit, weight: form.weightPerUnit ? Number(form.weightPerUnit) * Number(form.qty) : null, description: form.description || null }],
       });
       navigate('/renter-inbound-requests', { state: { created: true } });
     } catch (err) {
-      setError(err?.message || err?.response?.data?.message || 'Tạo yêu cầu thất bại. Vui lòng thử lại.');
+      setSubmitError(err?.message || err?.response?.data?.message || 'Tạo yêu cầu thất bại. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
-    <div className="w-full flex-1 flex flex-col min-w-0" style={{ fontFamily: 'Inter, sans-serif' }}>
+  const inp = (field) => inputBase(touched[field] && errors[field]);
 
-      {/* Page header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Tạo yêu cầu nhập kho</h1>
-        <p className="mt-1 text-sm text-slate-500">Đăng ký một lô hàng nhập kho mới vào hệ thống quản lý kho.</p>
+  return (
+    <div style={{ width: '100%', flex: 1, display: 'flex', flexDirection: 'column', fontFamily: 'Inter, sans-serif', minWidth: 0 }}>
+
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: '#0f172a' }}>Tạo yêu cầu nhập kho</h1>
+        <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>Đăng ký một lô hàng nhập kho mới vào hệ thống quản lý kho.</p>
       </div>
 
       {/* Info banner */}
-      <div
-        className="flex items-start justify-between rounded-xl px-5 py-4 mb-8 gap-4"
-        style={{ backgroundColor: '#e0f7fa', border: '1px solid #b2ebf2' }}
-      >
-        <div className="flex items-start gap-3 flex-1">
-          <span className="material-symbols-outlined text-[20px] mt-0.5" style={{ color: '#00b2d6' }}>info</span>
-          <div>
-            <p className="text-sm font-bold" style={{ color: '#00b2d6' }}>Kiểm tra trước khi nhập kho</p>
-            <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
-              Chọn tài sản từ danh mục hoặc tạo mới. Hệ thống sẽ tự động cập nhật tồn kho khi yêu cầu được xác nhận.
-            </p>
-          </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', borderRadius: 12, padding: '14px 18px', marginBottom: 24, gap: 12, background: '#e0f7fa', border: '1px solid #b2ebf2' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#00b2d6', marginTop: 1 }}>info</span>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#00b2d6' }}>Kiểm tra trước khi nhập kho</p>
+          <p style={{ margin: '3px 0 0', fontSize: 12, color: '#475569', lineHeight: 1.5 }}>Chọn tài sản từ danh mục hoặc tạo mới. Hệ thống sẽ tự động cập nhật tồn kho khi yêu cầu được xác nhận.</p>
         </div>
       </div>
 
-      {/* Error alert */}
-      {error && (
-        <div className="mb-6 rounded-lg px-4 py-3 flex items-center gap-2 text-sm font-medium"
-          style={{ backgroundColor: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
-          <span className="material-symbols-outlined text-[18px]">error</span>
-          {error}
+      {/* Submit error */}
+      {submitError && (
+        <div style={{ marginBottom: 18, borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>error</span>
+          {submitError}
         </div>
       )}
 
-      {/* Form card */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
-      >
-        <div className="p-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
+      {/* Form */}
+      <form onSubmit={handleSubmit} noValidate style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+        <div style={{ padding: '28px 28px 20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px 40px' }}>
 
-            {/* LEFT column */}
-            <div className="space-y-5">
-              <FIELD label="Chọn kho hàng">
-                <div className="relative">
-                  {loadingWH ? (
-                    <div className={inputCls + ' text-slate-400'}>Đang tải danh sách kho...</div>
-                  ) : (
-                    <select
-                      value={form.warehouseId}
-                      onChange={set('warehouseId')}
-                      className={inputCls + ' appearance-none pr-10'}
-                      required
-                    >
-                      <option value="">Chọn kho hàng đích</option>
-                      {warehouses.length > 0
-                        ? warehouses.map(w => (
-                            <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>
-                          ))
-                        : <option value="" disabled>Không có kho đang thuê</option>
-                      }
-                    </select>
-                  )}
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    expand_more
-                  </span>
+            {/* LEFT */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              {/* Warehouse */}
+              <div>
+                <Label required>Chọn kho hàng</Label>
+                <div style={{ position: 'relative' }}>
+                  {loadingWH
+                    ? <div style={{ ...inp('warehouseId'), color: '#94a3b8' }}>Đang tải danh sách kho...</div>
+                    : (
+                      <select
+                        value={form.warehouseId}
+                        onChange={set('warehouseId')}
+                        onBlur={() => touch('warehouseId')}
+                        style={{ ...inp('warehouseId'), appearance: 'none', paddingRight: 36, cursor: 'pointer' }}
+                      >
+                        <option value="">Chọn kho hàng đích</option>
+                        {warehouses.length > 0
+                          ? warehouses.map(w => <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>)
+                          : <option value="" disabled>Không có kho đang thuê</option>
+                        }
+                      </select>
+                    )
+                  }
+                  <span className="material-symbols-outlined" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none', fontSize: 18 }}>expand_more</span>
                 </div>
-              </FIELD>
+                <FieldError msg={touched.warehouseId && errors.warehouseId} />
+              </div>
 
-              <FIELD label="Chọn tài sản">
-                <div className="relative">
-                  {loadingAssets ? (
-                    <div className={inputCls + ' text-slate-400'}>Đang tải danh mục...</div>
-                  ) : (
-                    <select
-                      value={isNewAsset ? '__new__' : form.assetId}
-                      onChange={handleAssetChange}
-                      className={inputCls + ' appearance-none pr-10'}
-                    >
-                      <option value="">— Chọn từ danh mục tài sản —</option>
-                      {assets.map(a => (
-                        <option key={a.assetId} value={a.assetId}>
-                          {a.assetName} ({a.unit})
-                        </option>
-                      ))}
-                      <option value="__new__">➕ Tạo tài sản mới...</option>
-                    </select>
-                  )}
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                    expand_more
-                  </span>
+              {/* Asset */}
+              <div>
+                <Label required>Chọn tài sản</Label>
+                <div style={{ position: 'relative' }}>
+                  {loadingAssets
+                    ? <div style={{ ...inp('assetId'), color: '#94a3b8' }}>Đang tải danh mục...</div>
+                    : (
+                      <select
+                        value={isNewAsset ? '__new__' : form.assetId}
+                        onChange={handleAssetChange}
+                        onBlur={() => touch('assetId')}
+                        style={{ ...inp('assetId'), appearance: 'none', paddingRight: 36, cursor: 'pointer' }}
+                      >
+                        <option value="">— Chọn từ danh mục tài sản —</option>
+                        {assets.map(a => <option key={a.assetId} value={a.assetId}>{a.assetName} ({a.unit})</option>)}
+                        <option value="__new__">➕ Tạo tài sản mới...</option>
+                      </select>
+                    )
+                  }
+                  <span className="material-symbols-outlined" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none', fontSize: 18 }}>expand_more</span>
                 </div>
-              </FIELD>
+                <FieldError msg={touched.assetId && errors.assetId} />
+              </div>
 
-              {/* Hiện fields tạo mới nếu chọn "Tạo tài sản mới" */}
+              {/* Item name — only when new asset */}
               {isNewAsset && (
-                <FIELD label="Tên tài sản mới">
+                <div>
+                  <Label required>Tên tài sản mới</Label>
                   <input
                     type="text"
                     value={form.itemName}
                     onChange={set('itemName')}
+                    onBlur={() => touch('itemName')}
                     placeholder="VD: Mì tôm Hảo Hảo 75g"
-                    className={inputCls}
-                    required
+                    maxLength={101}
+                    style={inp('itemName')}
                   />
-                </FIELD>
+                  <FieldError msg={touched.itemName && errors.itemName} />
+                </div>
               )}
 
-              <FIELD label="Mô tả mặt hàng">
+              {/* Description */}
+              <div>
+                <Label>Mô tả mặt hàng</Label>
                 <textarea
                   value={form.description}
                   onChange={set('description')}
-                  placeholder="Cung cấp thêm chi tiết về mặt hàng"
+                  onBlur={() => touch('description')}
+                  placeholder="Cung cấp thêm chi tiết về mặt hàng (tùy chọn)"
                   rows={4}
-                  className={inputCls + ' resize-none'}
+                  maxLength={501}
+                  style={{ ...inp('description'), resize: 'vertical', minHeight: 90 }}
                 />
-              </FIELD>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <FieldError msg={touched.description && errors.description} />
+                  <span style={{ fontSize: 10, color: form.description.length > 480 ? ERR_COLOR : '#94a3b8', marginLeft: 'auto' }}>{form.description.length}/500</span>
+                </div>
+              </div>
             </div>
 
-            {/* RIGHT column */}
-            <div className="space-y-5">
-              {/* Qty + Unit side by side */}
-              <div className="grid grid-cols-2 gap-4">
-                <FIELD label="Số lượng">
+            {/* RIGHT */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              {/* Qty + Unit */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <Label required>Số lượng</Label>
                   <input
                     type="number"
                     min={1}
+                    max={99999}
+                    step={1}
                     value={form.qty}
                     onChange={set('qty')}
-                    className={inputCls}
-                    required
+                    onBlur={() => touch('qty')}
+                    style={inp('qty')}
                   />
-                </FIELD>
-                <FIELD label="Đơn vị">
+                  <FieldError msg={touched.qty && errors.qty} />
+                </div>
+                <div>
+                  <Label required={isNewAsset}>Đơn vị</Label>
                   {isNewAsset ? (
-                    <input
-                      type="text"
-                      value={form.unit}
-                      onChange={set('unit')}
-                      placeholder="cái, kg, thùng..."
-                      className={inputCls}
-                    />
+                    <>
+                      <input
+                        type="text"
+                        value={form.unit}
+                        onChange={set('unit')}
+                        onBlur={() => touch('unit')}
+                        placeholder="cái, kg, thùng..."
+                        maxLength={31}
+                        style={inp('unit')}
+                      />
+                      <FieldError msg={touched.unit && errors.unit} />
+                    </>
                   ) : (
-                    <div className={inputCls + ' bg-slate-100 text-slate-600'}>{form.unit || 'cái'}</div>
+                    <div style={{ ...inp('unit'), background: '#f1f5f9', color: '#64748b', userSelect: 'none' }}>{form.unit || 'cái'}</div>
                   )}
-                </FIELD>
+                </div>
               </div>
 
+              {/* Weight — only when new asset */}
               {isNewAsset && (
-                <FIELD label="Khối lượng / đơn vị (kg)">
+                <div>
+                  <Label>Khối lượng / đơn vị (kg)</Label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
+                    max="99999"
                     value={form.weightPerUnit}
                     onChange={set('weightPerUnit')}
+                    onBlur={() => touch('weightPerUnit')}
                     placeholder="Tuỳ chọn"
-                    className={inputCls}
+                    style={inp('weightPerUnit')}
                   />
-                </FIELD>
+                  <FieldError msg={touched.weightPerUnit && errors.weightPerUnit} />
+                </div>
               )}
 
-              <FIELD label="Ghi chú lô hàng">
+              {/* Notes */}
+              <div>
+                <Label>Ghi chú lô hàng</Label>
                 <textarea
                   value={form.notes}
                   onChange={set('notes')}
-                  placeholder="Hướng dẫn xử lý, ghi chú giao hàng, v.v."
+                  onBlur={() => touch('notes')}
+                  placeholder="Hướng dẫn xử lý, ghi chú giao hàng, điều kiện bảo quản... (tùy chọn)"
                   rows={4}
-                  className={inputCls + ' resize-none'}
+                  maxLength={1001}
+                  style={{ ...inp('notes'), resize: 'vertical', minHeight: 90 }}
                 />
-              </FIELD>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <FieldError msg={touched.notes && errors.notes} />
+                  <span style={{ fontSize: 10, color: form.notes.length > 950 ? ERR_COLOR : '#94a3b8', marginLeft: 'auto' }}>{form.notes.length}/1000</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* ── Document Upload Section ─────────────────────────────────────── */}
-          <div className="mt-8">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-[20px]" style={{ color: '#00b2d6' }}>folder_open</span>
-              <span className="text-sm font-semibold text-slate-700">Chứng từ đính kèm</span>
-              <span className="text-xs text-slate-400 font-normal">(Không bắt buộc)</span>
+          {/* Document Upload */}
+          <div style={{ marginTop: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#00b2d6' }}>folder_open</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#475569' }}>Chứng từ đính kèm</span>
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>(Tùy chọn — tối đa 10 file, mỗi file ≤ 10MB)</span>
             </div>
-            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              Upload invoice, packing list, hoặc các tài liệu liên quan đến lô hàng.
-              Chấp nhận: PDF, JPG, PNG, Excel, Word — Tối đa 10 file, mỗi file ≤ 10MB.
-            </p>
 
             {/* Drop zone */}
             <div
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
               onClick={() => fileInputRef.current?.click()}
               style={{
                 border: `2px dashed ${dragOver ? '#00b2d6' : '#cbd5e1'}`,
-                backgroundColor: dragOver ? '#e0f7fa' : '#f8fafc',
-                borderRadius: '12px',
-                padding: '28px 20px',
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
+                background: dragOver ? '#e0f7fa' : '#f8fafc',
+                borderRadius: 10, padding: '22px 16px', textAlign: 'center',
+                cursor: 'pointer', transition: 'all 0.2s',
               }}
             >
-              <span className="material-symbols-outlined text-[40px] mb-2 block" style={{ color: dragOver ? '#00b2d6' : '#94a3b8' }}>
-                cloud_upload
-              </span>
-              <p className="text-sm font-semibold text-slate-600">
+              <span className="material-symbols-outlined" style={{ fontSize: 36, color: dragOver ? '#00b2d6' : '#94a3b8', display: 'block', marginBottom: 6 }}>cloud_upload</span>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#475569' }}>
                 Kéo thả file vào đây hoặc <span style={{ color: '#00b2d6' }}>nhấn để chọn file</span>
               </p>
-              <p className="text-xs text-slate-400 mt-1">PDF, ảnh, Excel, Word · Tối đa 10 file</p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx"
-                className="hidden"
-                onChange={(e) => addFiles(e.target.files)}
-              />
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: '#94a3b8' }}>PDF, ảnh, Excel, Word · Tối đa 10 file, mỗi file ≤ 10MB</p>
+              <input ref={fileInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx" style={{ display: 'none' }} onChange={(e) => addFiles(e.target.files)} />
             </div>
 
             {/* File list */}
             {docFiles.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {docFiles.map((f, idx) => {
                   const { icon, color } = getFileIcon(f.name);
-                  const isUploaded = uploadedUrls.length > 0;
+                  const uploaded = uploadedUrls.length > 0;
                   return (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-3 rounded-lg px-4 py-3"
-                      style={{
-                        backgroundColor: isUploaded ? '#f0fdf4' : '#f8fafc',
-                        border: `1px solid ${isUploaded ? '#bbf7d0' : '#e2e8f0'}`,
-                      }}
-                    >
-                      <span className="material-symbols-outlined text-[22px]" style={{ color }}>
-                        {icon}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-slate-700 truncate">{f.name}</p>
-                        <p className="text-xs text-slate-400">{formatBytes(f.size)}</p>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, borderRadius: 8, padding: '8px 12px', background: uploaded ? '#f0fdf4' : '#f8fafc', border: `1px solid ${uploaded ? '#bbf7d0' : '#e2e8f0'}` }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 20, color }}>{icon}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: '#94a3b8' }}>{formatBytes(f.size)}</p>
                       </div>
-                      {isUploaded ? (
-                        <span className="material-symbols-outlined text-[18px]" style={{ color: '#16a34a' }}>
-                          check_circle
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
-                          className="text-slate-400 hover:text-red-500 transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">close</span>
-                        </button>
-                      )}
+                      {uploaded
+                        ? <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#16a34a' }}>check_circle</span>
+                        : <button type="button" onClick={(e) => { e.stopPropagation(); removeFile(idx); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+                          </button>
+                      }
                     </div>
                   );
                 })}
-
-                {uploadedUrls.length === 0 && (
-                  <div className="flex items-center gap-2 mt-3">
-                    <div className="h-px flex-1" style={{ backgroundColor: '#e2e8f0' }} />
-                    <span className="text-xs text-slate-400">Chứng từ sẽ tự động upload khi bạn tạo yêu cầu</span>
-                    <div className="h-px flex-1" style={{ backgroundColor: '#e2e8f0' }} />
-                  </div>
-                )}
-
                 {uploadedUrls.length > 0 && (
-                  <div
-                    className="flex items-center gap-2 rounded-lg px-4 py-2.5 mt-2"
-                    style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}
-                  >
-                    <span className="material-symbols-outlined text-[16px]" style={{ color: '#16a34a' }}>check_circle</span>
-                    <span className="text-xs font-medium" style={{ color: '#15803d' }}>
-                      Đã upload {uploadedUrls.length} chứng từ thành công
-                    </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderRadius: 8, padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#16a34a' }}>check_circle</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#15803d' }}>Đã upload {uploadedUrls.length} chứng từ thành công</span>
                   </div>
                 )}
               </div>
@@ -505,43 +504,21 @@ const CreateInboundRequest = () => {
           </div>
         </div>
 
-        {/* Divider + Actions */}
-        <div className="border-t border-slate-100 bg-slate-50 px-8 py-5 flex flex-col sm:flex-row justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            disabled={submitting}
-            className="px-6 py-2.5 rounded-lg border border-slate-200 bg-white font-semibold text-sm text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
-          >
+        {/* Footer */}
+        <div style={{ borderTop: '1px solid #f1f5f9', background: '#f8fafc', padding: '16px 28px', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button type="button" onClick={() => navigate(-1)} disabled={submitting}
+            style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', fontSize: 13, fontWeight: 600, color: '#475569', cursor: 'pointer', opacity: submitting ? 0.5 : 1 }}>
             Hủy bỏ
           </button>
-          <button
-            type="submit"
-            disabled={submitting || loadingWH || uploadingDocs}
-            className="px-6 py-2.5 rounded-lg font-bold text-sm text-white transition-all shadow-sm hover:opacity-90 flex items-center gap-2 disabled:opacity-60"
-            style={{ backgroundColor: '#00b2d6' }}
-          >
-            {(submitting || uploadingDocs) && (
-              <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
-            )}
-            {uploadingDocs
-              ? 'Đang upload chứng từ...'
-              : submitting
-                ? 'Đang tạo...'
-                : 'Tạo yêu cầu nhập kho'}
+          <button type="submit" disabled={submitting || loadingWH || uploadingDocs}
+            style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#00b2d6', fontSize: 13, fontWeight: 700, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', opacity: (submitting || loadingWH || uploadingDocs) ? 0.65 : 1, display: 'flex', alignItems: 'center', gap: 7 }}>
+            {(submitting || uploadingDocs) && <span className="material-symbols-outlined" style={{ fontSize: 16, animation: 'spin 1s linear infinite' }}>sync</span>}
+            {uploadingDocs ? 'Đang upload...' : submitting ? 'Đang tạo...' : 'Tạo yêu cầu nhập kho'}
           </button>
         </div>
       </form>
 
-      {/* Footer help */}
-      <p className="mt-10 text-center text-sm text-slate-400 flex items-center justify-center gap-1.5">
-        <span className="material-symbols-outlined text-[16px]">support_agent</span>
-        Cần hỗ trợ lập lịch nhập kho?{' '}
-        <a href="#" className="font-semibold hover:underline" style={{ color: '#00b2d6' }}>
-          Liên hệ với Bàn hỗ trợ
-        </a>
-        .
-      </p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };
