@@ -39,6 +39,5 @@ public record AuditSummaryDto(
     int MatchedItems,
     int DiscrepancyItems,
     int TotalExpected,
-    int TotalActual,
-    int TotalDiscrepancy
+    int TotalActual
 );

@@ -55,7 +55,8 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
                 .AnyAsync(a => a.WarehouseId == request.WarehouseId
                     && a.CreatedBy == request.CreatedBy
                     && a.CreatedAt >= startOfMonth
-                    && a.Status != "REJECTED", cancellationToken);
+                    && a.Status != "REJECTED"
+                    && a.Status != "CANCELLED", cancellationToken);
             if (hasCreatedThisMonth)
                 return ApiResponse<int>.ErrorResponse(
                     "Bạn chỉ được tạo yêu cầu kiểm kê 1 lần/tháng cho mỗi kho. Vui lòng đợi sang tháng sau.");
@@ -81,7 +82,8 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
             WarehouseId = request.WarehouseId,
             CreatedBy = request.CreatedBy,
             Status = status,
-            Notes = request.Notes,
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : 
+                    (role == "OWNER" ? $"Chủ kho: {request.Notes}" : $"Người thuê: {request.Notes}"),
             CreatedAt = DateTime.UtcNow
         };
 

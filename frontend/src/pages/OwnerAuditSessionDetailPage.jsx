@@ -12,7 +12,7 @@ export default function OwnerAuditSessionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState({ items: [], totalCount: 0, page: 1, pageSize: 10, totalPages: 0 });
   const [resultsLoading, setResultsLoading] = useState(false);
-  const [resFilters, setResFilters] = useState({ search: "", page: 1, pageSize: 10, sortBy: "", sortOrder: "asc" });
+  const [resFilters, setResFilters] = useState({ search: "", page: 1, pageSize: 10, sortBy: "", sortOrder: "asc", filterStatus: "all" });
   const [toast, setToast] = useState(null);
   const [staffList, setStaffList] = useState([]);
 
@@ -177,12 +177,11 @@ export default function OwnerAuditSessionDetailPage() {
 
       {/* Summary Stats */}
       {session.summary && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
           {[
             { label: "Tổng mục", value: session.summary.totalItems, icon: "inventory_2", color: "blue" },
             { label: "Khớp", value: session.summary.matchedItems, icon: "check_circle", color: "emerald" },
             { label: "Chênh lệch", value: session.summary.discrepancyItems, icon: "warning", color: "red" },
-            { label: "Tổng chênh lệch", value: session.summary.totalDiscrepancy, icon: "compare_arrows", color: "orange" },
           ].map(stat => (
             <div key={stat.label} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
               <div className="flex items-center justify-between mb-2">
@@ -201,7 +200,14 @@ export default function OwnerAuditSessionDetailPage() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900">Kết quả kiểm kê</h3>
-          <input className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none" placeholder="Tìm theo tên hàng..." value={resFilters.search} onChange={e => setResFilters(p => ({ ...p, search: e.target.value, page: 1 }))} style={{ maxWidth: 250 }} />
+          <div className="flex gap-2">
+            <select className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none" value={resFilters.filterStatus === "all" ? "" : resFilters.filterStatus} onChange={e => setResFilters(p => ({ ...p, filterStatus: e.target.value || "all", page: 1 }))}>
+              <option value="">Tất cả trạng thái</option>
+              <option value="matched">Khớp</option>
+              <option value="discrepancy">Chênh lệch</option>
+            </select>
+            <input className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none" placeholder="Tìm theo tên hàng..." value={resFilters.search} onChange={e => setResFilters(p => ({ ...p, search: e.target.value, page: 1 }))} style={{ maxWidth: 250 }} />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -213,15 +219,14 @@ export default function OwnerAuditSessionDetailPage() {
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">SL thực tế</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Chênh lệch</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Lý do</th>
-                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Người ghi</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Ngày ghi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {resultsLoading ? (
-                <tr><td colSpan={8} className="text-center py-8 text-slate-400">Đang tải...</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-slate-400">Đang tải...</td></tr>
               ) : results.items.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-slate-400">Chưa có kết quả kiểm kê.</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-slate-400">Chưa có kết quả kiểm kê.</td></tr>
               ) : results.items.map(r => (
                 <tr key={r.resultId} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 text-slate-500">{r.resultId}</td>
@@ -235,7 +240,6 @@ export default function OwnerAuditSessionDetailPage() {
                     }
                   </td>
                   <td className="px-4 py-3 text-slate-500">{r.discrepancyReason || "—"}</td>
-                  <td className="px-4 py-3 text-slate-600">{r.recordedByName || "—"}</td>
                   <td className="px-4 py-3 text-slate-500">{r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : "—"}</td>
                 </tr>
               ))}

@@ -183,6 +183,7 @@ public class InventoryRequestsController : ControllerBase
                 Id      = id,
                 StaffId = staffId,
                 Notes   = body?.Notes,
+                Role    = role
             });
             return Ok(result);
         }

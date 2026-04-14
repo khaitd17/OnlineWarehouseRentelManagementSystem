@@ -53,8 +53,8 @@ public class CloseAuditSessionHandler : IRequestHandler<CloseAuditSessionCommand
         if (!string.IsNullOrWhiteSpace(request.Notes))
         {
             session.Notes = string.IsNullOrWhiteSpace(session.Notes)
-                ? request.Notes
-                : session.Notes + "\n" + request.Notes;
+                ? $"Chủ kho: {request.Notes}"
+                : session.Notes + "\n" + $"Chủ kho: {request.Notes}";
         }
 
         await _db.SaveChangesAsync(cancellationToken);

@@ -10,6 +10,7 @@ public record ConfirmInventoryRequestCommand : IRequest<InventoryRequestDto>
     public int Id { get; init; }
     public int StaffId { get; init; }
     public string? Notes { get; init; }
+    public string? Role { get; init; }
 }
 
 public class ConfirmInventoryRequestHandler
@@ -120,7 +121,7 @@ public class ConfirmInventoryRequestHandler
                 Quantity    = item.Quantity,
                 Unit        = item.Unit,
                 PerformedBy = cmd.StaffId,
-                Notes       = cmd.Notes,
+                Notes       = string.IsNullOrWhiteSpace(cmd.Notes) ? null : $"{(cmd.Role == "OWNER" ? "Chủ kho" : "Nhân viên")}: {cmd.Notes}",
             }, cancellationToken);
         }
 

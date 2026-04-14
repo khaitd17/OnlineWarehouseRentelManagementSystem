@@ -10,6 +10,7 @@ public record ApproveInventoryRequestCommand : IRequest<InventoryRequestDto>
     public int     Id        { get; init; }
     public int     ManagerId { get; init; }
     public string? Note      { get; init; }
+    public string? Role      { get; init; }
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -42,9 +43,12 @@ public class ApproveInventoryRequestHandler
 
         // Ghi chú phê duyệt (append vào Notes nếu có)
         if (!string.IsNullOrWhiteSpace(cmd.Note))
+        {
+            var rolePrefix = cmd.Role == "OWNER" ? "Chủ kho" : "Nhân viên";
             req.Notes = string.IsNullOrEmpty(req.Notes)
-                ? $"[ĐÃ DUYỆT] {cmd.Note}"
-                : $"[ĐÃ DUYỆT] {cmd.Note}\n{req.Notes}";
+                ? $"{rolePrefix}: {cmd.Note}"
+                : $"{rolePrefix}: {cmd.Note}\n{req.Notes}";
+        }
 
         await _repo.UpdateAsync(req, cancellationToken);
 
