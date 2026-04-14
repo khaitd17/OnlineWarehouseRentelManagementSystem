@@ -49,8 +49,8 @@ public class ApproveAuditSessionHandler : IRequestHandler<ApproveAuditSessionCom
         if (!string.IsNullOrWhiteSpace(request.Notes))
         {
             session.Notes = string.IsNullOrWhiteSpace(session.Notes)
-                ? $"[Owner] {request.Notes}"
-                : session.Notes + "\n" + $"[Owner] {request.Notes}";
+                ? $"Chủ kho: {request.Notes}"
+                : session.Notes + "\n" + $"Chủ kho: {request.Notes}";
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -88,8 +88,8 @@ public class RejectAuditSessionHandler : IRequestHandler<RejectAuditSessionComma
         if (!string.IsNullOrWhiteSpace(request.Reason))
         {
             session.Notes = string.IsNullOrWhiteSpace(session.Notes)
-                ? $"[Owner] Lý do từ chối: {request.Reason}"
-                : session.Notes + $"\n[Owner] Lý do từ chối: {request.Reason}";
+                ? $"Chủ kho: Lý do từ chối: {request.Reason}"
+                : session.Notes + $"\nChủ kho: Lý do từ chối: {request.Reason}";
         }
 
         await _db.SaveChangesAsync(cancellationToken);

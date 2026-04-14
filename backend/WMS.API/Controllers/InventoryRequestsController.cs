@@ -175,6 +175,7 @@ public class InventoryRequestsController : ControllerBase
     public async Task<IActionResult> Confirm(int id, [FromBody] ConfirmRequestBody? body = null)
     {
         var staffId = GetUserId();
+        var role = await GetWarehouseRoleAsync(staffId);
         try
         {
             var result = await _mediator.Send(new ConfirmInventoryRequestCommand
@@ -182,6 +183,7 @@ public class InventoryRequestsController : ControllerBase
                 Id      = id,
                 StaffId = staffId,
                 Notes   = body?.Notes,
+                Role    = role
             });
             return Ok(result);
         }
@@ -194,6 +196,7 @@ public class InventoryRequestsController : ControllerBase
     public async Task<IActionResult> Approve(int id, [FromBody] ApproveRequestBody? body = null)
     {
         var managerId = GetUserId();
+        var role = await GetWarehouseRoleAsync(managerId);
         try
         {
             var result = await _mediator.Send(new ApproveInventoryRequestCommand
@@ -201,6 +204,7 @@ public class InventoryRequestsController : ControllerBase
                 Id        = id,
                 ManagerId = managerId,
                 Note      = body?.Note,
+                Role      = role
             });
             return Ok(result);
         }
@@ -215,6 +219,7 @@ public class InventoryRequestsController : ControllerBase
     public async Task<IActionResult> Reject(int id, [FromBody] RejectRequestBody? body = null)
     {
         var managerId = GetUserId();
+        var role = await GetWarehouseRoleAsync(managerId);
         try
         {
             var result = await _mediator.Send(new RejectInventoryRequestCommand
@@ -222,6 +227,7 @@ public class InventoryRequestsController : ControllerBase
                 Id        = id,
                 ManagerId = managerId,
                 Reason    = body?.Reason,
+                Role      = role
             });
             return Ok(result);
         }

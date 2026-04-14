@@ -10,6 +10,7 @@ public record RejectInventoryRequestCommand : IRequest<InventoryRequestDto>
     public int Id { get; init; }
     public int ManagerId { get; init; }
     public string? Reason { get; init; }
+    public string? Role { get; init; }
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -32,9 +33,10 @@ public class RejectInventoryRequestHandler
                 $"Chỉ có thể từ chối yêu cầu ở trạng thái PENDING hoặc CONFIRMED. Trạng thái hiện tại: '{req.Status}'.");
 
         req.Status    = "REJECTED";
+        var rolePrefix = cmd.Role == "OWNER" ? "Chủ kho" : "Nhân viên";
         req.Notes     = string.IsNullOrEmpty(cmd.Reason)
             ? req.Notes
-            : $"[Owner] Từ chối: {cmd.Reason}\n{req.Notes}";
+            : $"{rolePrefix}: Từ chối: {cmd.Reason}\n{req.Notes}";
         req.UpdatedAt = DateTime.Now;
 
         await _repo.UpdateAsync(req, cancellationToken);
