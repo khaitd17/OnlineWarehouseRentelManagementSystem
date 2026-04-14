@@ -13,6 +13,7 @@ public class GetAuditResultsQuery : IRequest<ApiResponse<PagedResult<AuditResult
     public string? SortBy { get; set; }
     public string SortOrder { get; set; } = "asc";
     public string? Search { get; set; }
+    public string? FilterStatus { get; set; }
 }
 
 public record AuditResultDto(

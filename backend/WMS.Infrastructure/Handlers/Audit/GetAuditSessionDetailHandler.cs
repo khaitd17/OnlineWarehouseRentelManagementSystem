@@ -43,8 +43,7 @@ public class GetAuditSessionDetailHandler : IRequestHandler<GetAuditSessionDetai
             results.Count(r => r.Discrepancy == 0),
             results.Count(r => r.Discrepancy != 0),
             results.Sum(r => r.ExpectedQty),
-            results.Sum(r => r.ActualQty),
-            results.Sum(r => r.Discrepancy ?? 0));
+            results.Sum(r => r.ActualQty));
 
         var dto = new AuditSessionDetailDto(
             session.AuditId, session.WarehouseId, session.Warehouse.Name,

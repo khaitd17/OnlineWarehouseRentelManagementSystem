@@ -83,7 +83,7 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
             CreatedBy = request.CreatedBy,
             Status = status,
             Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : 
-                    (role == "OWNER" ? $"[Owner] {request.Notes}" : $"[Người thuê] {request.Notes}"),
+                    (role == "OWNER" ? $"Chủ kho: {request.Notes}" : $"Người thuê: {request.Notes}"),
             CreatedAt = DateTime.UtcNow
         };
 

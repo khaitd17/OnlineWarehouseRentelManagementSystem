@@ -30,6 +30,15 @@ public class GetAuditResultsHandler : IRequestHandler<GetAuditResultsQuery, ApiR
             query = query.Where(r => r.ItemName.ToLower().Contains(search));
         }
 
+        if (!string.IsNullOrWhiteSpace(request.FilterStatus))
+        {
+            var filterStatus = request.FilterStatus.Trim().ToLower();
+            if (filterStatus == "matched")
+                query = query.Where(r => r.Discrepancy == 0);
+            else if (filterStatus == "discrepancy")
+                query = query.Where(r => r.Discrepancy != 0);
+        }
+
         query = request.SortBy?.ToLower() switch
         {
             "itemname" => request.SortOrder.ToLower() == "desc" ? query.OrderByDescending(r => r.ItemName) : query.OrderBy(r => r.ItemName),

@@ -20,7 +20,7 @@ export default function AuditSessionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState({ items: [], totalCount: 0, page: 1, pageSize: 10, totalPages: 0 });
   const [resultsLoading, setResultsLoading] = useState(false);
-  const [resFilters, setResFilters] = useState({ search: "", page: 1, pageSize: 10, sortBy: "", sortOrder: "asc" });
+  const [resFilters, setResFilters] = useState({ search: "", page: 1, pageSize: 10, sortBy: "", sortOrder: "asc", filterStatus: "all" });
 
   // Record results modal
   const defaultRecordModal = { open: false, items: [{ itemName: "", expectedQty: "", actualQty: "", discrepancyReason: "" }], completeSession: false, loading: false };
@@ -154,13 +154,17 @@ export default function AuditSessionDetailPage() {
           <StatCard icon={<Package size={20} />} value={session.summary.totalItems} label="Tổng mục" color="blue" />
           <StatCard icon={<CheckCircle size={20} />} value={session.summary.matchedItems} label="Khớp" color="green" />
           <StatCard icon={<AlertTriangle size={20} />} value={session.summary.discrepancyItems} label="Chênh lệch" color="red" />
-          <StatCard icon={<ListChecks size={20} />} value={session.summary.totalDiscrepancy} label="Tổng chênh lệch" color="orange" />
         </div>
       )}
 
       {/* Results Table */}
       <div className="admin-card-header" style={{ padding: "14px 0" }}><h3>Kết quả kiểm kê</h3></div>
-      <div className="admin-filter-bar">
+      <div className="admin-filter-bar" style={{ display: "flex", gap: 8 }}>
+        <select className="admin-input" style={{ maxWidth: 180 }} value={resFilters.filterStatus === "all" ? "" : resFilters.filterStatus} onChange={(e) => setResFilters(p => ({ ...p, filterStatus: e.target.value || "all", page: 1 }))}>
+          <option value="">Tất cả trạng thái</option>
+          <option value="matched">Khớp</option>
+          <option value="discrepancy">Chênh lệch</option>
+        </select>
         <input className="admin-input" placeholder="Tìm theo tên hàng hóa..." value={resFilters.search} onChange={(e) => setResFilters(p => ({ ...p, search: e.target.value, page: 1 }))} style={{ maxWidth: 300 }} />
       </div>
       <BaseTable columns={resColumns} data={results.items} loading={resultsLoading} sortBy={resFilters.sortBy} sortOrder={resFilters.sortOrder} onSort={(s, o) => setResFilters(p => ({ ...p, sortBy: s, sortOrder: o }))} emptyText="Chưa có kết quả kiểm kê." />

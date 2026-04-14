@@ -17,7 +17,7 @@ const MENU_BY_ROLE = {
     { icon: "payments", label: "Xác nhận thanh toán", path: "/pending-cash-payments", badgeKey: "pendingPaymentCount" },
     { icon: "inventory_2", label: "Yêu cầu nhập/xuất", path: "/owner-inventory-requests", section: "YÊU CẦU" },
     { icon: "inventory", label: "Tồn kho hàng thuê", path: "/owner-inventory" },
-    { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions" },
+    { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions", badgeKey: "pendingAuditCount" },
     { icon: "pending_actions", label: "Yêu cầu thuê kho", path: "/pending-rental-requests" },
     { icon: "receipt_long", label: "Lịch sử thanh toán", path: "/payment-history", section: "TÀI CHÍNH" },
     { icon: "workspace_premium", label: "Mua gói dịch vụ", path: "/subscriptions", section: "DỊCH VỤ" },
@@ -36,7 +36,7 @@ const MENU_BY_ROLE = {
     { icon: "payments", label: "Xác nhận thanh toán", path: "/pending-cash-payments", badgeKey: "pendingPaymentCount" },
     { icon: "inventory_2", label: "Yêu cầu nhập/xuất", path: "/owner-inventory-requests", section: "YÊU CẦU" },
     { icon: "inventory", label: "Tồn kho hàng thuê", path: "/owner-inventory" },
-    { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions" },
+    { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions", badgeKey: "pendingAuditCount" },
     { icon: "pending_actions", label: "Yêu cầu thuê kho", path: "/pending-rental-requests" },
     { icon: "receipt_long", label: "Lịch sử thanh toán", path: "/payment-history", section: "TÀI CHÍNH" },
     { icon: "workspace_premium", label: "Mua gói dịch vụ", path: "/subscriptions", section: "DỊCH VỤ" },
@@ -131,6 +131,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [unrepliedCount,       setUnrepliedCount]      = useState(0);
   const [pendingRequestCount,  setPendingRequestCount] = useState(0);
   const [pendingPaymentCount,  setPendingPaymentCount] = useState(0);
+  const [pendingAuditCount,    setPendingAuditCount]   = useState(0);
   const [favoritesCount,       setFavoritesCount]      = useState(() => favoritesService.count());
 
   const loadUserInfo = () => {
@@ -199,12 +200,23 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   };
 
+  const fetchPendingAuditCount = async () => {
+    try {
+      const response = await axiosClient.get('/audit-sessions', { params: { status: 'PENDING_APPROVAL', pageSize: 1 } });
+      const count = response.data?.data?.totalCount ?? 0;
+      setPendingAuditCount(count);
+    } catch {
+      setPendingAuditCount(0);
+    }
+  };
+
   useEffect(() => {
     const role = loadUserInfo();
     if (role === "RENTER") fetchUnratedCount();
     if (role === "OWNER" || role === "OPERATOR") {
       fetchUnrepliedCount();
       fetchPendingPaymentCount();
+      fetchPendingAuditCount();
     }
     if (role === "MANAGER") fetchPendingRequestCount();
   }, []);
@@ -216,9 +228,11 @@ const Sidebar = ({ isOpen, onClose }) => {
       if (role === "OWNER" || role === "OPERATOR") { 
         fetchUnrepliedCount(); 
         fetchPendingPaymentCount();
+        fetchPendingAuditCount();
       } else { 
         setUnrepliedCount(0); 
         setPendingPaymentCount(0);
+        setPendingAuditCount(0);
       }
       if (role === "MANAGER") { fetchPendingRequestCount(); } else { setPendingRequestCount(0); }
     };
@@ -284,7 +298,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     return () => window.removeEventListener('favoritesChanged', handler);
   }, []);
 
-  const badgeValues = { unratedCount, unrepliedCount, pendingRequestCount, pendingPaymentCount, favoritesCount };
+  const badgeValues = { unratedCount, unrepliedCount, pendingRequestCount, pendingPaymentCount, pendingAuditCount, favoritesCount };
 
   return (
     <>
