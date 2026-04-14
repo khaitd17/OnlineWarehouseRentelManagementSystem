@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+﻿import { useState, useEffect, useMemo, useRef } from "react";
 import axiosClient from "../services/axiosClient";
 import { getStaffSchedule, saveShifts } from "../services/shiftSchedulingService";
 import warehouseShiftService from "../services/shiftPresetService";
@@ -64,7 +64,7 @@ function DayCell({ shift, onChange, presets }) {
             </div>
           );
         })() : (
-          <div style={{ fontSize:8, color:"#cbd5e1", textAlign:"center", paddingTop:6 }}>+ Chon ca</div>
+          <div style={{ fontSize:8, color:"#cbd5e1", textAlign:"center", paddingTop:6 }}>+ Chọn ca</div>
         )}
       </div>
 
@@ -79,7 +79,7 @@ function DayCell({ shift, onChange, presets }) {
           {presets.length > 0 && (
             <div style={{ marginBottom:8 }}>
               <div style={{ fontSize:9, fontWeight:700, color:"#94a3b8", textTransform:"uppercase",
-                            letterSpacing:".4px", marginBottom:5 }}>Ca mau</div>
+                            letterSpacing:".4px", marginBottom:5 }}>Ca mẫu</div>
               {presets.map(p => (
                 <div key={p.id} onClick={() => applyPreset(p)}
                   style={{ fontSize:10, padding:"4px 6px", borderRadius:5, cursor:"pointer",
@@ -98,7 +98,7 @@ function DayCell({ shift, onChange, presets }) {
           <div style={{ borderTop: presets.length > 0 ? "1px solid #f1f5f9" : "none",
                         paddingTop: presets.length > 0 ? 8 : 0 }}>
             <div style={{ fontSize:9, fontWeight:700, color:"#94a3b8", textTransform:"uppercase",
-                          letterSpacing:".4px", marginBottom:5 }}>Nhap tay</div>
+                          letterSpacing:".4px", marginBottom:5 }}>Nhập tay</div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, marginBottom:6 }}>
               {["in1","out1"].map((f, i) => (
                 <div key={f}>
@@ -128,7 +128,7 @@ function DayCell({ shift, onChange, presets }) {
           <button onClick={() => { onChange(emptyShift()); setOpen(false); }}
             style={{ width:"100%", marginTop:6, padding:"4px 0", fontSize:9, border:"1px solid #fecaca",
                      borderRadius:4, background:"#fff1f2", color:"#dc2626", cursor:"pointer", fontWeight:600 }}>
-            Xoa
+            Xoá
           </button>
         </div>
       )}
@@ -272,7 +272,7 @@ export default function ShiftSchedulingPage() {
       {/* Toolbar */}
       <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:"#fff",
                     borderRadius:"8px 8px 0 0", border:"1px solid #e2e8f0", borderBottom:"none", flexWrap:"wrap", userSelect:"none" }}>
-        <span style={{ fontWeight:700, fontSize:13, color:"#0f172a" }}>Lich ca</span>
+        <span style={{ fontWeight:700, fontSize:13, color:"#0f172a" }}>Lịch ca</span>
 
         {warehouses.length > 1
           ? <select value={warehouseId ?? ""} onChange={e => setWarehouseId(Number(e.target.value))} style={S.sel}>
@@ -302,7 +302,7 @@ export default function ShiftSchedulingPage() {
             : setMonthYear(p => { const m=p.m===11?0:p.m+1; return{y:p.m===11?p.y+1:p.y,m}; })}>›</button>
         </div>
 
-        <input placeholder="Tim nhan vien..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...S.sel, minWidth:150 }} />
+        <input placeholder="Tìm nhân viên..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...S.sel, minWidth:150 }} />
 
         <div style={{ marginLeft:"auto", display:"flex", gap:6, alignItems:"center" }}>
           {savedMsg && (
@@ -318,7 +318,7 @@ export default function ShiftSchedulingPage() {
           </button>
           <button disabled={saving} onClick={handleSave}
             style={{ ...S.btn, background:saving?"#9ca3af":"#3b5bdb", color:"#fff", border:"none" }}>
-            {saving ? "..." : "Luu"}
+            {saving ? "..." : "Lưu"}
           </button>
         </div>
       </div>
@@ -407,7 +407,7 @@ export default function ShiftSchedulingPage() {
                   setGenFrom(isoKey(nextMon)); setGenTo(isoKey(addDays(nextMon, 6)));
                 }}
                 style={{ flex:1, padding:"6px", borderRadius:5, border:"1px solid #e2e8f0", fontSize:10, cursor:"pointer",
-                         background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Tuan sau</button>
+                         background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Tuần sau</button>
               <button onClick={() => {
                   const today = new Date();
                   const dow = today.getDay();
@@ -416,7 +416,7 @@ export default function ShiftSchedulingPage() {
                   setGenFrom(isoKey(nextMon)); setGenTo(isoKey(addDays(nextMon, 27)));
                 }}
                 style={{ flex:1, padding:"6px", borderRadius:5, border:"1px solid #e2e8f0", fontSize:10, cursor:"pointer",
-                         background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Thang sau</button>
+                         background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Tháng sau</button>
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
@@ -447,7 +447,7 @@ export default function ShiftSchedulingPage() {
               <button onClick={() => setGenModal(false)}
                 style={{ flex:1, padding:"7px", borderRadius:6, border:"1px solid #e2e8f0", background:"transparent", cursor:"pointer", fontSize:11 }}>Hủy</button>
               <button onClick={handleGenerate} disabled={!genFrom || !genTo}
-                style={{ flex:1, padding:"7px", borderRadius:6, border:"none", background:(!genFrom||!genTo)?"#9ca3af":"#f59e0b", color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700 }}>Tao lich</button>
+                style={{ flex:1, padding:"7px", borderRadius:6, border:"none", background:(!genFrom||!genTo)?"#9ca3af":"#f59e0b", color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700 }}>Tạo lịch</button>
             </div>
           </div>
         </div>

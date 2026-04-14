@@ -12,8 +12,8 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260411045220_AddSubscriptionPackages")]
-    partial class AddSubscriptionPackages
+    [Migration("20260414145642_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -2172,12 +2172,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(false)
                         .HasColumnName("is_all_skill");
-
-                    b.Property<bool>("IsManual")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_manual");
 
                     b.Property<string>("Name")
                         .IsRequired()

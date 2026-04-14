@@ -80,10 +80,24 @@ public class ScheduleController : ControllerBase
     }
 
     [HttpPost("shifts")]
-    public async Task<IActionResult> SaveShifts([FromBody] SaveShiftsRequest req, CancellationToken ct)
+    public async Task<IActionResult> SaveShifts(
+        [FromBody] SaveShiftsRequest req,
+        [FromQuery] int? warehouseId = null,
+        CancellationToken ct = default)
     {
-        await _mediator.Send(new SaveShiftsCommand { Shifts = req.Shifts }, ct);
-        return Ok(new { message = "Lưu lịch ca thành công." });
+        var callerId = GetCallerId();
+        if (callerId == null) return Unauthorized();
+        try
+        {
+            await _mediator.Send(new SaveShiftsCommand
+            {
+                CallerId    = callerId.Value,
+                WarehouseId = warehouseId,
+                Shifts      = req.Shifts,
+            }, ct);
+            return Ok(new { message = "Lưu lịch ca thành công." });
+        }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { message = ex.Message }); }
     }
 
     [HttpGet("warehouse-shifts")]
@@ -96,14 +110,26 @@ public class ScheduleController : ControllerBase
     [HttpPost("generate")]
     public async Task<IActionResult> GenerateSchedule([FromBody] GenerateRequest req, CancellationToken ct)
     {
+        var callerId = GetCallerId();
+        if (callerId == null) return Unauthorized();
+
         if (!DateOnly.TryParse(req.From, out var fromDate) || !DateOnly.TryParse(req.To, out var toDate))
             return BadRequest(new { message = "From / To phải đúng định dạng YYYY-MM-DD." });
         if (fromDate > toDate)
             return BadRequest(new { message = "From không được lớn hơn To." });
 
-        var result = await _mediator.Send(
-            new GenerateScheduleCommand { WarehouseId = req.WarehouseId, From = fromDate, To = toDate }, ct);
-        return Ok(new { message = result.Message, created = result.Created, skipped = result.Skipped });
+        try
+        {
+            var result = await _mediator.Send(new GenerateScheduleCommand
+            {
+                CallerId    = callerId.Value,
+                WarehouseId = req.WarehouseId,
+                From        = fromDate,
+                To          = toDate,
+            }, ct);
+            return Ok(new { message = result.Message, created = result.Created, skipped = result.Skipped });
+        }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { message = ex.Message }); }
     }
 }
 

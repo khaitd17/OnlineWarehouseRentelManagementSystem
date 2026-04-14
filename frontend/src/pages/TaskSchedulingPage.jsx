@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+﻿import { useState, useEffect, useCallback } from "react";
 import {
   getTasks,
   getMyWarehouses,
@@ -34,9 +34,9 @@ const tp = code => TYPE_PALETTE[code] || TYPE_PALETTE.OTHER;
 
 // Task status color system — based on completion state
 const TASK_STATUS = {
-  done:      { card: "#f0fdf4", cardBorder: "#22c55e", badge: "#dcfce7", badgeText: "#15803d", badgeBorder: "#86efac", label: "Hoan thanh" },
-  inprogress:{ card: "#eff6ff", cardBorder: "#3b82f6", badge: "#dbeafe", badgeText: "#1d4ed8", badgeBorder: "#93c5fd", label: "Dang xu ly" },
-  pending:   { card: "#fafafa", cardBorder: "#e2e8f0", badge: "#f1f5f9", badgeText: "#64748b", badgeBorder: "#cbd5e1", label: "Chua bat dau" },
+  done:      { card: "#f0fdf4", cardBorder: "#22c55e", badge: "#dcfce7", badgeText: "#15803d", badgeBorder: "#86efac", label: "Hoàn thành" },
+  inprogress:{ card: "#eff6ff", cardBorder: "#3b82f6", badge: "#dbeafe", badgeText: "#1d4ed8", badgeBorder: "#93c5fd", label: "Đang xử lý" },
+  pending:   { card: "#fafafa", cardBorder: "#e2e8f0", badge: "#f1f5f9", badgeText: "#64748b", badgeBorder: "#cbd5e1", label: "Chưa bắt đầu" },
 };
 const getTaskStatus = (steps, taskStatus) => {
   if (!steps || steps.length === 0) {
@@ -139,18 +139,18 @@ function TaskDetailModal({ task, onClose }) {
                   {task.taskTypeName}
                 </span>
                 <span style={{ fontSize:10, fontWeight:700, padding:"2px 10px", borderRadius:99, background:tStyle.badge, color:tStyle.badgeText, border:`1px solid ${tStyle.badgeBorder}` }}>
-                  {total > 0 ? `${done}/${total} buoc` : tStyle.label}
+                  {total > 0 ? `${done}/${total} bước` : tStyle.label}
                 </span>
               </div>
               {renter && (
                 <div style={{ marginTop:8, display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:11, color:"#64748b" }}>Nguoi thue:</span>
+                  <span style={{ fontSize:11, color:"#64748b" }}>Người thuê:</span>
                   <span style={{ fontSize:13, fontWeight:700, color:"#0f172a" }}>{renter}</span>
                 </div>
               )}
               {items && (
                 <div style={{ marginTop:4, fontSize:11, color:"#475569", lineHeight:1.5 }}>
-                  <span style={{ color:"#94a3b8" }}>Hang hoa: </span>{items}
+                  <span style={{ color:"#94a3b8" }}>Hàng hoá: </span>{items}
                 </div>
               )}
               {!renter && raw && (
@@ -171,7 +171,7 @@ function TaskDetailModal({ task, onClose }) {
         {total > 0 && (
           <div style={{ padding:"10px 24px 0", background:"#fafafa", borderBottom:`1px solid ${C.border}` }}>
             <div style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:C.sub, marginBottom:4 }}>
-              <span>Tien do</span>
+              <span>Tiến độ</span>
               <span style={{ fontWeight:700, color: tStatus === "done" ? "#15803d" : tStatus === "inprogress" ? "#1d4ed8" : C.sub }}>{Math.round(done/total*100)}%</span>
             </div>
             <div style={{ height:5, borderRadius:99, background:"#e2e8f0", marginBottom:10, overflow:"hidden" }}>
@@ -184,7 +184,7 @@ function TaskDetailModal({ task, onClose }) {
 
         {/* Steps */}
         <div style={{ padding:"16px 24px", maxHeight:360, overflowY:"auto" }}>
-          <p style={{ margin:"0 0 12px", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:".5px", color:"#94a3b8" }}>Cac buoc cong viec</p>
+          <p style={{ margin:"0 0 12px", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:".5px", color:"#94a3b8" }}>Các bước công việc</p>
           {steps.map((u, i) => {
             const isDone    = u.status === "Done";
             const isCur     = !isDone && steps.slice(0, i).every(prev => prev.status === "Done");
@@ -205,7 +205,7 @@ function TaskDetailModal({ task, onClose }) {
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8 }}>
                     <span style={{ fontSize:13, fontWeight: isDone ? 700 : 600, color: isDone ? "#166534" : "#1e293b" }}>{stepLabel}</span>
                     <span style={{ fontSize:10, fontWeight:700, padding:"2px 8px", borderRadius:99, flexShrink:0, background:badgeBg, color:badgeTxt, border:`1px solid ${badgeBdr}` }}>
-                      {isDone ? "Hoan thanh" : isCur ? "Dang xu ly" : "Chua xu ly"}
+                      {isDone ? "Hoàn thành" : isCur ? "Đang xử lý" : "Chưa xử lý"}
                     </span>
                   </div>
                   {isDone && (
@@ -214,13 +214,13 @@ function TaskDetailModal({ task, onClose }) {
                       {u.completedAt && <span>{fmtDateTime(u.completedAt)}</span>}
                     </div>
                   )}
-                  {isCur && <p style={{ margin:"3px 0 0", fontSize:11, color:"#3b82f6", fontStyle:"italic" }}>Dang cho xu ly...</p>}
+                  {isCur && <p style={{ margin:"3px 0 0", fontSize:11, color:"#3b82f6", fontStyle:"italic" }}>Đang chờ xử lý...</p>}
                 </div>
               </div>
             );
           })}
           {steps.length === 0 && (
-            <p style={{ textAlign:"center", color:"#94a3b8", fontSize:12, padding:"20px 0" }}>Chua co buoc nao.</p>
+            <p style={{ textAlign:"center", color:"#94a3b8", fontSize:12, padding:"20px 0" }}>Chưa có bước nào.</p>
           )}
         </div>
       </div>
@@ -304,8 +304,8 @@ function CreateTaskModal({ warehouseId, taskTypes, defaultDate, onClose, onCreat
 
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!form.taskTypeId) return setErr("Vui long chon loai task.");
-    if (!form.scheduledAt) return setErr("Vui long chon ngay.");
+    if (!form.taskTypeId) return setErr("Vui lòng chọn loại task.");
+    if (!form.scheduledAt) return setErr("Vui lòng chọn ngày.");
     setSaving(true);
     try {
       await createTask(warehouseId, {
@@ -320,38 +320,38 @@ function CreateTaskModal({ warehouseId, taskTypes, defaultDate, onClose, onCreat
 
   return (
     <Modal onClose={onClose}>
-      <div style={{ fontWeight:800, fontSize:15, color:C.text, marginBottom:16 }}>Tao Task Moi</div>
+      <div style={{ fontWeight:800, fontSize:15, color:C.text, marginBottom:16 }}>Tạo Task Mới</div>
       {err && <div style={{ padding:"8px 12px", background:"#fff1f2", color:"#dc2626", borderRadius:6, fontSize:11, marginBottom:10, border:"1px solid #fecaca" }}>{err}</div>}
       <form onSubmit={handleSubmit}>
         <div style={grp}>
-          <label style={lbl}>Loai task *</label>
+          <label style={lbl}>Loại task *</label>
           <select value={form.taskTypeId} onChange={e => setForm(f=>({...f,taskTypeId:e.target.value}))} style={inp}>
             {manualTypes.map(tt => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
           </select>
         </div>
         <div style={{ display:"flex", gap:10, marginBottom:12 }}>
           <div style={{ flex:1 }}>
-            <label style={lbl}>Ngay *</label>
+            <label style={lbl}>Ngày *</label>
             <input type="date" value={form.scheduledAt} onChange={e => setForm(f=>({...f,scheduledAt:e.target.value}))} style={inp} required />
           </div>
           <div style={{ flex:1 }}>
-            <label style={lbl}>Gio</label>
+            <label style={lbl}>Giờ</label>
             <input type="time" value={form.scheduledTime} onChange={e => setForm(f=>({...f,scheduledTime:e.target.value}))} style={inp} />
           </div>
         </div>
         <div style={grp}>
-          <label style={lbl}>Ghi chu</label>
+          <label style={lbl}>Ghi chú</label>
           <textarea value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} rows={3}
-            style={{ ...inp, resize:"vertical", fontFamily:"inherit" }} placeholder="Mo ta cong viec..." />
+            style={{ ...inp, resize:"vertical", fontFamily:"inherit" }} placeholder="Mô tả công việc..." />
         </div>
         <div style={{ display:"flex", gap:8 }}>
           <button type="button" onClick={onClose}
             style={{ flex:1, padding:"8px 0", borderRadius:7, border:`1px solid ${C.border}`, background:"transparent", color:C.sub, cursor:"pointer", fontSize:12, fontWeight:600 }}>
-            Huy
+            Huỷ
           </button>
           <button type="submit" disabled={saving}
             style={{ flex:1, padding:"8px 0", borderRadius:7, border:"none", background:C.accent, color:"#fff", cursor:saving?"not-allowed":"pointer", fontSize:12, fontWeight:700, opacity:saving?.7:1 }}>
-            {saving ? "Dang tao..." : "Tao task"}
+            {saving ? "Đang tạo..." : "Tạo task"}
           </button>
         </div>
       </form>
@@ -365,7 +365,7 @@ export default function TaskSchedulingPage() {
   const [selWh, setSelWh]             = useState(null);
   const [taskTypes, setTaskTypes]     = useState([]);
   const [tasks, setTasks]             = useState([]);
-  const [filterType, setFilterType]   = useState(null); // null = tat ca
+  const [filterType, setFilterType]   = useState(null); // null = tất cả
   const [loading, setLoading]         = useState(false);
   const [showCreate, setShowCreate]   = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -405,7 +405,7 @@ export default function TaskSchedulingPage() {
   // Group tasks by date (backend da filter isManual=true)
   const filteredTasks = filterType
     ? tasks.filter(t => (t.taskTypeCode || "").toUpperCase() === filterType)
-    : tasks; // khong filter FE, backend da bao dam
+    : tasks; // không filter FE, backend đã bảo đảm
 
   const tasksByDate = {};
   weekDays.forEach(d => { tasksByDate[isoDate(d)] = []; });
@@ -432,8 +432,8 @@ export default function TaskSchedulingPage() {
           {/* Title + warehouse */}
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div>
-              <h1 style={{ margin:0, fontSize:17, fontWeight:800, color:C.text }}>Quan ly Task</h1>
-              <p style={{ margin:0, fontSize:11, color:C.sub }}>Lich cong viec theo tuan</p>
+              <h1 style={{ margin:0, fontSize:17, fontWeight:800, color:C.text }}>Quản lý Task</h1>
+              <p style={{ margin:0, fontSize:11, color:C.sub }}>Lịch công việc theo tuần</p>
             </div>
             {warehouses.length > 1 && (
               <select value={whId ?? ""} onChange={e => setSelWh(warehouses.find(w => w.warehouseId === Number(e.target.value)))}
@@ -448,16 +448,16 @@ export default function TaskSchedulingPage() {
 
           {/* Week nav + create */}
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <button onClick={prevWeek} style={btnBase}>&#8592; Tuan truoc</button>
+            <button onClick={prevWeek} style={btnBase}>&#8592; Tuần trước</button>
             <div style={{ padding:"6px 14px", borderRadius:7, border:`1px solid ${C.border}`, background:C.accentBg, fontSize:12, fontWeight:700, color:C.accent, minWidth:200, textAlign:"center" }}>
               {weekLabel}
             </div>
-            <button onClick={nextWeek} style={btnBase}>Tuan sau &#8594;</button>
-            <button onClick={goToday} style={{ ...btnBase, border:`1px solid ${C.accent}`, color:C.accent }}>Hom nay</button>
-            <button onClick={loadTasks} style={btnBase}>Lam moi</button>
+            <button onClick={nextWeek} style={btnBase}>Tuần sau &#8594;</button>
+            <button onClick={goToday} style={{ ...btnBase, border:`1px solid ${C.accent}`, color:C.accent }}>Hôm nay</button>
+            <button onClick={loadTasks} style={btnBase}>Làm mới</button>
             <button onClick={() => setShowCreate(true)}
               style={{ padding:"6px 16px", borderRadius:7, border:"none", background:C.accent, color:"#fff", cursor:"pointer", fontSize:12, fontWeight:700 }}>
-              + Tao Task
+              + Tạo Task
             </button>
           </div>
         </div>
@@ -465,7 +465,7 @@ export default function TaskSchedulingPage() {
 
       {/* ── Filter bar ── */}
       <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"8px 24px", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-        <span style={{ fontSize:10, fontWeight:700, color:C.sub, textTransform:"uppercase", letterSpacing:".5px", marginRight:4 }}>Loai task:</span>
+        <span style={{ fontSize:10, fontWeight:700, color:C.sub, textTransform:"uppercase", letterSpacing:".5px", marginRight:4 }}>Loại task:</span>
         {/* Tat ca */}
         <button
           onClick={() => setFilterType(null)}
@@ -476,7 +476,7 @@ export default function TaskSchedulingPage() {
             color: !filterType ? C.accent : C.sub,
             transition:"all .15s",
           }}
-        >Tat ca</button>
+        >Tất cả</button>
         {/* Tung loai task */}
         {taskTypes
           .map(tt => {
@@ -498,7 +498,7 @@ export default function TaskSchedulingPage() {
           })
         }
         <span style={{ marginLeft:"auto", fontSize:10, color:C.subLight }}>
-          {filteredTasks.length} task hien thi
+          {filteredTasks.length} task hiển thị
         </span>
       </div>
 
@@ -533,7 +533,7 @@ export default function TaskSchedulingPage() {
           {/* Task cells */}
           {loading ? (
             <div style={{ padding:"40px", textAlign:"center", color:C.subLight, fontSize:13 }}>
-              Dang tai task...
+              Đang tải task...
             </div>
           ) : (
             <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", alignItems:"start", minHeight:200 }}>
@@ -566,7 +566,7 @@ export default function TaskSchedulingPage() {
 
         {/* Task count summary */}
         <div style={{ marginTop:12, fontSize:11, color:C.sub, textAlign:"right" }}>
-          Tong: {filteredTasks.length}/{tasks.length} task trong tuan nay
+          Tổng: {filteredTasks.length}/{tasks.length} task trong tuần này
         </div>
       </div>
 

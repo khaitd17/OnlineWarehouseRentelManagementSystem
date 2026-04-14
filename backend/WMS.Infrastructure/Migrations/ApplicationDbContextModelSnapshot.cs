@@ -2170,12 +2170,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_all_skill");
 
-                    b.Property<bool>("IsManual")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_manual");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)

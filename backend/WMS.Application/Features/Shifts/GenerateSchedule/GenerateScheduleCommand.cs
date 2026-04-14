@@ -4,6 +4,7 @@ namespace WMS.Application.Features.Shifts.GenerateSchedule;
 
 public class GenerateScheduleCommand : IRequest<GenerateScheduleResult>
 {
+    public int CallerId { get; set; }
     public int WarehouseId { get; set; }
     public DateOnly From { get; set; }
     public DateOnly To { get; set; }

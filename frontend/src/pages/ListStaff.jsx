@@ -264,7 +264,7 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
             <button onClick={() => setReassign(true)}
               style={{ padding:"6px 12px", borderRadius:8, border:`1px solid ${C.amber}`,
                 background:C.amberBg, color:C.amber, cursor:"pointer", fontSize:11, fontWeight:700 }}>
-              Phan quyen
+              Phân quyền
             </button>
           )}
           {staff.roleCode !== "OWNER" && (
@@ -348,7 +348,7 @@ export default function ListStaff() {
           <h2 style={{ margin:0, fontSize:18, fontWeight:700, color:C.text }}>Nhân viên kho</h2>
           {warehouseName && (
             <p style={{ margin:"3px 0 0", color:C.sub, fontSize:12 }}>
-              {warehouseName} · {staffData?.total ?? "—"} nhan vien
+              {warehouseName} · {staffData?.total ?? "—"} nhân viên
               {callerMembership && (
                 <span style={{ marginLeft:10, padding:"2px 8px", borderRadius:12,
                   fontSize:10, fontWeight:700, background:"#eff0ff", color:C.accentH }}>
