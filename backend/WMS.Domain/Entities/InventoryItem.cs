@@ -27,4 +27,15 @@ public partial class InventoryItem
     /// </summary>
     public int? AssetId { get; set; }
     public virtual RenterAsset? Asset { get; set; }
+
+    /// <summary>
+    /// Số lượng thực tế Staff kiểm đếm được khi nhận/xuất hàng.
+    /// NULL = chưa xác minh. Có thể khác với Quantity (số lượng yêu cầu).
+    /// </summary>
+    public int? VerifiedQuantity { get; set; }
+
+    /// <summary>
+    /// Ghi chú xác minh của Staff (VD: "Thiếu 2 thùng, hàng bị ướt", "Đúng số lượng").
+    /// </summary>
+    public string? VerifyNote { get; set; }
 }

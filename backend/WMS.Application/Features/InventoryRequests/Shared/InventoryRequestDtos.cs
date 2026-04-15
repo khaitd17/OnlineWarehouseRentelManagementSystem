@@ -12,6 +12,10 @@ public record InventoryItemDto
     public string? Description { get; init; }
     public int? AssetId { get; init; }
     public string? AssetName { get; init; }
+    /// <summary>Số lượng thực tế Staff kiểm đếm. NULL = chưa xác minh.</summary>
+    public int? VerifiedQuantity { get; init; }
+    /// <summary>Ghi chú xác minh của Staff.</summary>
+    public string? VerifyNote { get; init; }
 }
 
 public record InventoryRequestDto
@@ -34,6 +38,7 @@ public record InventoryRequestDto
     public string? AssignedStaffName { get; init; }
     public string? AssignedNote { get; init; }
     public DateTime? AssignedAt { get; init; }
+    public DateTime? UpdatedAt { get; init; }
     public int TotalItems { get; init; }
     public List<InventoryItemDto> Items { get; init; } = new();
 }
@@ -70,17 +75,20 @@ public static class InventoryRequestMapper
         AssignedStaffName = r.AssignedStaff?.FullName,
         AssignedNote      = r.AssignedNote,
         AssignedAt        = r.AssignedAt,
+        UpdatedAt         = r.UpdatedAt,
         TotalItems      = r.InventoryItems.Count,
         Items           = r.InventoryItems.Select(i => new InventoryItemDto
         {
-            ItemId      = i.ItemId,
-            ItemName    = i.ItemName,
-            Quantity    = i.Quantity,
-            Unit        = i.Unit,
-            Weight      = i.Weight,
-            Description = i.Description,
-            AssetId     = i.AssetId,
-            AssetName   = i.Asset?.AssetName,
+            ItemId          = i.ItemId,
+            ItemName        = i.ItemName,
+            Quantity        = i.Quantity,
+            Unit            = i.Unit,
+            Weight          = i.Weight,
+            Description     = i.Description,
+            AssetId         = i.AssetId,
+            AssetName       = i.Asset?.AssetName,
+            VerifiedQuantity = i.VerifiedQuantity,
+            VerifyNote      = i.VerifyNote,
         }).ToList()
     };
 }

@@ -13,6 +13,7 @@ using WMS.Application.Features.InventoryRequests.GetRequests;
 using WMS.Application.Features.InventoryRequests.GetOwnerInventoryRequests;
 using WMS.Application.Features.InventoryRequests.RejectRequest;
 using WMS.Application.Features.InventoryRequests.UpdateRequest;
+using WMS.Application.Features.InventoryRequests.VerifyRequest;
 using WMS.Domain.Interfaces;
 
 namespace WMS.API.Controllers;
@@ -276,10 +277,50 @@ public class InventoryRequestsController : ControllerBase
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
         catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
     }
+
+    /// <summary>
+    /// Staff xác minh số lượng hàng hóa thực tế (trước khi Confirm).
+    /// Ghi lại VerifiedQuantity cho từng InventoryItem và trả về danh sách chênh lệch.
+    /// Caller phải là STAFF / MANAGER / OPERATOR trong kho đó.
+    /// </summary>
+    [HttpPost("{id:int}/verify")]
+    public async Task<IActionResult> Verify(int id, [FromBody] VerifyRequestBody body)
+    {
+        var staffId = GetUserId();
+
+        var request = await _mediator.Send(new GetInventoryRequestByIdQuery { Id = id });
+        if (request == null) return NotFound(new { message = "Yêu cầu không tồn tại." });
+
+        // Chỉ thành viên vận hành kho mới được xác minh
+        bool isOperator = await _membershipRepo.HasRoleAsync(staffId, request.WarehouseId, "OPERATOR", HttpContext.RequestAborted);
+        bool isManager  = await _membershipRepo.HasRoleAsync(staffId, request.WarehouseId, "MANAGER",  HttpContext.RequestAborted);
+        bool isStaff    = await _membershipRepo.HasRoleAsync(staffId, request.WarehouseId, "STAFF",    HttpContext.RequestAborted);
+
+        if (!isOperator && !isManager && !isStaff)
+            return StatusCode(403, new { message = "Chỉ thành viên vận hành kho (STAFF / MANAGER / OPERATOR) mới được xác minh hàng hóa." });
+
+        if (body?.Items == null || body.Items.Count == 0)
+            return BadRequest(new { message = "Danh sách xác minh không được để trống." });
+
+        try
+        {
+            var result = await _mediator.Send(new VerifyInventoryRequestCommand
+            {
+                InvReqId = id,
+                StaffId  = staffId,
+                Items    = body.Items,
+            });
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)       { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex)  { return BadRequest(new { message = ex.Message }); }
+        catch (ArgumentException ex)          { return BadRequest(new { message = ex.Message }); }
+    }
 }
 
 public record AssignRequestBody    { public int StaffId { get; init; } public string? Note { get; init; } }
 public record ApproveRequestBody   { public string? Note    { get; init; } }
 public record ConfirmRequestBody   { public string? Notes   { get; init; } }
 public record RejectRequestBody    { public string? Reason   { get; init; } }
+public record VerifyRequestBody    { public List<VerifyItemInput> Items { get; init; } = new(); }
 
