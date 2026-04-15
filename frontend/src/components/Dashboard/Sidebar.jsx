@@ -279,10 +279,16 @@ function buildMenu(systemRole, warehouses) {
   if (hasStaff) {
     if (hasChecker) {
       items.push({
+        icon: "inventory_2",
+        label: "Phiếu nhập/xuất kho",
+        path: "/staff-inventory-requests-staff",
+        section: "KHO",
+        badgeKey: "pendingAssignedCount",
+      });
+      items.push({
         icon: "swap_horiz",
         label: "Xác nhận nhập/xuất kho",
         path: "/confirm-movement",
-        section: "KHO",
       });
     }
     if (hasChecker || hasInvOp) {
@@ -382,6 +388,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
   const [pendingPaymentCount, setPendingPaymentCount] = useState(0);
   const [pendingAuditCount, setPendingAuditCount] = useState(0);
+  const [pendingAssignedCount, setPendingAssignedCount] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(() =>
     favoritesService.count(),
   );
@@ -485,6 +492,22 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   };
 
+  const fetchPendingAssignedCount = async () => {
+    try {
+      const ctx = authService.getWarehouseContext();
+      const wid = ctx?.warehouses?.[0]?.warehouseId;
+      const [inbound, outbound] = await Promise.all([
+        axiosClient.get("/InventoryRequests", { params: { warehouseId: wid, type: 'INBOUND', status: 'CONFIRMED', pageSize: 1 } }),
+        axiosClient.get("/InventoryRequests", { params: { warehouseId: wid, type: 'OUTBOUND', status: 'CONFIRMED', pageSize: 1 } }),
+      ]);
+      const countIn  = inbound.data?.totalCount ?? 0;
+      const countOut = outbound.data?.totalCount ?? 0;
+      setPendingAssignedCount(countIn + countOut);
+    } catch {
+      setPendingAssignedCount(0);
+    }
+  };
+
   const fetchSubscriptionStatus = async () => {
     try {
       const res = await subscriptionService.getSubscriptionStatus();
@@ -504,6 +527,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       fetchSubscriptionStatus();
     }
     if (role === "MANAGER") fetchPendingRequestCount();
+    if (role === "STAFF") fetchPendingAssignedCount();
   }, []);
 
   useEffect(() => {
@@ -527,6 +551,11 @@ const Sidebar = ({ isOpen, onClose }) => {
         fetchPendingRequestCount();
       } else {
         setPendingRequestCount(0);
+      }
+      if (role === "STAFF") {
+        fetchPendingAssignedCount();
+      } else {
+        setPendingAssignedCount(0);
       }
     };
     window.addEventListener("authChange", handler);
@@ -553,6 +582,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   useEffect(() => {
     const handler = () => {
       if (effectiveRole === "MANAGER") fetchPendingRequestCount();
+      if (effectiveRole === "STAFF") fetchPendingAssignedCount();
     };
     window.addEventListener("inventoryRequestUpdated", handler);
     return () => window.removeEventListener("inventoryRequestUpdated", handler);
@@ -563,6 +593,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR")
       fetchUnrepliedCount();
     if (effectiveRole === "MANAGER") fetchPendingRequestCount();
+    if (effectiveRole === "STAFF") fetchPendingAssignedCount();
   }, [location.pathname, effectiveRole]);
 
   // Auto-close sidebar on route change (mobile)
@@ -607,6 +638,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     pendingRequestCount,
     pendingPaymentCount,
     pendingAuditCount,
+    pendingAssignedCount,
     favoritesCount,
   };
 

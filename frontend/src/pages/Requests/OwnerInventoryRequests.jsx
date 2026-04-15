@@ -262,6 +262,7 @@ const DetailModal = ({ req, onClose }) => {
                   ['Email',      req.renterEmail],
                   ['Trạng thái', <StatusBadge status={req.status} />],
                   ['Ngày tạo',   req.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN') : '—'],
+                  ...(req.scheduledDate ? [['Ngày dự kiến', new Date(req.scheduledDate).toLocaleDateString('vi-VN')]] : []),
                 ].map(([k, v]) => (
                   <div key={k}>
                     <p style={{ margin: 0, fontSize: '0.68rem', color: '#9ca3af', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k}</p>
@@ -317,6 +318,29 @@ const DetailModal = ({ req, onClose }) => {
                 </p>
               )}
             </div>
+
+            {req.documentUrls && req.documentUrls.length > 0 && (
+              <div style={{ marginTop: 20 }}>
+                <p style={{ margin:'0 0 10px', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                  Chứng từ đính kèm
+                </p>
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                  {req.documentUrls.map((rawUrl, i) => {
+                    const ext = rawUrl.split('.').pop().toLowerCase();
+                    const isImage = ['jpg','jpeg','png','webp'].includes(ext);
+                    const fullUrl = rawUrl.startsWith('http') ? rawUrl : `http://localhost:5276${rawUrl.startsWith('/') ? rawUrl : '/' + rawUrl}`;
+                    return (
+                      <a key={i} href={fullUrl} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, textDecoration:'none', color:'#3b82f6', fontSize:'0.8rem', fontWeight:600, transition: 'all 0.2s' }}
+                         onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#93c5fd'; e.currentTarget.style.background='#eff6ff';}}
+                         onMouseLeave={(e)=>{e.currentTarget.style.borderColor='#e2e8f0'; e.currentTarget.style.background='#f8fafc';}}>
+                        <span className="material-symbols-outlined" style={{ fontSize:16 }}>{isImage ? 'image' : 'description'}</span>
+                        Tài liệu {i + 1}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
         </div>
@@ -346,7 +370,10 @@ const OwnerInventoryRequests = () => {
   // Load danh sách kho của owner
   useEffect(() => {
     getMyWarehouses()
-      .then(data => setMyWarehouses(Array.isArray(data) ? data : []))
+      .then(data => {
+        const list = Array.isArray(data) ? data : [];
+        setMyWarehouses(list.filter(w => w.status === 'APPROVED' || !w.status));
+      })
       .catch(() => {});
   }, []);
 
@@ -392,116 +419,161 @@ const OwnerInventoryRequests = () => {
 
   return (
     <div className="w-full flex-1 flex flex-col min-w-0" style={{ fontFamily: 'Inter, sans-serif' }}>
-
+      <style>{`
+        @keyframes floatIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .owner-header-grad { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 28px 32px; border-radius: 16px; margin-bottom: 24px; position: relative; overflow: hidden; }
+        .owner-header-grad::after { content: ''; position: absolute; right: 0; top: 0; width: 400px; height: 100%; background: radial-gradient(circle, rgba(56,189,248,0.15) 0%, transparent 70%); }
+        .stat-card-hover { transition: transform 0.2s, box-shadow 0.2s; cursor: default; }
+        .stat-card-hover:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); }
+        .tab-btn { position: relative; overflow: hidden; }
+        .tab-btn::after { content: ''; position: absolute; bottom: 0; left: 50%; width: 0; height: 2px; align-self: center; background: currentColor; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateX(-50%); }
+        .tab-btn.active::after { width: 100%; }
+        .custom-glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); }
+      `}</style>
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Yêu cầu nhập / xuất kho</h1>
-        <p className="text-slate-500 text-sm mt-1">Xem và quản lý tất cả yêu cầu từ người thuê trong các kho của bạn.</p>
+      <div className="owner-header-grad" style={{ animation: 'floatIn 0.4s ease-out' }}>
+        <h1 style={{ margin: '0 0 6px', fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.02em' }}>Yêu cầu Nhập / Xuất kho</h1>
+        <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.95rem' }}>Quản lý và theo dõi toàn bộ yêu cầu hàng hóa tại chuỗi kho của bạn.</p>
       </div>
 
       {/* Stat Cards */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <StatCard icon="inventory_2"   label="Tổng yêu cầu"    value={data.totalCount} color="#00b2d6" />
-        <StatCard icon="schedule"      label="Đang chờ duyệt"  value={pending}          color="#f59e0b" />
-        <StatCard icon="check_circle"  label="Đã xác nhận"     value={confirmed}        color="#10b981" />
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', animation: 'floatIn 0.5s ease-out backwards' }}>
+        <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, display: 'flex', alignItems: 'center', gap: 18 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg, #e0f2fe, #bae6fd)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 26 }}>inventory_2</span>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng yêu cầu</p>
+            <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{data.totalCount}</p>
+          </div>
+        </div>
+        <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, display: 'flex', alignItems: 'center', gap: 18 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg, #fef3c7, #fde68a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 26 }}>schedule</span>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chờ duyệt</p>
+            <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{pending}</p>
+          </div>
+        </div>
+        <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, display: 'flex', alignItems: 'center', gap: 18 }}>
+          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 26 }}>check_circle</span>
+          </div>
+          <div>
+            <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã xác nhận</p>
+            <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{confirmed}</p>
+          </div>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, background: '#f1f5f9', padding: 4, borderRadius: 10, width: 'fit-content' }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {[
-          { key: 'INBOUND',  icon: 'move_to_inbox', label: 'Nhập kho' },
-          { key: 'OUTBOUND', icon: 'outbox',        label: 'Xuất kho' },
+          { key: 'INBOUND',  icon: 'move_to_inbox', label: '📥 Nhập kho', color: '#10b981' },
+          { key: 'OUTBOUND', icon: 'outbox',        label: '📤 Xuất kho', color: '#f59e0b' },
         ].map(tab => (
-          <button key={tab.key} onClick={() => handleTabChange(tab.key)} style={{
+          <button key={tab.key} onClick={() => handleTabChange(tab.key)} className={`tab-btn ${activeTab === tab.key ? 'active' : ''}`} style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 20px', borderRadius: 8, border: 'none', cursor: 'pointer',
-            fontFamily: 'Inter, sans-serif', fontSize: '0.875rem', fontWeight: 600,
-            background: activeTab === tab.key ? '#fff'         : 'transparent',
-            color:      activeTab === tab.key ? '#00b2d6'      : '#6b7280',
-            boxShadow:  activeTab === tab.key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-            transition: 'all 0.15s',
+            padding: '10px 24px', borderRadius: 10, border: `1.5px solid ${activeTab === tab.key ? tab.color : '#e2e8f0'}`, cursor: 'pointer',
+            fontFamily: 'Inter, sans-serif', fontSize: '0.9rem', fontWeight: 700,
+            background: activeTab === tab.key ? `${tab.color}0c` : '#fff',
+            color: activeTab === tab.key ? tab.color : '#64748b',
+            transition: 'all 0.2s ease',
+            boxShadow: activeTab === tab.key ? '0 4px 6px -1px rgba(0,0,0,0.05)' : 'none',
           }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{tab.icon}</span>
             {tab.label}
           </button>
         ))}
       </div>
 
       {/* Filter Bar */}
-      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: '14px 18px', marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: '16px 24px', marginBottom: 24, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           {/* Search */}
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.05em' }}>Tìm kiếm</label>
+          <div style={{ flex: 1, minWidth: 260 }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Tìm kiếm</label>
             <div style={{ position: 'relative' }}>
-              <span className="material-symbols-outlined" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 18, color: '#9ca3af' }}>search</span>
+              <span className="material-symbols-outlined" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 20, color: '#94a3b8' }}>search</span>
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="Mã yêu cầu, renter, kho..."
+                placeholder="Tìm mã số yêu cầu, tên khách, kho bãi..."
                 style={{
                   width: '100%', boxSizing: 'border-box',
-                  padding: '9px 12px 9px 36px', borderRadius: 8,
-                  border: '1px solid #e2e8f0', fontSize: '0.875rem',
+                  padding: '10px 14px 10px 40px', borderRadius: 10,
+                  border: '1.5px solid #e2e8f0', fontSize: '0.9rem',
                   outline: 'none', fontFamily: 'Inter, sans-serif',
-                  background: '#f8fafc',
+                  background: '#f8fafc', transition: 'all 0.2s',
                 }}
+                onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; e.target.style.background = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)' }}
+                onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc'; e.target.style.boxShadow = 'none' }}
               />
             </div>
           </div>
 
           {/* Status Filter */}
-          <div style={{ minWidth: 180 }}>
-            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.05em' }}>Trạng thái</label>
-            <select
-              value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-              style={{
-                width: '100%', padding: '9px 12px', borderRadius: 8,
-                border: '1px solid #e2e8f0', fontSize: '0.875rem',
-                outline: 'none', fontFamily: 'Inter, sans-serif', background: '#f8fafc', cursor: 'pointer',
-              }}
-            >
-              <option value="">Tất cả</option>
-              <option value="PENDING">Đang chờ</option>
-              <option value="CONFIRMED">Đã duyệt</option>
-              <option value="REJECTED">Từ chối</option>
-            </select>
+          <div style={{ minWidth: 200 }}>
+            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Trạng thái</label>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={statusFilter}
+                onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+                style={{
+                  width: '100%', padding: '10px 36px 10px 14px', borderRadius: 10, appearance: 'none',
+                  border: '1.5px solid #e2e8f0', fontSize: '0.9rem', fontWeight: 600, color: '#334155',
+                  outline: 'none', fontFamily: 'Inter, sans-serif', background: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s',
+                }}
+                onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; }}
+                onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; }}
+              >
+                <option value="">Tất cả trạng thái</option>
+                <option value="PENDING">Chờ duyệt (PENDING)</option>
+                <option value="CONFIRMED">Đã duyệt (CONFIRMED)</option>
+                <option value="REJECTED">Bị từ chối (REJECTED)</option>
+              </select>
+              <span className="material-symbols-outlined" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 20, color: '#94a3b8', pointerEvents: 'none' }}>expand_more</span>
+            </div>
           </div>
 
           {/* Warehouse Filter */}
           {myWarehouses.length > 0 && (
-            <div style={{ minWidth: 200 }}>
-              <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', marginBottom: 6, letterSpacing: '0.05em' }}>Kho bãi</label>
-              <select
-                value={warehouseFilter}
-                onChange={e => { setWarehouseFilter(e.target.value); setPage(1); }}
-                style={{
-                  width: '100%', padding: '9px 12px', borderRadius: 8,
-                  border: '1px solid #e2e8f0', fontSize: '0.875rem',
-                  outline: 'none', fontFamily: 'Inter, sans-serif', background: '#f8fafc', cursor: 'pointer',
-                }}
-              >
-                <option value="">Tất cả kho</option>
-                {myWarehouses.map(w => (
-                  <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>
-                ))}
-              </select>
+            <div style={{ minWidth: 220 }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Kho bãi</label>
+              <div style={{ position: 'relative' }}>
+                <select
+                  value={warehouseFilter}
+                  onChange={e => { setWarehouseFilter(e.target.value); setPage(1); }}
+                  style={{
+                    width: '100%', padding: '10px 36px 10px 14px', borderRadius: 10, appearance: 'none',
+                    border: '1.5px solid #e2e8f0', fontSize: '0.9rem', fontWeight: 600, color: '#334155',
+                    outline: 'none', fontFamily: 'Inter, sans-serif', background: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = '#38bdf8'; }}
+                  onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; }}
+                >
+                  <option value="">Tất cả kho</option>
+                  {myWarehouses.map(w => (
+                    <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>
+                  ))}
+                </select>
+                <span className="material-symbols-outlined" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 20, color: '#94a3b8', pointerEvents: 'none' }}>expand_more</span>
+              </div>
             </div>
           )}
         </div>
       </div>
 
       {/* Table */}
-      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      <div style={{ background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                 {['Mã YC', 'Kho bãi', 'Người thuê', 'Số mặt hàng', 'Trạng thái', 'Ngày tạo', 'Thao tác'].map(h => (
                   <th key={h} style={{
-                    padding: '12px 16px', textAlign: 'left',
-                    fontSize: '0.7rem', fontWeight: 700, color: '#00b2d6',
+                    padding: '14px 20px', textAlign: 'left',
+                    fontSize: '0.75rem', fontWeight: 700, color: '#64748b',
                     textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                   }}>{h}</th>
                 ))}
@@ -509,56 +581,62 @@ const OwnerInventoryRequests = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: '40px 0', textAlign: 'center', color: '#9ca3af' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 32, display: 'block', marginBottom: 8, animation: 'spin 1s linear infinite' }}>sync</span>
-                  Đang tải...
+                <tr><td colSpan={7} style={{ padding: '60px 0', textAlign: 'center', color: '#9ca3af' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 32, display: 'block', marginBottom: 12, animation: 'spin 1s linear infinite', color: '#38bdf8' }}>sync</span>
+                  Đang tải dữ liệu...
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: '48px 0', textAlign: 'center' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 40, color: '#d1d5db', display: 'block', marginBottom: 8 }}>inbox</span>
-                  <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.875rem' }}>Không có yêu cầu nào.</p>
+                <tr><td colSpan={7} style={{ padding: '60px 0', textAlign: 'center' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#cbd5e1', display: 'block', marginBottom: 12 }}>inbox</span>
+                  <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>Không tìm thấy yêu cầu nào phù hợp.</p>
                 </td></tr>
               ) : filtered.map(req => (
-                <tr key={req.invReqId} style={{ borderBottom: '1px solid #f1f5f9' }}
+                <tr key={req.invReqId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <td style={{ padding: '14px 16px', fontSize: '0.875rem', fontWeight: 700, color: '#111827' }}>
+                  <td style={{ padding: '16px 20px', fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
                     #{req.invReqId}
                   </td>
-                  <td style={{ padding: '14px 16px', fontSize: '0.875rem', color: '#374151' }}>
-                    {req.warehouseName}
+                  <td style={{ padding: '16px 20px', fontSize: '0.9rem', color: '#475569', fontWeight: 500 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#94a3b8' }}>warehouse</span>
+                      {req.warehouseName}
+                    </div>
                   </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{req.renterName}</p>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af' }}>{req.renterEmail}</p>
+                  <td style={{ padding: '16px 20px' }}>
+                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#0f172a' }}>{req.renterName}</p>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{req.renterEmail}</p>
                   </td>
-                  <td style={{ padding: '14px 16px', fontSize: '0.875rem', color: '#374151', textAlign: 'center' }}>
-                    <span style={{
+                  <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                    <div style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      width: 28, height: 28, borderRadius: '50%', background: '#e0f2fe',
-                      color: '#0284c7', fontWeight: 700, fontSize: '0.8rem',
-                    }}>{req.totalItems}</span>
+                      background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 8,
+                      color: '#475569', fontWeight: 700, fontSize: '0.85rem', padding: '4px 12px', gap: 6
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>category</span>
+                      {req.totalItems}
+                    </div>
                   </td>
-                  <td style={{ padding: '14px 16px' }}>
+                  <td style={{ padding: '16px 20px' }}>
                     <StatusBadge status={req.status} />
                   </td>
-                  <td style={{ padding: '14px 16px', fontSize: '0.8rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                    {req.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN') : '—'}
+                  <td style={{ padding: '16px 20px', fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                    {req.createdAt ? new Date(req.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'}
                   </td>
-                  <td style={{ padding: '14px 16px' }}>
+                  <td style={{ padding: '16px 20px' }}>
                     <button
                       onClick={() => setSelectedReq(req)}
                       title="Xem chi tiết"
                       style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        padding: '6px 10px', borderRadius: 6,
-                        color: '#6b7280', fontSize: '0.8rem', fontWeight: 500,
-                        transition: 'all 0.15s',
+                        background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '6px 12px', borderRadius: 8,
+                        color: '#3b82f6', fontSize: '0.8rem', fontWeight: 600,
+                        transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#e0f2fe'; e.currentTarget.style.color = '#00b2d6'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#6b7280'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                     >
                       <span className="material-symbols-outlined" style={{ fontSize: 18 }}>visibility</span>
                       Chi tiết
@@ -573,38 +651,44 @@ const OwnerInventoryRequests = () => {
         {/* Pagination */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 18px', borderTop: '1px solid #f1f5f9', background: '#f8fafc',
+          padding: '16px 24px', borderTop: '1px solid #f1f5f9', background: '#f8fafc',
         }}>
-          <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-            Tổng <strong style={{ color: '#111827' }}>{data.totalCount}</strong> yêu cầu
+          <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>
+            Tổng số <strong style={{ color: '#0f172a' }}>{data.totalCount}</strong> yêu cầu tìm thấy
           </span>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page <= 1}
               style={{
-                padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0',
-                background: '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer',
-                color: page <= 1 ? '#d1d5db' : '#374151', fontSize: '0.8rem', fontWeight: 600,
-                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0',
+                background: page <= 1 ? '#f8fafc' : '#fff', cursor: page <= 1 ? 'not-allowed' : 'pointer',
+                color: page <= 1 ? '#cbd5e1' : '#475569', fontSize: '0.85rem', fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s'
               }}
+              onMouseEnter={e => { if(page > 1) { e.currentTarget.style.background = '#f1f5f9'; } }}
+              onMouseLeave={e => { if(page > 1) { e.currentTarget.style.background = '#fff'; } }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>chevron_left</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
               Trước
             </button>
-            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>{page} / {data.totalPages || 1}</span>
+            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, background: '#fff', padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              {page} / {data.totalPages || 1}
+            </span>
             <button
               onClick={() => setPage(p => Math.min(data.totalPages, p + 1))}
               disabled={page >= data.totalPages}
               style={{
-                padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0',
-                background: '#fff', cursor: page >= data.totalPages ? 'not-allowed' : 'pointer',
-                color: page >= data.totalPages ? '#d1d5db' : '#374151', fontSize: '0.8rem', fontWeight: 600,
-                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0',
+                background: page >= data.totalPages ? '#f8fafc' : '#fff', cursor: page >= data.totalPages ? 'not-allowed' : 'pointer',
+                color: page >= data.totalPages ? '#cbd5e1' : '#475569', fontSize: '0.85rem', fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 4, transition: 'all 0.2s'
               }}
+              onMouseEnter={e => { if(page < data.totalPages) { e.currentTarget.style.background = '#f1f5f9'; } }}
+              onMouseLeave={e => { if(page < data.totalPages) { e.currentTarget.style.background = '#fff'; } }}
             >
               Sau
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>chevron_right</span>
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
             </button>
           </div>
         </div>

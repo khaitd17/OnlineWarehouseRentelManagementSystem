@@ -38,8 +38,10 @@ public class ApproveInventoryRequestHandler
             throw new InvalidOperationException(
                 $"Chỉ có thể duyệt yêu cầu đang ở trạng thái PENDING. Trạng thái hiện tại: '{req.Status}'.");
 
-        req.Status    = "CONFIRMED";
-        req.UpdatedAt = DateTime.Now;
+        req.Status      = "CONFIRMED";
+        req.ConfirmedBy = cmd.ManagerId;
+        req.ConfirmedAt = DateTime.Now;
+        req.UpdatedAt   = DateTime.Now;
 
         // Ghi chú phê duyệt (append vào Notes nếu có)
         if (!string.IsNullOrWhiteSpace(cmd.Note))

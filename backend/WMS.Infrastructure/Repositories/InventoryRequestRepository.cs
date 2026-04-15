@@ -136,7 +136,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
     // ── CREATE ──────────────────────────────────────────────────────────────
     public async Task<InventoryRequest> CreateAsync(InventoryRequest request, CancellationToken cancellationToken)
     {
-        request.CreatedAt = DateTime.UtcNow;
+        request.CreatedAt = DateTime.Now;
         request.Status = "PENDING";
         _context.InventoryRequests.Add(request);
         await _context.SaveChangesAsync(cancellationToken);
@@ -146,7 +146,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
     // ── UPDATE ──────────────────────────────────────────────────────────────
     public async Task UpdateAsync(InventoryRequest request, CancellationToken cancellationToken)
     {
-        request.UpdatedAt = DateTime.UtcNow;
+        request.UpdatedAt = DateTime.Now;
         _context.InventoryRequests.Update(request);
         await _context.SaveChangesAsync(cancellationToken);
     }
