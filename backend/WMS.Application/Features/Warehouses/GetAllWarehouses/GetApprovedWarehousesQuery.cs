@@ -44,6 +44,7 @@ public class ApprovedWarehouseDto
     public string?   ImageUrl      { get; set; }
     public DateTime  CreatedAt     { get; set; }
     public decimal?  PricePerM2    { get; set; }
+    public string?   WarehouseType { get; set; }
     public bool      Is24HoursAccess { get; set; }
     public string?   OperatingHours  { get; set; }
     public double?   AverageRating   { get; set; }  // Rating mới

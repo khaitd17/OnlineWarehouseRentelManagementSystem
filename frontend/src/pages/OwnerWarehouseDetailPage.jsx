@@ -558,6 +558,7 @@ const OwnerWarehouseDetailPage = () => {
                   {[
                     { label: "Tên kho",          value: warehouse.name },
                     { label: "Địa chỉ",           value: warehouse.address },
+                    { label: "Loại kho",          value: warehouse.warehouseType || "Khác" },
                     { label: "Tổng diện tích",    value: `${warehouse.totalArea} m²` },
                     { label: "Diện tích còn trống", value: `${warehouse.availableArea} m²` },
                     { label: "Chiều dài",          value: (warehouse.length ?? warehouse.Length) != null ? `${warehouse.length ?? warehouse.Length} m` : "—" },

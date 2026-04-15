@@ -27,6 +27,7 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             Lat = request.Lat,
             Lng = request.Lng,
             Description = request.Description,
+            WarehouseType = request.WarehouseType,
             TotalArea = request.TotalArea,
             Width = request.Width,
             Length = request.Length,

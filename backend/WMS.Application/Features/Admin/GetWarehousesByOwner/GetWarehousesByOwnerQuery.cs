@@ -20,6 +20,7 @@ public record OwnerWarehouseDto(
     int WarehouseId,
     string Name,
     string Address,
+    string? WarehouseType,
     double TotalArea,
     double AvailableArea,
     double OccupancyRate,

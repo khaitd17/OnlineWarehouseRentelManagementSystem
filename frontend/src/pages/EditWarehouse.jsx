@@ -24,6 +24,8 @@ const EditWarehouse = () => {
 
   const [formData, setFormData] = useState({
     name: "",
+    warehouseType: "Kho chung",
+    customWarehouseType: "",
     address: "",
     lat: "",
     lng: "",
@@ -60,8 +62,12 @@ const EditWarehouse = () => {
       closeTime = parts[1] || "18:00";
     }
 
+    const predefinedTypes = ["Kho lạnh / mát", "Kho chung", "Kho tự quản", "Kho xưởng", "Kho ngoại quan"];
+
     setFormData({
       name: res.data.name,
+      warehouseType: !res.data.warehouseType || predefinedTypes.includes(res.data.warehouseType) ? (res.data.warehouseType || "Kho chung") : "Khác",
+      customWarehouseType: predefinedTypes.includes(res.data.warehouseType) ? "" : (res.data.warehouseType || ""),
       address: res.data.address,
       lat: res.data.lat || "",
       lng: res.data.lng || "",
@@ -111,6 +117,7 @@ const EditWarehouse = () => {
       warehouseId: parseInt(id),
       ownerId: user.userId,
       name: formData.name,
+      warehouseType: formData.warehouseType === "Khác" ? formData.customWarehouseType : formData.warehouseType,
       address: formData.address,
       lat: formData.lat ? parseFloat(formData.lat) : null,
       lng: formData.lng ? parseFloat(formData.lng) : null,
@@ -251,6 +258,61 @@ const EditWarehouse = () => {
                   placeholder="Nhập tên kho..."
                   style={inputStyle}
                 />
+              </div>
+
+              {/* Loại kho */}
+              <div style={groupStyle}>
+                <label style={labelStyle}>Loại kho</label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  {[
+                    { label: "Kho lạnh / mát" },
+                    { label: "Kho chung" },
+                    { label: "Kho tự quản" },
+                    { label: "Kho xưởng" },
+                    { label: "Kho ngoại quan" },
+                    { label: "Khác" }
+                  ].map(type => {
+                    const isSelected = formData.warehouseType === type.label;
+
+                    return (
+                      <div 
+                        key={type.label}
+                        onClick={() => handleChange({ target: { name: "warehouseType", value: type.label }})}
+                        style={{
+                          padding: "12px",
+                          borderRadius: "12px",
+                          border: isSelected ? "2px solid #00b2d6" : "1px solid #e2e8f0",
+                          backgroundColor: isSelected ? "#f0f9ff" : "#fff",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        <div style={{
+                          width: "18px", height: "18px", borderRadius: "50%", 
+                          border: isSelected ? "5px solid #00b2d6" : "1px solid #cbd5e1",
+                          display: "flex", alignItems: "center", justifyContent: "center"
+                        }}>
+                        </div>
+                        <span style={{ fontSize: "0.95rem", color: "#1e293b", fontWeight: isSelected ? 600 : 400 }}>
+                          {type.label}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+                {formData.warehouseType === "Khác" && (
+                  <input
+                    name="customWarehouseType"
+                    value={formData.customWarehouseType || ""}
+                    placeholder="Nhập loại kho của bạn"
+                    onChange={handleChange}
+                    required
+                    style={{...inputStyle, marginTop: "10px"}}
+                  />
+                )}
               </div>
 
               <div style={groupStyle}>

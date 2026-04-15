@@ -212,6 +212,11 @@ const OwnerWarehouseList = () => {
                 </div>
               )}
 
+              <div style={{ display: "flex", gap: "12px", alignItems: "flex-start", color: "#475569", marginBottom: "-8px" }}>
+                <span className="material-symbols-outlined" style={{ color: "#00b2d6", fontSize: "20px" }}>category</span>
+                <span style={{ fontSize: "0.95rem", lineHeight: "1.4", fontWeight: 600 }}>{w.warehouseType || "Khác"}</span>
+              </div>
+
               <div style={{ display: "flex", gap: "12px", alignItems: "flex-start", color: "#475569" }}>
                 <span className="material-symbols-outlined" style={{ color: "#94a3b8", fontSize: "20px" }}>location_on</span>
                 <span style={{ fontSize: "0.95rem", lineHeight: "1.4" }}>{w.address}</span>

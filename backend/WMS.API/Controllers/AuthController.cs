@@ -3,12 +3,15 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 using WMS.Application.Features.Auth.ForgotPassword;
 using WMS.Application.Features.Auth.Login;
 using WMS.Application.Features.Auth.Register;
 using WMS.Application.Features.Auth.ResetPassword;
+using WMS.Application.Interfaces;
 using WMS.Infrastructure.Persistence;
+
 
 namespace WMS.API.Controllers;
 
@@ -18,11 +21,74 @@ public class AuthController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ApplicationDbContext _db;
+    private readonly IMemoryCache _cache;
+    private readonly IEmailService _emailService;
 
-    public AuthController(IMediator mediator, ApplicationDbContext db)
+    public AuthController(IMediator mediator, ApplicationDbContext db, IMemoryCache cache, IEmailService emailService)
     {
-        _mediator = mediator;
-        _db = db;
+        _mediator     = mediator;
+        _db           = db;
+        _cache        = cache;
+        _emailService = emailService;
+    }
+
+    /// <summary>Gửi OTP xác thực email khi đăng ký</summary>
+    [HttpPost("send-otp")]
+    public async Task<IActionResult> SendOtp([FromBody] SendOtpRequest req)
+    {
+        if (string.IsNullOrWhiteSpace(req.Email))
+            return BadRequest(new { message = "Email không hợp lệ." });
+
+        // Kiểm tra email đã tồn tại
+        var existing = await _db.Users.FirstOrDefaultAsync(u => u.Email == req.Email);
+        if (existing != null)
+            return Conflict(new { message = "Email này đã được sử dụng." });
+
+        // Sinh OTP 6 số
+        var otp = new Random().Next(100000, 999999).ToString();
+
+        // Lưu OTP + thông tin đăng ký vào cache (TTL 10 phút)
+        var cacheKey = $"otp:register:{req.Email.ToLower()}";
+        _cache.Set(cacheKey, new OtpRegisterPayload
+        {
+            Otp      = otp,
+            FullName = req.FullName,
+            Phone    = req.Phone,
+            Password = req.Password,
+            RoleName = req.RoleName ?? "USER"
+        }, TimeSpan.FromMinutes(10));
+
+        // Gửi email OTP
+        await _emailService.SendOtpEmailAsync(req.Email, req.FullName, otp);
+
+        return Ok(new { message = "Mã OTP đã được gửi đến email của bạn." });
+    }
+
+    /// <summary>Xác minh OTP và tạo tài khoản</summary>
+    [HttpPost("verify-otp-register")]
+    public async Task<IActionResult> VerifyOtpRegister([FromBody] RegisterVerifyOtpRequest req)
+    {
+        var cacheKey = $"otp:register:{req.Email.ToLower()}";
+        if (!_cache.TryGetValue(cacheKey, out OtpRegisterPayload? payload) || payload == null)
+            return BadRequest(new { message = "Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới." });
+
+        if (payload.Otp != req.Otp)
+            return BadRequest(new { message = "Mã OTP không đúng. Vui lòng kiểm tra lại." });
+
+        // Xóa OTP khỏi cache
+        _cache.Remove(cacheKey);
+
+        // Tạo tài khoản
+        try
+        {
+            var userId = await _mediator.Send(new RegisterCommand(
+                payload.FullName, req.Email, payload.Password, payload.Phone, payload.RoleName));
+            return Ok(new { message = "Tạo tài khoản thành công.", userId });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     /// <summary>Đăng ký tài khoản mới (role: USER)</summary>
@@ -287,6 +353,18 @@ public record LoginRequest(string Email, string Password);
 public record ForgotPasswordRequest(string Email);
 public record ResetPasswordRequest(string Token, string NewPassword);
 public record GoogleLoginRequest(string Email, string? FullName, string? GoogleId, string? AvatarUrl);
+public record SendOtpRequest(string FullName, string Email, string Password, string? Phone, string? RoleName);
+public record RegisterVerifyOtpRequest(string Email, string Otp);
+
+// OTP payload stored in cache
+public class OtpRegisterPayload
+{
+    public string Otp      { get; set; } = "";
+    public string FullName { get; set; } = "";
+    public string? Phone   { get; set; }
+    public string Password { get; set; } = "";
+    public string RoleName { get; set; } = "USER";
+}
 
 // ---- Response DTOs ----
 public class WarehouseContextItem

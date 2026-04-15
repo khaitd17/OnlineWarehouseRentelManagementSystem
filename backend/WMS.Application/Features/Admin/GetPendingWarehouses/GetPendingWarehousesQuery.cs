@@ -16,6 +16,7 @@ public record PendingWarehouseDto(
     int WarehouseId,
     string Name,
     string Address,
+    string? WarehouseType,
     double TotalArea,
     double AvailableArea,
     string? Status,

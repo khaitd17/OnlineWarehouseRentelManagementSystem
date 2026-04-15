@@ -20,9 +20,11 @@ const CreateWarehouse = () => {
   const [warehouseId, setWarehouseId] = useState(null);
   const [loadingDraft, setLoadingDraft] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    address: "",
+    const [formData, setFormData] = useState({
+      name: "",
+      warehouseType: "Kho chung",
+      customWarehouseType: "",
+      address: "",
     lat: "",
     lng: "",
     width: "",
@@ -56,8 +58,11 @@ const CreateWarehouse = () => {
       const data = res.data;
       
       // Map data to form
+      const predefinedTypes = ["Kho lạnh / mát", "Kho chung", "Kho tự quản", "Kho xưởng", "Kho ngoại quan"];
       setFormData({
         name: data.name || "",
+        warehouseType: !data.warehouseType || predefinedTypes.includes(data.warehouseType) ? (data.warehouseType || "Kho chung") : "Khác",
+        customWarehouseType: predefinedTypes.includes(data.warehouseType) ? "" : (data.warehouseType || ""),
         address: data.address || "",
         lat: data.lat || "",
         lng: data.lng || "",
@@ -123,6 +128,7 @@ const CreateWarehouse = () => {
       const payload = {
         ownerId: user.userId,
         name: formData.name,
+        warehouseType: formData.warehouseType === "Khác" ? formData.customWarehouseType : formData.warehouseType,
         address: formData.address,
         lat: formData.lat ? parseFloat(formData.lat) : null,
         lng: formData.lng ? parseFloat(formData.lng) : null,

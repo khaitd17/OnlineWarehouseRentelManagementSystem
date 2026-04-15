@@ -60,6 +60,7 @@ public class GetPendingWarehousesHandler : IRequestHandler<GetPendingWarehousesQ
             w.WarehouseId,
             w.Name,
             w.Address,
+            w.WarehouseType,
             w.TotalArea,
             w.AvailableArea,
             w.Status,

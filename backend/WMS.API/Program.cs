@@ -113,6 +113,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionRepository, WMS.In
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionPackageRepository, WMS.Infrastructure.Repositories.SubscriptionPackageRepository>();
 
 // Services   
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();

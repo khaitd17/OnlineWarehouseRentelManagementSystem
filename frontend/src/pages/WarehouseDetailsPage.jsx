@@ -312,9 +312,10 @@ const WarehouseDetailsPage = () => {
 
           {/* LEFT: Content */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
               {[
                 { label: "TỔNG DIỆN TÍCH", value: `${warehouse.area} m²`, icon: "📐" },
+                { label: "LOẠI KHO", value: warehouseData?.warehouseType || "Khác", icon: "🏢" },
                 { label: "CÒN TRỐNG", value: `${warehouse.availableArea} m²`, icon: "📦" },
                 { label: "GIỜ HOẠT ĐỘNG", value: warehouse.operatingHours || 'Không rõ', icon: "🕐" },
                 { label: "TRẠNG THÁI", value: warehouse.status, icon: "✅" },

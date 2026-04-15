@@ -133,6 +133,7 @@ export default function WarehouseDetailPage() {
             <div className="admin-card-body">
               <div className="admin-detail-grid">
                 <div className="admin-detail-item"><div className="admin-detail-label">Trạng thái</div><StatusBadge status={wh.status} /></div>
+                <div className="admin-detail-item"><div className="admin-detail-label">Loại kho</div><div className="admin-detail-value">{wh.warehouseType || "Khác"}</div></div>
                 <div className="admin-detail-item"><div className="admin-detail-label">Diện tích tổng</div><div className="admin-detail-value">{wh.totalArea} m²</div></div>
                 <div className="admin-detail-item"><div className="admin-detail-label">Diện tích khả dụng</div><div className="admin-detail-value">{wh.availableArea} m²</div></div>
                 <div className="admin-detail-item">
