@@ -202,7 +202,26 @@ public class AuthController : ControllerBase
                     };
                 }).ToList();
 
-            // Thêm các kho chỉ có Contract RENTER mà không có Membership (nếu có trường hợp này)
+            // Include warehouses where the user has an active/pending rental contract (RENTER role)
+            // Only add RENTER role if user has active contracts
+            // Exclude terminated and cancelled contracts
+            var activeContracts = await _db.Contracts
+                .Where(c => c.RenterId == userId &&
+                           (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT") &&
+                           c.Status != "TERMINATED" &&
+                           c.Status != "CANCELLED_BY_USER" &&
+                           c.Status != "CLOSED" &&
+                           c.Status != "COMPLETED" &&
+                           c.Status != "CANCELLED" &&
+                           c.Status != "CANCELLED_BY_OWNER")
+                .Include(c => c.Warehouse)
+                .ToListAsync();
+
+            var activeRenterWarehouseIds = activeContracts
+                .Select(c => c.WarehouseId)
+                .ToHashSet();
+
+
             foreach (var contract in activeContracts)
             {
                 if (!warehouseItems.Any(w => w.warehouseId == contract.WarehouseId))
