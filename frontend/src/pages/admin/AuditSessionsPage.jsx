@@ -13,8 +13,9 @@ export default function AuditSessionsPage() {
   const showToast = useToast();
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const userRole = (user.role || user.roleName || "").toUpperCase();
-  const isOwner = userRole === "OWNER";
+  // [PERMISSION FIX] Dùng warehouseContext thay vì JWT system role
+  const warehouseCtx = JSON.parse(localStorage.getItem("warehouseContext") || "{}");
+  const isOwner = (warehouseCtx?.warehouses || []).some(w => (w.role || "").toUpperCase() === "OWNER");
   const [data, setData] = useState({ items: [], totalCount: 0, page: 1, pageSize: 10, totalPages: 0 });
   const [loading, setLoading] = useState(true);
   const [warehouses, setWarehouses] = useState([]);
@@ -27,7 +28,7 @@ export default function AuditSessionsPage() {
   // Close modal
   const [closeModal, setCloseModal] = useState({ open: false, auditId: null, notes: "", loading: false });
 
-  useEffect(() => { adminService.getWarehousesLookup().then(r => { if (r.data.success) setWarehouses(r.data.data); }).catch(() => {}); }, []);
+  useEffect(() => { adminService.getWarehousesLookup().then(r => { if (r.data.success) setWarehouses(r.data.data); }).catch(() => { }); }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -84,14 +85,16 @@ export default function AuditSessionsPage() {
     { key: "totalResults", label: "Kết quả", render: (v) => `${v} mục` },
     { key: "createdAt", label: "Ngày tạo", sortable: true, render: (v) => v ? new Date(v).toLocaleDateString("vi-VN") : "—" },
     { key: "completedAt", label: "Hoàn thành", sortable: true, render: (v) => v ? new Date(v).toLocaleDateString("vi-VN") : "—" },
-    { key: "actions", label: "Thao tác", sortable: false, render: (_, row) => (
-      <div className="admin-btn-group">
-        <button className="admin-btn admin-btn-sm admin-btn-primary" onClick={() => navigate(`/admin/audit-sessions/${row.auditId}`)}>Chi tiết</button>
-        {isOwner && row.status === "OPEN" && (
-          <button className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => setCloseModal({ open: true, auditId: row.auditId, notes: "", loading: false })} title="Đóng phiên kiểm kê">🔒</button>
-        )}
-      </div>
-    )},
+    {
+      key: "actions", label: "Thao tác", sortable: false, render: (_, row) => (
+        <div className="admin-btn-group">
+          <button className="admin-btn admin-btn-sm admin-btn-primary" onClick={() => navigate(`/admin/audit-sessions/${row.auditId}`)}>Chi tiết</button>
+          {isOwner && row.status === "OPEN" && (
+            <button className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => setCloseModal({ open: true, auditId: row.auditId, notes: "", loading: false })} title="Đóng phiên kiểm kê">🔒</button>
+          )}
+        </div>
+      )
+    },
   ];
 
   const filterConfig = [

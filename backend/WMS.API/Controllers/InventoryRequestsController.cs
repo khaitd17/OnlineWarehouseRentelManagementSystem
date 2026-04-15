@@ -57,29 +57,10 @@ public class InventoryRequestsController : ControllerBase
             if (membership != null)
                 viewAs = membership.RoleCode;
         }
-        else
-        {
-            // Không có warehouseId → tìm tất cả kho user thuộc về (staff / manager / owner / operator)
-            // GetMyWarehousesAsync trả về các kho với roleCode tương ứng
-            var myWarehouses = await _membershipRepo.GetMyWarehousesAsync(userId);
-            if (myWarehouses.Count > 0)
-            {
-                // Lấy role cao nhất theo thứ tự ưu tiên
-                var rolePriority = new[] { "OWNER", "OPERATOR", "MANAGER", "STAFF" };
-                string? bestRole = null;
-                foreach (var rp in rolePriority)
-                {
-                    if (myWarehouses.Any(w => w.RoleCode.ToUpper() == rp))
-                    {
-                        bestRole = rp;
-                        break;
-                    }
-                }
-                if (bestRole != null)
-                    viewAs = bestRole;
-            }
-            // Nếu myWarehouses rỗng → user là RENTER, giữ viewAs = "RENTER"
-        }
+
+        // STAFF / MANAGER / OPERATOR phải cung cấp warehouseId — không được query toàn hệ thống
+        if (viewAs is "STAFF" or "MANAGER" or "OPERATOR" && !warehouseId.HasValue)
+            return BadRequest(new { message = "Vui lòng cung cấp warehouseId khi truy vấn với vai trò vận hành kho." });
 
         var result = await _mediator.Send(new GetInventoryRequestsQuery
         {
@@ -194,15 +175,15 @@ public class InventoryRequestsController : ControllerBase
         var request = await _mediator.Send(new GetInventoryRequestByIdQuery { Id = id });
         if (request == null) return NotFound(new { message = "Yêu cầu không tồn tại." });
 
-        var membership = await _membershipRepo.GetCallerMembershipAsync(
-            staffId, request.WarehouseId, HttpContext.RequestAborted);
+        // Bất kỳ OPERATOR / MANAGER / STAFF trong kho đều xác nhận được (không cần skill riêng)
+        bool confirmIsOperator = await _membershipRepo.HasRoleAsync(staffId, request.WarehouseId, "OPERATOR", HttpContext.RequestAborted);
+        bool confirmIsManager  = await _membershipRepo.HasRoleAsync(staffId, request.WarehouseId, "MANAGER",  HttpContext.RequestAborted);
+        bool confirmIsStaff    = await _membershipRepo.HasRoleAsync(staffId, request.WarehouseId, "STAFF",    HttpContext.RequestAborted);
 
-        if (membership == null || membership.RoleCode is not ("STAFF" or "MANAGER" or "OPERATOR"))
-            return StatusCode(403, new { message = "Chỉ STAFF / MANAGER / OPERATOR mới được xác nhận." });
+        if (!confirmIsOperator && !confirmIsManager && !confirmIsStaff)
+            return StatusCode(403, new { message = "Chỉ thành viên vận hành kho (OPERATOR / MANAGER / STAFF) mới được xác nhận." });
 
-        // STAFF phải có skill CHECKER (hoặc IsAllSkill) để xác nhận nhập/xuất vật lý
-        if (membership.RoleCode == "STAFF" && !membership.HasSkill("CHECKER"))
-            return StatusCode(403, new { message = "Chỉ nhân viên có skill CHECKER (hoặc IsAllSkill) mới được xác nhận nhập/xuất vật lý." });
+        string confirmRole = confirmIsOperator ? "OPERATOR" : confirmIsManager ? "MANAGER" : "STAFF";
 
         try
         {
@@ -211,7 +192,7 @@ public class InventoryRequestsController : ControllerBase
                 Id      = id,
                 StaffId = staffId,
                 Notes   = body?.Notes,
-                Role    = membership.RoleCode
+                Role    = confirmRole
             });
             return Ok(result);
         }
@@ -260,9 +241,11 @@ public class InventoryRequestsController : ControllerBase
         var managerId = GetUserId();
         var request = await _mediator.Send(new GetInventoryRequestByIdQuery { Id = id });
         if (request == null) return NotFound(new { message = "Yêu cầu không tồn tại." });
-        var membership = await _membershipRepo.GetCallerMembershipAsync(managerId, request.WarehouseId, HttpContext.RequestAborted);
-        if (membership == null || membership.RoleCode is not ("MANAGER" or "OPERATOR"))
-            return StatusCode(403, new { message = "Chỉ MANAGER / OPERATOR được duyệt." });
+        // Dùng HasRoleAsync để tránh bug priority khi user có cả OWNER+OPERATOR
+        bool approveIsOperator = await _membershipRepo.HasRoleAsync(managerId, request.WarehouseId, "OPERATOR", HttpContext.RequestAborted);
+        bool approveIsManager  = await _membershipRepo.HasRoleAsync(managerId, request.WarehouseId, "MANAGER",  HttpContext.RequestAborted);
+        if (!approveIsOperator && !approveIsManager)
+            return StatusCode(403, new { message = "Chỉ OPERATOR / MANAGER được duyệt." });
         try
         {
             var result = await _mediator.Send(new ApproveInventoryRequestCommand { Id = id, ManagerId = managerId, Note = body?.Note });
@@ -280,9 +263,11 @@ public class InventoryRequestsController : ControllerBase
         var managerId = GetUserId();
         var request = await _mediator.Send(new GetInventoryRequestByIdQuery { Id = id });
         if (request == null) return NotFound(new { message = "Yêu cầu không tồn tại." });
-        var membership = await _membershipRepo.GetCallerMembershipAsync(managerId, request.WarehouseId, HttpContext.RequestAborted);
-        if (membership == null || membership.RoleCode is not ("MANAGER" or "OPERATOR"))
-            return StatusCode(403, new { message = "Chỉ MANAGER / OPERATOR được từ chối." });
+        // Dùng HasRoleAsync để tránh bug priority khi user có cả OWNER+OPERATOR
+        bool rejectIsOperator = await _membershipRepo.HasRoleAsync(managerId, request.WarehouseId, "OPERATOR", HttpContext.RequestAborted);
+        bool rejectIsManager  = await _membershipRepo.HasRoleAsync(managerId, request.WarehouseId, "MANAGER",  HttpContext.RequestAborted);
+        if (!rejectIsOperator && !rejectIsManager)
+            return StatusCode(403, new { message = "Chỉ OPERATOR / MANAGER được từ chối." });
         try
         {
             var result = await _mediator.Send(new RejectInventoryRequestCommand { Id = id, ManagerId = managerId, Reason = body?.Reason });

@@ -12,11 +12,19 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
 {
     private readonly ApplicationDbContext _db;
     private readonly ITaskRepository _taskRepo;
+    private readonly IStaffMembershipRepository _membershipRepo;
+    private readonly IRentalContractRepository _contractRepo;
 
-    public CreateAuditSessionHandler(ApplicationDbContext db, ITaskRepository taskRepo)
+    public CreateAuditSessionHandler(
+        ApplicationDbContext db,
+        ITaskRepository taskRepo,
+        IStaffMembershipRepository membershipRepo,
+        IRentalContractRepository contractRepo)
     {
-        _db = db;
-        _taskRepo = taskRepo;
+        _db             = db;
+        _taskRepo       = taskRepo;
+        _membershipRepo = membershipRepo;
+        _contractRepo   = contractRepo;
     }
 
     public async Task<ApiResponse<int>> Handle(CreateAuditSessionCommand request, CancellationToken cancellationToken)
@@ -29,62 +37,55 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
         if (!creatorExists)
             return ApiResponse<int>.ErrorResponse($"Không tìm thấy người dùng với ID {request.CreatedBy}.");
 
-        // Kiểm tra quyền dựa theo role
-        var role = request.UserRole?.ToUpper() ?? "";
+        bool isOperator = await _membershipRepo.HasRoleAsync(
+            request.CreatedBy, request.WarehouseId, "OPERATOR", cancellationToken);
 
-        if (role == "OWNER")
-        {
-            // OWNER phải sở hữu kho
-            if (warehouse.OwnerId != request.CreatedBy)
-                return ApiResponse<int>.ErrorResponse("Bạn không có quyền tạo phiên kiểm kê cho kho này. Chỉ chủ kho mới có thể thực hiện.");
-        }
-        else if (role == "RENTER")
-        {
-            // RENTER phải có hợp đồng thuê ACTIVE cho kho này
-            var hasActiveContract = await _db.Contracts
-                .AnyAsync(c => c.WarehouseId == request.WarehouseId
-                    && c.RenterId == request.CreatedBy
-                    && c.Status == "ACTIVE", cancellationToken);
-            if (!hasActiveContract)
-                return ApiResponse<int>.ErrorResponse("Bạn không có hợp đồng thuê kho này hoặc hợp đồng đã hết hạn.");
+        bool isRenter = !isOperator && await _contractRepo.IsRenterByContractAsync(
+            request.CreatedBy, request.WarehouseId, cancellationToken);
 
-            // Giới hạn RENTER chỉ tạo 1 phiên kiểm kê / tháng / kho
-            var now = DateTime.UtcNow;
+        if (!isOperator && !isRenter)
+            return ApiResponse<int>.ErrorResponse(
+                "Chỉ OPERATOR hoặc RENTER (có hợp đồng đang hiệu lực) mới có thể tạo phiên kiểm kê.");
+
+        var role = isOperator ? "OPERATOR" : "RENTER";
+
+        if (role == "RENTER")
+        {
+            var now          = DateTime.UtcNow;
             var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
             var hasCreatedThisMonth = await _db.AuditSessions
-                .AnyAsync(a => a.WarehouseId == request.WarehouseId
-                    && a.CreatedBy == request.CreatedBy
-                    && a.CreatedAt >= startOfMonth
-                    && a.Status != "REJECTED"
-                    && a.Status != "CANCELLED", cancellationToken);
+                .AnyAsync(a =>
+                    a.WarehouseId == request.WarehouseId &&
+                    a.CreatedBy   == request.CreatedBy   &&
+                    a.CreatedAt   >= startOfMonth        &&
+                    a.Status      != "REJECTED"          &&
+                    a.Status      != "CANCELLED",
+                    cancellationToken);
             if (hasCreatedThisMonth)
                 return ApiResponse<int>.ErrorResponse(
                     "Bạn chỉ được tạo yêu cầu kiểm kê 1 lần/tháng cho mỗi kho. Vui lòng đợi sang tháng sau.");
         }
-        else
-        {
-            return ApiResponse<int>.ErrorResponse("Vai trò không hợp lệ để tạo phiên kiểm kê.");
-        }
 
-        // Kiểm tra không có phiên đang mở
         var existingOpen = await _db.AuditSessions
-            .AnyAsync(a => a.WarehouseId == request.WarehouseId
-                && (a.Status == "OPEN" || a.Status == "PENDING_APPROVAL" || a.Status == "APPROVED" || a.Status == "IN_PROGRESS"),
+            .AnyAsync(a =>
+                a.WarehouseId == request.WarehouseId &&
+                (a.Status == "OPEN" || a.Status == "PENDING_APPROVAL" ||
+                 a.Status == "APPROVED" || a.Status == "IN_PROGRESS"),
                 cancellationToken);
         if (existingOpen)
-            return ApiResponse<int>.ErrorResponse("Kho này đã có phiên kiểm kê đang hoạt động. Vui lòng hoàn thành phiên hiện tại trước.");
+            return ApiResponse<int>.ErrorResponse(
+                "Kho này đã có phiên kiểm kê đang hoạt động. Vui lòng hoàn thành phiên hiện tại trước.");
 
-        // OWNER tạo → APPROVED, RENTER tạo → PENDING_APPROVAL
-        var status = role == "OWNER" ? "APPROVED" : "PENDING_APPROVAL";
+        var status     = role == "OPERATOR" ? "APPROVED" : "PENDING_APPROVAL";
+        var notePrefix = role == "OPERATOR" ? "Điều phối viên" : "Người thuê";
 
         var session = new AuditSession
         {
             WarehouseId = request.WarehouseId,
-            CreatedBy = request.CreatedBy,
-            Status = status,
-            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : 
-                    (role == "OWNER" ? $"Chủ kho: {request.Notes}" : $"Người thuê: {request.Notes}"),
-            CreatedAt = DateTime.UtcNow
+            CreatedBy   = request.CreatedBy,
+            Status      = status,
+            Notes       = string.IsNullOrWhiteSpace(request.Notes) ? null : $"{notePrefix}: {request.Notes}",
+            CreatedAt   = DateTime.UtcNow
         };
 
         _db.AuditSessions.Add(session);
@@ -97,7 +98,7 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
             session.CreatedAt,
             cancellationToken);
 
-        var message = role == "OWNER"
+        var message = role == "OPERATOR"
             ? "Tạo phiên kiểm kê thành công."
             : "Tạo yêu cầu kiểm kê thành công. Chờ chủ kho duyệt.";
 

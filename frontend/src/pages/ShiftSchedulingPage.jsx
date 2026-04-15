@@ -1,12 +1,13 @@
-﻿import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import axiosClient from "../services/axiosClient";
 import { getStaffSchedule, saveShifts } from "../services/shiftSchedulingService";
 import warehouseShiftService from "../services/shiftPresetService";
+import attendanceService from "../services/attendanceService";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers
 const DAYS_VN  = ["CN","T2","T3","T4","T5","T6","T7"];
-const MONTHS   = ["Tháng 1","Tháng 2","Tháng 3","Tháng 4","Tháng 5","Tháng 6",
-                  "Tháng 7","Tháng 8","Tháng 9","Tháng 10","Tháng 11","Tháng 12"];
+const MONTHS   = ["Thang 1","Thang 2","Thang 3","Thang 4","Thang 5","Thang 6",
+                  "Thang 7","Thang 8","Thang 9","Thang 10","Thang 11","Thang 12"];
 
 const getMonday = d => {
   const r = new Date(d), day = r.getDay();
@@ -19,19 +20,132 @@ const fmt2        = n => String(n).padStart(2, "0");
 const fmtD        = d => `${fmt2(d.getDate())}/${fmt2(d.getMonth() + 1)}`;
 const isoKey      = d => `${d.getFullYear()}-${fmt2(d.getMonth()+1)}-${fmt2(d.getDate())}`;
 const todayKey    = isoKey(new Date());
-const emptyShift  = () => ({ in1:"", out1:"", type:"" });
+const emptyShift  = () => ({ in1:"", out1:"", type:"", ot:0 });
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
+const fmtTime = iso => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return `${fmt2(d.getHours())}:${fmt2(d.getMinutes())}`;
+};
+
+// ── Palette
 const TYPE_STYLE = {
   NC: { bg:"#dbeafe", color:"#1d4ed8", label:"NC" },
   NP: { bg:"#fef3c7", color:"#92400e", label:"NP" },
 };
 
-// ─── DayCell with preset popover ─────────────────────────────────────────────
-function DayCell({ shift, onChange, presets }) {
-  const [open, setOpen] = useState(false);
+// ── AttendanceInfo row
+function AttendanceStrip({ slot }) {
+  const inTime  = fmtTime(slot?.checkInAt);
+  const outTime = fmtTime(slot?.checkOutAt);
+  if (!inTime && !outTime) return null;
+  return (
+    <div style={{ marginTop:2, display:"flex", flexDirection:"column", gap:1 }}>
+      {inTime && (
+        <div style={{ fontSize:7, background:"#d1fae5", color:"#065f46", borderRadius:3, padding:"1px 4px", fontWeight:700 }}>
+          V: {inTime}
+        </div>
+      )}
+      {outTime && (
+        <div style={{ fontSize:7,
+          background: slot.isEarlyLeave ? "#fef3c7" : "#dbeafe",
+          color:      slot.isEarlyLeave ? "#92400e" : "#1d4ed8",
+          borderRadius:3, padding:"1px 4px", fontWeight:700 }}>
+          R: {outTime}{slot.isEarlyLeave ? " (S)" : ""}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── AttendanceDetailModal: click vao strip nho de xem chi tiet
+function AttendanceDetailModal({ staffName, dateKey, slot, onClose }) {
+  const [showInPhoto,  setShowInPhoto]  = useState(false);
+  const [showOutPhoto, setShowOutPhoto] = useState(false);
+  if (!slot) return null;
+
+  const overlay = {
+    position:"fixed", inset:0, background:"rgba(0,0,0,.5)",
+    display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000,
+  };
+  const card = {
+    background:"#fff", borderRadius:12, padding:24, width:340, maxWidth:"90vw",
+    boxShadow:"0 16px 48px rgba(0,0,0,.2)", fontFamily:"Inter,sans-serif",
+  };
+
+  const fmtDT = iso => {
+    if (!iso) return "--";
+    const d = new Date(iso);
+    return `${fmt2(d.getHours())}:${fmt2(d.getMinutes())} ${d.getDate()}/${fmt2(d.getMonth()+1)}`;
+  };
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={card} onClick={e => e.stopPropagation()}>
+        <div style={{ fontWeight:800, fontSize:"1rem", color:"#0f172a", marginBottom:4 }}>{staffName}</div>
+        <div style={{ fontSize:"0.8rem", color:"#64748b", marginBottom:16 }}>{dateKey}</div>
+
+        {slot.checkInAt ? (
+          <div style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:8, height:8, borderRadius:"50%", background:"#16a34a" }} />
+              <span style={{ fontWeight:700, fontSize:"0.82rem" }}>Giờ vào:</span>
+              <span style={{ fontSize:"0.83rem" }}>{fmtDT(slot.checkInAt)}</span>
+              {slot.checkInPhoto && (
+                <span style={{ fontSize:"0.72rem", color:"#3b82f6", cursor:"pointer", textDecoration:"underline" }}
+                  onClick={() => setShowInPhoto(x => !x)}>
+                  {showInPhoto ? "Ẩn" : "Xem ảnh"}
+                </span>
+              )}
+            </div>
+            {showInPhoto && slot.checkInPhoto && (
+              <img src={slot.checkInPhoto} alt="check-in" style={{ marginTop:6, maxWidth:"100%", borderRadius:6, maxHeight:160 }} />
+            )}
+          </div>
+        ) : (
+          <div style={{ marginBottom:12, fontSize:"0.82rem", color:"#94a3b8" }}>Chưa vào ca</div>
+        )}
+
+        {slot.checkOutAt ? (
+          <div style={{ marginBottom:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:8, height:8, borderRadius:"50%", background:"#3b82f6" }} />
+              <span style={{ fontWeight:700, fontSize:"0.82rem" }}>Giờ ra:</span>
+              <span style={{ fontSize:"0.83rem" }}>{fmtDT(slot.checkOutAt)}</span>
+              {slot.isEarlyLeave && (
+                <span style={{ fontSize:"0.7rem", background:"#fef3c7", color:"#92400e",
+                  borderRadius:4, padding:"1px 6px", fontWeight:700 }}>Về sớm</span>
+              )}
+              {slot.checkOutPhoto && (
+                <span style={{ fontSize:"0.72rem", color:"#3b82f6", cursor:"pointer", textDecoration:"underline" }}
+                  onClick={() => setShowOutPhoto(x => !x)}>
+                  {showOutPhoto ? "Ẩn" : "Xem ảnh"}
+                </span>
+              )}
+            </div>
+            {showOutPhoto && slot.checkOutPhoto && (
+              <img src={slot.checkOutPhoto} alt="check-out" style={{ marginTop:6, maxWidth:"100%", borderRadius:6, maxHeight:160 }} />
+            )}
+          </div>
+        ) : (
+          <div style={{ marginBottom:12, fontSize:"0.82rem", color:"#94a3b8" }}>Chưa ra ca</div>
+        )}
+
+        <button onClick={onClose} style={{ marginTop:8, width:"100%", padding:"8px", borderRadius:7,
+          border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", fontWeight:600, fontSize:"0.85rem" }}>
+          Dong
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── DayCell with preset popover + OT input + attendance strip
+function DayCell({ shift, slotData, onChange, presets }) {
+  const [open,      setOpen]      = useState(false);
+  const [showDetail, setDetail]   = useState(false);
   const ref = useRef(null);
-  const ts = TYPE_STYLE[shift.type];
+  const ts  = TYPE_STYLE[shift.type];
 
   useEffect(() => {
     if (!open) return;
@@ -41,13 +155,16 @@ function DayCell({ shift, onChange, presets }) {
   }, [open]);
 
   const applyPreset = p => {
-    onChange({ in1: p.startTime, out1: p.endTime, type: "" });
+    onChange({ in1: p.startTime, out1: p.endTime, type: "", ot: shift.ot || 0 });
     setOpen(false);
   };
+
+  const hasAttendance = slotData?.checkInAt || slotData?.checkOutAt;
 
   return (
     <td style={{ border:"1px solid #e2e8f0", verticalAlign:"top", minWidth:84,
                  background: ts ? ts.bg : "#fff", padding:"2px 3px", position:"relative" }}>
+      {/* Main cell click opens popover */}
       <div onClick={() => setOpen(o => !o)} style={{ cursor:"pointer", minHeight:28 }}>
         {ts ? (
           <div style={{ textAlign:"center", fontWeight:700, fontSize:9, color:ts.color, padding:"4px 0" }}>
@@ -57,16 +174,36 @@ function DayCell({ shift, onChange, presets }) {
           const overnight = shift.in1 && shift.out1 && shift.out1 < shift.in1;
           return (
             <div style={{ fontSize:9, color:"#0f172a", lineHeight:1.6, padding:"2px 0" }}>
-              <span style={{ color:"#94a3b8", fontSize:8 }}>Vao: </span>{shift.in1 || "—"}
+              <span style={{ color:"#94a3b8", fontSize:8 }}>V: </span>{shift.in1 || "--"}
               <br/>
-              <span style={{ color:"#94a3b8", fontSize:8 }}>Ra: </span>{shift.out1 || "—"}
+              <span style={{ color:"#94a3b8", fontSize:8 }}>R: </span>{shift.out1 || "--"}
               {overnight && <span style={{ color:"#f59e0b", fontSize:7, fontWeight:700 }}> +1</span>}
+              {shift.ot > 0 && (
+                <div style={{ fontSize:7, color:"#b45309", fontWeight:700 }}>OT +{shift.ot}h</div>
+              )}
             </div>
           );
         })() : (
-          <div style={{ fontSize:8, color:"#cbd5e1", textAlign:"center", paddingTop:6 }}>+ Chọn ca</div>
+          <div style={{ fontSize:8, color:"#cbd5e1", textAlign:"center", paddingTop:6 }}>+ Ca</div>
         )}
       </div>
+
+      {/* Attendance strip (small) */}
+      {hasAttendance && (
+        <div onClick={e => { e.stopPropagation(); setDetail(true); }} style={{ cursor:"pointer" }}>
+          <AttendanceStrip slot={slotData} />
+        </div>
+      )}
+
+      {/* Attendance detail modal */}
+      {showDetail && (
+        <AttendanceDetailModal
+          staffName=""
+          dateKey=""
+          slot={slotData}
+          onClose={() => setDetail(false)}
+        />
+      )}
 
       {/* Popover */}
       {open && (
@@ -74,7 +211,7 @@ function DayCell({ shift, onChange, presets }) {
           position:"absolute", top:"100%", left:0, zIndex:200,
           background:"#fff", border:"1px solid #e2e8f0", borderRadius:8,
           boxShadow:"0 4px 16px rgba(0,0,0,.14)", padding:"8px 10px",
-          minWidth:180, width:"max-content",
+          minWidth:190, width:"max-content",
         }}>
           {presets.length > 0 && (
             <div style={{ marginBottom:8 }}>
@@ -83,12 +220,11 @@ function DayCell({ shift, onChange, presets }) {
               {presets.map(p => (
                 <div key={p.id} onClick={() => applyPreset(p)}
                   style={{ fontSize:10, padding:"4px 6px", borderRadius:5, cursor:"pointer",
-                           color:"#0f172a", fontWeight:600,
-                           display:"flex", justifyContent:"space-between", gap:8 }}
+                           color:"#0f172a", fontWeight:600, display:"flex", justifyContent:"space-between", gap:8 }}
                   onMouseEnter={e => e.currentTarget.style.background = "#f1f5f9"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   <span>{p.name}</span>
-                  <span style={{ color:"#64748b", fontWeight:400 }}>{p.startTime}–{p.endTime}</span>
+                  <span style={{ color:"#64748b", fontWeight:400 }}>{p.startTime}-{p.endTime}</span>
                 </div>
               ))}
             </div>
@@ -102,13 +238,23 @@ function DayCell({ shift, onChange, presets }) {
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4, marginBottom:6 }}>
               {["in1","out1"].map((f, i) => (
                 <div key={f}>
-                  <div style={{ fontSize:8, color:"#94a3b8", marginBottom:2 }}>{["Vào","Về"][i]}</div>
+                  <div style={{ fontSize:8, color:"#94a3b8", marginBottom:2 }}>{["Vào","Ra"][i]}</div>
                   <input type="time" value={shift[f] || ""}
                     onChange={e => onChange({ ...shift, [f]: e.target.value })}
                     style={{ width:"100%", padding:"3px 4px", borderRadius:4,
                              border:"1px solid #e2e8f0", fontSize:10, boxSizing:"border-box" }} />
                 </div>
               ))}
+            </div>
+
+            {/* OT hours input */}
+            <div style={{ marginBottom:6 }}>
+              <div style={{ fontSize:8, color:"#94a3b8", marginBottom:2 }}>Tăng ca (giờ)</div>
+              <input type="number" min="0" max="12" step="0.5"
+                value={shift.ot || 0}
+                onChange={e => onChange({ ...shift, ot: parseFloat(e.target.value) || 0 })}
+                style={{ width:"100%", padding:"3px 4px", borderRadius:4,
+                         border:"1px solid #e2e8f0", fontSize:10, boxSizing:"border-box" }} />
             </div>
           </div>
 
@@ -120,15 +266,15 @@ function DayCell({ shift, onChange, presets }) {
               style={{ width:"100%", fontSize:10, border:"1px solid #e2e8f0", borderRadius:4,
                        padding:"3px 4px", background:"#f8fafc", color:"#64748b" }}>
               <option value="">Ca thường</option>
-              <option value="NC">NC – Nghỉ ca</option>
-              <option value="NP">NP – Nghỉ phép</option>
+              <option value="NC">NC - Nghi ca</option>
+              <option value="NP">NP - Nghi phep</option>
             </select>
           </div>
 
           <button onClick={() => { onChange(emptyShift()); setOpen(false); }}
             style={{ width:"100%", marginTop:6, padding:"4px 0", fontSize:9, border:"1px solid #fecaca",
                      borderRadius:4, background:"#fff1f2", color:"#dc2626", cursor:"pointer", fontWeight:600 }}>
-            Xoá
+            Xoa
           </button>
         </div>
       )}
@@ -136,12 +282,127 @@ function DayCell({ shift, onChange, presets }) {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ── OvertimeModal: tao tang ca hang loat cho nhieu nhan vien trong 1 ngay
+function OvertimeModal({ warehouseId, staffList, onClose, onDone }) {
+  const [date,    setDate]    = useState(isoKey(new Date()));
+  const [hours,   setHours]   = useState(2);
+  const [selected, setSelected] = useState(() => new Set(staffList.map(s => s.membershipId)));
+  const [saving,  setSaving]  = useState(false);
+  const [err,     setErr]     = useState("");
+
+  const toggleAll = () => {
+    if (selected.size === staffList.length) setSelected(new Set());
+    else setSelected(new Set(staffList.map(s => s.membershipId)));
+  };
+
+  const toggle = id => {
+    const next = new Set(selected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setSelected(next);
+  };
+
+  const handleSubmit = async () => {
+    if (selected.size === 0) { setErr("Vui lòng chọn ít nhất 1 nhân viên."); return; }
+    setSaving(true); setErr("");
+    try {
+      await attendanceService.bulkSetOvertime(
+        warehouseId, date, [...selected], hours
+      );
+      onDone();
+      onClose();
+    } catch (e) {
+      setErr(e?.response?.data?.message || "Có lỗi xảy ra.");
+    } finally { setSaving(false); }
+  };
+
+  const overlay = {
+    position:"fixed", inset:0, background:"rgba(0,0,0,.5)",
+    display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000,
+  };
+  const card = {
+    background:"#fff", borderRadius:12, padding:24, width:400, maxWidth:"92vw",
+    maxHeight:"80vh", overflowY:"auto",
+    boxShadow:"0 16px 48px rgba(0,0,0,.2)", fontFamily:"Inter,sans-serif",
+  };
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={card} onClick={e => e.stopPropagation()}>
+        <div style={{ fontWeight:800, fontSize:"1rem", color:"#0f172a", marginBottom:16 }}>Tạo tăng ca</div>
+
+        {/* Ngay */}
+        <div style={{ marginBottom:12 }}>
+          <label style={{ fontSize:"0.8rem", fontWeight:700, color:"#374151", display:"block", marginBottom:4 }}>Ngày</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            style={{ width:"100%", padding:"7px 10px", borderRadius:7, border:"1px solid #e2e8f0",
+              fontSize:"0.88rem", boxSizing:"border-box" }} />
+        </div>
+
+        {/* So gio OT */}
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontSize:"0.8rem", fontWeight:700, color:"#374151", display:"block", marginBottom:4 }}>
+            So gio tang ca
+          </label>
+          <input type="number" min="0.5" max="12" step="0.5" value={hours}
+            onChange={e => setHours(parseFloat(e.target.value) || 0)}
+            style={{ width:"100%", padding:"7px 10px", borderRadius:7, border:"1px solid #e2e8f0",
+              fontSize:"0.88rem", boxSizing:"border-box" }} />
+        </div>
+
+        {/* Danh sach nhan vien */}
+        <div style={{ marginBottom:14 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <label style={{ fontSize:"0.8rem", fontWeight:700, color:"#374151" }}>
+              Nhan vien ({selected.size}/{staffList.length})
+            </label>
+            <button onClick={toggleAll} style={{ fontSize:"0.72rem", color:"#3b82f6", background:"none",
+              border:"none", cursor:"pointer", fontWeight:600 }}>
+              {selected.size === staffList.length ? "Bỏ tất cả" : "Chọn tất cả"}
+            </button>
+          </div>
+          <div style={{ border:"1px solid #e2e8f0", borderRadius:8, maxHeight:200, overflowY:"auto" }}>
+            {staffList.map((s, i) => (
+              <label key={s.membershipId} style={{
+                display:"flex", alignItems:"center", gap:10, padding:"8px 12px", cursor:"pointer",
+                borderBottom: i < staffList.length-1 ? "1px solid #f1f5f9" : "none",
+                background: selected.has(s.membershipId) ? "#f0f9ff" : "#fff",
+              }}>
+                <input type="checkbox" checked={selected.has(s.membershipId)}
+                  onChange={() => toggle(s.membershipId)} style={{ accentColor:"#3b82f6" }} />
+                <span>
+                  <div style={{ fontWeight:600, fontSize:"0.83rem", color:"#0f172a" }}>{s.fullName}</div>
+                  <div style={{ fontSize:"0.72rem", color:"#94a3b8" }}>{s.email}</div>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {err && <div style={{ color:"#dc2626", fontSize:"0.8rem", marginBottom:10 }}>{err}</div>}
+
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={onClose} style={{ flex:1, padding:"9px", borderRadius:8,
+            border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", fontWeight:600, fontSize:"0.85rem" }}>
+            Huy
+          </button>
+          <button onClick={handleSubmit} disabled={saving} style={{ flex:1, padding:"9px", borderRadius:8,
+            border:"none", background: saving ? "#9ca3af" : "#f59e0b",
+            color:"#fff", cursor:"pointer", fontWeight:700, fontSize:"0.85rem" }}>
+            {saving ? "Đang lưu..." : "Tạo tăng ca"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page
 export default function ShiftSchedulingPage() {
   const [warehouses,   setWarehouses]   = useState([]);
   const [warehouseId,  setWarehouseId]  = useState(null);
   const [staffList,    setStaffList]    = useState([]);
-  const [shifts,       setShifts]       = useState({});
+  const [slotMap,      setSlotMap]      = useState({});   // { membershipId: { dateKey: slot } }
+  const [shifts,       setShifts]       = useState({});   // edit state
   const [presets,      setPresets]      = useState([]);
   const [loading,      setLoading]      = useState(false);
   const [search,       setSearch]       = useState("");
@@ -154,6 +415,7 @@ export default function ShiftSchedulingPage() {
   const [genFrom,      setGenFrom]      = useState("");
   const [genTo,        setGenTo]        = useState("");
   const [savedMsg,     setSavedMsg]     = useState("");
+  const [otModal,      setOtModal]      = useState(false);
 
   useEffect(() => {
     axiosClient.get("/staff/my-warehouses").then(r => {
@@ -188,15 +450,21 @@ export default function ShiftSchedulingPage() {
       .then(data => {
         setStaffList(data);
         const ns = {};
+        const sm = {};
         data.forEach(s => {
           ns[s.membershipId] = {};
+          sm[s.membershipId] = {};
           Object.entries(s.shifts || {}).forEach(([date, slot]) => {
-            if (slot) ns[s.membershipId][date] = {
-              in1: slot.timeIn1 || "", out1: slot.timeOut1 || "", type: slot.shiftType || "",
+            if (!slot) return;
+            ns[s.membershipId][date] = {
+              in1: slot.timeIn1 || "", out1: slot.timeOut1 || "",
+              type: slot.shiftType || "", ot: slot.overtimeHours || 0,
             };
+            sm[s.membershipId][date] = slot; // raw slot with attendance fields
           });
         });
         setShifts(ns);
+        setSlotMap(sm);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -211,19 +479,27 @@ export default function ShiftSchedulingPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const keys = new Set(days.map(d => d.key));
+      const keys    = new Set(days.map(d => d.key));
       const payload = [];
       staffList.forEach(s => {
         Object.entries(shifts[s.membershipId] || {}).forEach(([date, sh]) => {
           if (!keys.has(date)) return;
-          payload.push({ membershipId:s.membershipId, shiftDate:date,
-            timeIn1:sh.in1||null, timeOut1:sh.out1||null, timeIn2:null, timeOut2:null, shiftType:sh.type||null });
+          payload.push({
+            membershipId: s.membershipId, shiftDate: date,
+            timeIn1: sh.in1||null, timeOut1: sh.out1||null,
+            timeIn2: null, timeOut2: null,
+            shiftType: sh.type||null,
+            overtimeHours: sh.ot || 0,
+          });
         });
       });
       await saveShifts(payload);
       reload();
       setSavedMsg("Đã lưu!"); setTimeout(() => setSavedMsg(""), 2500);
-    } catch { setSavedMsg("Lỗi khi lưu!"); setTimeout(() => setSavedMsg(""), 3000); }
+    } catch(e) {
+      const msg = e?.response?.data?.message || "Lỗi khi lưu!";
+      setSavedMsg(msg); setTimeout(() => setSavedMsg(""), 3500);
+    }
     finally { setSaving(false); }
   };
 
@@ -235,16 +511,14 @@ export default function ShiftSchedulingPage() {
       const res = await warehouseShiftService.generateSchedule(warehouseId, genFrom, genTo);
       setSavedMsg(`${res.message}`); setTimeout(() => setSavedMsg(""), 4000);
       reload();
-    } catch { setSavedMsg("Lỗi generate!"); setTimeout(() => setSavedMsg(""), 3000); }
+    } catch { setSavedMsg("Lỗi tạo lịch tự động!"); setTimeout(() => setSavedMsg(""), 3000); }
     finally { setGenerating(false); }
   };
 
   const openGenModal = () => {
     const today = new Date();
-    const todayStr = isoKey(today);
-    const next7 = isoKey(addDays(today, 6));
-    setGenFrom(todayStr);
-    setGenTo(next7);
+    setGenFrom(isoKey(today));
+    setGenTo(isoKey(addDays(today, 6)));
     setGenModal(true);
   };
 
@@ -255,7 +529,7 @@ export default function ShiftSchedulingPage() {
 
   const warehouseName = warehouses.find(w => w.warehouseId === warehouseId)?.warehouseName || "";
   const periodLabel   = mode === "week"
-    ? `${fmtD(weekStart)} – ${fmtD(addDays(weekStart, 6))}`
+    ? `${fmtD(weekStart)} - ${fmtD(addDays(weekStart, 6))}`
     : `${MONTHS[monthYear.m]} ${monthYear.y}`;
 
   const S = {
@@ -287,7 +561,7 @@ export default function ShiftSchedulingPage() {
             <button key={v} onClick={() => setMode(v)}
               style={{ padding:"4px 11px", border:"none", cursor:"pointer", fontSize:10, fontWeight:600,
                        background:mode===v?"#3b5bdb":"#fff", color:mode===v?"#fff":"#64748b" }}>
-              {v === "week" ? "Tuần" : "Tháng"}
+              {v === "week" ? "Tuan" : "Thang"}
             </button>
           ))}
         </div>
@@ -306,15 +580,19 @@ export default function ShiftSchedulingPage() {
 
         <div style={{ marginLeft:"auto", display:"flex", gap:6, alignItems:"center" }}>
           {savedMsg && (
-            <span style={{ fontSize:10, color:savedMsg.startsWith("Lỗi")?"#b91c1c":"#15803d",
-                           background:savedMsg.startsWith("Lỗi")?"#fee2e2":"#dcfce7",
+            <span style={{ fontSize:10, color: savedMsg.startsWith("Da")?"#15803d":"#b91c1c",
+                           background: savedMsg.startsWith("Da")?"#dcfce7":"#fee2e2",
                            padding:"3px 8px", borderRadius:5, fontWeight:600 }}>
-              {savedMsg.startsWith("Loi") ? "X" : "OK"} {savedMsg}
+              {savedMsg}
             </span>
           )}
+          <button style={{ ...S.btn, background:"#8b5cf6", color:"#fff", border:"none" }}
+            onClick={() => setOtModal(true)}>
+            Tăng ca
+          </button>
           <button style={{ ...S.btn, background:generating?"#9ca3af":"#f59e0b", color:"#fff", border:"none" }}
             disabled={generating} onClick={openGenModal}>
-            {generating ? "..." : "Generate"}
+            {generating ? "..." : "Tạo lịch"}
           </button>
           <button disabled={saving} onClick={handleSave}
             style={{ ...S.btn, background:saving?"#9ca3af":"#3b5bdb", color:"#fff", border:"none" }}>
@@ -324,12 +602,15 @@ export default function ShiftSchedulingPage() {
       </div>
 
       {/* Legend */}
-      <div style={{ display:"flex", gap:8, padding:"4px 12px", background:"#fff", border:"1px solid #e2e8f0", borderBottom:"none", alignItems:"center" }}>
+      <div style={{ display:"flex", gap:8, padding:"4px 12px", background:"#fff", border:"1px solid #e2e8f0", borderBottom:"none", alignItems:"center", flexWrap:"wrap" }}>
         <span style={{ fontSize:9, color:"#94a3b8", fontWeight:700 }}>Chú thích:</span>
         {[
-          { label:"Ca thường",    bg:"#fff",    color:"#64748b", bd:"#e2e8f0" },
-          { label:"NC – Nghỉ ca", bg:"#dbeafe", color:"#1d4ed8", bd:"transparent" },
-          { label:"NP – Nghỉ phép", bg:"#fef3c7", color:"#92400e", bd:"transparent" },
+          { label:"Ca thuong",    bg:"#fff",    color:"#64748b", bd:"#e2e8f0" },
+          { label:"NC - Nghi ca", bg:"#dbeafe", color:"#1d4ed8", bd:"transparent" },
+          { label:"NP - Nghi phep", bg:"#fef3c7", color:"#92400e", bd:"transparent" },
+          { label:"V: vao ca",    bg:"#d1fae5", color:"#065f46", bd:"transparent" },
+          { label:"R: ra ca",     bg:"#dbeafe", color:"#1d4ed8", bd:"transparent" },
+          { label:"(S): ve som",  bg:"#fef3c7", color:"#92400e", bd:"transparent" },
         ].map(it => (
           <span key={it.label} style={{ fontSize:9, padding:"1px 7px", borderRadius:8, fontWeight:600,
                                         background:it.bg, color:it.color, border:`1px solid ${it.bd}` }}>
@@ -340,7 +621,7 @@ export default function ShiftSchedulingPage() {
       </div>
 
       {/* Table */}
-      <div style={{ height:"calc(100vh - 250px)", overflowX:"auto", overflowY:"auto",
+      <div style={{ height:"calc(100vh - 270px)", overflowX:"auto", overflowY:"auto",
                     border:"1px solid #e2e8f0", borderRadius:"0 0 8px 8px", background:"#fff", isolation:"isolate" }}>
         {loading ? (
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", color:"#94a3b8", fontSize:12 }}>Đang tải...</div>
@@ -380,8 +661,13 @@ export default function ShiftSchedulingPage() {
                       <span style={{ fontSize:8, padding:"1px 5px", borderRadius:8, fontWeight:700, background:roleCol.bg, color:roleCol.color }}>{s.roleCode}</span>
                     </td>
                     {days.map(d => (
-                      <DayCell key={d.key} shift={getShift(s.membershipId, d.key)} presets={presets}
-                        onChange={v => setShift(s.membershipId, d.key, v)} />
+                      <DayCell
+                        key={d.key}
+                        shift={getShift(s.membershipId, d.key)}
+                        slotData={slotMap[s.membershipId]?.[d.key] || null}
+                        presets={presets}
+                        onChange={v => setShift(s.membershipId, d.key, v)}
+                      />
                     ))}
                   </tr>
                 );
@@ -391,32 +677,19 @@ export default function ShiftSchedulingPage() {
         )}
       </div>
 
+      {/* Generate Modal */}
       {genModal && (
         <div onClick={e => e.target===e.currentTarget && setGenModal(false)}
           style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.45)", zIndex:2000, display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ background:"#fff", borderRadius:10, padding:"20px 24px", width:320, boxShadow:"0 8px 24px rgba(0,0,0,.18)" }}>
-            <div style={{ fontWeight:700, fontSize:13, color:"#0f172a", marginBottom:12 }}>Generate Schedule</div>
-            <div style={{ fontSize:10, color:"#64748b", marginBottom:10 }}>Tạo lịch tự động cho nhân viên có loại ca được gán.</div>
+            <div style={{ fontWeight:700, fontSize:13, color:"#0f172a", marginBottom:12 }}>Tạo lịch tự động</div>
+            <div style={{ fontSize:10, color:"#64748b", marginBottom:10 }}>Tạo lịch tự động cho nhân viên đã được gán loại ca.</div>
 
             <div style={{ display:"flex", gap:6, marginBottom:12 }}>
-              <button onClick={() => {
-                  const today = new Date();
-                  const dow = today.getDay(); // 0=Sun
-                  const daysUntilMon = (8 - dow) % 7 || 7; // days until next Monday
-                  const nextMon = addDays(today, daysUntilMon);
-                  setGenFrom(isoKey(nextMon)); setGenTo(isoKey(addDays(nextMon, 6)));
-                }}
-                style={{ flex:1, padding:"6px", borderRadius:5, border:"1px solid #e2e8f0", fontSize:10, cursor:"pointer",
-                         background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Tuần sau</button>
-              <button onClick={() => {
-                  const today = new Date();
-                  const dow = today.getDay();
-                  const daysUntilMon = (8 - dow) % 7 || 7;
-                  const nextMon = addDays(today, daysUntilMon);
-                  setGenFrom(isoKey(nextMon)); setGenTo(isoKey(addDays(nextMon, 27)));
-                }}
-                style={{ flex:1, padding:"6px", borderRadius:5, border:"1px solid #e2e8f0", fontSize:10, cursor:"pointer",
-                         background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Tháng sau</button>
+              <button onClick={() => { const n=addDays(new Date(),((8-new Date().getDay())%7)||7); setGenFrom(isoKey(n)); setGenTo(isoKey(addDays(n,6))); }}
+                style={{ flex:1, padding:"6px", borderRadius:5, border:"1px solid #e2e8f0", fontSize:10, cursor:"pointer", background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Tuan sau</button>
+              <button onClick={() => { const n=addDays(new Date(),((8-new Date().getDay())%7)||7); setGenFrom(isoKey(n)); setGenTo(isoKey(addDays(n,27))); }}
+                style={{ flex:1, padding:"6px", borderRadius:5, border:"1px solid #e2e8f0", fontSize:10, cursor:"pointer", background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Thang sau</button>
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
@@ -432,25 +705,24 @@ export default function ShiftSchedulingPage() {
               </div>
             </div>
 
-            {presets.length > 0 && (
-              <div style={{ background:"#f8fafc", borderRadius:6, padding:"6px 8px", marginBottom:12 }}>
-                <div style={{ fontSize:9, color:"#94a3b8", fontWeight:700, marginBottom:4 }}>Ca trong kho ({presets.length})</div>
-                {presets.map(p => (
-                  <div key={p.id} style={{ fontSize:9, color:"#334155", display:"flex", justifyContent:"space-between" }}>
-                    <span>{p.name}</span><span style={{ color:"#64748b" }}>{p.startTime}–{p.endTime}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
             <div style={{ display:"flex", gap:8 }}>
               <button onClick={() => setGenModal(false)}
-                style={{ flex:1, padding:"7px", borderRadius:6, border:"1px solid #e2e8f0", background:"transparent", cursor:"pointer", fontSize:11 }}>Hủy</button>
-              <button onClick={handleGenerate} disabled={!genFrom || !genTo}
-                style={{ flex:1, padding:"7px", borderRadius:6, border:"none", background:(!genFrom||!genTo)?"#9ca3af":"#f59e0b", color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700 }}>Tạo lịch</button>
+                style={{ flex:1, padding:"7px", borderRadius:6, border:"1px solid #e2e8f0", background:"transparent", cursor:"pointer", fontSize:11 }}>Huy</button>
+              <button onClick={handleGenerate} disabled={!genFrom||!genTo}
+                style={{ flex:1, padding:"7px", borderRadius:6, border:"none", background:(!genFrom||!genTo)?"#9ca3af":"#f59e0b", color:"#fff", cursor:"pointer", fontSize:11, fontWeight:700 }}>Tao lich</button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Overtime Modal */}
+      {otModal && (
+        <OvertimeModal
+          warehouseId={warehouseId}
+          staffList={filtered}
+          onClose={() => setOtModal(false)}
+          onDone={reload}
+        />
       )}
     </div>
   );

@@ -20,25 +20,33 @@ public class ReassignMembershipHandler : IRequestHandler<ReassignMembershipComma
         var target = await _repo.GetMembershipByIdAsync(cmd.TargetMembershipId, ct)
             ?? throw new KeyNotFoundException($"Membership {cmd.TargetMembershipId} không tồn tại.");
 
-        var caller = await _repo.GetCallerMembershipAsync(cmd.CallerId, target.WarehouseId, ct)
-            ?? throw new UnauthorizedAccessException("Bạn không có quyền trong kho này.");
+        // Dùng HasRoleAsync để tránh bug priority khi user có cả OWNER+OPERATOR
+        bool callerIsOperator = await _repo.HasRoleAsync(cmd.CallerId, target.WarehouseId, "OPERATOR", ct);
+        bool callerIsManager  = await _repo.HasRoleAsync(cmd.CallerId, target.WarehouseId, "MANAGER",  ct);
 
-        // ── Bước 2: Kiểm tra quyền tạo / cập nhật ───────────────────────────
-        if (caller.RoleCode != "OPERATOR" && caller.RoleCode != "MANAGER")
-            throw new UnauthorizedAccessException("Chỉ OPERATOR hoặc MANAGER mới được cập nhật phân quyền.");
+        if (!callerIsOperator && !callerIsManager)
+            throw new UnauthorizedAccessException("Bạn không có quyền trong kho này.");
 
+        // ── Bước 2: Xác định callerRoleCode cho phân nhánh scope ─────────────
+        // Nếu có cả OPERATOR lẫn MANAGER → ưu tiên OPERATOR (quyền cao hơn)
+        string callerRoleCode = callerIsOperator ? "OPERATOR" : "MANAGER";
+
+        // ── Bước 3: Kiểm tra quyền tạo / cập nhật ───────────────────────────
         // MANAGER chỉ được cập nhật STAFF, không được đổi thành MANAGER hoặc OPERATOR
-        if (caller.RoleCode == "MANAGER" && cmd.TargetRoleCode != "STAFF")
+        if (callerRoleCode == "MANAGER" && cmd.TargetRoleCode != "STAFF")
             throw new UnauthorizedAccessException("Manager chỉ được phép phân quyền nhân viên cấp STAFF.");
 
         // MANAGER không được set IsAllSkill
-        if (caller.RoleCode == "MANAGER" && cmd.IsAllSkill)
+        if (callerRoleCode == "MANAGER" && cmd.IsAllSkill)
             throw new UnauthorizedAccessException("Manager không được cấp quyền 'tất cả skill'.");
 
-        // ── Bước 3: Validate scope của MANAGER ───────────────────────────────
-        if (caller.RoleCode == "MANAGER")
+        // ── Bước 4: Validate scope của MANAGER ───────────────────────────────
+        if (callerRoleCode == "MANAGER")
         {
-            if (!caller.IsAllSkill && cmd.SkillIds.Any(id => !caller.SkillIds.Contains(id)))
+            // Lấy membership của caller để check skill scope
+            var callerMembership = await _repo.GetMembershipByRoleAsync(cmd.CallerId, target.WarehouseId, "MANAGER", ct);
+            if (callerMembership != null && !callerMembership.IsAllSkill &&
+                cmd.SkillIds.Any(id => !callerMembership.SkillIds.Contains(id)))
                 throw new UnauthorizedAccessException("Bạn đang gán skill nằm ngoài phạm vi quản lý của mình.");
         }
 

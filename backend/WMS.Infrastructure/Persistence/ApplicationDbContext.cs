@@ -640,7 +640,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IsAllZone).HasColumnName("is_all_zone").HasDefaultValue(false);
             entity.Property(e => e.WarehouseShiftId).HasColumnName("warehouse_shift_id").IsRequired(false);
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("(getdate())");
-            entity.HasIndex(e => new { e.UserId, e.WarehouseId }).IsUnique();
+            entity.HasIndex(e => new { e.UserId, e.WarehouseId, e.WarehouseRoleId })
+                  .IsUnique()
+                  .HasDatabaseName("IX_warehouse_memberships_user_warehouse_role");
             entity.HasOne(e => e.User).WithMany(u => u.WarehouseMemberships).HasForeignKey(e => e.UserId);
             entity.HasOne(e => e.Warehouse).WithMany(w => w.WarehouseMemberships).HasForeignKey(e => e.WarehouseId).OnDelete(DeleteBehavior.NoAction);
             entity.HasOne(e => e.Role).WithMany(r => r.Memberships).HasForeignKey(e => e.WarehouseRoleId);
@@ -994,6 +996,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.TimeIn2).HasMaxLength(5).HasColumnName("time_in2").IsRequired(false);
             entity.Property(e => e.TimeOut2).HasMaxLength(5).HasColumnName("time_out2").IsRequired(false);
             entity.Property(e => e.ShiftType).HasMaxLength(10).HasColumnName("shift_type").IsRequired(false);
+            entity.Property(e => e.OvertimeHours).HasColumnType("decimal(4,1)").HasColumnName("overtime_hours").HasDefaultValue(0m);
+            entity.Property(e => e.CheckInAt).HasColumnName("check_in_at").IsRequired(false);
+            entity.Property(e => e.CheckInPhoto).HasColumnName("check_in_photo").IsRequired(false);
+            entity.Property(e => e.CheckOutAt).HasColumnName("check_out_at").IsRequired(false);
+            entity.Property(e => e.CheckOutPhoto).HasColumnName("check_out_photo").IsRequired(false);
             entity.HasIndex(e => new { e.MembershipId, e.ShiftDate }).IsUnique().HasDatabaseName("UQ_staff_shifts_membership_date");
             entity.HasOne(e => e.Membership)
                   .WithMany(m => m.StaffShifts)

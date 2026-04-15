@@ -6,6 +6,5 @@ namespace WMS.Application.Features.Audit.CreateAuditSession;
 public record CreateAuditSessionCommand(
     int WarehouseId,
     string? Notes,
-    int CreatedBy,
-    string UserRole
+    int CreatedBy
 ) : IRequest<ApiResponse<int>>;

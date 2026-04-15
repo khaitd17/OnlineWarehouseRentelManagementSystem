@@ -388,6 +388,16 @@ public class RentalContractRepository : IRentalContractRepository
         await _context.SaveChangesAsync();
     }
 
+    public async Task<bool> IsRenterByContractAsync(int renterId, int warehouseId, CancellationToken ct = default)
+    {
+        return await _context.Contracts
+            .AnyAsync(c =>
+                c.RenterId    == renterId    &&
+                c.WarehouseId == warehouseId &&
+                c.Status      == "ACTIVE",
+                ct);
+    }
+
     private DomainRentalContract MapToDomain(DbContract dbContract)
     {
         // Using reflection to bypass private constructor

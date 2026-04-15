@@ -15,22 +15,21 @@ public class ToggleMembershipHandler : IRequestHandler<ToggleMembershipCommand, 
         var target = await _repo.GetMembershipByIdAsync(cmd.MembershipId, ct)
             ?? throw new KeyNotFoundException($"Membership {cmd.MembershipId} không tồn tại.");
 
-        var caller = await _repo.GetCallerMembershipAsync(cmd.CallerId, target.WarehouseId, ct)
-            ?? throw new UnauthorizedAccessException("Bạn không có quyền trong kho này.");
+        // Dùng HasRoleAsync thay GetCallerMembership — tránh bug priority khi user có cả OWNER+OPERATOR
+        bool callerIsOperator = await _repo.HasRoleAsync(cmd.CallerId, target.WarehouseId, "OPERATOR", ct);
+        bool callerIsManager  = await _repo.HasRoleAsync(cmd.CallerId, target.WarehouseId, "MANAGER",  ct);
 
-        if (caller.RoleCode != "OPERATOR" && caller.RoleCode != "MANAGER")
+        if (!callerIsOperator && !callerIsManager)
             throw new UnauthorizedAccessException("Chỉ OPERATOR hoặc MANAGER mới được thực hiện thao tác này.");
 
-        if (caller.RoleCode == "MANAGER" && target.RoleCode != "STAFF")
+        if (!callerIsOperator && callerIsManager && target.RoleCode != "STAFF")
             throw new UnauthorizedAccessException("Manager chỉ được phép thay đổi trạng thái nhân viên cấp STAFF.");
 
         // MANAGER chỉ được toggle STAFF nằm trong phạm vi skill của mình
-        if (caller.RoleCode == "MANAGER")
+        if (!callerIsOperator && callerIsManager)
         {
-            var inScope = caller.IsAllSkill ||
-                (await _repo.GetByWarehouseAsync(target.WarehouseId, null, 1, 1, cmd.CallerId, ct))
-                    .Items.Any(m => m.MembershipId == cmd.MembershipId);
-
+            var inScope = (await _repo.GetByWarehouseAsync(target.WarehouseId, null, 1, 1, cmd.CallerId, ct))
+                .Items.Any(m => m.MembershipId == cmd.MembershipId);
             if (!inScope)
                 throw new UnauthorizedAccessException("Nhân viên này không thuộc phạm vi quản lý của bạn.");
         }

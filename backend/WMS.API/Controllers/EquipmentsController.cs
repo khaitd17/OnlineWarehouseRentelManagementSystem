@@ -9,6 +9,7 @@ using WMS.Application.Features.Equipments.DeleteEquipment;
 using WMS.Application.Features.Equipments.GetEquipments;
 using WMS.Application.Features.Equipments.UpdateEquipment;
 using WMS.Application.Features.Equipments.UpdateEquipmentStatus;
+using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
 namespace WMS.API.Controllers;
@@ -20,11 +21,13 @@ public class EquipmentsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ApplicationDbContext _db;
+    private readonly IStaffMembershipRepository _membershipRepo;
 
-    public EquipmentsController(IMediator mediator, ApplicationDbContext db)
+    public EquipmentsController(IMediator mediator, ApplicationDbContext db, IStaffMembershipRepository membershipRepo)
     {
         _mediator = mediator;
         _db = db;
+        _membershipRepo = membershipRepo;
     }
 
     private int GetCurrentUserId()
@@ -62,9 +65,7 @@ public class EquipmentsController : ControllerBase
             return StatusCode(500, new 
             { 
                 message = ex.Message, 
-                detail = ex.InnerException?.Message,
-                stackTrace = ex.StackTrace,
-                type = ex.GetType().Name
+                detail = ex.InnerException?.Message
             });
         }
     }
@@ -90,9 +91,7 @@ public class EquipmentsController : ControllerBase
             return StatusCode(500, new 
             { 
                 message = ex.Message, 
-                detail = ex.InnerException?.Message,
-                stackTrace = ex.StackTrace,
-                type = ex.GetType().Name
+                detail = ex.InnerException?.Message
             });
         }
     }
@@ -121,13 +120,7 @@ public class EquipmentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new 
-            { 
-                message = ex.Message, 
-                detail = ex.InnerException?.Message,
-                stackTrace = ex.StackTrace,
-                type = ex.GetType().Name
-            });
+            return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message });
         }
     }
 
@@ -151,13 +144,7 @@ public class EquipmentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new 
-            { 
-                message = ex.Message, 
-                detail = ex.InnerException?.Message,
-                stackTrace = ex.StackTrace,
-                type = ex.GetType().Name
-            });
+            return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message });
         }
     }
 
@@ -182,13 +169,7 @@ public class EquipmentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new 
-            { 
-                message = ex.Message, 
-                detail = ex.InnerException?.Message,
-                stackTrace = ex.StackTrace,
-                type = ex.GetType().Name
-            });
+            return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message });
         }
     }
 
@@ -212,32 +193,31 @@ public class EquipmentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new 
-            { 
-                message = ex.Message, 
-                detail = ex.InnerException?.Message,
-                stackTrace = ex.StackTrace,
-                type = ex.GetType().Name
-            });
+            return StatusCode(500, new { message = ex.Message, detail = ex.InnerException?.Message });
         }
     }
 
     /// <summary>
-    /// Sync trạng thái thiết bị Dùng Chung của kho:
-    /// - Nếu kho có hợp đồng đang Active (ACTIVE/PENDING_PAYMENT) → thiết bị chung = IN_USE
-    /// - Nếu không có hợp đồng nào đang hoạt động → thiết bị chung = AVAILABLE
+    /// Sync trạng thái thiết bị Dùng Chung — chỉ OWNER hoặc OPERATOR của kho.
     /// </summary>
     [HttpPost("sync-shared/{warehouseId}")]
     public async Task<IActionResult> SyncSharedEquipmentStatus(int warehouseId)
     {
         try
         {
-            // Kiểm tra kho có hợp đồng đang kích hoạt không
+            var userId = GetCurrentUserId();
+            if (userId == 0) return Unauthorized();
+
+            // Chỉ OPERATOR của kho mới được trigger sync — OWNER không can thiệp vận hành
+            var isOperator = await _membershipRepo.HasRoleAsync(
+                userId, warehouseId, "OPERATOR", HttpContext.RequestAborted);
+            if (!isOperator)
+                return StatusCode(403, new { message = "Chỉ OPERATOR của kho mới được sync thiết bị." });
+
             var hasActiveContract = await _db.Contracts
                 .AnyAsync(c => c.WarehouseId == warehouseId &&
                                (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT"));
 
-            // Lấy thiết bị chung của kho (RentalAreaId == null, không bị DELETED/RETIRED/BROKEN/MAINTENANCE)
             var sharedEquipments = await _db.Equipments
                 .Where(e => e.WarehouseId == warehouseId &&
                             e.RentalAreaId == null &&

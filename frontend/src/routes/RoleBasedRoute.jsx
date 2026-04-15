@@ -28,15 +28,13 @@ function RoleBasedRoute({ allowedRoles }) {
     return <Navigate to="/auth" />;
   }
 
-  // Build set of effective roles: system role + all warehouse roles
-  const systemRole = (warehouseContext?.systemRole || user.role || user.roleName || "").toUpperCase();
-  const warehouseRoles = (warehouseContext?.warehouses || []).map(w => (w.role || "").toUpperCase());
-  const effectiveRoles = new Set(warehouseRoles.filter(Boolean));
-  if (systemRole === "ADMIN") {
-    effectiveRoles.add("ADMIN");
-  } else if (systemRole && systemRole !== "RENTER") {
-    effectiveRoles.add(systemRole);
-  }
+  // Build set of effective roles: system role + tất cả warehouse roles
+  // w.roles = array tất cả role codes (BE mới); fallback về [w.role] nếu chưa có
+  const systemRole = (user.role || user.roleName || "").toUpperCase();
+  const warehouseRoles = (warehouseContext?.warehouses || []).flatMap(w =>
+    (w.roles?.length ? w.roles : [w.role || ""]).map(r => r.toUpperCase())
+  );
+  const effectiveRoles = new Set([systemRole, ...warehouseRoles].filter(Boolean));
 
   const hasAccess = !allowedRoles || allowedRoles.length === 0 ||
     allowedRoles.some(r => effectiveRoles.has(r.toUpperCase()));

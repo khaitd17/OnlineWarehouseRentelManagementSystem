@@ -10,20 +10,35 @@ public class StaffShift
 
     public DateOnly ShiftDate { get; set; }
 
-    /// <summary>Giờ vào ca 1 dạng "HH:mm", null nếu không nhập.</summary>
+    // Gio vao ca dang "HH:mm"
     public string? TimeIn1 { get; set; }
 
-    /// <summary>Giờ về ca 1 dạng "HH:mm".</summary>
+    // Gio ra ca dang "HH:mm"
     public string? TimeOut1 { get; set; }
 
-    /// <summary>Giờ vào ca 2 dạng "HH:mm".</summary>
+    // Gio vao ca 2 (neu co)
     public string? TimeIn2 { get; set; }
 
-    /// <summary>Giờ về ca 2 dạng "HH:mm".</summary>
+    // Gio ra ca 2 (neu co)
     public string? TimeOut2 { get; set; }
 
-    /// <summary>Loại ca đặc biệt: null = Thường, "NC" = Nghỉ ca, "OFF" = Ngày off, "CD" = Cả ngày.</summary>
+    // Loai ca: null = binh thuong, "NC" = nghi ca, "OFF" = ngay off
     public string? ShiftType { get; set; }
+
+    // So gio tang ca (0 = khong OT)
+    public decimal OvertimeHours { get; set; } = 0;
+
+    // Thoi diem check-in thuc te (null = chua diem danh vao)
+    public DateTime? CheckInAt { get; set; }
+
+    // Anh bang chung check-in
+    public string? CheckInPhoto { get; set; }
+
+    // Thoi diem check-out lan cuoi (null = chua diem danh ra, ghi de moi lan check-out lai)
+    public DateTime? CheckOutAt { get; set; }
+
+    // Anh bang chung check-out lan cuoi
+    public string? CheckOutPhoto { get; set; }
 
     public WarehouseMembership Membership { get; set; } = null!;
 }

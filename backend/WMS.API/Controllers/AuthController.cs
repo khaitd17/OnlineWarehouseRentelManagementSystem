@@ -73,10 +73,60 @@ public class AuthController : ControllerBase
             if (user == null)
                 return NotFound(new { message = "User not found." });
 
-            // Only keep renter role when user still has an active/pending rental contract.
-            // This prevents stale renter memberships from keeping dashboard "warehouse" menus.
+            var memberships = await _db.WarehouseMemberships
+                .Where(m => m.UserId == userId && m.IsActive)
+                .Include(m => m.Warehouse)
+                .Include(m => m.Role)
+                .Include(m => m.Skills)
+                .ToListAsync();
+
+            // Gom nhóm theo warehouseId — khi user có OWNER + OPERATOR trong cùng 1 kho
+            // → 'role' = role cao nhất (để hiển thị), 'roles' = tất cả role codes (để check quyền)
+            var rolePriority = new[] { "OWNER", "OPERATOR", "MANAGER", "STAFF", "RENTER" };
+
+            var warehouseItems = memberships
+                .GroupBy(m => m.WarehouseId)
+                .Select(g =>
+                {
+                    var best = g.OrderBy(m =>
+                    {
+                        var idx = Array.IndexOf(rolePriority, m.Role?.Code ?? "");
+                        return idx < 0 ? 999 : idx;
+                    }).First();
+
+                    // Thu thập tất cả role codes trong kho này
+                    var allRoleCodes = g
+                        .Select(m => m.Role?.Code ?? "")
+                        .Where(c => !string.IsNullOrEmpty(c))
+                        .Distinct()
+                        .OrderBy(c => Array.IndexOf(rolePriority, c)) // sắp xếp theo priority
+                        .ToList();
+
+                    // Merge skills từ tất cả memberships (OPERATOR có thể có skill mà OWNER không có)
+                    var mergedSkills = g
+                        .SelectMany(m => m.Skills.Select(s => s.Code))
+                        .Distinct()
+                        .ToList();
+
+                    // isAllSkill = true nếu bất kỳ membership nào trong kho có isAllSkill
+                    var mergedIsAllSkill = g.Any(m => m.IsAllSkill);
+
+                    return new WarehouseContextItem
+                    {
+                        warehouseId   = best.WarehouseId,
+                        warehouseName = best.Warehouse?.Name ?? "",
+                        role          = best.Role?.Code ?? "",   // role cao nhất — dùng để hiển thị label
+                        roles         = allRoleCodes,             // tất cả role — dùng để kiểm tra quyền
+                        skills        = mergedSkills,             // skills gộp từ tất cả memberships
+                        isAllSkill    = mergedIsAllSkill,
+                    };
+                }).ToList();
+
+            // Include warehouses where the user has an active/pending rental contract (RENTER role)
+            // Only add RENTER role if user has active contracts
+            // Exclude terminated and cancelled contracts
             var activeContracts = await _db.Contracts
-                .Where(c => c.RenterId == userId && 
+                .Where(c => c.RenterId == userId &&
                            (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT") &&
                            c.Status != "TERMINATED" &&
                            c.Status != "CANCELLED_BY_USER" &&
@@ -116,6 +166,7 @@ public class AuthController : ControllerBase
 
             foreach (var contract in activeContracts)
             {
+                // Bỏ qua nếu đã có entry cho kho này từ memberships
                 if (!warehouseItems.Any(w => w.warehouseId == contract.WarehouseId))
                 {
                     warehouseItems.Add(new WarehouseContextItem
@@ -242,7 +293,8 @@ public class WarehouseContextItem
 {
     public int warehouseId { get; set; }
     public string warehouseName { get; set; } = "";
-    public string role { get; set; } = "";
+    public string role { get; set; } = "";          // Role cao nhất — dùng để hiển thị
+    public List<string> roles { get; set; } = new(); // Tất cả roles — dùng để check quyền
     public List<string> skills { get; set; } = new();
     public bool isAllSkill { get; set; }
 }

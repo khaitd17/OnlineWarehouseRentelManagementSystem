@@ -434,7 +434,7 @@ export default function CreateStaff() {
                         ))}
                       </select>
                     )}
-                    <div style={S.note}>Ca cố định được dùng khi Generate Schedule tự động.</div>
+                    <div style={S.note}>Ca cố định được dùng khi tạo lịch tự động Schedule tự động.</div>
                   </div>
 
                   <button type="submit" disabled={submitting} style={{ ...S.btn(), opacity:submitting?.7:1 }}>

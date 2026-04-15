@@ -12,6 +12,7 @@ using WMS.Application.Features.Audit.GetAuditSessionDetail;
 using WMS.Application.Features.Audit.GetAuditSessions;
 using WMS.Application.Features.Audit.RecordAuditResults;
 using WMS.Application.Features.Audit.CloseAuditSession;
+using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
 namespace WMS.API.Controllers;
@@ -23,39 +24,31 @@ public class AuditSessionsController : ControllerBase
 {
     private readonly IMediator _mediator;
     private readonly ApplicationDbContext _db;
+    private readonly IStaffMembershipRepository _membershipRepo;
 
-    public AuditSessionsController(IMediator mediator, ApplicationDbContext db)
+    public AuditSessionsController(
+        IMediator mediator,
+        ApplicationDbContext db,
+        IStaffMembershipRepository membershipRepo)
     {
-        _mediator = mediator;
-        _db = db;
+        _mediator       = mediator;
+        _db             = db;
+        _membershipRepo = membershipRepo;
     }
 
-    /// <summary>Tạo phiên kiểm kê mới (OWNER hoặc RENTER trong kho đó)</summary>
+    /// <summary>Tạo phiên kiểm kê mới (OPERATOR hoặc RENTER có hợp đồng hiệu lực)</summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateAuditSessionRequest request)
     {
         if (request.WarehouseId <= 0)
-        {
             return BadRequest(ApiResponse<int>.ErrorResponse(
                 "Dữ liệu không hợp lệ.",
                 new List<string> { "WarehouseId phải là số nguyên dương." }));
-        }
 
         int userId = GetCurrentUserId();
 
-        // Kiểm tra membership trong kho: chỉ OWNER hoặc RENTER
-        var membership = await _db.WarehouseMemberships
-            .Include(m => m.Role)
-            .FirstOrDefaultAsync(m => m.UserId == userId && m.WarehouseId == request.WarehouseId && m.IsActive);
-
-        if (membership == null || (membership.Role.Code != "OWNER" && membership.Role.Code != "RENTER"))
-            return StatusCode(403, ApiResponse<int>.ErrorResponse("Chỉ OWNER hoặc RENTER của kho mới có thể tạo phiên kiểm kê."));
-
-        // Truyền warehouse role (không phải system role) cho handler
-        string warehouseRole = membership.Role.Code;
-
         var result = await _mediator.Send(new CreateAuditSessionCommand(
-            request.WarehouseId, request.Notes, userId, warehouseRole));
+            request.WarehouseId, request.Notes, userId));
 
         if (!result.Success)
             return BadRequest(result);
@@ -63,7 +56,7 @@ public class AuditSessionsController : ControllerBase
         return StatusCode(201, result);
     }
 
-    /// <summary>Duyệt phiên kiểm kê và gán nhân viên (chỉ OWNER của kho)</summary>
+    /// <summary>Duyệt phiên kiểm kê và gán nhân viên có skill INVENTORY_OPERATOR (chỉ OPERATOR của kho)</summary>
     [HttpPut("{id}/approve")]
     public async Task<IActionResult> Approve(int id, [FromBody] ApproveAuditSessionRequest request)
     {
@@ -79,8 +72,8 @@ public class AuditSessionsController : ControllerBase
         var session = await _db.AuditSessions.FindAsync(id);
         if (session == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
 
-        if (!await IsOwnerOfWarehouseAsync(userId, session.WarehouseId))
-            return StatusCode(403, ApiResponse<bool>.ErrorResponse("Chỉ OWNER của kho mới có thể duyệt phiên kiểm kê."));
+        if (!await IsOwnerOrOperatorOfWarehouseAsync(userId, session.WarehouseId))
+            return StatusCode(403, ApiResponse<bool>.ErrorResponse("​Chỉ OWNER hoặc OPERATOR của kho mới có thể duyệt phiên kiểm kê."));
 
         var result = await _mediator.Send(new ApproveAuditSessionCommand(id, request.AssignedTo, request.Notes, userId));
 
@@ -90,7 +83,7 @@ public class AuditSessionsController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Từ chối phiên kiểm kê (chỉ OWNER của kho)</summary>
+    /// <summary>Từ chối phiên kiểm kê (OWNER hoặc OPERATOR của kho)</summary>
     [HttpPut("{id}/reject")]
     public async Task<IActionResult> Reject(int id, [FromBody] RejectAuditSessionRequest? request)
     {
@@ -99,8 +92,8 @@ public class AuditSessionsController : ControllerBase
         var session = await _db.AuditSessions.FindAsync(id);
         if (session == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
 
-        if (!await IsOwnerOfWarehouseAsync(userId, session.WarehouseId))
-            return StatusCode(403, ApiResponse<bool>.ErrorResponse("Chỉ OWNER của kho mới có thể từ chối phiên kiểm kê."));
+        if (!await IsOwnerOrOperatorOfWarehouseAsync(userId, session.WarehouseId))
+            return StatusCode(403, ApiResponse<bool>.ErrorResponse("Chỉ OWNER hoặc OPERATOR của kho mới có thể từ chối phiên kiểm kê."));
 
         var result = await _mediator.Send(new RejectAuditSessionCommand(id, request?.Reason, userId));
 
@@ -114,9 +107,21 @@ public class AuditSessionsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] GetAuditSessionsQuery query)
     {
-        // Gán userId và role từ token
-        query.UserId = GetCurrentUserId();
-        query.UserRole = GetCurrentUserRole();
+        int userId = GetCurrentUserId();
+        query.UserId = userId;
+
+        // [PERMISSION FIX] Lấy warehouse role từ membership (không dùng JWT system role)
+        if (query.WarehouseId.HasValue)
+        {
+            var membership = await _membershipRepo.GetCallerMembershipAsync(
+                userId, query.WarehouseId.Value, HttpContext.RequestAborted);
+            query.UserRole = membership?.RoleCode ?? "";
+        }
+        else
+        {
+            query.UserRole = "";
+        }
+
         var result = await _mediator.Send(query);
         return Ok(result);
     }
@@ -133,8 +138,10 @@ public class AuditSessionsController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Ghi nhận kết quả kiểm kê.
-    /// OWNER luôn được. STAFF/MANAGER/OPERATOR phải có skill INVENTORY_OPERATOR hoặc IsAllSkill.
+    /// <summary>
+    /// Ghi nhận kết quả kiểm kê.
+    /// Chỉ nhân viên được giao kiểm kê (assignedTo) hoặc OPERATOR mới ghi được.
+    /// STAFF/MANAGER phải có skill INVENTORY_OPERATOR hoặc IsAllSkill.
     /// </summary>
     [HttpPost("{id}/results")]
     public async Task<IActionResult> RecordResults(int id, [FromBody] RecordAuditResultsRequest request)
@@ -151,26 +158,23 @@ public class AuditSessionsController : ControllerBase
         var session = await _db.AuditSessions.FindAsync(id);
         if (session == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
 
-        // OWNER luôn có quyền
-        bool isOwner = await IsOwnerOfWarehouseAsync(userId, session.WarehouseId);
-        if (!isOwner)
-        {
-            // STAFF/MANAGER/OPERATOR: cần skill INVENTORY_OPERATOR hoặc IsAllSkill
-            var membership = await _db.WarehouseMemberships
-                .Include(m => m.Role)
-                .Include(m => m.Skills)
-                .FirstOrDefaultAsync(m => m.UserId == userId && m.WarehouseId == session.WarehouseId && m.IsActive);
+        // OPERATOR được toàn quyền. MANAGER/STAFF phải có skill INVENTORY_OPERATOR
+        bool isOperator = await _membershipRepo.HasRoleAsync(
+            userId, session.WarehouseId, "OPERATOR", HttpContext.RequestAborted);
 
+        bool canRecord = isOperator;
+        if (!isOperator)
+        {
+            var membership = await _membershipRepo.GetCallerMembershipAsync(
+                userId, session.WarehouseId, HttpContext.RequestAborted);
             if (membership == null)
                 return StatusCode(403, ApiResponse<bool>.ErrorResponse("Bạn không có quyền trong kho này."));
-
-            bool canRecord = membership.IsAllSkill ||
-                membership.Skills.Any(s => s.Code == "INVENTORY_OPERATOR");
-
-            if (!canRecord)
-                return StatusCode(403, ApiResponse<bool>.ErrorResponse(
-                    "Chỉ nhân viên có skill INVENTORY_OPERATOR (hoặc IsAllSkill) mới được ghi nhận kết quả kiểm kê."));
+            canRecord = membership.HasSkill("INVENTORY_OPERATOR");
         }
+
+        if (!canRecord)
+            return StatusCode(403, ApiResponse<bool>.ErrorResponse(
+                "Chỉ OPERATOR hoặc nhân viên có skill INVENTORY_OPERATOR mới được ghi nhận kết quả kiểm kê."));
 
         var items = request.Items.Select(i => new AuditResultInput(
             i.ItemName, i.ExpectedQty, i.ActualQty, i.DiscrepancyReason
@@ -209,7 +213,7 @@ public class AuditSessionsController : ControllerBase
         return File(result.Data!.FileContent, "text/csv; charset=utf-8", result.Data.FileName);
     }
 
-    /// <summary>Đóng phiên kiểm kê (chỉ OWNER của kho)</summary>
+    /// <summary>Đóng phiên kiểm kê (OWNER hoặc OPERATOR của kho)</summary>
     [HttpPut("{id}/close")]
     public async Task<IActionResult> CloseSession(int id, [FromBody] CloseAuditSessionRequest? request)
     {
@@ -218,8 +222,8 @@ public class AuditSessionsController : ControllerBase
         var session = await _db.AuditSessions.FindAsync(id);
         if (session == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
 
-        if (!await IsOwnerOfWarehouseAsync(userId, session.WarehouseId))
-            return StatusCode(403, ApiResponse<bool>.ErrorResponse("Chỉ OWNER của kho mới có thể đóng phiên kiểm kê."));
+        if (!await IsOwnerOrOperatorOfWarehouseAsync(userId, session.WarehouseId))
+            return StatusCode(403, ApiResponse<bool>.ErrorResponse("Chỉ OWNER hoặc OPERATOR của kho mới có thể đóng phiên kiểm kê."));
 
         var result = await _mediator.Send(new CloseAuditSessionCommand(id, request?.Notes, userId));
 
@@ -229,20 +233,18 @@ public class AuditSessionsController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Lấy danh sách nhân viên có INVENTORY_OPERATOR skill trong kho (dùng để giao kiểm kê)</summary>
+    /// <summary>Lấy danh sách nhân viên có skill INVENTORY_OPERATOR trong kho (để chọn giao kiểm kê)</summary>
     [HttpGet("warehouse/{warehouseId}/staff")]
     public async Task<IActionResult> GetWarehouseStaff(int warehouseId)
     {
         int userId = GetCurrentUserId();
 
-        // Chỉ OWNER hoặc OPERATOR của kho
-        bool canAccess = await _db.WarehouseMemberships
-            .AnyAsync(m => m.UserId == userId && m.WarehouseId == warehouseId && m.IsActive &&
-                          (m.Role.Code == "OWNER" || m.Role.Code == "OPERATOR"));
-        if (!canAccess)
-            return StatusCode(403, new { success = false, message = "Chỉ OWNER hoặc OPERATOR mới xem được danh sách nhân viên." });
+        bool isOperator = await _membershipRepo.HasRoleAsync(userId, warehouseId, "OPERATOR", HttpContext.RequestAborted);
+        bool isManager  = await _membershipRepo.HasRoleAsync(userId, warehouseId, "MANAGER",  HttpContext.RequestAborted);
+        if (!isOperator && !isManager)
+            return StatusCode(403, new { success = false, message = "Chỉ OPERATOR / MANAGER mới xem được danh sách nhân viên." });
 
-        // Lấy STAFF có skill INVENTORY_OPERATOR hoặc IsAllSkill
+        // Chỉ lấy STAFF có skill INVENTORY_OPERATOR — đây là người đủ điều kiện được giao kiểm kê
         var staff = await _db.WarehouseMemberships
             .Include(m => m.User)
             .Include(m => m.Role)
@@ -265,6 +267,7 @@ public class AuditSessionsController : ControllerBase
     [HttpGet("warehouse/{warehouseId}/inventory")]
     public async Task<IActionResult> GetWarehouseInventory(int warehouseId)
     {
+        // Logic không đổi — không cần permission check riêng cho endpoint này
         var items = await _db.WarehouseInventories
             .Where(wi => wi.WarehouseId == warehouseId && wi.Quantity > 0)
             .Select(wi => new { wi.ItemName, wi.Quantity, wi.Unit })
@@ -279,17 +282,20 @@ public class AuditSessionsController : ControllerBase
     public async Task<IActionResult> GetAuditSessionInventory(int id)
     {
         var session = await _db.AuditSessions
-            .Include(a => a.CreatedByNavigation)
-                .ThenInclude(u => u.Role)
             .FirstOrDefaultAsync(a => a.AuditId == id);
 
         if (session == null)
             return NotFound(ApiResponse<object>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
 
         var warehouseId = session.WarehouseId;
-        var creator = session.CreatedByNavigation;
-        var roleName = creator.Role?.RoleName?.ToUpper() ?? "";
 
+        // [PERMISSION FIX] Xác định role của người tạo phiên qua warehouse membership
+        // (không dùng creator.Role.RoleName vì system role nay chỉ còn USER/ADMIN)
+        var creatorMembership = await _membershipRepo.GetCallerMembershipAsync(
+            session.CreatedBy, warehouseId, HttpContext.RequestAborted);
+        var roleName = creatorMembership?.RoleCode?.ToUpper() ?? "";
+
+        // Toàn bộ logic if/else bên dưới giữ nguyên như cũ
         var resultItems = new List<object>();
 
         if (roleName == "RENTER")
@@ -310,7 +316,7 @@ public class AuditSessionsController : ControllerBase
                 .Where(wi => wi.WarehouseId == warehouseId && wi.Quantity > 0)
                 .Select(wi => new { itemName = wi.ItemName, quantity = wi.Quantity, unit = wi.Unit })
                 .ToListAsync();
-            
+
             // 2. Lấy tất cả Renter Inventory trong kho này
             var renterItems = await _db.RenterInventories
                 .Include(ri => ri.Asset)
@@ -322,9 +328,9 @@ public class AuditSessionsController : ControllerBase
             resultItems.AddRange(renterItems);
         }
 
-        return Ok(new { 
-            success = true, 
-            data = resultItems.OrderBy(i => ((dynamic)i).itemName).ToList() 
+        return Ok(new {
+            success = true,
+            data = resultItems.OrderBy(i => ((dynamic)i).itemName).ToList()
         });
     }
 
@@ -339,20 +345,10 @@ public class AuditSessionsController : ControllerBase
         return int.Parse(sub ?? throw new UnauthorizedAccessException("Không xác định được người dùng."));
     }
 
-    private string GetCurrentUserRole()
-    {
-        return User.FindFirstValue(ClaimTypes.Role)
-            ?? User.FindFirstValue("role")
-            ?? "";
-    }
-
-    // ── Permission helpers ──────────────────────────────────────────────────
-
-    /// <summary>Kiểm tra user có OWNER membership trong kho không.</summary>
-    private Task<bool> IsOwnerOfWarehouseAsync(int userId, int warehouseId) =>
-        _db.WarehouseMemberships
-            .AnyAsync(m => m.UserId == userId && m.WarehouseId == warehouseId
-                           && m.IsActive && m.Role.Code == "OWNER");
+    // Chỉ OPERATOR của kho mới được thực hiện các thao tác quản trị phiên kiểm kê.
+    // OPERATOR là đại diện vận hành toàn quyền — OWNER không can thiệp vận hành kho.
+    private async Task<bool> IsOwnerOrOperatorOfWarehouseAsync(int userId, int warehouseId)
+        => await _membershipRepo.HasRoleAsync(userId, warehouseId, "OPERATOR", HttpContext.RequestAborted);
 }
 
 // ---- Request DTOs ----

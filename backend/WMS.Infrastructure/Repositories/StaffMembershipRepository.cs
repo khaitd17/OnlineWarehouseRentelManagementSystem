@@ -29,38 +29,54 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         if (callerId.HasValue)
             caller = await GetCallerMembershipAsync(callerId.Value, warehouseId, ct);
 
-        // Bước 2: base query — tất cả non-OWNER memberships trong kho
+        // Bước 2: base query — tất cả memberships trong kho (scope filter bên dưới xử lý visibility)
         var query = _db.WarehouseMemberships
-            .Where(m => m.WarehouseId == warehouseId && m.Role.Code != "OWNER");
+            .Where(m => m.WarehouseId == warehouseId);
 
-        // Bước 3: áp scope filter
+        // Bước 3: áp scope filter — chỉ thấy bản thân + cấp dưới, KHÔNG thấy cùng cấp hay cấp trên
         if (caller != null)
         {
-            if (caller.RoleCode == "MANAGER")
-            {
-                var callerSkillIds = caller.SkillIds;
-                bool allSkill      = caller.IsAllSkill;
+            int callerUserId = callerId!.Value;
 
-                // MANAGER chỉ thấy STAFF nằm trong phạm vi skill quản lý của mình
+            if (caller.RoleCode == "OWNER")
+            {
+                // OWNER thấy tất cả cấp dưới: OPERATOR, MANAGER, STAFF
+                // (không cần thấy RENTER vì RENTER không phải staff vận hành)
                 query = query.Where(m =>
-                    m.Role.Code == "STAFF" && (
-                        allSkill ||
-                        m.IsAllSkill ||
-                        m.Skills.Any(s => callerSkillIds.Contains(s.Id))
-                    )
+                    m.Role.Code == "OPERATOR" ||
+                    m.Role.Code == "MANAGER"  ||
+                    m.Role.Code == "STAFF"    ||
+                    m.UserId == callerUserId   // bao gồm chính mình (OWNER membership)
                 );
             }
             else if (caller.RoleCode == "OPERATOR")
             {
-                // OPERATOR thấy MANAGER + STAFF (không thấy OWNER)
+                // OPERATOR thấy MANAGER + STAFF + chính mình; KHÔNG thấy OWNER hay OPERATOR khác
                 query = query.Where(m =>
-                    m.Role.Code == "MANAGER" || m.Role.Code == "STAFF"
+                    m.Role.Code == "MANAGER" ||
+                    m.Role.Code == "STAFF"   ||
+                    m.UserId == callerUserId
+                );
+            }
+            else if (caller.RoleCode == "MANAGER")
+            {
+                var callerSkillIds = caller.SkillIds;
+                bool allSkill      = caller.IsAllSkill;
+
+                // MANAGER thấy STAFF trong phạm vi skill + chính mình
+                // KHÔNG thấy OPERATOR hay MANAGER khác
+                query = query.Where(m =>
+                    m.UserId == callerUserId ||
+                    (m.Role.Code == "STAFF" && (
+                        allSkill ||
+                        m.IsAllSkill ||
+                        m.Skills.Any(s => callerSkillIds.Contains(s.Id))
+                    ))
                 );
             }
             else
             {
-                // STAFF (hoặc role khác) chỉ thấy chính mình
-                int callerUserId = callerId!.Value;
+                // STAFF, RENTER hay bất kỳ role khác → chỉ thấy chính mình
                 query = query.Where(m => m.UserId == callerUserId);
             }
         }
@@ -129,13 +145,75 @@ public class StaffMembershipRepository : IStaffMembershipRepository
     }
 
     // ── GetCallerMembershipAsync ──────────────────────────────────────────
+    // Khi user có nhiều memberships trong cùng 1 kho (vd: OWNER + OPERATOR),
+    // trả về role cao nhất theo thứ tự: OWNER > OPERATOR > MANAGER > STAFF > RENTER
     public async Task<CallerMembershipDto?> GetCallerMembershipAsync(
         int userId,
         int warehouseId,
         CancellationToken ct = default)
     {
-        var m = await _db.WarehouseMemberships
+        var rolePriority = new[] { "OWNER", "OPERATOR", "MANAGER", "STAFF", "RENTER" };
+
+        var memberships = await _db.WarehouseMemberships
             .Where(x => x.UserId == userId && x.WarehouseId == warehouseId && x.IsActive)
+            .Include(x => x.Role)
+            .Include(x => x.Skills)
+            .ToListAsync(ct);
+
+        if (!memberships.Any()) return null;
+
+        // Chọn membership có role ưu tiên cao nhất
+        var best = memberships
+            .OrderBy(m => {
+                var idx = Array.IndexOf(rolePriority, m.Role.Code);
+                return idx < 0 ? 999 : idx;
+            })
+            .First();
+
+        return new CallerMembershipDto
+        {
+            MembershipId = best.Id,
+            RoleCode     = best.Role.Code,
+            IsAllSkill   = best.IsAllSkill,
+            SkillIds     = best.Skills.Select(s => s.Id).ToList(),
+            SkillCodes   = best.Skills.Select(s => s.Code).ToList(),
+        };
+    }
+
+    // ── HasRoleAsync ──────────────────────────────────────────────────────────
+    // Kiểm tra user CÓ membership với role cụ thể trong kho không.
+    // Không dùng priority — 1 user có thể có cả OWNER lẫn OPERATOR membership.
+    // Dùng cho: phân quyền thương mại (HasRole OWNER) vs vận hành (HasRole OPERATOR).
+    public async Task<bool> HasRoleAsync(
+        int userId,
+        int warehouseId,
+        string roleCode,
+        CancellationToken ct = default)
+    {
+        return await _db.WarehouseMemberships
+            .AnyAsync(m =>
+                m.UserId      == userId      &&
+                m.WarehouseId == warehouseId &&
+                m.IsActive                   &&
+                m.Role.Code   == roleCode,
+                ct);
+    }
+
+    // ── GetMembershipByRoleAsync ──────────────────────────────────────────────
+    // Lấy CallerMembershipDto của user theo role cụ thể.
+    // Dùng khi cần lấy skill của OPERATOR (hoặc role cụ thể khác) để check quyền chi tiết.
+    public async Task<CallerMembershipDto?> GetMembershipByRoleAsync(
+        int userId,
+        int warehouseId,
+        string roleCode,
+        CancellationToken ct = default)
+    {
+        var m = await _db.WarehouseMemberships
+            .Where(x =>
+                x.UserId      == userId      &&
+                x.WarehouseId == warehouseId &&
+                x.IsActive                   &&
+                x.Role.Code   == roleCode)
             .Include(x => x.Role)
             .Include(x => x.Skills)
             .FirstOrDefaultAsync(ct);
@@ -155,19 +233,21 @@ public class StaffMembershipRepository : IStaffMembershipRepository
     // ── CreateMembershipAsync ──────────────────────────────────────────────
     public async Task<int> CreateMembershipAsync(CreateMembershipDto dto, CancellationToken ct = default)
     {
-        // Kiểm tra user đã có membership trong kho này chưa
-        var existing = await _db.WarehouseMemberships
-            .FirstOrDefaultAsync(m => m.UserId == dto.UserId && m.WarehouseId == dto.WarehouseId, ct);
-
-        if (existing != null)
-            throw new InvalidOperationException(
-                $"Người dùng đã có membership trong kho này (membership id: {existing.Id}). " +
-                "Vui lòng deactivate membership cũ trước hoặc dùng tài khoản khác.");
-
-        // Lấy WarehouseRole theo Code
+        // Lấy role trước để biết roleId
         var role = await _db.WarehouseRoles
             .FirstOrDefaultAsync(r => r.Code == dto.RoleCode, ct)
             ?? throw new InvalidOperationException($"Role '{dto.RoleCode}' không tồn tại trong hệ thống.");
+
+        // Kiểm tra user đã có cùng role trong cùng kho này chưa
+        // (cho phép cùng user có nhiều role khác nhau trong cùng 1 kho)
+        var existing = await _db.WarehouseMemberships
+            .FirstOrDefaultAsync(m => m.UserId == dto.UserId
+                                   && m.WarehouseId == dto.WarehouseId
+                                   && m.WarehouseRoleId == role.Id, ct);
+
+        if (existing != null)
+            throw new InvalidOperationException(
+                $"Người dùng đã có membership role '{dto.RoleCode}' trong kho này (membership id: {existing.Id})." );
 
         // Tạo membership
         var membership = new WarehouseMembership
@@ -203,7 +283,7 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         int userId,
         CancellationToken ct = default)
     {
-        var allowedRoles = new[] { "OPERATOR", "MANAGER" };
+        var allowedRoles = new[] { "OWNER", "OPERATOR", "MANAGER" };
 
         var result = await _db.WarehouseMemberships
             .Where(m => m.UserId == userId && m.IsActive && allowedRoles.Contains(m.Role.Code))

@@ -177,8 +177,8 @@ function AppRoutes() {
         </Route>
 
 
-        {/* ── OWNER / OPERATOR / MANAGER: quản lý nhân sự kho ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR', 'MANAGER']} />}>
+        {/* ── OPERATOR / MANAGER: quản lý nhân sự kho (OWNER thuần không thấy) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['OPERATOR', 'MANAGER']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/create-staff" element={<CreateStaff />} />
             <Route path="/list-staff" element={<ListStaff />} />
@@ -187,8 +187,8 @@ function AppRoutes() {
           </Route>
         </Route>
 
-        {/* ── MANAGER / OPERATOR / OWNER: quản lý yêu cầu nhập/xuất + lịch sử ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['MANAGER', 'OPERATOR', 'OWNER']} />}>
+        {/* ── MANAGER / OPERATOR: quản lý yêu cầu nhập/xuất + lịch sử (OWNER không phải vận hành) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['MANAGER', 'OPERATOR']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
             <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
@@ -197,8 +197,8 @@ function AppRoutes() {
           </Route>
         </Route>
 
-        {/* ── Nhân viên kho (STAFF, MANAGER, OPERATOR, OWNER) ── */}
-        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR', 'OWNER']} />}>
+        {/* ── Nhân viên kho vận hành: STAFF/MANAGER/OPERATOR (OWNER không vận hành) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['STAFF', 'MANAGER', 'OPERATOR']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/staff-dashboard" element={<StaffDashboard />} />
             <Route path="/confirm-movement" element={<ConfirmMovement />} />
