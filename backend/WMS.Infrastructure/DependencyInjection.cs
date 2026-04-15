@@ -3,6 +3,7 @@ using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Repositories;
 using WMS.Infrastructure.Services;
+using WMS.Application.Common;
 
 namespace WMS.Infrastructure;
 
@@ -26,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IStaffMembershipRepository, StaffMembershipRepository>();
         services.AddScoped<IRentalAreaRepository, RentalAreaRepository>();
         services.AddScoped<ISepayService, SepayService>();
+        services.AddScoped<ISubscriptionService, SubscriptionService>();
 
         return services;
     }

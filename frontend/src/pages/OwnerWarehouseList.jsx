@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import api from "../services/axiosClient";
 import { useNavigate } from "react-router-dom";
+import subscriptionService from "../services/subscriptionService";
+import { Modal, message } from "antd";
 
 const OwnerWarehouseList = () => {
 
   const [warehouses, setWarehouses] = useState([]);
   const [deleteModal, setDeleteModal] = useState({ open: false, warehouseId: null, warehouseName: "", loading: false });
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
 
@@ -41,7 +44,49 @@ const OwnerWarehouseList = () => {
 
   useEffect(() => {
     loadWarehouses();
+    loadSubscriptionStatus();
   }, []);
+
+  const loadSubscriptionStatus = async () => {
+    try {
+      const res = await subscriptionService.getSubscriptionStatus();
+      setSubscriptionStatus(res.data);
+    } catch (err) {
+      console.error("Failed to load subscription status", err);
+    }
+  };
+
+  const handleCreateWarehouse = () => {
+    if (!subscriptionStatus) {
+      message.loading("Đang kiểm tra gói dịch vụ...");
+      loadSubscriptionStatus();
+      return;
+    }
+
+    if (!subscriptionStatus.isActive) {
+      Modal.warning({
+        title: 'Yêu cầu Gói dịch vụ',
+        content: 'Bạn cần kích hoạt gói dịch vụ (Basic hoặc Premium) để có thể tạo kho mới.',
+        okText: 'Mua gói dịch vụ',
+        onOk: () => navigate('/subscription')
+      });
+      return;
+    }
+
+    if (subscriptionStatus.currentWarehouses >= subscriptionStatus.maxWarehouses) {
+      Modal.warning({
+        title: 'Giới hạn Gói dịch vụ',
+        content: `Gói ${subscriptionStatus.plan} hiện tại của bạn chỉ cho phép sở hữu tối đa ${subscriptionStatus.maxWarehouses} kho. Bạn đã đạt giới hạn này.`,
+        okText: 'Nâng cấp lên Premium',
+        showCancel: true,
+        cancelText: 'Hủy',
+        onOk: () => navigate('/subscription')
+      });
+      return;
+    }
+
+    navigate("/create-warehouse");
+  };
 
   const getStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
@@ -71,7 +116,7 @@ const OwnerWarehouseList = () => {
           <p style={{ margin: "8px 0 0 0", color: "#64748b", fontSize: "1.05rem" }}>Quản lý và giám sát các cơ sở kho bãi của bạn</p>
         </div>
         <button
-          onClick={() => navigate("/create-warehouse")}
+          onClick={handleCreateWarehouse}
           style={{
             padding: "12px 24px",
             background: "linear-gradient(135deg, #0284c7 0%, #00b2d6 100%)",

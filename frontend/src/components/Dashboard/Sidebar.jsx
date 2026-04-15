@@ -5,188 +5,177 @@ import rentalService from "../../services/rentalService";
 import ratingService from "../../services/ratingService";
 import axiosClient from "../../services/axiosClient";
 import favoritesService from "../../services/favoritesService";
+import subscriptionService from "../../services/subscriptionService";
 import OWRMSLogo from "../OWRMSLogo";
 
-/* ── Menu definitions per warehouse role ── */
-const MENU_BY_ROLE = {
-  OWNER: [
-    { icon: "dashboard",             label: "Tổng quan",                path: "/owner-dashboard" },
-    { icon: "donut_large",           label: "Biểu đồ công suất",        path: "/occupancy-dashboard" },
-    { icon: "warehouse",             label: "Kho của tôi",              path: "/my-warehouses" },
-    { icon: "description",           label: "Quản lý hợp đồng",         path: "/owner-contracts",            section: "HỢP ĐỒNG" },
-    { icon: "payments",              label: "Xác nhận thanh toán",     path: "/pending-cash-payments",     badgeKey: "pendingPaymentCount" },
-    { icon: "inventory_2",           label: "Yêu cầu nhập/xuất",       path: "/owner-inventory-requests",  section: "YÊU CẦU" },
-    { icon: "inventory",             label: "Tồn kho hàng thuê",        path: "/owner-inventory" },
-    { icon: "fact_check",            label: "Kiểm kê kho",             path: "/owner-audit-sessions",      badgeKey: "pendingAuditCount" },
-    { icon: "pending_actions",       label: "Yêu cầu thuê kho",        path: "/pending-rental-requests" },
-    { icon: "receipt_long",          label: "Lịch sử thanh toán",      path: "/payment-history",           section: "TÀI CHÍNH" },
-    { icon: "workspace_premium",     label: "Mua gói dịch vụ",         path: "/subscriptions",             section: "DỊCH VỤ" },
-    { icon: "settings",              label: "Cài đặt",                 path: "/settings",                  isBottom: true },
-  ],
-  // Menu gộp cho user vừa là OWNER vừa là OPERATOR
-  OWNER_OPERATOR: [
-    { icon: "dashboard",             label: "Tổng quan",                path: "/owner-dashboard" },
-    { icon: "donut_large",           label: "Biểu đồ công suất",        path: "/occupancy-dashboard" },
-    { icon: "warehouse",             label: "Kho của tôi",              path: "/my-warehouses" },
-    { icon: "description",           label: "Quản lý hợp đồng",         path: "/owner-contracts",            section: "HỢP ĐỒNG" },
-    { icon: "payments",              label: "Xác nhận thanh toán",     path: "/pending-cash-payments",     badgeKey: "pendingPaymentCount" },
-    { icon: "pending_actions",       label: "Yêu cầu thuê kho",        path: "/pending-rental-requests" },
-    { icon: "receipt_long",          label: "Lịch sử thanh toán",      path: "/payment-history",           section: "TÀI CHÍNH" },
-    { icon: "workspace_premium",     label: "Mua gói dịch vụ",         path: "/subscriptions",             section: "DỊCH VỤ" },
-    { icon: "inventory_2",           label: "Yêu cầu nhập/xuất",       path: "/owner-inventory-requests",  section: "YÊU CẦU" },
-    { icon: "inventory",             label: "Tồn kho hàng thuê",        path: "/owner-inventory" },
-    { icon: "fact_check",            label: "Kiểm kê kho",             path: "/owner-audit-sessions",      badgeKey: "pendingAuditCount" },
-    { icon: "group",                 label: "Quản lý nhân viên",         path: "/list-staff",                section: "NHÂN SỰ" },
-    { icon: "person_add",            label: "Thêm nhân viên",            path: "/create-staff" },
-    { icon: "schedule",              label: "Phân ca",                  path: "/shift-scheduling",           section: "VẬN HÀNH" },
-    { icon: "calendar_month",        label: "Lịch công việc",           path: "/task-scheduling" },
-    { icon: "precision_manufacturing", label: "Quản lý thiết bị",      path: "/equipment-management" },
-    { icon: "settings",              label: "Cài đặt",                 path: "/settings",                  isBottom: true },
-  ],
-  OPERATOR: [
-    { icon: "dashboard", label: "Tổng quan", path: "/owner-dashboard" },
-    { icon: "donut_large", label: "Biểu đồ công suất", path: "/occupancy-dashboard" },
-    { icon: "warehouse", label: "Kho của tôi", path: "/my-warehouses" },
-    { icon: "description", label: "Quản lý hợp đồng", path: "/owner-contracts", section: "HỢP ĐỒNG" },
-    { icon: "payments", label: "Xác nhận thanh toán", path: "/pending-cash-payments", badgeKey: "pendingPaymentCount" },
-    { icon: "inventory_2", label: "Yêu cầu nhập/xuất", path: "/owner-inventory-requests", section: "YÊU CẦU" },
-    { icon: "inventory", label: "Tồn kho hàng thuê", path: "/owner-inventory" },
-    { icon: "fact_check", label: "Kiểm kê kho", path: "/owner-audit-sessions", badgeKey: "pendingAuditCount" },
-    { icon: "pending_actions", label: "Yêu cầu thuê kho", path: "/pending-rental-requests" },
-    { icon: "receipt_long", label: "Lịch sử thanh toán", path: "/payment-history", section: "TÀI CHÍNH" },
-    { icon: "workspace_premium", label: "Mua gói dịch vụ", path: "/subscriptions", section: "DỊCH VỤ" },
-    { icon: "group", label: "Quản lý nhân viên", path: "/list-staff", section: "NHÂN SỰ" },
-    { icon: "person_add", label: "Thêm nhân viên", path: "/create-staff" },
-    { icon: "schedule", label: "Phân ca", path: "/shift-scheduling", section: "VẬN HÀNH" },
-    { icon: "calendar_month", label: "Lịch công việc", path: "/task-scheduling" },
-    { icon: "precision_manufacturing", label: "Quản lý thiết bị", path: "/equipment-management" },
-    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
-  ],
-  MANAGER: [
-    { icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" },
-    { icon: "group", label: "Quản lý nhân viên", path: "/list-staff", section: "NHÂN SỰ" },
-    { icon: "person_add", label: "Thêm nhân viên", path: "/create-staff" },
-    { icon: "schedule", label: "Phân ca", path: "/shift-scheduling" },
-    { icon: "calendar_month", label: "Lịch công việc", path: "/task-scheduling" },
-    { icon: "fact_check", label: "Kiểm kê kho", path: "/staff-audit-sessions", section: "KHO" },
-    { icon: "inventory_2", label: "Yêu cầu nhập / xuất kho", path: "/staff-inventory-requests", badgeKey: "pendingRequestCount" },
-    { icon: "inventory", label: "Quản lí tồn kho", path: "/staff-inventory" },
-    { icon: "history", label: "Lịch sử nhập/ xuất kho", path: "/transaction-history" },
-    { icon: "precision_manufacturing", label: "Quản lý thiết bị", path: "/equipment-management" },
-    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
-  ],
-  STAFF: [
-    { icon: "dashboard",                label: "Bảng điều khiển",          path: "/staff-dashboard" },
-    { icon: "swap_horiz",               label: "Xác nhận nhập/xuất kho",  path: "/confirm-movement",     section: "KHO" },
-    { icon: "inventory",                label: "Quản lí tồn kho",            path: "/staff-inventory" },
-    { icon: "fact_check",               label: "Kiểm kê kho",               path: "/staff-audit-sessions" },
-    { icon: "calendar_month",           label: "Lịch của tôi",               path: "/my-schedule",           section: "CÁ NHÂN" },
-    { icon: "precision_manufacturing",  label: "Quản lý thiết bị",         path: "/equipment-management" },
-    { icon: "settings",                 label: "Cài đặt",                   path: "/settings",             isBottom: true },
-  ],
-  // STAFF có skill CHECKER — xác nhận nhập/xuất nhưng KHÔNG làm kiểm kê kho
-  STAFF_CHECKER: [
-    { icon: "dashboard",                label: "Bảng điều khiển",          path: "/staff-dashboard" },
-    { icon: "swap_horiz",               label: "Xác nhận nhập/xuất kho",  path: "/confirm-movement",     section: "KHO" },
-    { icon: "inventory",                label: "Quản lí tồn kho",            path: "/staff-inventory" },
-    { icon: "calendar_month",           label: "Lịch của tôi",               path: "/my-schedule",           section: "CÁ NHÂN" },
-    { icon: "precision_manufacturing",  label: "Quản lý thiết bị",         path: "/equipment-management" },
-    { icon: "settings",                 label: "Cài đặt",                   path: "/settings",             isBottom: true },
-  ],
-  STAFF_BASIC: [
-    { icon: "dashboard",                label: "Bảng điều khiển",          path: "/staff-dashboard" },
-    { icon: "calendar_month",           label: "Lịch của tôi",               path: "/my-schedule",           section: "CÁ NHÂN" },
-    { icon: "precision_manufacturing",  label: "Quản lý thiết bị",         path: "/equipment-management" },
-    { icon: "settings",                 label: "Cài đặt",                   path: "/settings",             isBottom: true },
-  ],
-  RENTER: [
-    { icon: "description",             label: "Hợp đồng của tôi",       path: "/my-contracts" },
-    { icon: "access_time",             label: "Gia hạn hợp đồng",       path: "/contract-extensions-renter" },
-    { icon: "list_alt",                label: "Yêu cầu thuê kho",        path: "/my-rental-requests" },
-    { icon: "favorite",               label: "Kho yêu thích",           path: "/my-favorites",             badgeKey: "favoritesCount", section: "TÌM KIẾM" },
-    { icon: "add_circle",              label: "Tạo yêu cầu nhập/xuất",   path: "/create-inventory",         section: "KHO" },
-    { icon: "history",                 label: "Lịch sử nhập/xuất kho",   path: "/renter-inventory-history" },
-    { icon: "inventory",               label: "Tồn kho của tôi",          path: "/renter-inventory" },
-    { icon: "fact_check",              label: "Kiểm kê kho",             path: "/renter-audit-sessions" },
-    { icon: "precision_manufacturing", label: "Quản lý thiết bị",        path: "/equipment-management" },
-    { icon: "receipt_long",            label: "Lịch sử thanh toán",      path: "/payment-history",          section: "TÀI CHÍNH" },
-    { icon: "star",                    label: "Đánh giá của tôi",        path: "/my-ratings",               badgeKey: "unratedCount" },
-    { icon: "settings",                label: "Cài đặt",                 path: "/settings",                 isBottom: true },
-  ],
-  USER: [
-    { icon: "search", label: "Tìm kho thuê", path: "/search" },
-    { icon: "description", label: "Hợp đồng của tôi", path: "/my-contracts", section: "HỢP ĐỒNG" },
-    { icon: "list_alt", label: "Yêu cầu thuê", path: "/my-rental-requests" },
-    { icon: "workspace_premium", label: "Đăng ký làm chủ kho", path: "/subscriptions", section: "TRỞ THÀNH ĐỐI TÁC" },
-    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
-  ],
-  ADMIN: [
-    { icon: "admin_panel_settings", label: "Quản trị viên", path: "/admin" },
-    { icon: "star", label: "Quản lý đánh giá", path: "/admin/ratings" },
-    { icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true },
-  ],
-};
-
+/* ── Roles label map ── */
 const ROLE_LABEL = {
   OWNER:          "Chủ kho",
   OPERATOR:       "Điều phối viên",
   OWNER_OPERATOR: "Chủ kho & Điều phối viên",
   MANAGER:        "Quản lý kho",
   STAFF:          "Nhân viên kho",
-  STAFF_CHECKER:  "Nhân viên kiểm hàng",
-  STAFF_BASIC:    "Nhân viên phổ thông",
   RENTER:         "Người thuê kho",
   ADMIN:          "Quản trị viên",
   USER:           "Người dùng",
 };
 
-function resolveEffectiveRole(systemRole, warehouses) {
-  if (systemRole === "admin") return "ADMIN";
-
-  // w.roles = array tất cả role codes; fallback về [w.role] nếu BE cũ
-  const warehouseRoles  = new Set((warehouses || []).flatMap(w =>
-    (w.roles?.length ? w.roles : [w.role || ""]).map(r => r.toUpperCase())
-  ));
-  const allSkills       = (warehouses || []).flatMap(w => (w.skills || []).map(s => s.toUpperCase()));
-  const hasAllSkill     = (warehouses || []).some(w => w.isAllSkill);
-
-  const hasOwner    = warehouseRoles.has("OWNER");
-  const hasOperator = warehouseRoles.has("OPERATOR");
-  const hasManager  = warehouseRoles.has("MANAGER");
-  const hasStaff    = warehouseRoles.has("STAFF");
-  const hasRenter   = warehouseRoles.has("RENTER");
-
-  // User vừa là OWNER vừa là OPERATOR → menu gộp
-  if (hasOwner && hasOperator) return "OWNER_OPERATOR";
-
-  // Chỉ OWNER
-  if (hasOwner) return "OWNER";
-
-  // Chỉ OPERATOR
-  if (hasOperator) return "OPERATOR";
-
-  if (hasManager) return "MANAGER";
-
-  if (hasStaff) {
-    const hasChecker          = hasAllSkill || allSkills.some(s => s === "CHECKER");
-    const hasInventoryOperator = hasAllSkill || allSkills.some(s => s === "INVENTORY_OPERATOR");
-    if (hasInventoryOperator) return "STAFF";        // có kiểm kê
-    if (hasChecker)           return "STAFF_CHECKER"; // chỉ xác nhận nhập/xuất
-    return "STAFF_BASIC";
+/**
+ * Build menu items dựa trên warehouse roles và skills thực tế của user.
+ * Mỗi khả năng là một if-block độc lập — thêm role/skill mới chỉ cần thêm if-block.
+ * Trả về { items, roleKey, roleLabel }.
+ */
+function buildMenu(systemRole, warehouses) {
+  // ── Admin bypass ────────────────────────────────────────────
+  if ((systemRole || "").toLowerCase() === "admin") {
+    return {
+      items: [
+        { icon: "admin_panel_settings", label: "Quản trị viên", path: "/admin" },
+        { icon: "star",                 label: "Quản lý đánh giá",  path: "/admin/ratings" },
+        { icon: "settings",             label: "Cài đặt",           path: "/settings", isBottom: true },
+      ],
+      roleKey: "ADMIN",
+      roleLabel: "Quản trị viên",
+    };
   }
 
-  if (hasRenter) return "RENTER";
+  // ── Phân tích warehouse context ────────────────────────────
+  const roles      = new Set((warehouses || []).flatMap(w =>
+    (w.roles?.length ? w.roles : [w.role || ""]).map(r => r.toUpperCase())
+  ));
+  const skills     = new Set((warehouses || []).flatMap(w =>
+    (w.skills || []).map(s => s.toUpperCase())
+  ));
+  const isAllSkill = (warehouses || []).some(w => w.isAllSkill);
 
-  const sr = (systemRole || "").toUpperCase();
-  if (MENU_BY_ROLE[sr]) return sr;
-  return "USER";
+  const hasOwner    = roles.has("OWNER");
+  const hasOperator = roles.has("OPERATOR");
+  const hasManager  = roles.has("MANAGER");
+  const hasStaff    = roles.has("STAFF");
+  const hasRenter   = roles.has("RENTER");
+  const hasChecker  = isAllSkill || skills.has("CHECKER");
+  const hasInvOp    = isAllSkill || skills.has("INVENTORY_OPERATOR");
+
+  // ── Fallback: USER không có kho ──────────────────────────
+  if (!hasOwner && !hasOperator && !hasManager && !hasStaff && !hasRenter) {
+    return {
+      items: [
+        { icon: "search",             label: "Tìm kho thuê",         path: "/search" },
+        { icon: "description",        label: "Hợp đồng của tôi",     path: "/my-contracts",        section: "HỢP ĐỒNG" },
+        { icon: "list_alt",           label: "Yêu cầu thuê",         path: "/my-rental-requests" },
+        { icon: "workspace_premium",  label: "Đăng ký làm chủ kho", path: "/subscriptions",       section: "TRỞ THÀNH ĐỐI TÁC" },
+        { icon: "settings",           label: "Cài đặt",             path: "/settings",            isBottom: true },
+      ],
+      roleKey: "USER",
+      roleLabel: "Người dùng",
+    };
+  }
+
+  const items = [];
+
+  // ── Dashboard ────────────────────────────────────────────────
+  if (hasOwner || hasOperator) {
+    items.push({ icon: "dashboard",   label: "Tổng quan",           path: "/owner-dashboard" });
+    items.push({ icon: "donut_large", label: "Biểu đồ công suất", path: "/occupancy-dashboard" });
+    items.push({ icon: "warehouse",   label: "Kho của tôi",        path: "/my-warehouses" });
+  }
+  if (hasManager) {
+    items.push({ icon: "dashboard", label: "Bảng điều khiển", path: "/staff-dashboard" });
+  }
+  if (hasRenter && !hasOwner && !hasOperator && !hasManager) {
+    items.push({ icon: "description",    label: "Hợp đồng của tôi",    path: "/my-contracts" });
+    items.push({ icon: "access_time",   label: "Gia hạn hợp đồng",   path: "/contract-extensions-renter" });
+    items.push({ icon: "list_alt",      label: "Yêu cầu thuê kho",    path: "/my-rental-requests" });
+    items.push({ icon: "favorite",      label: "Kho yêu thích",      path: "/my-favorites", badgeKey: "favoritesCount", section: "TÌM KIẼM" });
+  }
+
+  // ── HỢP ĐỒNG section (OWNER) ────────────────────────────────
+  if (hasOwner) {
+    items.push({ icon: "description",     label: "Quản lý hợp đồng",    path: "/owner-contracts",          section: "HỢP ĐỒNG" });
+    items.push({ icon: "payments",        label: "Xác nhận thanh toán", path: "/pending-cash-payments",    badgeKey: "pendingPaymentCount" });
+    items.push({ icon: "pending_actions", label: "Yêu cầu thuê kho",    path: "/pending-rental-requests" });
+  }
+
+  // ── YÊU CẦU / KHO section ─────────────────────────────────
+  if (hasOwner || hasOperator) {
+    items.push({ icon: "inventory_2", label: "Yêu cầu nhập/xuất",  path: "/owner-inventory-requests", section: "YÊU CẦU" });
+    items.push({ icon: "inventory",   label: "Tồn kho hàng thuê",   path: "/owner-inventory" });
+    items.push({ icon: "fact_check",  label: "Kiểm kê kho",         path: "/owner-audit-sessions",     badgeKey: "pendingAuditCount" });
+  }
+  if (hasManager) {
+    items.push({ icon: "fact_check",   label: "Kiểm kê kho",               path: "/staff-audit-sessions",      section: "KHO" });
+    items.push({ icon: "inventory_2",  label: "Yêu cầu nhập / xuất kho", path: "/staff-inventory-requests", badgeKey: "pendingRequestCount" });
+    items.push({ icon: "inventory",    label: "Quản lí tồn kho",           path: "/staff-inventory" });
+    items.push({ icon: "history",      label: "Lịch sử nhập/ xuất kho",    path: "/transaction-history" });
+  }
+  if (hasRenter && !hasOwner && !hasOperator && !hasManager) {
+    items.push({ icon: "add_circle",  label: "Tạo yêu cầu nhập/xuất", path: "/create-inventory",         section: "KHO" });
+    items.push({ icon: "history",     label: "Lịch sử nhập/xuất kho",  path: "/renter-inventory-history" });
+    items.push({ icon: "inventory",   label: "Tồn kho của tôi",         path: "/renter-inventory" });
+    items.push({ icon: "fact_check",  label: "Kiểm kê kho",             path: "/renter-audit-sessions" });
+  }
+
+  // ── NHÂN SỰ / VẬN HÀNH section (OPERATOR, MANAGER) ────────
+  if (hasOperator || hasManager) {
+    items.push({ icon: "group",          label: "Quản lý nhân viên",  path: "/list-staff",       section: "NHÂN SỰ" });
+    items.push({ icon: "person_add",     label: "Thêm nhân viên",    path: "/create-staff" });
+    items.push({ icon: "schedule",       label: "Phân ca",            path: "/shift-scheduling", section: "VẬN HÀNH" });
+    items.push({ icon: "calendar_month", label: "Lịch công việc",    path: "/task-scheduling" });
+  }
+
+  // ── STAFF skills section ─────────────────────────────────────
+  if (hasStaff) {
+    if (hasChecker) {
+      items.push({ icon: "swap_horiz", label: "Xác nhận nhập/xuất kho", path: "/confirm-movement", section: "KHO" });
+    }
+    if (hasChecker || hasInvOp) {
+      const invItem = { icon: "inventory", label: "Quản lí tồn kho", path: "/staff-inventory" };
+      if (!hasChecker) invItem.section = "KHO";
+      items.push(invItem);
+    }
+    if (hasInvOp) {
+      items.push({ icon: "fact_check", label: "Kiểm kê kho", path: "/staff-audit-sessions" });
+    }
+  }
+
+  // ── TÀI CHÍNH section ────────────────────────────────────────
+  if (hasOwner) {
+    items.push({ icon: "receipt_long",     label: "Lịch sử thanh toán", path: "/payment-history",  section: "TÀI CHÍNH" });
+    items.push({ icon: "workspace_premium", label: "Mua gói dịch vụ",  path: "/subscriptions",    section: "DỊCH VỤ" });
+  }
+  if (hasRenter && !hasOwner) {
+    items.push({ icon: "receipt_long", label: "Lịch sử thanh toán", path: "/payment-history",  section: "TÀI CHÍNH" });
+    items.push({ icon: "star",         label: "Đánh giá của tôi",    path: "/my-ratings",     badgeKey: "unratedCount" });
+  }
+
+  // ── CÁ NHÂN section (STAFF / MANAGER) ──────────────────────
+  if (hasStaff) {
+    items.push({ icon: "calendar_month", label: "Lịch của tôi", path: "/my-schedule", section: "CÁ NHÂN" });
+  }
+
+  // ── Thiết bị + Cài đặt (mọi role có kho) ────────────────────
+  items.push({ icon: "precision_manufacturing", label: "Quản lý thiết bị", path: "/equipment-management" });
+  items.push({ icon: "settings", label: "Cài đặt", path: "/settings", isBottom: true });
+
+  // ── Xác định roleKey cho label ───────────────────────────
+  let roleKey = "USER";
+  if (hasOwner && hasOperator) roleKey = "OWNER_OPERATOR";
+  else if (hasOwner)    roleKey = "OWNER";
+  else if (hasOperator) roleKey = "OPERATOR";
+  else if (hasManager)  roleKey = "MANAGER";
+  else if (hasStaff)    roleKey = "STAFF";
+  else if (hasRenter)   roleKey = "RENTER";
+
+  return { items, roleKey, roleLabel: ROLE_LABEL[roleKey] || roleKey };
 }
 
 const Sidebar = ({ isOpen, onClose }) => {
   const location  = useLocation();
   const navigate  = useNavigate();
 
-  const [effectiveRole, setEffectiveRole] = useState("USER");
+  const [effectiveRole,       setEffectiveRole]       = useState("USER");
+  const [currentWarehouses,   setCurrentWarehouses]   = useState([]);
+  const [currentSystemRole,   setCurrentSystemRole]   = useState("user");
   const [displayName,   setDisplayName]   = useState("Người dùng");
   const [avatarSrc,     setAvatarSrc]     = useState(null);
   const [unratedCount,         setUnratedCount]        = useState(0);
@@ -195,6 +184,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [pendingPaymentCount,  setPendingPaymentCount] = useState(0);
   const [pendingAuditCount,    setPendingAuditCount]   = useState(0);
   const [favoritesCount,       setFavoritesCount]      = useState(() => favoritesService.count());
+  const [subStatus,            setSubStatus]            = useState(null);
 
   const loadUserInfo = () => {
     const user = authService.getCurrentUser() || {};
@@ -205,11 +195,13 @@ const Sidebar = ({ isOpen, onClose }) => {
     const avatar = user.avatarUrl || user.AvatarUrl ||
       `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=00b2d6&color=fff`;
 
-    const role = resolveEffectiveRole(systemRole, warehouses);
-    setEffectiveRole(role);
+    const { roleKey } = buildMenu(systemRole, warehouses);
+    setEffectiveRole(roleKey);
+    setCurrentWarehouses(warehouses);
+    setCurrentSystemRole(systemRole);
     setDisplayName(name);
     setAvatarSrc(avatar);
-    return role;
+    return roleKey;
   };
 
   const fetchUnratedCount = async () => {
@@ -260,7 +252,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const fetchPendingPaymentCount = async () => {
     try {
-      const response = await axiosClient.get('/payments/pending-cash');
+      const response = await axiosClient.get('/payments/pending-confirmation');
       const payments = response.data || [];
       setPendingPaymentCount(payments.length);
     } catch {
@@ -278,6 +270,13 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   };
 
+  const fetchSubscriptionStatus = async () => {
+    try {
+      const res = await subscriptionService.getSubscriptionStatus();
+      if (res.data?.success) setSubStatus(res.data);
+    } catch { setSubStatus(null); }
+  };
+
   useEffect(() => {
     const role = loadUserInfo();
     if (role === "RENTER") fetchUnratedCount();
@@ -285,6 +284,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       fetchUnrepliedCount();
       fetchPendingPaymentCount();
       fetchPendingAuditCount();
+      fetchSubscriptionStatus();
     }
     if (role === "MANAGER") fetchPendingRequestCount();
   }, []);
@@ -355,8 +355,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     navigate("/auth");
   };
 
-  const menuItems = MENU_BY_ROLE[effectiveRole] || MENU_BY_ROLE["USER"];
-  const displayRole = ROLE_LABEL[effectiveRole] || effectiveRole;
+  const { items: menuItems, roleLabel: displayRole } = buildMenu(currentSystemRole, currentWarehouses);
   const accentColor = "#00d2ff";
   const activeBg    = "rgba(0,185,255,.1)";
 
@@ -554,21 +553,24 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* ── Navigation ── */}
         <nav className="sb-nav" style={{ flex: 1, overflowY: 'auto', padding: '10px 8px', position: 'relative', zIndex: 1 }}>
-          {menuItems.map((item, idx) => {
+          {MENU_BY_ROLE[effectiveRole]?.map((item, idx) => {
             const isActive = location.pathname === item.path;
             const badge = item.badgeKey ? (badgeValues[item.badgeKey] || 0) : 0;
-            if (item.isBottom) return (
-              <React.Fragment key={idx}>
-                <div className="sb-divider" />
-                <NavLink item={item} isActive={isActive} accentColor={accentColor} activeBg={activeBg} badge={badge} />
-              </React.Fragment>
-            );
+            const isLocked = subStatus && subStatus.isActive && 
+                            item.path === '/equipment-management' && 
+                            !subStatus.allowEquipmentManagement;
+
             return (
               <React.Fragment key={idx}>
                 {item.section && (
                   <p className="sb-section-label">{item.section}</p>
                 )}
-                <NavLink item={item} isActive={isActive} accentColor={accentColor} activeBg={activeBg} badge={badge} />
+                <NavLink 
+                  item={item} 
+                  isActive={isActive} 
+                  badge={badge} 
+                  isLocked={isLocked}
+                />
               </React.Fragment>
             );
           })}
@@ -609,6 +611,60 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <p style={{ margin: 0, fontSize: '0.68rem', color: 'rgba(0,210,255,.55)' }}>{displayRole}</p>
               </div>
             </div>
+
+            {/* Subscription status badge */}
+            {(effectiveRole === "OWNER" || effectiveRole === "OPERATOR") && subStatus && (
+              <Link to="/subscriptions" style={{ textDecoration: 'none', display: 'block', marginBottom: '8px' }}>
+                <div style={{
+                  padding: '6px 10px', borderRadius: '8px',
+                  background: subStatus.isActive
+                    ? 'linear-gradient(90deg, rgba(16,185,129,.12), rgba(59,130,246,.12))'
+                    : 'rgba(239,68,68,.1)',
+                  border: `1px solid ${subStatus.isActive ? 'rgba(16,185,129,.25)' : 'rgba(239,68,68,.25)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer', transition: 'all 0.2s',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-symbols-outlined" style={{
+                      fontSize: '14px',
+                      color: subStatus.isActive ? '#10b981' : '#ef4444',
+                    }}>
+                      {subStatus.isActive ? 'verified' : 'error'}
+                    </span>
+                    <span style={{
+                      fontSize: '0.72rem', fontWeight: 600,
+                      color: subStatus.isActive ? 'rgba(16,185,129,.9)' : 'rgba(239,68,68,.9)',
+                    }}>
+                      {subStatus.plan || 'Chưa có gói'}
+                    </span>
+                  </div>
+                  {subStatus.isActive && subStatus.endDate && (() => {
+                    const end = new Date(subStatus.endDate);
+                    const days = Math.max(0, Math.ceil((end - new Date()) / 86400000));
+                    const endStr = end.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    return (
+                      <span style={{
+                        fontSize: '0.62rem', color: 'rgba(150,200,230,.6)', fontWeight: 500,
+                        textAlign: 'right', lineHeight: '1.3',
+                      }}>
+                        <span style={{ display: 'block' }}>HSD: {endStr}</span>
+                        <span style={{ color: days <= 7 ? 'rgba(251,191,36,.9)' : 'rgba(150,200,230,.45)', fontSize: '0.58rem' }}>
+                          (còn {days} ngày)
+                        </span>
+                      </span>
+                    );
+                  })()}
+                  {!subStatus.isActive && (
+                    <span style={{
+                      fontSize: '0.62rem', color: 'rgba(239,68,68,.7)', fontWeight: 600,
+                    }}>
+                      Gia hạn →
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )}
+
             <button onClick={handleLogout} style={{
               display: 'flex', alignItems: 'center', gap: '8px',
               width: '100%', padding: '7px 10px', borderRadius: '8px',
@@ -642,10 +698,11 @@ const Sidebar = ({ isOpen, onClose }) => {
   );
 };
 
-const NavLink = ({ item, isActive, badge = 0 }) => (
+const NavLink = ({ item, isActive, badge = 0, isLocked = false }) => (
   <Link
     to={item.path}
     className={`sb-nav-link${isActive ? ' active' : ''}`}
+    style={{ opacity: isLocked ? 0.6 : 1 }}
   >
     <span className="sb-active-bar" />
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
@@ -668,6 +725,11 @@ const NavLink = ({ item, isActive, badge = 0 }) => (
       )}
     </span>
     <span style={{ flex: 1 }}>{item.label}</span>
+    {isLocked && (
+      <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'rgba(255,185,0,0.8)' }}>
+        lock
+      </span>
+    )}
   </Link>
 );
 

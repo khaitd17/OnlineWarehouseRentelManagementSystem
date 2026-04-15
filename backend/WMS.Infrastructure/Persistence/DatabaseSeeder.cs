@@ -15,8 +15,18 @@ namespace WMS.Infrastructure.Persistence
             // ══════════════════════════════════════════════════
             var packages = new[]
             {
-                new SubscriptionPackage { Name = "Basic", Price = 2000, Description = "Gói cơ bản", DurationMonths = 1, IsActive = true, CreatedAt = DateTime.UtcNow },
-                new SubscriptionPackage { Name = "Premium", Price = 500000, Description = "Gói cao cấp", DurationMonths = 1, IsActive = true, CreatedAt = DateTime.UtcNow }
+                new SubscriptionPackage 
+                { 
+                    Name = "Basic", Price = 2000, Description = "Gói cơ bản: 1 kho, 3 nhân viên, 3 zones, 1000m2", 
+                    DurationMonths = 1, MaxWarehouses = 1, MaxStaffPerWarehouse = 3, MaxZonesPerWarehouse = 3, MaxTotalArea = 1000, 
+                    AllowEquipmentManagement = false, IsActive = true, CreatedAt = DateTime.UtcNow 
+                },
+                new SubscriptionPackage 
+                { 
+                    Name = "Premium", Price = 500000, Description = "Gói cao cấp: 10 kho, 20 nhân viên, 10 zones, 10.000m2, Quản lý thiết bị", 
+                    DurationMonths = 1, MaxWarehouses = 10, MaxStaffPerWarehouse = 20, MaxZonesPerWarehouse = 10, MaxTotalArea = 10000, 
+                    AllowEquipmentManagement = true, IsActive = true, CreatedAt = DateTime.UtcNow 
+                }
             };
             foreach (var package in packages)
             {

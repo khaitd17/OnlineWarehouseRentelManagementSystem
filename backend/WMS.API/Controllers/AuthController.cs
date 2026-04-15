@@ -26,9 +26,9 @@ public class AuthController : ControllerBase
 
     public AuthController(IMediator mediator, ApplicationDbContext db, IMemoryCache cache, IEmailService emailService)
     {
-        _mediator     = mediator;
-        _db           = db;
-        _cache        = cache;
+        _mediator = mediator;
+        _db = db;
+        _cache = cache;
         _emailService = emailService;
     }
 
@@ -51,9 +51,9 @@ public class AuthController : ControllerBase
         var cacheKey = $"otp:register:{req.Email.ToLower()}";
         _cache.Set(cacheKey, new OtpRegisterPayload
         {
-            Otp      = otp,
+            Otp = otp,
             FullName = req.FullName,
-            Phone    = req.Phone,
+            Phone = req.Phone,
             Password = req.Password,
             RoleName = req.RoleName ?? "USER"
         }, TimeSpan.FromMinutes(10));
@@ -146,11 +146,25 @@ public class AuthController : ControllerBase
                 .Include(m => m.Skills)
                 .ToListAsync();
 
+            // Include warehouses where the user has an active/pending rental contract (RENTER role)
+            var activeContracts = await _db.Contracts
+                .Where(c => c.RenterId == userId &&
+                           (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT"))
+                .Include(c => c.Warehouse)
+                .ToListAsync();
+
+            var activeRenterWarehouseIds = activeContracts.Select(c => c.WarehouseId).ToHashSet();
+
+            // Lọc ra các membership RENTER nhưng không còn hợp đồng active
+            var filteredMemberships = memberships.Where(m =>
+                (m.Role?.Code ?? "").ToUpper() != "RENTER" || activeRenterWarehouseIds.Contains(m.WarehouseId)
+            ).ToList();
+
             // Gom nhóm theo warehouseId — khi user có OWNER + OPERATOR trong cùng 1 kho
             // → 'role' = role cao nhất (để hiển thị), 'roles' = tất cả role codes (để check quyền)
             var rolePriority = new[] { "OWNER", "OPERATOR", "MANAGER", "STAFF", "RENTER" };
 
-            var warehouseItems = memberships
+            var warehouseItems = filteredMemberships
                 .GroupBy(m => m.WarehouseId)
                 .Select(g =>
                 {
@@ -168,7 +182,7 @@ public class AuthController : ControllerBase
                         .OrderBy(c => Array.IndexOf(rolePriority, c)) // sắp xếp theo priority
                         .ToList();
 
-                    // Merge skills từ tất cả memberships (OPERATOR có thể có skill mà OWNER không có)
+                    // Merge skills từ tất cả memberships
                     var mergedSkills = g
                         .SelectMany(m => m.Skills.Select(s => s.Code))
                         .Distinct()
@@ -179,12 +193,12 @@ public class AuthController : ControllerBase
 
                     return new WarehouseContextItem
                     {
-                        warehouseId   = best.WarehouseId,
+                        warehouseId = best.WarehouseId,
                         warehouseName = best.Warehouse?.Name ?? "",
-                        role          = best.Role?.Code ?? "",   // role cao nhất — dùng để hiển thị label
-                        roles         = allRoleCodes,             // tất cả role — dùng để kiểm tra quyền
-                        skills        = mergedSkills,             // skills gộp từ tất cả memberships
-                        isAllSkill    = mergedIsAllSkill,
+                        role = best.Role?.Code ?? "",   // role cao nhất — dùng để hiển thị label
+                        roles = allRoleCodes,             // tất cả role — dùng để kiểm tra quyền
+                        skills = mergedSkills,             // skills gộp từ tất cả memberships
+                        isAllSkill = mergedIsAllSkill,
                     };
                 }).ToList();
 
@@ -207,49 +221,27 @@ public class AuthController : ControllerBase
                 .Select(c => c.WarehouseId)
                 .ToHashSet();
 
-            //var memberships = await _db.WarehouseMemberships
-            //    .Where(m => m.UserId == userId && m.IsActive)
-            //    .Include(m => m.Warehouse)
-            //    .Include(m => m.Role)
-            //    .Include(m => m.Skills)
-            //    .ToListAsync();
-
-            //var warehouseItems = memberships
-            //    .Where(m =>
-            //    {
-            //        var roleCode = (m.Role?.Code ?? "").ToUpper();
-            //        return roleCode != "RENTER" || activeRenterWarehouseIds.Contains(m.WarehouseId);
-            //    })
-            //    .Select(m => new WarehouseContextItem
-            //    {
-            //        warehouseId   = m.WarehouseId,
-            //        warehouseName = m.Warehouse?.Name ?? "",
-            //        role          = m.Role?.Code ?? "",
-            //        skills        = m.Skills.Select(skill => skill.Code).ToList(),
-            //        isAllSkill    = m.IsAllSkill,
-            //    })
-            //    .ToList();
 
             foreach (var contract in activeContracts)
             {
-                // Bỏ qua nếu đã có entry cho kho này từ memberships
                 if (!warehouseItems.Any(w => w.warehouseId == contract.WarehouseId))
                 {
                     warehouseItems.Add(new WarehouseContextItem
                     {
-                        warehouseId   = contract.WarehouseId,
+                        warehouseId = contract.WarehouseId,
                         warehouseName = contract.Warehouse?.Name ?? "",
-                        role          = "RENTER",
-                        skills        = new List<string>(),
-                        isAllSkill    = false
+                        role = "RENTER",
+                        roles = new List<string> { "RENTER" },
+                        skills = new List<string>(),
+                        isAllSkill = false
                     });
                 }
             }
 
             var context = new
             {
-                userId     = user.UserId,
-                name       = user.FullName,
+                userId = user.UserId,
+                name = user.FullName,
                 systemRole = user.Role?.RoleName?.ToLower() ?? "user",
                 warehouses = warehouseItems
             };
@@ -306,13 +298,13 @@ public class AuthController : ControllerBase
 
             user = new WMS.Domain.Entities.User
             {
-                Email        = req.Email,
-                FullName     = req.FullName ?? req.Email,
+                Email = req.Email,
+                FullName = req.FullName ?? req.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()), // random pass
-                RoleId       = userRole.RoleId,
-                Status       = "ACTIVE",
-                AvatarUrl    = req.AvatarUrl,
-                CreatedAt    = DateTime.UtcNow
+                RoleId = userRole.RoleId,
+                Status = "ACTIVE",
+                AvatarUrl = req.AvatarUrl,
+                CreatedAt = DateTime.UtcNow
             };
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
@@ -337,11 +329,11 @@ public class AuthController : ControllerBase
 
         return Ok(new
         {
-            userId   = user.UserId,
+            userId = user.UserId,
             fullName = user.FullName,
-            email    = user.Email,
-            role     = roleName,
-            token    = token,
+            email = user.Email,
+            role = roleName,
+            token = token,
             avatarUrl = user.AvatarUrl
         });
     }
@@ -359,9 +351,9 @@ public record RegisterVerifyOtpRequest(string Email, string Otp);
 // OTP payload stored in cache
 public class OtpRegisterPayload
 {
-    public string Otp      { get; set; } = "";
+    public string Otp { get; set; } = "";
     public string FullName { get; set; } = "";
-    public string? Phone   { get; set; }
+    public string? Phone { get; set; }
     public string Password { get; set; } = "";
     public string RoleName { get; set; } = "USER";
 }
@@ -376,4 +368,3 @@ public class WarehouseContextItem
     public List<string> skills { get; set; } = new();
     public bool isAllSkill { get; set; }
 }
-

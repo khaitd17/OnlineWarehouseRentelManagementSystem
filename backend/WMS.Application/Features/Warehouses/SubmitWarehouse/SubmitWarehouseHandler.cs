@@ -17,6 +17,9 @@ public class SubmitWarehouseHandler : IRequestHandler<SubmitWarehouseCommand>
         if (warehouse == null)
             throw new Exception("Warehouse not found");
 
+        if (warehouse.OwnerId != request.RequestUserId)
+            throw new UnauthorizedAccessException("You are not the owner of this warehouse");
+
         if (warehouse.Status != "HIDDEN" && warehouse.Status != "DRAFT")
             throw new Exception("Warehouse cannot be submitted in its current status");
 

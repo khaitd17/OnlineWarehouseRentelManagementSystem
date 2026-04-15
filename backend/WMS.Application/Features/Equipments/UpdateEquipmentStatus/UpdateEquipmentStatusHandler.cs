@@ -42,31 +42,18 @@ public class UpdateEquipmentStatusHandler : BaseEquipmentHandler, IRequestHandle
                 throw new UnauthorizedAccessException("Vận hành viên (OPERATOR) có quyền cập nhật trạng thái hoạt động nhưng KHÔNG ĐƯỢC thanh lý thiết bị (RETIRED).");
         }
 
-        // Lifecycle validation
-        bool isValid = false;
-        switch (currentStatus)
+        // Use dictionary for State Machine
+        var allowedTransitions = new Dictionary<string, string[]>
         {
-            case "AVAILABLE":
-                // Available -> In Use, Maintenance, Broken, Retired
-                isValid = true;
-                break;
-            case "IN_USE":
-                // In Use -> Available (Returned), Broken, Maintenance
-                if (newStatus == "AVAILABLE" || newStatus == "BROKEN" || newStatus == "MAINTENANCE") isValid = true;
-                break;
-            case "BROKEN":
-                // Broken -> Maintenance (Repair), Retired (Discard)
-                if (newStatus == "MAINTENANCE" || newStatus == "RETIRED") isValid = true;
-                break;
-            case "MAINTENANCE":
-                // Maintenance -> Available (Fixed), Broken (Fail), Retired (Unrepairable)
-                if (newStatus == "AVAILABLE" || newStatus == "BROKEN" || newStatus == "RETIRED") isValid = true;
-                break;
-            case "RETIRED":
-                // Retired -> Maintenance (Re-activate flow: must be checked before use)
-                if (newStatus == "MAINTENANCE") isValid = true;
-                break;
-        }
+            ["AVAILABLE"]   = new[] { "MAINTENANCE", "BROKEN", "RETIRED" }, // Blocked IN_USE manual transition
+            ["IN_USE"]      = new[] { "AVAILABLE", "BROKEN", "MAINTENANCE" },
+            ["BROKEN"]      = new[] { "MAINTENANCE", "RETIRED" },
+            ["MAINTENANCE"] = new[] { "AVAILABLE", "BROKEN", "RETIRED" },
+            ["RETIRED"]     = new[] { "MAINTENANCE" }
+        };
+
+        bool isValid = allowedTransitions.ContainsKey(currentStatus) && 
+                       allowedTransitions[currentStatus].Contains(newStatus);
 
         if (!isValid)
             throw new InvalidOperationException($"Invalid status transition from {currentStatus} to {newStatus}");

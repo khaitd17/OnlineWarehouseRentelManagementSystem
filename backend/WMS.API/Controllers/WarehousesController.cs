@@ -36,13 +36,19 @@ public class WarehouseController : ControllerBase
 
         command.OwnerId = int.Parse(userId);
 
-        var id = await _mediator.Send(command);
-
-        return Ok(new
+        try
         {
-            message = "Warehouse created successfully",
-            warehouseId = id
-        });
+            var id = await _mediator.Send(command);
+            return Ok(new
+            {
+                message = "Warehouse created successfully",
+                warehouseId = id
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("approved")]
@@ -115,12 +121,28 @@ public class WarehouseController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateWarehouse(int id, UpdateWarehouseCommand command)
     {
+        if (!ModelState.IsValid)
+        {
+            var errors = string.Join(" | ", ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage));
+            Console.WriteLine($"[UpdateWarehouse] ModelState Invalid: {errors}");
+            return BadRequest(new { message = "Dữ liệu không hợp lệ: " + errors });
+        }
+
         if (id != command.WarehouseId)
-            return BadRequest();
+            return BadRequest(new { message = "ID kho không khớp." });
 
-        await _mediator.Send(command);
-
-        return Ok();
+        try
+        {
+            await _mediator.Send(command);
+            return Ok(new { message = "Cập nhật kho thành công." });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[UpdateWarehouse] Error: {ex.Message}");
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("{id}/media")]
@@ -150,9 +172,16 @@ public class WarehouseController : ControllerBase
     [HttpPatch("{id}/submit")]
     public async Task<IActionResult> SubmitWarehouse(int id)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
         await _mediator.Send(new SubmitWarehouseCommand
         {
-            WarehouseId = id
+            WarehouseId = id,
+            RequestUserId = int.Parse(userId)
         });
 
         return Ok(new
