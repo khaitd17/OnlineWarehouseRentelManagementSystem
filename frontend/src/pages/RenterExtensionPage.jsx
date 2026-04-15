@@ -25,19 +25,11 @@ import {
 import ContractCard from '../components/contract/ContractCard';
 import ExtensionRequestModal from '../components/contract/ExtensionRequestModal';
 import contractExtensionService from '../services/contractExtensionService';
+import rentalService from '../services/rentalService';
 
 const { Title, Text } = Typography;
 const { Content } = Layout;
 const { Option } = Select;
-const { TabPane } = Tabs;
-
-// Mock API calls - replace with actual API calls
-const contractService = {
-  getMyContracts: async () => {
-    // Mock implementation - replace with actual API call
-    return [];
-  }
-};
 
 const RenterExtensionPage = () => {
   const [contracts, setContracts] = useState([]);
@@ -59,12 +51,12 @@ const RenterExtensionPage = () => {
       }
 
       const [contractsData, extensionsData] = await Promise.all([
-        contractService.getMyContracts(),
+        rentalService.getMyContracts(),
         contractExtensionService.getMyExtensions()
       ]);
 
-      setContracts(contractsData);
-      setExtensions(extensionsData);
+      setContracts(Array.isArray(contractsData) ? contractsData : []);
+      setExtensions(Array.isArray(extensionsData) ? extensionsData : []);
     } catch (error) {
       message.error('Không thể tải dữ liệu: ' + (error.message || 'Lỗi không xác định'));
     } finally {
@@ -79,8 +71,9 @@ const RenterExtensionPage = () => {
 
   // Filter contracts
   const filteredContracts = contracts.filter(contract => {
-    if (searchTerm && !contract.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !contract.warehouseName?.toLowerCase().includes(searchTerm.toLowerCase())) {
+    if (searchTerm &&
+        !String(contract.contractNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !String(contract.warehouseName || '').toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
     if (statusFilter && contract.status !== statusFilter) {
@@ -167,151 +160,149 @@ const RenterExtensionPage = () => {
           onChange={setActiveTab}
           style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
           tabBarStyle={{ padding: '0 20px', margin: 0 }}
-        >
-          {/* Contracts Tab */}
-          <TabPane
-            tab={
-              <Space>
-                <ContainerOutlined />
-                <span>Hợp đồng của tôi</span>
-                <Badge count={contracts.length} showZero style={{ backgroundColor: '#108ee9' }} />
-              </Space>
-            }
-            key="contracts"
-          >
-            <div style={{ padding: '0 20px 20px' }}>
-              {/* Filters */}
-              <Row gutter={16} style={{ marginBottom: 20 }}>
-                <Col xs={24} sm={12} md={8} lg={6}>
-                  <Input
-                    placeholder="Tìm kiếm theo mã hợp đồng hoặc tên kho"
-                    prefix={<SearchOutlined />}
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    allowClear
-                  />
-                </Col>
-                <Col xs={24} sm={12} md={8} lg={6}>
-                  <Select
-                    placeholder="Lọc theo trạng thái"
-                    value={statusFilter}
-                    onChange={setStatusFilter}
-                    allowClear
-                    style={{ width: '100%' }}
-                    suffixIcon={<FilterOutlined />}
-                  >
-                    <Option value="ACTIVE">Đang hoạt động</Option>
-                    <Option value="PENDING_OWNER_SIGNATURE">Chờ chủ kho ký</Option>
-                    <Option value="PENDING_RENTER_SIGNATURE">Chờ người thuê ký</Option>
-                    <Option value="PENDING_PAYMENT">Chờ thanh toán</Option>
-                    <Option value="CANCELLED">Đã hủy</Option>
-                    <Option value="EXPIRED">Hết hạn</Option>
-                  </Select>
-                </Col>
-                <Col flex="auto" style={{ textAlign: 'right' }}>
-                  <Button
-                    icon={<ReloadOutlined />}
-                    onClick={() => loadData(true)}
-                    loading={refreshing}
-                  >
-                    Làm mới
-                  </Button>
-                </Col>
-              </Row>
-
-              {/* Contract Cards */}
-              {filteredContracts.length === 0 ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Không tìm thấy hợp đồng nào"
-                />
-              ) : (
-                <Row gutter={[16, 16]}>
-                  {filteredContracts.map((contract) => (
-                    <Col xs={24} sm={12} lg={8} xl={6} key={contract.contractId}>
-                      <ContractCard
-                        contract={contract}
-                        onRequestExtension={handleExtensionRequest}
-                        showExtensionButton={contract.status === 'ACTIVE'}
+          items={[
+            {
+              key: 'contracts',
+              label: (
+                <Space>
+                  <ContainerOutlined />
+                  <span>Hợp đồng của tôi</span>
+                  <Badge count={contracts.length} showZero style={{ backgroundColor: '#108ee9' }} />
+                </Space>
+              ),
+              children: (
+                <div style={{ padding: '0 20px 20px' }}>
+                  <Row gutter={16} style={{ marginBottom: 20 }}>
+                    <Col xs={24} sm={12} md={8} lg={6}>
+                      <Input
+                        placeholder="Tìm kiếm theo mã hợp đồng hoặc tên kho"
+                        prefix={<SearchOutlined />}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        allowClear
                       />
                     </Col>
-                  ))}
-                </Row>
-              )}
-            </div>
-          </TabPane>
-
-          {/* Extensions Tab */}
-          <TabPane
-            tab={
-              <Space>
-                <ClockCircleOutlined />
-                <span>Yêu cầu gia hạn</span>
-                <Badge count={extensions.length} showZero style={{ backgroundColor: '#52c41a' }} />
-              </Space>
-            }
-            key="extensions"
-          >
-            <div style={{ padding: '0 20px 20px' }}>
-              {extensions.length === 0 ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="Chưa có yêu cầu gia hạn nào"
-                />
-              ) : (
-                <Row gutter={[16, 16]}>
-                  {extensions.map((extension) => (
-                    <Col xs={24} sm={12} lg={8} xl={6} key={extension.extensionId}>
-                      <Card
-                        title={`Gia hạn ${extension.originalContract?.contractNumber || 'N/A'}`}
-                        extra={
-                          <Badge
-                            status={
-                              extension.status === 'APPROVED' ? 'success' :
-                              extension.status === 'REJECTED' ? 'error' :
-                              extension.status === 'CANCELLED' ? 'default' : 'processing'
-                            }
-                            text={contractExtensionService.getStatusDisplay(extension.status).text}
-                          />
-                        }
+                    <Col xs={24} sm={12} md={8} lg={6}>
+                      <Select
+                        placeholder="Lọc theo trạng thái"
+                        value={statusFilter}
+                        onChange={setStatusFilter}
+                        allowClear
+                        style={{ width: '100%' }}
+                        suffixIcon={<FilterOutlined />}
                       >
-                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                          <div>
-                            <Text type="secondary">Thời gian:</Text>
-                            <Text style={{ float: 'right' }}>
-                              {contractExtensionService.formatDuration(extension.durationMonths)}
-                            </Text>
-                          </div>
-                          <div>
-                            <Text type="secondary">Ngày yêu cầu:</Text>
-                            <Text style={{ float: 'right' }}>
-                              {contractExtensionService.formatDate(extension.requestedAt)}
-                            </Text>
-                          </div>
-                          {extension.reviewedAt && (
-                            <div>
-                              <Text type="secondary">Ngày duyệt:</Text>
-                              <Text style={{ float: 'right' }}>
-                                {contractExtensionService.formatDate(extension.reviewedAt)}
-                              </Text>
-                            </div>
-                          )}
-                          {extension.reviewNotes && (
-                            <div>
-                              <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Ghi chú: {extension.reviewNotes}
-                              </Text>
-                            </div>
-                          )}
-                        </Space>
-                      </Card>
+                        <Option value="ACTIVE">Đang hoạt động</Option>
+                        <Option value="PENDING_OWNER_SIGNATURE">Chờ chủ kho ký</Option>
+                        <Option value="PENDING_RENTER_SIGNATURE">Chờ người thuê ký</Option>
+                        <Option value="PENDING_PAYMENT">Chờ thanh toán</Option>
+                        <Option value="CANCELLED">Đã hủy</Option>
+                        <Option value="EXPIRED">Hết hạn</Option>
+                      </Select>
                     </Col>
-                  ))}
-                </Row>
-              )}
-            </div>
-          </TabPane>
-        </Tabs>
+                    <Col flex="auto" style={{ textAlign: 'right' }}>
+                      <Button
+                        icon={<ReloadOutlined />}
+                        onClick={() => loadData(true)}
+                        loading={refreshing}
+                      >
+                        Làm mới
+                      </Button>
+                    </Col>
+                  </Row>
+
+                  {filteredContracts.length === 0 ? (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description="Không tìm thấy hợp đồng nào"
+                    />
+                  ) : (
+                    <Row gutter={[16, 16]}>
+                      {filteredContracts.map((contract) => (
+                        <Col xs={24} sm={12} lg={8} xl={6} key={contract.contractId}>
+                          <ContractCard
+                            contract={contract}
+                            onRequestExtension={handleExtensionRequest}
+                            showExtensionButton={contract.status === 'ACTIVE'}
+                          />
+                        </Col>
+                      ))}
+                    </Row>
+                  )}
+                </div>
+              )
+            },
+            {
+              key: 'extensions',
+              label: (
+                <Space>
+                  <ClockCircleOutlined />
+                  <span>Yêu cầu gia hạn</span>
+                  <Badge count={extensions.length} showZero style={{ backgroundColor: '#52c41a' }} />
+                </Space>
+              ),
+              children: (
+                <div style={{ padding: '0 20px 20px' }}>
+                  {extensions.length === 0 ? (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description="Chưa có yêu cầu gia hạn nào"
+                    />
+                  ) : (
+                    <Row gutter={[16, 16]}>
+                      {extensions.map((extension) => (
+                        <Col xs={24} sm={12} lg={8} xl={6} key={extension.extensionId}>
+                          <Card
+                            title={`Gia hạn ${extension.originalContract?.contractNumber || 'N/A'}`}
+                            extra={
+                              <Badge
+                                status={
+                                  extension.status === 'APPROVED' ? 'success' :
+                                  extension.status === 'REJECTED' ? 'error' :
+                                  extension.status === 'CANCELLED' ? 'default' : 'processing'
+                                }
+                                text={contractExtensionService.getStatusDisplay(extension.status).text}
+                              />
+                            }
+                          >
+                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                              <div>
+                                <Text type="secondary">Thời gian:</Text>
+                                <Text style={{ float: 'right' }}>
+                                  {contractExtensionService.formatDuration(extension.durationMonths)}
+                                </Text>
+                              </div>
+                              <div>
+                                <Text type="secondary">Ngày yêu cầu:</Text>
+                                <Text style={{ float: 'right' }}>
+                                  {contractExtensionService.formatDate(extension.requestedAt)}
+                                </Text>
+                              </div>
+                              {extension.reviewedAt && (
+                                <div>
+                                  <Text type="secondary">Ngày duyệt:</Text>
+                                  <Text style={{ float: 'right' }}>
+                                    {contractExtensionService.formatDate(extension.reviewedAt)}
+                                  </Text>
+                                </div>
+                              )}
+                              {extension.reviewNotes && (
+                                <div>
+                                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                                    Ghi chú: {extension.reviewNotes}
+                                  </Text>
+                                </div>
+                              )}
+                            </Space>
+                          </Card>
+                        </Col>
+                      ))}
+                    </Row>
+                  )}
+                </div>
+              )
+            }
+          ]}
+        />
 
         {/* Extension Request Modal */}
         {selectedContract && (

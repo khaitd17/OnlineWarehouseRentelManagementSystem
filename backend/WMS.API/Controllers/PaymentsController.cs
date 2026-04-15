@@ -170,6 +170,84 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
+    /// Lịch sử thanh toán của người dùng (bao gồm online + tiền mặt)
+    /// </summary>
+    [Authorize]
+    [HttpGet("history")]
+    public async Task<IActionResult> GetPaymentHistory(
+        [FromQuery] string? status,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var userId = GetCurrentUserId();
+        if (userId <= 0)
+            return Unauthorized(new { message = "Không xác định được người dùng" });
+
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = _db.RentalPayments
+            .AsNoTracking()
+            .Include(p => p.Contract)
+                .ThenInclude(c => c.Warehouse)
+            .Include(p => p.Contract)
+                .ThenInclude(c => c.Renter)
+            .Where(p => p.Contract != null &&
+                       (p.Contract.RenterId == userId || p.Contract.Warehouse.OwnerId == userId));
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var normalizedStatus = status.Trim().ToUpperInvariant();
+            query = query.Where(p => p.Status == normalizedStatus);
+        }
+
+        if (from.HasValue)
+        {
+            var fromUtc = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+            query = query.Where(p => (p.PaidAt ?? p.CreatedAt) >= fromUtc);
+        }
+
+        if (to.HasValue)
+        {
+            var toUtc = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc).AddDays(1).AddTicks(-1);
+            query = query.Where(p => (p.PaidAt ?? p.CreatedAt) <= toUtc);
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(p => p.PaidAt ?? p.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(p => new
+            {
+                paymentId = p.PaymentId,
+                contractId = p.ContractId,
+                contractNumber = p.Contract != null ? p.Contract.ContractNumber : null,
+                warehouseName = p.Contract != null && p.Contract.Warehouse != null ? p.Contract.Warehouse.Name : "",
+                renterName = p.Contract != null && p.Contract.Renter != null ? p.Contract.Renter.FullName : "",
+                amount = p.Amount,
+                paymentPeriod = p.PaymentType,
+                paymentDate = p.PaidAt ?? p.CreatedAt,
+                dueDate = (DateTime?)null,
+                paymentMethod = p.PaymentMethod,
+                transactionReference = p.SepayReferenceCode,
+                status = p.Status
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            items,
+            totalCount,
+            page,
+            pageSize,
+            totalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+        });
+    }
+
+    /// <summary>
     /// Webhook callback từ SePay khi có giao dịch
     /// </summary>
     [AllowAnonymous]

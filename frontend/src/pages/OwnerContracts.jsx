@@ -42,6 +42,7 @@ const OwnerContracts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   useEffect(() => {
     loadContracts();
@@ -61,9 +62,27 @@ const OwnerContracts = () => {
     }
   };
 
-  const filteredContracts = filterStatus === "ALL"
-    ? contracts
-    : contracts.filter(c => c.status === filterStatus);
+  const normalizedKeyword = searchKeyword.trim().toLowerCase();
+
+  const filteredContracts = contracts.filter((c) => {
+    const statusMatched = filterStatus === "ALL" || c.status === filterStatus;
+    if (!statusMatched) return false;
+
+    if (!normalizedKeyword) return true;
+
+    const searchableText = [
+      c.contractNumber,
+      c.warehouseName,
+      c.renterName,
+      c.renterEmail,
+      c.renterPhone
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return searchableText.includes(normalizedKeyword);
+  });
 
   const statusCounts = contracts.reduce((acc, c) => {
     acc[c.status] = (acc[c.status] || 0) + 1;
@@ -110,6 +129,25 @@ const OwnerContracts = () => {
         <p style={{ color: "#64748b" }}>
           Danh sách tất cả hợp đồng thuê kho của bạn
         </p>
+      </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <input
+          type="text"
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+          placeholder="Tìm theo mã hợp đồng, tên kho, người thuê, email, số điện thoại..."
+          style={{
+            width: "100%",
+            maxWidth: "560px",
+            padding: "0.75rem 1rem",
+            borderRadius: "10px",
+            border: "1px solid #e2e8f0",
+            outline: "none",
+            fontSize: "0.95rem",
+            color: "#0f172a"
+          }}
+        />
       </div>
 
       {/* Stats Cards */}
@@ -170,7 +208,11 @@ const OwnerContracts = () => {
         }}>
           <span style={{ fontSize: "3rem", marginBottom: "1rem", display: "block" }}>📄</span>
           <h3 style={{ color: "#64748b", marginBottom: "0.5rem" }}>
-            {filterStatus === "ALL" ? "Chưa có hợp đồng nào" : `Không có hợp đồng ${statusConfig[filterStatus]?.label || filterStatus}`}
+            {normalizedKeyword
+              ? "Không tìm thấy hợp đồng phù hợp"
+              : (filterStatus === "ALL"
+                  ? "Chưa có hợp đồng nào"
+                  : `Không có hợp đồng ${statusConfig[filterStatus]?.label || filterStatus}`)}
           </h3>
         </div>
       ) : (

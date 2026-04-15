@@ -12,9 +12,12 @@ const fmtCurrency = (amount) =>
   amount == null ? '—' : Number(amount).toLocaleString('vi-VN', { style: 'currency', currency: 'VND' });
 
 const STATUS_CONFIG = {
-  PAID:    { label: 'Đã thanh toán', color: 'bg-emerald-100 text-emerald-700' },
-  PENDING: { label: 'Chờ thanh toán', color: 'bg-amber-100 text-amber-700' },
-  OVERDUE: { label: 'Quá hạn',       color: 'bg-red-100 text-red-700' },
+  COMPLETED:            { label: 'Đã thanh toán', color: 'bg-emerald-100 text-emerald-700' },
+  PENDING:              { label: 'Chờ thanh toán', color: 'bg-amber-100 text-amber-700' },
+  PENDING_CONFIRMATION: { label: 'Chờ xác nhận', color: 'bg-amber-100 text-amber-700' },
+  FAILED:               { label: 'Thất bại', color: 'bg-red-100 text-red-700' },
+  EXPIRED:              { label: 'Hết hạn', color: 'bg-red-100 text-red-700' },
+  CANCELLED:            { label: 'Đã hủy', color: 'bg-slate-100 text-slate-600' },
 };
 
 const StatusBadge = ({ status }) => {
@@ -64,8 +67,8 @@ const PaymentHistory = () => {
 
         {/* ── Header ── */}
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Lịch sử chuyển khoản</h1>
-          <p className="text-slate-500 text-sm mt-1">Lịch sử thanh toán tiền thuê kho liên quan đến tài khoản của bạn.</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Lịch sử thanh toán</h1>
+          <p className="text-slate-500 text-sm mt-1">Hiển thị cả thanh toán online và thanh toán trực tiếp.</p>
         </div>
 
         {/* ── Filters ── */}
@@ -80,9 +83,12 @@ const PaymentHistory = () => {
                 className="w-full pl-3 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm appearance-none outline-none focus:ring-2 focus:ring-[#00b2d6]/30"
               >
                 <option value="">Tất cả trạng thái</option>
-                <option value="PAID">Đã thanh toán</option>
-                <option value="PENDING">Chờ thanh toán</option>
-                <option value="OVERDUE">Quá hạn</option>
+                 <option value="COMPLETED">Đã thanh toán</option>
+                 <option value="PENDING">Chờ thanh toán</option>
+                 <option value="PENDING_CONFIRMATION">Chờ xác nhận tiền mặt</option>
+                 <option value="FAILED">Thất bại</option>
+                 <option value="EXPIRED">Hết hạn</option>
+                 <option value="CANCELLED">Đã hủy</option>
               </select>
               <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
             </div>
@@ -140,10 +146,16 @@ const PaymentHistory = () => {
                     <td className="px-4 py-4 text-sm text-slate-700 font-medium">{row.warehouseName}</td>
                     <td className="px-4 py-4 text-sm text-slate-600">{row.renterName}</td>
                     <td className="px-4 py-4 text-sm font-bold text-slate-900">{fmtCurrency(row.amount)}</td>
-                    <td className="px-4 py-4 text-sm text-slate-500">{row.paymentPeriod ?? '—'}</td>
-                    <td className="px-4 py-4 text-sm text-slate-500">{fmtDate(row.paymentDate)}</td>
-                    <td className="px-4 py-4 text-sm text-slate-500">{row.dueDate ?? '—'}</td>
-                    <td className="px-4 py-4 text-sm text-slate-500">{row.paymentMethod ?? '—'}</td>
+                     <td className="px-4 py-4 text-sm text-slate-500">{row.paymentPeriod ?? '—'}</td>
+                     <td className="px-4 py-4 text-sm text-slate-500">{fmtDate(row.paymentDate)}</td>
+                     <td className="px-4 py-4 text-sm text-slate-500">{row.dueDate ?? '—'}</td>
+                     <td className="px-4 py-4 text-sm text-slate-500">
+                       {row.paymentMethod === 'BANK_TRANSFER'
+                         ? 'Online'
+                         : row.paymentMethod === 'CASH'
+                           ? 'Trực tiếp'
+                           : (row.paymentMethod ?? '—')}
+                     </td>
                     <td className="px-4 py-4 font-mono text-xs text-slate-400">{row.transactionReference ?? '—'}</td>
                     <td className="px-4 py-4"><StatusBadge status={row.status} /></td>
                   </tr>
