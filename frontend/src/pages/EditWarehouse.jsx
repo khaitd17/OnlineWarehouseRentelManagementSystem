@@ -45,6 +45,8 @@ const EditWarehouse = () => {
   const [uploadLoading, setUploadLoading] = useState(false);
   // Track the original price to detect changes that require re-approval
   const originalPricePerM2 = useRef(null);
+  // Cho phép sửa kích thước nếu dữ liệu ban đầu là 0 hoặc trống
+  const [canEditDimensions, setCanEditDimensions] = useState(false);
 
   const loadWarehouse = async () => {
 
@@ -87,6 +89,16 @@ const EditWarehouse = () => {
     });
     // Snapshot original price after load
     originalPricePerM2.current = String(res.data.pricePerM2 ?? res.data.PricePerM2 ?? "");
+
+    // Logic: Nếu cả Dài và Rộng đều chưa có (> 0) thì cho phép sửa. 
+    // Nếu đã có dữ liệu (> 0) thì khóa lại.
+    const w = res.data.width ?? res.data.Width ?? 0;
+    const l = res.data.length ?? res.data.Length ?? 0;
+    if (w <= 0 || l <= 0) {
+      setCanEditDimensions(true);
+    } else {
+      setCanEditDimensions(false);
+    }
   };
 
   useEffect(() => {
@@ -95,9 +107,23 @@ const EditWarehouse = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value
+    
+    setFormData((prev) => {
+      const nextData = {
+        ...prev,
+        [name]: type === "checkbox" ? checked : value
+      };
+
+      // Auto-calculate TotalArea if width or length changes
+      if (name === "width" || name === "length") {
+        const w = parseFloat(nextData.width) || 0;
+        const l = parseFloat(nextData.length) || 0;
+        if (w > 0 && l > 0) {
+          nextData.totalArea = w * l;
+        }
+      }
+
+      return nextData;
     });
   };
 
@@ -123,9 +149,9 @@ const EditWarehouse = () => {
       lng: formData.lng ? parseFloat(formData.lng) : null,
       description: formData.description,
       is24HoursAccess: formData.is24HoursAccess,
-      openTime: formData.is24HoursAccess ? null : formData.openTime,
-      closeTime: formData.is24HoursAccess ? null : formData.closeTime,
-      operatingHours: formData.is24HoursAccess ? "24/7" : `${formData.openTime} - ${formData.closeTime}`,
+      openTime: formData.is24HoursAccess ? null : (formData.openTime || null),
+      closeTime: formData.is24HoursAccess ? null : (formData.closeTime || null),
+      operatingHours: formData.is24HoursAccess ? "24/7" : `${formData.openTime || "08:00"} - ${formData.closeTime || "18:00"}`,
       status: formData.status,
       mainDoorDirection: formData.legalStatus,
       totalArea: parseFloat(formData.totalArea) || 0,
@@ -134,8 +160,14 @@ const EditWarehouse = () => {
       pricePerM2: formData.pricePerM2 ? parseFloat(String(formData.pricePerM2).replace(/\./g, "")) : null
     };
 
-    await api.put(`/Warehouse/${id}`, payload);
-    navigate("/my-warehouses");
+    try {
+      await api.put(`/Warehouse/${id}`, payload);
+      alert("Cập nhật kho thành công!");
+      navigate("/my-warehouses");
+    } catch (err) {
+      const msg = err.response?.data?.message || "Cập nhật kho thất bại";
+      alert("Lỗi: " + msg);
+    }
   };
 
   const handleImageUpload = async (e) => {
@@ -329,15 +361,47 @@ const EditWarehouse = () => {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
                 <div style={groupStyle}>
                   <label style={labelStyle}>Chiều rộng (m)</label>
-                  <input name="width" type="number" value={formData.width} readOnly style={{ ...inputStyle, backgroundColor: "#f1f5f9" }} />
+                  <input 
+                    name="width" 
+                    type="number" 
+                    value={formData.width} 
+                    onChange={handleChange} 
+                    readOnly={!canEditDimensions}
+                    style={{ 
+                      ...inputStyle, 
+                      backgroundColor: !canEditDimensions ? "#f8fafc" : "#fff",
+                      cursor: !canEditDimensions ? "not-allowed" : "text",
+                      color: !canEditDimensions ? "#64748b" : "#1e293b"
+                    }} 
+                    placeholder="VD: 20"
+                  />
                 </div>
                 <div style={groupStyle}>
                   <label style={labelStyle}>Chiều dài (m)</label>
-                  <input name="length" type="number" value={formData.length} readOnly style={{ ...inputStyle, backgroundColor: "#f1f5f9" }} />
+                  <input 
+                    name="length" 
+                    type="number" 
+                    value={formData.length} 
+                    onChange={handleChange} 
+                    readOnly={!canEditDimensions}
+                    style={{ 
+                      ...inputStyle, 
+                      backgroundColor: !canEditDimensions ? "#f8fafc" : "#fff",
+                      cursor: !canEditDimensions ? "not-allowed" : "text",
+                      color: !canEditDimensions ? "#64748b" : "#1e293b"
+                    }} 
+                    placeholder="VD: 50"
+                  />
                 </div>
                 <div style={groupStyle}>
                   <label style={labelStyle}>Tổng diện tích (m²)</label>
-                  <input name="totalArea" type="number" value={formData.totalArea} readOnly style={{ ...inputStyle, backgroundColor: "#f1f5f9" }} />
+                  <input 
+                    name="totalArea" 
+                    type="number" 
+                    value={formData.totalArea} 
+                    readOnly 
+                    style={{ ...inputStyle, backgroundColor: "#f1f5f9", cursor: "not-allowed", fontWeight: 700 }} 
+                  />
                 </div>
               </div>
 
