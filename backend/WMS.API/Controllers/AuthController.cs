@@ -141,28 +141,6 @@ public class AuthController : ControllerBase
                 .Select(c => c.WarehouseId)
                 .ToHashSet();
 
-            var memberships = await _db.WarehouseMemberships
-                .Where(m => m.UserId == userId && m.IsActive)
-                .Include(m => m.Warehouse)
-                .Include(m => m.Role)
-                .Include(m => m.Skills)
-                .ToListAsync();
-
-            var warehouseItems = memberships
-                .Where(m =>
-                {
-                    var roleCode = (m.Role?.Code ?? "").ToUpper();
-                    return roleCode != "RENTER" || activeRenterWarehouseIds.Contains(m.WarehouseId);
-                })
-                .Select(m => new WarehouseContextItem
-                {
-                    warehouseId   = m.WarehouseId,
-                    warehouseName = m.Warehouse?.Name ?? "",
-                    role          = m.Role?.Code ?? "",
-                    skills        = m.Skills.Select(skill => skill.Code).ToList(),
-                    isAllSkill    = m.IsAllSkill,
-                })
-                .ToList();
 
             foreach (var contract in activeContracts)
             {

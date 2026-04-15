@@ -378,18 +378,22 @@ public class StaffMembershipRepository : IStaffMembershipRepository
         int userId,
         CancellationToken ct = default)
     {
-        return await _db.WarehouseMemberships
+        var rows = await _db.WarehouseMemberships
             .Where(m => m.UserId == userId && m.IsActive)
             .Include(m => m.Role)
             .Include(m => m.Warehouse)
+            .ToListAsync(ct);
+
+        return rows
+            .DistinctBy(m => m.WarehouseId)
             .Select(m => new MyWarehouseItemDto
             {
                 WarehouseId   = m.WarehouseId,
                 WarehouseName = m.Warehouse.Name,
-                RoleCode      = m.Role.Code,
+                RoleCode      = m.Role?.Code ?? "",
                 HasZone       = m.Warehouse.HasZone,
             })
-            .ToListAsync(ct);
+            .ToList();
     }
 
     // ── GetSkillsAsync ────────────────────────────────────────────────────────
