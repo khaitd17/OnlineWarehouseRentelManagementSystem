@@ -27,20 +27,10 @@ const WAREHOUSE_TYPES = [
   { value: 'ngoại quan', label: '🚢 Kho ngoại quan' },
 ];
 
-const AREA_OPTIONS = [
-  { label: '< 50 m²',    min: 0,   max: 50   },
-  { label: '< 100 m²',   min: 0,   max: 100  },
-  { label: '< 500 m²',   min: 0,   max: 500  },
-  { label: '< 1,000 m²', min: 0,   max: 1000 },
-];
-
-const PRICE_OPTIONS = [
-  { label: '< 50k',        max: 50000   },
-  { label: '50 – 100k',    min: 50000,  max: 100000 },
-  { label: '100 – 200k',   min: 100000, max: 200000 },
-  { label: '200 – 500k',   min: 200000, max: 500000 },
-  { label: '> 500k',       min: 500000  },
-];
+const AREA_MIN = 0;
+const AREA_MAX = 5000;
+const PRICE_MIN = 0;
+const PRICE_MAX = 500000;
 
 const RATING_OPTIONS = [
   { label: '⭐ ≥ 3 sao', value: 3 },
@@ -110,15 +100,15 @@ export default function SearchResultsPage() {
     : PROVINCES;
 
   const [warehouseType, setWarehouseType] = useState('');
-  const [areaIdx,       setAreaIdx]       = useState(null);
-  const [priceIdx,      setPriceIdx]      = useState(null);   // giá
+  const [areaRange,     setAreaRange]     = useState([AREA_MIN, AREA_MAX]);   // [min, max]
+  const [priceRange,    setPriceRange]    = useState([PRICE_MIN, PRICE_MAX]); // [min, max]
   const [is24Hours,     setIs24Hours]     = useState(false);  // 24/7
   const [minRating,     setMinRating]     = useState(null);   // rating
   const [sortBy,        setSortBy]        = useState('newest');
   const [page,          setPage]          = useState(1);
 
-  // Derived price range from preset
-  const priceFilter = priceIdx != null ? PRICE_OPTIONS[priceIdx] : {};
+  const areaActive  = areaRange[0]  !== AREA_MIN  || areaRange[1]  !== AREA_MAX;
+  const priceActive = priceRange[0] !== PRICE_MIN || priceRange[1] !== PRICE_MAX;
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -142,15 +132,14 @@ export default function SearchResultsPage() {
     setLoading(true);
     setError(null);
     try {
-      const areaFilter = areaIdx != null ? AREA_OPTIONS[areaIdx] : {};
       const data = await searchWarehouses({
         province:      provinceInput,
         district:      districtInput,
         warehouseType,
-        minArea:       areaFilter.min ?? undefined,
-        maxArea:       areaFilter.max ?? undefined,
-        minPrice:      priceFilter.min ?? undefined,
-        maxPrice:      priceFilter.max ?? undefined,
+        minArea:       areaRange[0]  > AREA_MIN  ? areaRange[0]  : undefined,
+        maxArea:       areaRange[1]  < AREA_MAX  ? areaRange[1]  : undefined,
+        minPrice:      priceRange[0] > PRICE_MIN ? priceRange[0] : undefined,
+        maxPrice:      priceRange[1] < PRICE_MAX ? priceRange[1] : undefined,
         is24Hours:     is24Hours || undefined,
         minRating:     minRating ?? undefined,
         sortBy,
@@ -166,7 +155,7 @@ export default function SearchResultsPage() {
     } finally {
       setLoading(false);
     }
-  }, [provinceInput, districtInput, warehouseType, areaIdx, priceIdx, is24Hours, minRating, sortBy, page]);
+  }, [provinceInput, districtInput, warehouseType, areaRange, priceRange, is24Hours, minRating, sortBy, page]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -176,8 +165,8 @@ export default function SearchResultsPage() {
     setProvinceInput('');
     setDistrictInput('');
     setWarehouseType('');
-    setAreaIdx(null);
-    setPriceIdx(null);
+    setAreaRange([AREA_MIN, AREA_MAX]);
+    setPriceRange([PRICE_MIN, PRICE_MAX]);
     setIs24Hours(false);
     setMinRating(null);
     setSortBy('newest');
@@ -191,8 +180,8 @@ export default function SearchResultsPage() {
     (provinceInput ? 1 : 0) +
     (districtInput ? 1 : 0) +
     (warehouseType ? 1 : 0) +
-    (areaIdx != null ? 1 : 0) +
-    (priceIdx != null ? 1 : 0) +
+    (areaActive  ? 1 : 0) +
+    (priceActive ? 1 : 0) +
     (is24Hours ? 1 : 0) +
     (minRating != null ? 1 : 0);
 
@@ -365,40 +354,36 @@ export default function SearchResultsPage() {
 
             {divider}
 
-            {/* 4. Diện tích trống cần thuê */}
+            {/* 4. Diện tích trống cần thuê — Range Slider */}
             <FilterSection icon="📐" title="Diện tích cần thuê (còn trống)">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                {AREA_OPTIONS.map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { setAreaIdx(areaIdx === i ? null : i); setPage(1); }}
-                    style={areaIdx === i ? chipActive : chipBase}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              <RangeSlider
+                min={AREA_MIN}
+                max={AREA_MAX}
+                step={10}
+                value={areaRange}
+                onChange={v => { setAreaRange(v); setPage(1); }}
+                formatValue={v => v >= AREA_MAX ? `${AREA_MAX.toLocaleString()}+ m²` : `${v.toLocaleString()} m²`}
+                color="#0095c7"
+              />
             </FilterSection>
 
             {divider}
 
-            {/* 5. Khoảng giá thuê */}
+            {/* 5. Khoảng giá thuê — Range Slider */}
             <FilterSection icon="💰" title="Giá thuê / m² / tháng">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {PRICE_OPTIONS.map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => { setPriceIdx(priceIdx === i ? null : i); setPage(1); }}
-                    style={{
-                      ...(priceIdx === i ? chipActive : chipBase),
-                      textAlign: 'left',
-                      padding: '8px 12px',
-                    }}
-                  >
-                    {opt.label} <span style={{ opacity: 0.6 }}>đ/m²</span>
-                  </button>
-                ))}
-              </div>
+              <RangeSlider
+                min={PRICE_MIN}
+                max={PRICE_MAX}
+                step={10000}
+                value={priceRange}
+                onChange={v => { setPriceRange(v); setPage(1); }}
+                formatValue={v => {
+                  if (v >= PRICE_MAX) return '500k+ đ';
+                  if (v >= 1000) return `${(v/1000).toFixed(0)}k đ`;
+                  return `${v} đ`;
+                }}
+                color="#0095c7"
+              />
             </FilterSection>
 
             {divider}
@@ -491,8 +476,8 @@ export default function SearchResultsPage() {
                   {provinceInput && <ActiveChip label={`📍 ${provinceInput}`} onRemove={() => { setProvinceInput(''); setPage(1); }} />}
                   {districtInput && <ActiveChip label={`🗺️ ${districtInput}`} onRemove={() => { setDistrictInput(''); setPage(1); }} />}
                   {warehouseType && <ActiveChip label={`🏭 ${WAREHOUSE_TYPES.find(t => t.value === warehouseType)?.label}`} onRemove={() => { setWarehouseType(''); setPage(1); }} />}
-                  {areaIdx != null && <ActiveChip label={`📐 ${AREA_OPTIONS[areaIdx].label}`} onRemove={() => { setAreaIdx(null); setPage(1); }} />}
-                  {priceIdx != null && <ActiveChip label={`💰 ${PRICE_OPTIONS[priceIdx].label} đ/m²`} onRemove={() => { setPriceIdx(null); setPage(1); }} />}
+                  {areaActive  && <ActiveChip label={`📐 ${areaRange[0].toLocaleString()}–${areaRange[1] >= AREA_MAX ? AREA_MAX.toLocaleString()+'+' : areaRange[1].toLocaleString()} m²`} onRemove={() => { setAreaRange([AREA_MIN, AREA_MAX]); setPage(1); }} />}
+                  {priceActive && <ActiveChip label={`💰 ${(priceRange[0]/1000).toFixed(0)}k–${priceRange[1] >= PRICE_MAX ? '500k+' : (priceRange[1]/1000).toFixed(0)+'k'} đ/m²`} onRemove={() => { setPriceRange([PRICE_MIN, PRICE_MAX]); setPage(1); }} />}
                   {is24Hours && <ActiveChip label="🕐 24/7" onRemove={() => { setIs24Hours(false); setPage(1); }} />}
                   {minRating != null && <ActiveChip label={`⭐ ≥ ${minRating} sao`} onRemove={() => { setMinRating(null); setPage(1); }} />}
                 </div>
@@ -640,6 +625,140 @@ function ActiveChip({ label, onRemove }) {
         padding: '0 0 0 2px', fontWeight: 700,
       }}>✕</button>
     </span>
+  );
+}
+
+/* ── Dual-handle Range Slider ────────────────────────────── */
+function RangeSlider({ min, max, step, value, onChange, formatValue, color = '#0095c7' }) {
+  const [dragging, setDragging] = useState(null); // 'min' | 'max' | null
+  const trackRef = useRef(null);
+
+  const pct = (v) => ((v - min) / (max - min)) * 100;
+
+  const clamp = (v) => Math.round(Math.max(min, Math.min(max, v)) / step) * step;
+
+  const getValueFromEvent = useCallback((e) => {
+    const rect = trackRef.current.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return clamp(min + ratio * (max - min));
+  }, [min, max, step]); // eslint-disable-line
+
+  const handleTrackClick = (e) => {
+    if (!trackRef.current) return;
+    const v = getValueFromEvent(e);
+    const distMin = Math.abs(v - value[0]);
+    const distMax = Math.abs(v - value[1]);
+    if (distMin <= distMax) {
+      onChange([Math.min(v, value[1]), value[1]]);
+    } else {
+      onChange([value[0], Math.max(v, value[0])]);
+    }
+  };
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e) => {
+      if (!trackRef.current) return;
+      const v = getValueFromEvent(e);
+      if (dragging === 'min') onChange([Math.min(v, value[1]), value[1]]);
+      else onChange([value[0], Math.max(v, value[0])]);
+    };
+    const onUp = () => setDragging(null);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+  }, [dragging, value, onChange, getValueFromEvent]);
+
+  const thumbStyle = (active) => ({
+    width: 18, height: 18, borderRadius: '50%',
+    background: active ? color : '#fff',
+    border: `2.5px solid ${color}`,
+    boxShadow: active
+      ? `0 0 0 4px ${color}25, 0 2px 8px rgba(0,0,0,0.18)`
+      : '0 2px 8px rgba(0,0,0,0.18)',
+    cursor: 'grab',
+    position: 'absolute',
+    top: '50%', transform: 'translate(-50%, -50%)',
+    zIndex: active ? 4 : 3,
+    transition: 'box-shadow 0.15s, background 0.15s',
+    userSelect: 'none', touchAction: 'none',
+  });
+
+  const lo = pct(value[0]);
+  const hi = pct(value[1]);
+
+  return (
+    <div style={{ padding: '4px 2px 8px' }}>
+      {/* Value labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+        <span style={{
+          fontSize: '0.78rem', fontWeight: 700,
+          color: value[0] > min ? color : '#94a3b8',
+          background: value[0] > min ? `${color}15` : '#f1f5f9',
+          border: `1px solid ${value[0] > min ? color+'40' : '#e2e8f0'}`,
+          borderRadius: 6, padding: '3px 8px',
+          transition: 'all 0.15s',
+        }}>
+          {formatValue(value[0])}
+        </span>
+        <span style={{
+          fontSize: '0.78rem', fontWeight: 700,
+          color: value[1] < max ? color : '#94a3b8',
+          background: value[1] < max ? `${color}15` : '#f1f5f9',
+          border: `1px solid ${value[1] < max ? color+'40' : '#e2e8f0'}`,
+          borderRadius: 6, padding: '3px 8px',
+          transition: 'all 0.15s',
+        }}>
+          {formatValue(value[1])}
+        </span>
+      </div>
+
+      {/* Track */}
+      <div
+        ref={trackRef}
+        onClick={handleTrackClick}
+        style={{
+          position: 'relative', height: 6, borderRadius: 3,
+          background: '#e2e8f0', cursor: 'pointer', margin: '10px 9px',
+        }}
+      >
+        {/* Filled range */}
+        <div style={{
+          position: 'absolute', top: 0, bottom: 0,
+          left: `${lo}%`, width: `${hi - lo}%`,
+          background: `linear-gradient(90deg, ${color}99, ${color})`,
+          borderRadius: 3, transition: dragging ? 'none' : 'all 0.05s',
+        }} />
+
+        {/* Min thumb */}
+        <div
+          style={{ ...thumbStyle(dragging === 'min'), left: `${lo}%` }}
+          onMouseDown={(e) => { e.preventDefault(); setDragging('min'); }}
+          onTouchStart={(e) => { e.preventDefault(); setDragging('min'); }}
+        />
+
+        {/* Max thumb */}
+        <div
+          style={{ ...thumbStyle(dragging === 'max'), left: `${hi}%` }}
+          onMouseDown={(e) => { e.preventDefault(); setDragging('max'); }}
+          onTouchStart={(e) => { e.preventDefault(); setDragging('max'); }}
+        />
+      </div>
+
+      {/* Min/Max labels */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, padding: '0 2px' }}>
+        <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{formatValue(min)}</span>
+        <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{formatValue(max)}</span>
+      </div>
+    </div>
   );
 }
 
