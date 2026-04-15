@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { searchWarehouses } from '../services/warehouseService';
 import favoritesService from '../services/favoritesService';
 
@@ -86,12 +86,19 @@ const FilterSection = ({ icon, title, children }) => (
 /* ── Main Component ─────────────────────────────────────── */
 export default function SearchResultsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showMobileFilter, setShowMobileFilter] = useState(false);
 
   /* ── Filter states ───────────────────────── */
-  const [provinceInput, setProvinceInput] = useState('');
+  const [provinceInput, setProvinceInput] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    return p.get('province') || '';
+  });
   const [showProvDrop,  setShowProvDrop]  = useState(false);
-  const [districtInput, setDistrictInput] = useState('');
+  const [districtInput, setDistrictInput] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    return p.get('district') || '';
+  });
   const provRef = useRef(null);
 
   const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -99,8 +106,24 @@ export default function SearchResultsPage() {
     ? PROVINCES.filter(p => norm(p).includes(norm(provinceInput)))
     : PROVINCES;
 
-  const [warehouseType, setWarehouseType] = useState('');
-  const [areaRange,     setAreaRange]     = useState([AREA_MIN, AREA_MAX]);   // [min, max]
+  const [warehouseType, setWarehouseType] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const cat = p.get('warehouseType');
+    if (!cat) return '';
+    const normText = cat.toLowerCase();
+    if (normText.includes('mát') || normText.includes('lạnh')) return 'lạnh';
+    if (normText.includes('chung')) return 'chung';
+    if (normText.includes('tự quản')) return 'tự quản';
+    if (normText.includes('xưởng')) return 'xưởng';
+    if (normText.includes('ngoại quan')) return 'ngoại quan';
+    return '';
+  });
+  const [areaRange,     setAreaRange]     = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const maxA = p.get('maxArea');
+    if (maxA && !isNaN(maxA)) return [AREA_MIN, parseInt(maxA, 10)];
+    return [AREA_MIN, AREA_MAX];
+  });   // [min, max]
   const [priceRange,    setPriceRange]    = useState([PRICE_MIN, PRICE_MAX]); // [min, max]
   const [is24Hours,     setIs24Hours]     = useState(false);  // 24/7
   const [minRating,     setMinRating]     = useState(null);   // rating

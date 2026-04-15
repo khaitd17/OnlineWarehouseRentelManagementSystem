@@ -13,9 +13,9 @@ const fmtDate = d => `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;
 const fmtDT   = s => { if (!s) return ''; const d = new Date(s); return `${pad(d.getHours())}:${pad(d.getMinutes())} ${d.getDate()}/${pad(d.getMonth()+1)}`; };
 
 const DAY_NAMES  = ['CN','Th 2','Th 3','Th 4','Th 5','Th 6','Th 7'];
-const MONTH_NAMES = ['Thang 1','Thang 2','Thang 3','Thang 4','Thang 5','Thang 6',
-                     'Thang 7','Thang 8','Thang 9','Thang 10','Thang 11','Thang 12'];
-const SHIFT_TYPE_LABEL = { NC:'Nghi ca', NP:'Nghi phep', OFF:'Ngay off' };
+const MONTH_NAMES = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
+                     'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
+const SHIFT_TYPE_LABEL = { NC:'Nghỉ ca', NP:'Nghỉ phép', OFF:'Ngày off' };
 const STATUS_STYLE = {
   Pending:    { bg:'#fef9c3', color:'#a16207' },
   InProgress: { bg:'#dbeafe', color:'#1d4ed8' },
@@ -49,7 +49,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
   };
 
   const handleSubmit = async (type) => {
-    if (!file) { setErr('Vui long chon anh truoc khi diem danh.'); return; }
+    if (!file) { setErr('Vui lòng chọn ảnh trước khi điểm danh.'); return; }
     setSubmit(true); setErr('');
     try {
       if (type === 'in')  await attendanceService.checkIn(slot.staffShiftId, file);
@@ -57,7 +57,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
       onRefresh();
       onClose();
     } catch (e) {
-      setErr(e?.response?.data?.message || 'Co loi xay ra.');
+      setErr(e?.response?.data?.message || 'Có lỗi xảy ra.');
     } finally { setSubmit(false); }
   };
 
@@ -85,7 +85,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
     ? (SHIFT_TYPE_LABEL[slot.shiftType] || slot.shiftType)
     : slot.timeIn1
       ? `${slot.timeIn1} - ${slot.timeOut1}`
-      : 'Chua co ca';
+      : 'Chưa có ca';
 
   return (
     <div style={overlay} onClick={onClose}>
@@ -111,7 +111,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
         {/* Ngay nghi */}
         {isOffDay && (
           <div style={{ padding:'14px', background:'#f1f5f9', borderRadius:9, color:'#64748b', fontSize:'0.88rem' }}>
-            Hom nay la ngay nghi, khong can diem danh.
+            Hôm nay là ngày nghỉ, không cần điểm danh.
           </div>
         )}
 
@@ -121,7 +121,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
             <Info label="Check-in" time={slot.checkInAt} photo={slot.checkInPhoto} />
             <Info label="Check-out" time={slot.checkOutAt} photo={slot.checkOutPhoto} />
             {!hasCheckIn && !hasCheckOut && (
-              <div style={{ color:'#94a3b8', fontSize:'0.82rem', marginTop:8 }}>Chua co du lieu diem danh.</div>
+              <div style={{ color:'#94a3b8', fontSize:'0.82rem', marginTop:8 }}>Chưa có dữ liệu điểm danh.</div>
             )}
           </div>
         )}
@@ -135,7 +135,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
             {/* Upload khu vuc */}
             {(!hasCheckIn || !hasCheckOut) && (
               <div style={{ marginTop:16 }}>
-                <label style={{ fontSize:'0.8rem', fontWeight:700, color:'#374151' }}>Chon anh bằng chứng</label>
+                <label style={{ fontSize:'0.8rem', fontWeight:700, color:'#374151' }}>Chọn ảnh bằng chứng</label>
                 <div
                   style={{ marginTop:6, border:'2px dashed #cbd5e1', borderRadius:9, padding:12,
                     textAlign:'center', cursor:'pointer', background: preview?'transparent':'#f8fafc' }}
@@ -143,7 +143,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
                 >
                   {preview
                     ? <img src={preview} alt="preview" style={{ maxHeight:160, borderRadius:7, maxWidth:'100%' }} />
-                    : <span style={{ color:'#94a3b8', fontSize:'0.82rem' }}>Nhan de chon anh</span>}
+                    : <span style={{ color:'#94a3b8', fontSize:'0.82rem' }}>Nhấn để chọn ảnh</span>}
                 </div>
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleFile} />
               </div>
@@ -157,7 +157,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
                 disabled={submitting}
                 onClick={() => handleSubmit('in')}
               >
-                {submitting ? 'Dang gui...' : 'Diem danh vao ca'}
+                {submitting ? 'Đang gửi...' : 'Điểm danh vào ca'}
               </button>
             )}
             {!hasCheckOut && (
@@ -166,7 +166,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
                 disabled={submitting}
                 onClick={() => handleSubmit('out')}
               >
-                {submitting ? 'Dang gui...' : 'Diem danh ra ca'}
+                {submitting ? 'Đang gửi...' : 'Điểm danh ra ca'}
               </button>
             )}
           </div>
@@ -175,7 +175,7 @@ function AttendanceModal({ slot, dateKey, warehouseId, onClose, onRefresh }) {
         {/* Ngay tuong lai */}
         {!isOffDay && !isPast && !isToday && (
           <div style={{ padding:'14px', background:'#f0f9ff', borderRadius:9, color:'#0369a1', fontSize:'0.88rem' }}>
-            Ca chua bat dau. Diem danh se kha dung vao ngay {dateKey}.
+            Ca chưa bắt đầu. Điểm danh sẽ khả dụng vào ngày {dateKey}.
           </div>
         )}
       </div>
@@ -198,7 +198,7 @@ function Info({ label, time, photo }) {
             style={{ fontSize:'0.72rem', color:'#3b82f6', cursor:'pointer', textDecoration:'underline' }}
             onClick={() => setOpen(o => !o)}
           >
-            {open ? 'An anh' : 'Xem anh'}
+            {open ? 'Ẩn ảnh' : 'Xem ảnh'}
           </span>
         )}
       </div>
@@ -221,7 +221,7 @@ function AttendanceBadge({ slot }) {
       {hasIn && (
         <div style={{ fontSize:'0.68rem', color:'#065f46', background:'#d1fae5',
           borderRadius:4, padding:'1px 6px', display:'inline-flex', alignItems:'center', gap:3, width:'fit-content' }}>
-          <span style={{ fontWeight:700 }}>Vao:</span> {fmtDT(slot.checkInAt).split(' ')[0]}
+          <span style={{ fontWeight:700 }}>Vào:</span> {fmtDT(slot.checkInAt).split(' ')[0]}
         </div>
       )}
       {hasOut && (
@@ -230,7 +230,7 @@ function AttendanceBadge({ slot }) {
           background: slot.isEarlyLeave ? '#fef3c7' : '#dbeafe',
           borderRadius:4, padding:'1px 6px', display:'inline-flex', alignItems:'center', gap:3, width:'fit-content' }}>
           <span style={{ fontWeight:700 }}>Ra:</span> {fmtDT(slot.checkOutAt).split(' ')[0]}
-          {slot.isEarlyLeave && <span style={{ fontWeight:700 }}>(Som)</span>}
+          {slot.isEarlyLeave && <span style={{ fontWeight:700 }}>(Sớm)</span>}
         </div>
       )}
     </div>
@@ -246,9 +246,9 @@ function WeekTable({ monday, shifts, onRowClick }) {
     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.85rem' }}>
       <thead>
         <tr style={{ background:'#1e293b' }}>
-          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem', width:110 }}>Ngay</th>
-          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.78rem', width:170 }}>Ca lam</th>
-          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem' }}>Cong viec</th>
+          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem', width:110 }}>Ngày</th>
+          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.78rem', width:170 }}>Ca làm</th>
+          <th style={{ padding:'10px 14px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.78rem' }}>Công việc</th>
         </tr>
       </thead>
       <tbody>
@@ -278,7 +278,7 @@ function WeekTable({ monday, shifts, onRowClick }) {
                   {isToday && (
                     <span style={{ marginLeft:5, background:'#3b82f6', color:'#fff',
                       fontSize:'0.62rem', padding:'1px 5px', borderRadius:4, fontWeight:700 }}>
-                      Hom nay
+                      Hôm nay
                     </span>
                   )}
                 </div>
@@ -309,7 +309,7 @@ function WeekTable({ monday, shifts, onRowClick }) {
                       </div>
                     )}
                     {!slot.timeIn1 && (
-                      <span style={{ color:'#94a3b8', fontSize:'0.75rem' }}>Co ca</span>
+                      <span style={{ color:'#94a3b8', fontSize:'0.75rem' }}>Có ca</span>
                     )}
                     <AttendanceBadge slot={slot} />
                   </div>
@@ -367,10 +367,10 @@ function MonthTable({ year, month, shifts, onRowClick }) {
     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.83rem' }}>
       <thead>
         <tr style={{ background:'#1e293b' }}>
-          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Ngay</th>
-          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Thu</th>
-          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Ca lam</th>
-          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Diem danh</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Ngày</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'left', fontWeight:700, fontSize:'0.75rem' }}>Thứ</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Ca làm</th>
+          <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Điểm danh</th>
           <th style={{ padding:'9px 12px', color:'#fff', textAlign:'center', fontWeight:700, fontSize:'0.75rem' }}>Task</th>
         </tr>
       </thead>
@@ -394,7 +394,7 @@ function MonthTable({ year, month, shifts, onRowClick }) {
                 color: isToday?'#3b82f6':isWeekend?'#dc2626':'#0f172a', width:60 }}>
                 {d}/{pad(month+1)}
                 {isToday && <span style={{ marginLeft:4, fontSize:'0.62rem', background:'#3b82f6', color:'#fff',
-                  padding:'1px 4px', borderRadius:3 }}>Hom nay</span>}
+                  padding:'1px 4px', borderRadius:3 }}>Hôm nay</span>}
               </td>
               <td style={{ padding:'8px 12px', color: isWeekend?'#dc2626':'#64748b', width:60, fontSize:'0.75rem' }}>
                 {DAY_NAMES[date.getDay()]}
@@ -414,12 +414,12 @@ function MonthTable({ year, month, shifts, onRowClick }) {
                 {hasIn || hasOut ? (
                   <div style={{ display:'inline-flex', gap:4, flexDirection:'column', alignItems:'center' }}>
                     {hasIn && <span style={{ fontSize:'0.68rem', background:'#d1fae5', color:'#065f46',
-                      borderRadius:4, padding:'1px 6px', fontWeight:700 }}>Vao {fmtDT(slot.checkInAt).split(' ')[0]}</span>}
+                      borderRadius:4, padding:'1px 6px', fontWeight:700 }}>Vào {fmtDT(slot.checkInAt).split(' ')[0]}</span>}
                     {hasOut && <span style={{ fontSize:'0.68rem',
                       background: slot.isEarlyLeave?'#fef3c7':'#dbeafe',
                       color: slot.isEarlyLeave?'#b45309':'#1d4ed8',
                       borderRadius:4, padding:'1px 6px', fontWeight:700 }}>
-                      Ra {fmtDT(slot.checkOutAt).split(' ')[0]}{slot.isEarlyLeave?' (Som)':''}
+                      Ra {fmtDT(slot.checkOutAt).split(' ')[0]}{slot.isEarlyLeave?' (Sớm)':''}
                     </span>}
                   </div>
                 ) : <span style={{ color:'#e2e8f0' }}>--</span>}
@@ -497,7 +497,7 @@ export default function MySchedulePage() {
       });
       setSchedule({ ...shiftData, shifts: merged });
     } catch(e) {
-      setError(e?.response?.data?.message || 'Khong the tai lich.');
+      setError(e?.response?.data?.message || 'Không thể tải lịch.');
     } finally { setLoading(false); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [warehouseId, from, to, viewMode]);
@@ -510,8 +510,8 @@ export default function MySchedulePage() {
   };
   const closeModal = () => { setModalKey(null); setModalSlot(null); };
 
-  if (loadingWh) return <div style={{ padding:40, textAlign:'center', color:'#94a3b8', fontFamily:'Inter,sans-serif' }}>Dang tai...</div>;
-  if (warehouses.length === 0) return <div style={{ padding:40, textAlign:'center', color:'#94a3b8', fontFamily:'Inter,sans-serif' }}>Ban chua duoc them vao kho nao.</div>;
+  if (loadingWh) return <div style={{ padding:40, textAlign:'center', color:'#94a3b8', fontFamily:'Inter,sans-serif' }}>Đang tải...</div>;
+  if (warehouses.length === 0) return <div style={{ padding:40, textAlign:'center', color:'#94a3b8', fontFamily:'Inter,sans-serif' }}>Bạn chưa được thêm vào kho nào.</div>;
 
   const hasData    = schedule && Object.keys(schedule.shifts||{}).length > 0;
   const periodLabel = viewMode === 'week'
@@ -532,7 +532,7 @@ export default function MySchedulePage() {
       {/* Header */}
       <div style={{ marginBottom:16, display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:10 }}>
         <div>
-          <h2 style={{ margin:0, fontSize:'1.25rem', fontWeight:800 }}>Lich lam viec cua toi</h2>
+          <h2 style={{ margin:0, fontSize:'1.25rem', fontWeight:800 }}>Lịch làm việc của tôi</h2>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:5, flexWrap:'wrap' }}>
             {schedule?.fullName && <span style={{ fontSize:'0.82rem', color:'#64748b' }}>{schedule.fullName}</span>}
             {schedule?.roleCode && (
@@ -552,8 +552,8 @@ export default function MySchedulePage() {
           </div>
         </div>
         <div style={{ display:'flex', gap:6 }}>
-          <button style={btnStyle(viewMode==='week')}  onClick={() => setViewMode('week')}>Tuan</button>
-          <button style={btnStyle(viewMode==='month')} onClick={() => setViewMode('month')}>Thang</button>
+          <button style={btnStyle(viewMode==='week')}  onClick={() => setViewMode('week')}>Tuần</button>
+          <button style={btnStyle(viewMode==='month')} onClick={() => setViewMode('month')}>Tháng</button>
         </div>
       </div>
 
@@ -564,22 +564,22 @@ export default function MySchedulePage() {
           <button style={btnStyle(false)} onClick={() => {
             if (viewMode==='week') setCurrentDate(d => add(d,-7));
             else setCurrentDate(d => new Date(d.getFullYear(), d.getMonth()-1, 1));
-          }}>Truoc</button>
+          }}>Trước</button>
           <button style={btnStyle(false)} onClick={() => {
             if (viewMode==='week') setCurrentDate(d => add(d,7));
             else setCurrentDate(d => new Date(d.getFullYear(), d.getMonth()+1, 1));
           }}>Sau</button>
-          <button style={btnStyle(false)} onClick={() => setCurrentDate(new Date())}>Hom nay</button>
+          <button style={btnStyle(false)} onClick={() => setCurrentDate(new Date())}>Hôm nay</button>
         </div>
         <span style={{ fontWeight:700, fontSize:'0.93rem' }}>{periodLabel}</span>
-        <button style={btnStyle(false)} onClick={fetchAll}>Lam moi</button>
+        <button style={btnStyle(false)} onClick={fetchAll}>Làm mới</button>
       </div>
 
       {/* Table */}
       <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:10,
         overflow:'hidden', boxShadow:'0 1px 3px rgba(0,0,0,.05)' }}>
         {loading ? (
-          <div style={{ padding:60, textAlign:'center', color:'#94a3b8' }}>Dang tai lich...</div>
+          <div style={{ padding:60, textAlign:'center', color:'#94a3b8' }}>Đang tải lịch...</div>
         ) : error ? (
           <div style={{ padding:20, color:'#dc2626', background:'#fef2f2', fontSize:'0.88rem' }}>{error}</div>
         ) : (
@@ -594,7 +594,7 @@ export default function MySchedulePage() {
         {!loading && !error && !hasData && viewMode === 'week' && (
           <div style={{ padding:'14px 18px', background:'#fffbeb', borderTop:'1px solid #fde68a',
             color:'#92400e', fontSize:'0.82rem', textAlign:'center' }}>
-            Chua co ca lam viec trong tuan nay. Lien he quan ly de duoc sap xep lich.
+            Chưa có ca làm việc trong tuần này. Liên hệ quản lý để được sắp xếp lịch.
           </div>
         )}
       </div>
@@ -604,7 +604,7 @@ export default function MySchedulePage() {
         <div style={{ marginTop:14, display:'flex', gap:12, flexWrap:'wrap' }}>
           {schedule.skills?.length > 0 && (
             <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:9, padding:'10px 14px', flex:1, minWidth:140 }}>
-              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KY NANG</div>
+              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KỸ NĂNG</div>
               <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                 {schedule.skills.map((s,i) => <span key={i} style={{ background:'#dbeafe', color:'#1d4ed8', padding:'2px 8px', borderRadius:4, fontSize:'0.72rem', fontWeight:600 }}>{s}</span>)}
               </div>
@@ -612,7 +612,7 @@ export default function MySchedulePage() {
           )}
           {schedule.zones?.length > 0 && (
             <div style={{ background:'#fff', border:'1px solid #e2e8f0', borderRadius:9, padding:'10px 14px', flex:1, minWidth:140 }}>
-              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KHU VUC</div>
+              <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', marginBottom:6 }}>KHU VỰC</div>
               <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
                 {schedule.zones.map((z,i) => <span key={i} style={{ background:'#d1fae5', color:'#065f46', padding:'2px 8px', borderRadius:4, fontSize:'0.72rem', fontWeight:600 }}>{z}</span>)}
               </div>
