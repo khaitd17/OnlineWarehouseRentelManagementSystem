@@ -112,11 +112,13 @@ const ROLE_PRIORITY = ["OWNER", "OPERATOR", "MANAGER", "STAFF", "RENTER"];
 function resolveEffectiveRole(systemRole, warehouses) {
   if (systemRole === "admin") return "ADMIN";
   const warehouseRoles = (warehouses || []).map(w => (w.role || "").toUpperCase());
+  const normalizedSystemRole = (systemRole || "").toUpperCase();
   for (const r of ROLE_PRIORITY) {
     if (warehouseRoles.includes(r)) return r;
   }
-  const sr = (systemRole || "").toUpperCase();
-  if (MENU_BY_ROLE[sr]) return sr;
+  // User with system role RENTER but no renter warehouse should fall back to normal USER.
+  if (normalizedSystemRole === "RENTER" && !warehouseRoles.includes("RENTER")) return "USER";
+  if (MENU_BY_ROLE[normalizedSystemRole]) return normalizedSystemRole;
   return "USER";
 }
 

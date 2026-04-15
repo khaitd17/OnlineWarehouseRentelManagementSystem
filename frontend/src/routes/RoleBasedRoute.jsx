@@ -1,21 +1,46 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import authService from "../services/authService";
 
 function RoleBasedRoute({ allowedRoles }) {
   const token = localStorage.getItem("token");
+  const [contextVersion, setContextVersion] = useState(0);
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const warehouseContext = JSON.parse(localStorage.getItem("warehouseContext") || "{}");
+
+  useEffect(() => {
+    let isMounted = true;
+    const syncContext = async () => {
+      if (!token) return;
+      await authService.refreshWarehouseContext();
+      if (isMounted) {
+        setContextVersion(v => v + 1);
+        window.dispatchEvent(new Event("authChange"));
+      }
+    };
+    syncContext();
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
 
   if (!token) {
     return <Navigate to="/auth" />;
   }
 
   // Build set of effective roles: system role + all warehouse roles
-  const systemRole = (user.role || user.roleName || "").toUpperCase();
+  const systemRole = (warehouseContext?.systemRole || user.role || user.roleName || "").toUpperCase();
   const warehouseRoles = (warehouseContext?.warehouses || []).map(w => (w.role || "").toUpperCase());
-  const effectiveRoles = new Set([systemRole, ...warehouseRoles].filter(Boolean));
+  const effectiveRoles = new Set(warehouseRoles.filter(Boolean));
+  if (systemRole === "ADMIN") {
+    effectiveRoles.add("ADMIN");
+  } else if (systemRole && systemRole !== "RENTER") {
+    effectiveRoles.add(systemRole);
+  }
 
   const hasAccess = !allowedRoles || allowedRoles.length === 0 ||
     allowedRoles.some(r => effectiveRoles.has(r.toUpperCase()));
+  void contextVersion;
 
   if (!hasAccess) {
     // Redirect to the most appropriate dashboard

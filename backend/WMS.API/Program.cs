@@ -1,5 +1,6 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -217,12 +218,42 @@ using (var scope = app.Services.CreateScope())
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_by') ALTER TABLE contracts ADD termination_requested_by nvarchar(50) NULL;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminatedAt') ALTER TABLE rental_contracts ADD TerminatedAt datetime2 NULL;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminationReason') ALTER TABLE rental_contracts ADD TerminationReason nvarchar(max) NULL;",
+            "IF OBJECT_ID('subscriptions', 'U') IS NULL BEGIN CREATE TABLE subscriptions (subscription_id int IDENTITY(1,1) NOT NULL PRIMARY KEY, user_id int NOT NULL, [plan] nvarchar(50) NOT NULL, [status] nvarchar(50) NOT NULL CONSTRAINT DF_subscriptions_status DEFAULT N'Pending', start_date datetime2 NULL, end_date datetime2 NULL, transaction_reference nvarchar(100) NULL, CONSTRAINT FK_subscriptions_users FOREIGN KEY (user_id) REFERENCES users(user_id)); END;",
             "IF OBJECT_ID('subscription_packages', 'U') IS NULL BEGIN CREATE TABLE subscription_packages (package_id int IDENTITY(1,1) NOT NULL PRIMARY KEY, name nvarchar(100) NOT NULL, price decimal(15,2) NOT NULL, description nvarchar(max) NULL, duration_months int NOT NULL CONSTRAINT DF_subscription_packages_duration_months DEFAULT 1, is_active bit NOT NULL CONSTRAINT DF_subscription_packages_is_active DEFAULT 1, created_at datetime2 NOT NULL CONSTRAINT DF_subscription_packages_created_at DEFAULT (getdate()), updated_at datetime2 NOT NULL CONSTRAINT DF_subscription_packages_updated_at DEFAULT (getdate())); END;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('task_types') AND name = 'is_manual') ALTER TABLE task_types ADD is_manual bit NOT NULL CONSTRAINT DF_task_types_is_manual DEFAULT 0;",
         };
         foreach (var sql in patchSqls)
         {
             context.Database.ExecuteSqlRaw(sql);
+        }
+
+        // Emergency schema safeguard: if patch execution is skipped/failed mid-way, ensure subscriptions still exists.
+        var connString = builder.Configuration.GetConnectionString("DefaultConnection");
+        if (!string.IsNullOrWhiteSpace(connString))
+        {
+            using var conn = new SqlConnection(connString);
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+IF OBJECT_ID(N'dbo.subscriptions', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.subscriptions (
+        subscription_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        user_id INT NOT NULL,
+        [plan] NVARCHAR(50) NOT NULL,
+        [status] NVARCHAR(50) NOT NULL CONSTRAINT DF_subscriptions_status DEFAULT N'Pending',
+        start_date DATETIME2 NULL,
+        end_date DATETIME2 NULL,
+        transaction_reference NVARCHAR(100) NULL
+    );
+
+    IF OBJECT_ID(N'dbo.users', N'U') IS NOT NULL
+    BEGIN
+        ALTER TABLE dbo.subscriptions
+        ADD CONSTRAINT FK_subscriptions_users FOREIGN KEY (user_id) REFERENCES dbo.users(user_id);
+    END
+END;";
+            cmd.ExecuteNonQuery();
         }
 
         logger.LogInformation("Database migrations applied successfully.");
