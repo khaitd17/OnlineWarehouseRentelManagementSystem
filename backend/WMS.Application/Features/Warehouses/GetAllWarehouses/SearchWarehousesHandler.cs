@@ -45,7 +45,7 @@ public class SearchWarehousesHandler
             && request.WarehouseType != "all")
         {
             query = query.Where(w =>
-                (w.WarehouseType?.Equals(request.WarehouseType, StringComparison.OrdinalIgnoreCase) == true));
+                (w.WarehouseType != null && w.WarehouseType.Contains(request.WarehouseType, StringComparison.OrdinalIgnoreCase)));
         }
 
         // ── 5. Lọc theo Diện tích (fix: dùng AvailableArea thay TotalArea) ──
