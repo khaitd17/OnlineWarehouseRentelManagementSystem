@@ -146,11 +146,25 @@ public class AuthController : ControllerBase
                 .Include(m => m.Skills)
                 .ToListAsync();
 
+            // Include warehouses where the user has an active/pending rental contract (RENTER role)
+            var activeContracts = await _db.Contracts
+                .Where(c => c.RenterId == userId &&
+                           (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT"))
+                .Include(c => c.Warehouse)
+                .ToListAsync();
+
+            var activeRenterWarehouseIds = activeContracts.Select(c => c.WarehouseId).ToHashSet();
+
+            // Lọc ra các membership RENTER nhưng không còn hợp đồng active
+            var filteredMemberships = memberships.Where(m => 
+                (m.Role?.Code ?? "").ToUpper() != "RENTER" || activeRenterWarehouseIds.Contains(m.WarehouseId)
+            ).ToList();
+
             // Gom nhóm theo warehouseId — khi user có OWNER + OPERATOR trong cùng 1 kho
             // → 'role' = role cao nhất (để hiển thị), 'roles' = tất cả role codes (để check quyền)
             var rolePriority = new[] { "OWNER", "OPERATOR", "MANAGER", "STAFF", "RENTER" };
 
-            var warehouseItems = memberships
+            var warehouseItems = filteredMemberships
                 .GroupBy(m => m.WarehouseId)
                 .Select(g =>
                 {
@@ -168,7 +182,7 @@ public class AuthController : ControllerBase
                         .OrderBy(c => Array.IndexOf(rolePriority, c)) // sắp xếp theo priority
                         .ToList();
 
-                    // Merge skills từ tất cả memberships (OPERATOR có thể có skill mà OWNER không có)
+                    // Merge skills từ tất cả memberships
                     var mergedSkills = g
                         .SelectMany(m => m.Skills.Select(s => s.Code))
                         .Distinct()
@@ -188,51 +202,9 @@ public class AuthController : ControllerBase
                     };
                 }).ToList();
 
-            // Include warehouses where the user has an active/pending rental contract (RENTER role)
-            // Only add RENTER role if user has active contracts
-            // Exclude terminated and cancelled contracts
-            var activeContracts = await _db.Contracts
-                .Where(c => c.RenterId == userId &&
-                           (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT") &&
-                           c.Status != "TERMINATED" &&
-                           c.Status != "CANCELLED_BY_USER" &&
-                           c.Status != "CLOSED" &&
-                           c.Status != "COMPLETED" &&
-                           c.Status != "CANCELLED" &&
-                           c.Status != "CANCELLED_BY_OWNER")
-                .Include(c => c.Warehouse)
-                .ToListAsync();
-
-            var activeRenterWarehouseIds = activeContracts
-                .Select(c => c.WarehouseId)
-                .ToHashSet();
-
-            var memberships = await _db.WarehouseMemberships
-                .Where(m => m.UserId == userId && m.IsActive)
-                .Include(m => m.Warehouse)
-                .Include(m => m.Role)
-                .Include(m => m.Skills)
-                .ToListAsync();
-
-            var warehouseItems = memberships
-                .Where(m =>
-                {
-                    var roleCode = (m.Role?.Code ?? "").ToUpper();
-                    return roleCode != "RENTER" || activeRenterWarehouseIds.Contains(m.WarehouseId);
-                })
-                .Select(m => new WarehouseContextItem
-                {
-                    warehouseId   = m.WarehouseId,
-                    warehouseName = m.Warehouse?.Name ?? "",
-                    role          = m.Role?.Code ?? "",
-                    skills        = m.Skills.Select(skill => skill.Code).ToList(),
-                    isAllSkill    = m.IsAllSkill,
-                })
-                .ToList();
-
+            // Thêm các kho chỉ có Contract RENTER mà không có Membership (nếu có trường hợp này)
             foreach (var contract in activeContracts)
             {
-                // Bỏ qua nếu đã có entry cho kho này từ memberships
                 if (!warehouseItems.Any(w => w.warehouseId == contract.WarehouseId))
                 {
                     warehouseItems.Add(new WarehouseContextItem
@@ -240,6 +212,7 @@ public class AuthController : ControllerBase
                         warehouseId   = contract.WarehouseId,
                         warehouseName = contract.Warehouse?.Name ?? "",
                         role          = "RENTER",
+                        roles         = new List<string> { "RENTER" },
                         skills        = new List<string>(),
                         isAllSkill    = false
                     });
