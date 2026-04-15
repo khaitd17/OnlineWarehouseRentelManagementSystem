@@ -36,13 +36,19 @@ public class WarehouseController : ControllerBase
 
         command.OwnerId = int.Parse(userId);
 
-        var id = await _mediator.Send(command);
-
-        return Ok(new
+        try
         {
-            message = "Warehouse created successfully",
-            warehouseId = id
-        });
+            var id = await _mediator.Send(command);
+            return Ok(new
+            {
+                message = "Warehouse created successfully",
+                warehouseId = id
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("approved")]
@@ -150,9 +156,16 @@ public class WarehouseController : ControllerBase
     [HttpPatch("{id}/submit")]
     public async Task<IActionResult> SubmitWarehouse(int id)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
         await _mediator.Send(new SubmitWarehouseCommand
         {
-            WarehouseId = id
+            WarehouseId = id,
+            RequestUserId = int.Parse(userId)
         });
 
         return Ok(new

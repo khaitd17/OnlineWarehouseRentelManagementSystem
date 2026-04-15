@@ -26,6 +26,24 @@ axiosClient.interceptors.response.use(
             // Redirect to login page
             window.location.href = "/auth";
         }
+        
+        if (error.response?.status === 400 || error.response?.status === 500) {
+            const message = error.response.data?.message || error.response.data || "";
+            const msgStr = typeof message === 'string' ? message : JSON.stringify(message);
+            
+            if (msgStr.includes("giới hạn") || msgStr.includes("gói") || msgStr.includes("hết hạn") || msgStr.includes("nâng cấp")) {
+                import('antd').then(({ Modal }) => {
+                    Modal.warning({
+                        title: 'Giới hạn Gói dịch vụ',
+                        content: msgStr,
+                        okText: 'Nâng cấp ngay',
+                        cancelText: 'Bỏ qua',
+                        showCancel: true,
+                        onOk: () => { window.location.href = '/subscription'; }
+                    });
+                });
+            }
+        }
         return Promise.reject(error);
     }
 );

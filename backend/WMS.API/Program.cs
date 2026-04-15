@@ -119,6 +119,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
 builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<ISepayService, SepayService>();
+builder.Services.AddScoped<ISubscriptionService, WMS.Infrastructure.Services.SubscriptionService>();
 
 // SignalR
 builder.Services.AddSignalR();
@@ -145,6 +146,7 @@ builder.Services.Configure<WMS.Infrastructure.Services.SepaySettings>(builder.Co
 // Background job classes
 builder.Services.AddScoped<ContractNotificationJob>();
 builder.Services.AddScoped<ContractExpiryJob>();
+builder.Services.AddScoped<SubscriptionExpiryJob>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -221,7 +223,16 @@ using (var scope = app.Services.CreateScope())
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminationReason') ALTER TABLE rental_contracts ADD TerminationReason nvarchar(max) NULL;",
             "IF OBJECT_ID('subscriptions', 'U') IS NULL BEGIN CREATE TABLE subscriptions (subscription_id int IDENTITY(1,1) NOT NULL PRIMARY KEY, user_id int NOT NULL, [plan] nvarchar(50) NOT NULL, [status] nvarchar(50) NOT NULL CONSTRAINT DF_subscriptions_status DEFAULT N'Pending', start_date datetime2 NULL, end_date datetime2 NULL, transaction_reference nvarchar(100) NULL, CONSTRAINT FK_subscriptions_users FOREIGN KEY (user_id) REFERENCES users(user_id)); END;",
             "IF OBJECT_ID('subscription_packages', 'U') IS NULL BEGIN CREATE TABLE subscription_packages (package_id int IDENTITY(1,1) NOT NULL PRIMARY KEY, name nvarchar(100) NOT NULL, price decimal(15,2) NOT NULL, description nvarchar(max) NULL, duration_months int NOT NULL CONSTRAINT DF_subscription_packages_duration_months DEFAULT 1, is_active bit NOT NULL CONSTRAINT DF_subscription_packages_is_active DEFAULT 1, created_at datetime2 NOT NULL CONSTRAINT DF_subscription_packages_created_at DEFAULT (getdate()), updated_at datetime2 NOT NULL CONSTRAINT DF_subscription_packages_updated_at DEFAULT (getdate())); END;",
+            // Patch: thêm cột giới hạn cho subscription_packages (nếu bảng đã tồn tại nhưng thiếu cột)
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_warehouses') ALTER TABLE subscription_packages ADD max_warehouses int NOT NULL DEFAULT 1;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_staff_per_warehouse') ALTER TABLE subscription_packages ADD max_staff_per_warehouse int NOT NULL DEFAULT 5;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_zones_per_warehouse') ALTER TABLE subscription_packages ADD max_zones_per_warehouse int NOT NULL DEFAULT 3;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_total_area') ALTER TABLE subscription_packages ADD max_total_area decimal(18,2) NOT NULL DEFAULT 500;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'allow_equipment_management') ALTER TABLE subscription_packages ADD allow_equipment_management bit NOT NULL DEFAULT 0;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('task_types') AND name = 'is_manual') ALTER TABLE task_types ADD is_manual bit NOT NULL CONSTRAINT DF_task_types_is_manual DEFAULT 0;",
+            // Patch: Cập nhật dữ liệu chuẩn cho các gói (Basic vs Premium)
+            "UPDATE subscription_packages SET max_warehouses = 1, max_staff_per_warehouse = 5, max_zones_per_warehouse = 3, max_total_area = 500, allow_equipment_management = 0 WHERE name = 'Basic';",
+            "UPDATE subscription_packages SET max_warehouses = 5, max_staff_per_warehouse = 50, max_zones_per_warehouse = 10, max_total_area = 5000, allow_equipment_management = 1 WHERE name = 'Premium';",
         };
         foreach (var sql in patchSqls)
         {
@@ -332,5 +343,12 @@ RecurringJob.AddOrUpdate<ContractNotificationJob>(
 //     job => job.ProcessAllExpiries(),
 //     "*/30 * * * *",  // Run every 30 minutes
 //     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+// Subscription expiry check — chạy hàng ngày lúc 0:00 UTC
+RecurringJob.AddOrUpdate<SubscriptionExpiryJob>(
+    "subscription-expiry-check",
+    job => job.ProcessExpiries(),
+    "0 0 * * *",  // Run daily at midnight UTC
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 app.Run();

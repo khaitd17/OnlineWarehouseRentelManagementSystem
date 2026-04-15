@@ -18,6 +18,13 @@ public partial class SubscriptionPackage
     
     // Duration in months
     public int DurationMonths { get; set; } = 1;
+
+    // Giới hạn
+    public int MaxWarehouses { get; set; } = 1;
+    public int MaxStaffPerWarehouse { get; set; } = 5;
+    public int MaxZonesPerWarehouse { get; set; } = 3;
+    public decimal MaxTotalArea { get; set; } = 500;
+    public bool AllowEquipmentManagement { get; set; } = false;
     
     // Is Active
     public bool IsActive { get; set; } = true;

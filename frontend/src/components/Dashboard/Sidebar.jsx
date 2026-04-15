@@ -5,6 +5,7 @@ import rentalService from "../../services/rentalService";
 import ratingService from "../../services/ratingService";
 import axiosClient from "../../services/axiosClient";
 import favoritesService from "../../services/favoritesService";
+import subscriptionService from "../../services/subscriptionService";
 import OWRMSLogo from "../OWRMSLogo";
 
 /* ── Menu definitions per warehouse role ── */
@@ -195,6 +196,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const [pendingPaymentCount,  setPendingPaymentCount] = useState(0);
   const [pendingAuditCount,    setPendingAuditCount]   = useState(0);
   const [favoritesCount,       setFavoritesCount]      = useState(() => favoritesService.count());
+  const [subStatus,            setSubStatus]            = useState(null);
 
   const loadUserInfo = () => {
     const user = authService.getCurrentUser() || {};
@@ -260,7 +262,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const fetchPendingPaymentCount = async () => {
     try {
-      const response = await axiosClient.get('/payments/pending-cash');
+      const response = await axiosClient.get('/payments/pending-confirmation');
       const payments = response.data || [];
       setPendingPaymentCount(payments.length);
     } catch {
@@ -278,6 +280,13 @@ const Sidebar = ({ isOpen, onClose }) => {
     }
   };
 
+  const fetchSubscriptionStatus = async () => {
+    try {
+      const res = await subscriptionService.getSubscriptionStatus();
+      if (res.data?.success) setSubStatus(res.data);
+    } catch { setSubStatus(null); }
+  };
+
   useEffect(() => {
     const role = loadUserInfo();
     if (role === "RENTER") fetchUnratedCount();
@@ -285,6 +294,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       fetchUnrepliedCount();
       fetchPendingPaymentCount();
       fetchPendingAuditCount();
+      fetchSubscriptionStatus();
     }
     if (role === "MANAGER") fetchPendingRequestCount();
   }, []);
@@ -554,21 +564,24 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* ── Navigation ── */}
         <nav className="sb-nav" style={{ flex: 1, overflowY: 'auto', padding: '10px 8px', position: 'relative', zIndex: 1 }}>
-          {menuItems.map((item, idx) => {
+          {MENU_BY_ROLE[effectiveRole]?.map((item, idx) => {
             const isActive = location.pathname === item.path;
             const badge = item.badgeKey ? (badgeValues[item.badgeKey] || 0) : 0;
-            if (item.isBottom) return (
-              <React.Fragment key={idx}>
-                <div className="sb-divider" />
-                <NavLink item={item} isActive={isActive} accentColor={accentColor} activeBg={activeBg} badge={badge} />
-              </React.Fragment>
-            );
+            const isLocked = subStatus && subStatus.isActive && 
+                            item.path === '/equipment-management' && 
+                            !subStatus.allowEquipmentManagement;
+
             return (
               <React.Fragment key={idx}>
                 {item.section && (
                   <p className="sb-section-label">{item.section}</p>
                 )}
-                <NavLink item={item} isActive={isActive} accentColor={accentColor} activeBg={activeBg} badge={badge} />
+                <NavLink 
+                  item={item} 
+                  isActive={isActive} 
+                  badge={badge} 
+                  isLocked={isLocked}
+                />
               </React.Fragment>
             );
           })}
@@ -609,6 +622,60 @@ const Sidebar = ({ isOpen, onClose }) => {
                 <p style={{ margin: 0, fontSize: '0.68rem', color: 'rgba(0,210,255,.55)' }}>{displayRole}</p>
               </div>
             </div>
+
+            {/* Subscription status badge */}
+            {(effectiveRole === "OWNER" || effectiveRole === "OPERATOR") && subStatus && (
+              <Link to="/subscriptions" style={{ textDecoration: 'none', display: 'block', marginBottom: '8px' }}>
+                <div style={{
+                  padding: '6px 10px', borderRadius: '8px',
+                  background: subStatus.isActive
+                    ? 'linear-gradient(90deg, rgba(16,185,129,.12), rgba(59,130,246,.12))'
+                    : 'rgba(239,68,68,.1)',
+                  border: `1px solid ${subStatus.isActive ? 'rgba(16,185,129,.25)' : 'rgba(239,68,68,.25)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  cursor: 'pointer', transition: 'all 0.2s',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span className="material-symbols-outlined" style={{
+                      fontSize: '14px',
+                      color: subStatus.isActive ? '#10b981' : '#ef4444',
+                    }}>
+                      {subStatus.isActive ? 'verified' : 'error'}
+                    </span>
+                    <span style={{
+                      fontSize: '0.72rem', fontWeight: 600,
+                      color: subStatus.isActive ? 'rgba(16,185,129,.9)' : 'rgba(239,68,68,.9)',
+                    }}>
+                      {subStatus.plan || 'Chưa có gói'}
+                    </span>
+                  </div>
+                  {subStatus.isActive && subStatus.endDate && (() => {
+                    const end = new Date(subStatus.endDate);
+                    const days = Math.max(0, Math.ceil((end - new Date()) / 86400000));
+                    const endStr = end.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    return (
+                      <span style={{
+                        fontSize: '0.62rem', color: 'rgba(150,200,230,.6)', fontWeight: 500,
+                        textAlign: 'right', lineHeight: '1.3',
+                      }}>
+                        <span style={{ display: 'block' }}>HSD: {endStr}</span>
+                        <span style={{ color: days <= 7 ? 'rgba(251,191,36,.9)' : 'rgba(150,200,230,.45)', fontSize: '0.58rem' }}>
+                          (còn {days} ngày)
+                        </span>
+                      </span>
+                    );
+                  })()}
+                  {!subStatus.isActive && (
+                    <span style={{
+                      fontSize: '0.62rem', color: 'rgba(239,68,68,.7)', fontWeight: 600,
+                    }}>
+                      Gia hạn →
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )}
+
             <button onClick={handleLogout} style={{
               display: 'flex', alignItems: 'center', gap: '8px',
               width: '100%', padding: '7px 10px', borderRadius: '8px',
@@ -642,10 +709,11 @@ const Sidebar = ({ isOpen, onClose }) => {
   );
 };
 
-const NavLink = ({ item, isActive, badge = 0 }) => (
+const NavLink = ({ item, isActive, badge = 0, isLocked = false }) => (
   <Link
     to={item.path}
     className={`sb-nav-link${isActive ? ' active' : ''}`}
+    style={{ opacity: isLocked ? 0.6 : 1 }}
   >
     <span className="sb-active-bar" />
     <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0 }}>
@@ -668,6 +736,11 @@ const NavLink = ({ item, isActive, badge = 0 }) => (
       )}
     </span>
     <span style={{ flex: 1 }}>{item.label}</span>
+    {isLocked && (
+      <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'rgba(255,185,0,0.8)' }}>
+        lock
+      </span>
+    )}
   </Link>
 );
 

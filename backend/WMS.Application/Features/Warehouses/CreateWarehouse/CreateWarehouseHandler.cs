@@ -1,4 +1,5 @@
 using MediatR;
+using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 
@@ -8,17 +9,34 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
 {
     private readonly IWarehouseRepository _repository;
     private readonly IStaffMembershipRepository _membershipRepository;
+    private readonly ISubscriptionService _subscriptionService;
 
     public CreateWarehouseHandler(
         IWarehouseRepository repository,
-        IStaffMembershipRepository membershipRepository)
+        IStaffMembershipRepository membershipRepository,
+        ISubscriptionService subscriptionService)
     {
         _repository = repository;
         _membershipRepository = membershipRepository;
+        _subscriptionService = subscriptionService;
     }
 
     public async Task<int> Handle(CreateWarehouseCommand request, CancellationToken cancellationToken)
     {
+        // 1. Kiểm tra giới hạn số lượng kho
+        var warehouseLimit = await _subscriptionService.CheckLimitAsync(request.OwnerId, SubscriptionLimitType.WarehouseCount);
+        if (!warehouseLimit.IsAllowed)
+        {
+            throw new Exception(warehouseLimit.Message);
+        }
+
+        // 2. Kiểm tra giới hạn tổng diện tích
+        var areaLimit = await _subscriptionService.CheckLimitAsync(request.OwnerId, SubscriptionLimitType.TotalArea, (decimal)request.TotalArea);
+        if (!areaLimit.IsAllowed)
+        {
+            throw new Exception(areaLimit.Message);
+        }
+
         var warehouse = new Warehouse
         {
             OwnerId = request.OwnerId,
@@ -37,7 +55,7 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             OpenTime = request.OpenTime,
             CloseTime = request.CloseTime,
             MainDoorDirection = request.MainDoorDirection,
-            Status = request.Status ?? "HIDDEN",
+            Status = "DRAFT",
             PricePerM2 = request.PricePerM2
         };
 
