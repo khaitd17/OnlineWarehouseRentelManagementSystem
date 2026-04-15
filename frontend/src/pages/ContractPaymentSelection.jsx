@@ -28,14 +28,29 @@ const ContractPaymentSelection = () => {
         const contractData = await rentalService.getContractById(id);
         setContract(contractData);
 
-        if (isTerminationPayment) {
-          navigate(`/contracts/${id}/payment/online?purpose=termination`, { replace: true });
+        if (!isTerminationPayment && contractData.status === "ACTIVE") {
+          navigate(`/contracts/${id}`);
           return;
         }
 
-        if (contractData.status === "ACTIVE") {
-          navigate(`/contracts/${id}`);
-          return;
+        if (isTerminationPayment) {
+          if (contractData.status === "TERMINATED") {
+            navigate(`/contracts/${id}`);
+            return;
+          }
+
+          if (contractData.status !== "PENDING_TERMINATION") {
+            throw new Error("Hợp đồng không ở trạng thái chờ kết thúc sớm để thanh toán phí.");
+          }
+
+          if (!contractData.ownerApprovedTermination || !contractData.renterApprovedTermination) {
+            throw new Error("Hai bên chưa xác nhận kết thúc sớm, chưa thể thanh toán phí.");
+          }
+
+          if (Number(contractData.earlyTerminationFee || 0) <= 0) {
+            navigate(`/contracts/${id}`);
+            return;
+          }
         }
 
         setLoading(false);
@@ -64,8 +79,10 @@ const ContractPaymentSelection = () => {
 
       await paymentService.createCashPayment({
         contractId: parseInt(id, 10),
-        amount: contract.depositAmount || contract.monthlyPayment,
-        paymentType: "DEPOSIT"
+        amount: isTerminationPayment
+          ? (contract.earlyTerminationFee || 0)
+          : (contract.depositAmount || contract.monthlyPayment),
+        paymentType: isTerminationPayment ? "PENALTY" : "DEPOSIT"
       });
 
       setCashPaymentSuccess(true);
@@ -148,7 +165,7 @@ const ContractPaymentSelection = () => {
         </div>
       )}
 
-      {showConfirmModal && !isTerminationPayment && (
+      {showConfirmModal && (
         <div style={{
           position: "fixed",
           top: 0,
@@ -315,64 +332,62 @@ const ContractPaymentSelection = () => {
               </span>
             </button>
 
-            {!isTerminationPayment && (
-              <button
-                onClick={handleCashPayment}
-                disabled={confirmingCash}
-                style={{
-                  padding: "1.5rem",
-                  borderRadius: "12px",
-                  border: "2px solid #16a34a",
-                  backgroundColor: "#fff",
-                  cursor: confirmingCash ? "not-allowed" : "pointer",
-                  opacity: confirmingCash ? 0.6 : 1,
-                  transition: "all 0.2s",
-                  textAlign: "left",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "1rem"
-                }}
-                onMouseEnter={(e) => {
-                  if (!confirmingCash) {
-                    e.currentTarget.style.backgroundColor = "#f0fdf4";
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(22, 163, 74, 0.2)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#fff";
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "none";
-                }}
-              >
-                <div style={{
-                  width: "60px",
-                  height: "60px",
-                  borderRadius: "12px",
-                  backgroundColor: "#dcfce7",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "2rem"
-                }}>
-                  💵
+            <button
+              onClick={handleCashPayment}
+              disabled={confirmingCash}
+              style={{
+                padding: "1.5rem",
+                borderRadius: "12px",
+                border: "2px solid #16a34a",
+                backgroundColor: "#fff",
+                cursor: confirmingCash ? "not-allowed" : "pointer",
+                opacity: confirmingCash ? 0.6 : 1,
+                transition: "all 0.2s",
+                textAlign: "left",
+                display: "flex",
+                alignItems: "center",
+                gap: "1rem"
+              }}
+              onMouseEnter={(e) => {
+                if (!confirmingCash) {
+                  e.currentTarget.style.backgroundColor = "#f0fdf4";
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(22, 163, 74, 0.2)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = "#fff";
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              <div style={{
+                width: "60px",
+                height: "60px",
+                borderRadius: "12px",
+                backgroundColor: "#dcfce7",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "2rem"
+              }}>
+                💵
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.3rem" }}>
+                  {confirmingCash ? "Đang xác nhận..." : "Thanh toán trực tiếp"}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.3rem" }}>
-                    {confirmingCash ? "Đang xác nhận..." : "Thanh toán trực tiếp"}
-                  </div>
-                  <div style={{ fontSize: "0.9rem", color: "#64748b" }}>
-                    Đã thanh toán tiền mặt tại kho
-                  </div>
-                  <div style={{ fontSize: "0.85rem", color: "#16a34a", marginTop: "0.5rem", fontWeight: 600 }}>
-                    💰 Tiền mặt • Cần xác nhận từ chủ kho
-                  </div>
+                <div style={{ fontSize: "0.9rem", color: "#64748b" }}>
+                  Đã thanh toán tiền mặt tại kho
                 </div>
-                <span className="material-symbols-outlined" style={{ fontSize: "24px", color: "#16a34a" }}>
-                  check_circle
-                </span>
-              </button>
-            )}
+                <div style={{ fontSize: "0.85rem", color: "#16a34a", marginTop: "0.5rem", fontWeight: 600 }}>
+                  💰 Tiền mặt • Cần xác nhận từ chủ kho
+                </div>
+              </div>
+              <span className="material-symbols-outlined" style={{ fontSize: "24px", color: "#16a34a" }}>
+                check_circle
+              </span>
+            </button>
           </div>
 
           <div style={{
@@ -390,7 +405,7 @@ const ContractPaymentSelection = () => {
               <li>Vui lòng thanh toán đúng số tiền hiển thị trên màn hình.</li>
               <li>Nội dung chuyển khoản phải chính xác theo mã thanh toán.</li>
               <li>Thanh toán online sẽ được hệ thống xác nhận tự động sau khi nhận giao dịch.</li>
-              {!isTerminationPayment && <li>Thanh toán tiền mặt cần chủ kho xác nhận trước khi hệ thống ghi nhận hoàn tất.</li>}
+              <li>Thanh toán tiền mặt cần chủ kho xác nhận trước khi hệ thống ghi nhận hoàn tất.</li>
             </ul>
           </div>
         </>

@@ -78,9 +78,15 @@ const SigningHistoryTimeline = ({ history, loading }) => {
                 {event.details}
               </div>
             )}
-            {event.signatureUrl && (
+            {event.signatureUrl && event.userName !== "Người thuê" && (
               <img
-                src={event.signatureUrl.startsWith("http") ? event.signatureUrl : `http://localhost:5276${event.signatureUrl}`}
+                src={
+                  event.signatureUrl.startsWith("data:")
+                    ? event.signatureUrl
+                    : event.signatureUrl.startsWith("http")
+                      ? event.signatureUrl
+                      : `http://localhost:5276${event.signatureUrl}`
+                }
                 alt="Chữ ký"
                 style={{
                   maxHeight: "60px",

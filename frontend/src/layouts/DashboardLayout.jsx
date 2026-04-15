@@ -25,20 +25,12 @@ const parseDateValue = (raw) => {
   }
 
   // Fallback for backend timestamps without timezone:
-  // try both local and UTC, then keep the one closer to current time.
-  const localParsed = new Date(trimmed);
+  // Backend emits UTC-like timestamps without `Z`, so parse as UTC first.
   const utcParsed = new Date(`${trimmed}Z`);
-  const localValid = !Number.isNaN(localParsed.getTime());
-  const utcValid = !Number.isNaN(utcParsed.getTime());
+  if (!Number.isNaN(utcParsed.getTime())) return utcParsed;
 
-  if (!localValid && !utcValid) return null;
-  if (!localValid) return utcParsed;
-  if (!utcValid) return localParsed;
-
-  const now = Date.now();
-  const localDistance = Math.abs(localParsed.getTime() - now);
-  const utcDistance = Math.abs(utcParsed.getTime() - now);
-  return utcDistance < localDistance ? utcParsed : localParsed;
+  const localParsed = new Date(trimmed);
+  return Number.isNaN(localParsed.getTime()) ? null : localParsed;
 };
 
 const parseNotificationTime = (notification) => {
@@ -142,14 +134,19 @@ const mergeNotificationsByNewest = (currentList, incomingList) => {
 
   return Array.from(merged.values())
     .sort((a, b) => {
-      const timeDiff = parseNotificationTime(b) - parseNotificationTime(a);
-      if (timeDiff !== 0) {
-        return timeDiff;
+      const timeA = parseNotificationTime(a);
+      const timeB = parseNotificationTime(b);
+      if (timeA !== timeB) {
+        return timeB - timeA;
       }
 
       const idA = Number(a?.notificationId ?? 0);
       const idB = Number(b?.notificationId ?? 0);
-      return idB - idA;
+      if (idA !== idB) {
+        return idB - idA;
+      }
+
+      return 0;
     })
     .slice(0, 50);
 };
@@ -232,8 +229,15 @@ const DashboardLayout = () => {
       .build();
 
     connection.on('ReceiveNotification', async (notification) => {
+      const normalizedIncoming = normalizeNotification(notification);
+      if (!normalizedIncoming) return;
+
       setNotifications(prev => {
-        const merged = mergeNotificationsByNewest(prev, [notification]);
+        const prevList = Array.isArray(prev) ? prev : [];
+        const dedupedPrev = prevList.filter(
+          (item) => getNotificationUniqueKey(item) !== getNotificationUniqueKey(normalizedIncoming)
+        );
+        const merged = [normalizedIncoming, ...dedupedPrev].slice(0, 50);
         setUnreadCount(countUnreadNotifications(merged));
         return merged;
       });
@@ -317,6 +321,8 @@ const DashboardLayout = () => {
 
   const handleNotificationClick = async (notification) => {
     const notificationType = String(notification?.type ?? notification?.Type ?? '');
+    const notificationTypeUpper = notificationType.toUpperCase();
+    const notificationTypeLower = notificationType.toLowerCase();
     const referenceId = notification?.referenceId ?? notification?.ReferenceId ?? null;
     const wasUnread = !isNotificationRead(notification);
 
@@ -339,7 +345,7 @@ const DashboardLayout = () => {
     setShowNotifications(false);
 
     // Handle payment-related notifications - refresh context and navigate
-    if (notificationType === 'PAYMENT_CONFIRMED' || notificationType === 'PAYMENT_REJECTED') {
+    if (notificationTypeUpper === 'PAYMENT_CONFIRMED' || notificationTypeUpper === 'PAYMENT_REJECTED') {
       try {
         await authService.refreshWarehouseContext();
         window.dispatchEvent(new Event('authChange'));
@@ -352,26 +358,26 @@ const DashboardLayout = () => {
       return;
     }
 
-    if (notificationType === 'CASH_PAYMENT_PENDING') {
+    if (notificationTypeUpper === 'CASH_PAYMENT_PENDING') {
       navigate('/pending-cash-payments');
       return;
     }
 
     if (referenceId) {
-      if (notificationType === 'CONTRACT_APPROVED' ||
-          notificationType === 'CONTRACT_SENT' ||
-          notificationType === 'CONTRACT_SIGNED') {
+      if (notificationTypeUpper === 'CONTRACT_APPROVED' ||
+          notificationTypeUpper === 'CONTRACT_SENT' ||
+          notificationTypeUpper === 'CONTRACT_SIGNED') {
         navigate(`/contracts/${referenceId}`);
-      } else if (notificationType === 'RENTAL_REQUEST_RECEIVED') {
+      } else if (notificationTypeUpper === 'RENTAL_REQUEST_RECEIVED') {
         navigate(`/rental-request/${referenceId}`);
-      } else if (notificationType === 'CONTRACT_REJECTED') {
+      } else if (notificationTypeUpper === 'CONTRACT_REJECTED') {
         navigate('/my-rental-requests');
-      } else if (notificationType === 'EXTENSION_REQUEST_RECEIVED') {
+      } else if (notificationTypeUpper === 'EXTENSION_REQUEST_RECEIVED') {
         navigate('/contract-extensions');
-      } else if (notificationType === 'EXTENSION_APPROVED' ||
-                 notificationType === 'EXTENSION_REJECTED') {
+      } else if (notificationTypeUpper === 'EXTENSION_APPROVED' ||
+                 notificationTypeUpper === 'EXTENSION_REJECTED') {
         navigate('/contract-extensions-renter');
-      } else if (notificationType === 'CONTRACT_EXTENSION_SIGNATURE_NEEDED') {
+      } else if (notificationTypeUpper === 'CONTRACT_EXTENSION_SIGNATURE_NEEDED') {
         // Navigate to appropriate signing page based on user role
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const userRole = (user.role || user.roleName || '').toUpperCase();
@@ -380,16 +386,17 @@ const DashboardLayout = () => {
         } else {
           navigate(`/sign-contract/${referenceId}`);
         }
-      } else if (notificationType === 'contract_terminated' ||
-                 notificationType === 'termination_approved' ||
-                 notificationType === 'termination_request' ||
-                 notificationType === 'termination_rejected' ||
-                 notificationType === 'TERMINATION_FEE_PAID' ||
-                 notificationType === 'PAYMENT_COMPLETED') {
+      } else if (notificationTypeLower === 'contract_terminated' ||
+                 notificationTypeLower === 'termination_approved' ||
+                 notificationTypeLower === 'termination_request' ||
+                 notificationTypeLower === 'termination_rejected' ||
+                 notificationTypeLower === 'close_request' ||
+                 notificationTypeUpper === 'TERMINATION_FEE_PAID' ||
+                 notificationTypeUpper === 'PAYMENT_COMPLETED') {
         // Navigate to contract detail for termination-related notifications
         navigate(`/contracts/${referenceId}`);
       }
-    } else if (notificationType === 'CONTRACT_REJECTED') {
+    } else if (notificationTypeUpper === 'CONTRACT_REJECTED') {
       navigate('/my-rental-requests');
     }
   };
@@ -407,6 +414,7 @@ const DashboardLayout = () => {
     if (!date) return '';
     const now = new Date();
     const diff = Math.floor((now - date) / 1000);
+    if (diff < 0) return date.toLocaleString('vi-VN');
     if (diff < 60) return 'Vừa xong';
     if (diff < 3600) return `${Math.floor(diff / 60)} phút trước`;
     if (diff < 86400) return `${Math.floor(diff / 3600)} giờ trước`;
