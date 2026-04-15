@@ -26,6 +26,7 @@ import {
 import ContractCard from '../components/contract/ContractCard';
 import ExtensionRequestModal from '../components/contract/ExtensionRequestModal';
 import contractExtensionService from '../services/contractExtensionService';
+import rentalService from '../services/rentalService';
 import {
   Contract,
   ContractExtension
@@ -35,14 +36,6 @@ const { Title, Text } = Typography;
 const { Content } = Layout;
 const { Option } = Select;
 const { TabPane } = Tabs;
-
-// Mock API calls - replace with actual API calls
-const contractService = {
-  getMyContracts: async (): Promise<Contract[]> => {
-    // Mock implementation - replace with actual API call
-    return [];
-  }
-};
 
 const RenterExtensionPage: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -64,12 +57,12 @@ const RenterExtensionPage: React.FC = () => {
       }
 
       const [contractsData, extensionsData] = await Promise.all([
-        contractService.getMyContracts(),
+        rentalService.getMyContracts(),
         contractExtensionService.getMyExtensions()
       ]);
 
-      setContracts(contractsData);
-      setExtensions(extensionsData);
+      setContracts(Array.isArray(contractsData) ? contractsData : []);
+      setExtensions(Array.isArray(extensionsData) ? extensionsData : []);
     } catch (error: any) {
       message.error('Kh├┤ng thß╗â tß║úi dß╗» liß╗çu: ' + (error.message || 'Lß╗ùi kh├┤ng x├íc ─æß╗ïnh'));
     } finally {
@@ -84,8 +77,9 @@ const RenterExtensionPage: React.FC = () => {
 
   // Filter contracts
   const filteredContracts = contracts.filter(contract => {
-    if (searchTerm && !contract.contractNumber.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !contract.warehouseName?.toLowerCase().includes(searchTerm.toLowerCase())) {
+    if (searchTerm &&
+        !String(contract.contractNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !String(contract.warehouseName || '').toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
     if (statusFilter && contract.status !== statusFilter) {

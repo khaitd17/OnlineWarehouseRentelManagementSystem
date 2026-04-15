@@ -83,29 +83,44 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
             // Complete the payment
             payment.Status = PaymentStatus.Completed;
 
-            // Activate the contract
-            if (contract.Status == RentalContractStatus.PendingPayment)
+            // Update contract state by payment type
+            if (payment.PaymentType == PaymentType.Penalty &&
+                contract.Status == RentalContractStatus.PendingTermination)
             {
+                await _contractRepo.FinalizeTerminationAfterPaymentAsync(contract.ContractId);
+                contract = await _contractRepo.GetByIdAsync(contract.ContractId) ?? contract;
+            }
+            else if (contract.Status == RentalContractStatus.PendingPayment)
+            {
+                // Activate contract when paying deposit/monthly
                 contract.ActivateAfterPayment();
+                await _contractRepo.UpdateAsync(contract);
             }
             else
             {
-                // Force activate for any other status (e.g. when owner confirms cash payment)
+                // Backward-compatible fallback for legacy flows
                 contract.ForceActivate();
+                await _contractRepo.UpdateAsync(contract);
             }
 
             await _paymentRepo.UpdateAsync(payment);
-            await _contractRepo.UpdateAsync(contract);
 
             // Create warehouse membership for renter (Quản lý kho role)
-            await CreateRenterMembershipAsync(contract.RenterId, contract.WarehouseId, cancellationToken);
+            if (contract.Status == RentalContractStatus.Active)
+            {
+                await CreateRenterMembershipAsync(contract.RenterId, contract.WarehouseId, cancellationToken);
+            }
 
             // Send notification to renter
             var notification = new Notification
             {
                 UserId = contract.RenterId,
-                Title = "🎉 Thanh toán đã được xác nhận",
-                Message = $"Chủ kho đã xác nhận thanh toán tiền mặt cho hợp đồng {contract.ContractNumber}. Hợp đồng đã được kích hoạt! Bạn giờ đã có quyền quản lý kho.",
+                Title = payment.PaymentType == PaymentType.Penalty
+                    ? "🎉 Thanh toán phí kết thúc sớm đã được xác nhận"
+                    : "🎉 Thanh toán đã được xác nhận",
+                Message = payment.PaymentType == PaymentType.Penalty
+                    ? $"Chủ kho đã xác nhận thanh toán tiền mặt cho hợp đồng {contract.ContractNumber}. Hợp đồng đã được kết thúc sớm."
+                    : $"Chủ kho đã xác nhận thanh toán tiền mặt cho hợp đồng {contract.ContractNumber}. Hợp đồng đã được kích hoạt! Bạn giờ đã có quyền quản lý kho.",
                 Type = "PAYMENT_CONFIRMED",
                 ReferenceId = contract.ContractId,
                 ReferenceType = "CONTRACT",
@@ -115,13 +130,15 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
             await _notificationRepo.AddAsync(notification);
             await _notificationSender.SendToUserAsync(contract.RenterId, notification);
 
-            _logger.LogInformation("Cash payment {PaymentId} confirmed by owner {OwnerId}. Renter {RenterId} granted RENTER role for warehouse {WarehouseId}", 
-                request.PaymentId, request.OwnerId, contract.RenterId, contract.WarehouseId);
+            _logger.LogInformation("Cash payment {PaymentId} confirmed by owner {OwnerId}. Contract {ContractId} status is now {Status}",
+                request.PaymentId, request.OwnerId, contract.ContractId, contract.Status);
 
             return new ConfirmCashPaymentResult
             {
                 Success = true,
-                Message = "Đã xác nhận thanh toán thành công. Hợp đồng đã được kích hoạt và người thuê đã được cấp quyền quản lý kho.",
+                Message = payment.PaymentType == PaymentType.Penalty
+                    ? "Đã xác nhận thanh toán thành công. Hợp đồng đã được kết thúc sớm."
+                    : "Đã xác nhận thanh toán thành công. Hợp đồng đã được kích hoạt và người thuê đã được cấp quyền quản lý kho.",
                 NewContractStatus = contract.Status
             };
         }

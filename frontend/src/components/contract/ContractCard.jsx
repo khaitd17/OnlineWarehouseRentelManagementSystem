@@ -103,7 +103,7 @@ const ContractCard = ({
     <Card
       hoverable
       style={{ height: '100%' }}
-      bodyStyle={{ padding: '20px' }}
+      styles={{ body: { padding: '20px' } }}
       actions={
         showExtensionButton && contract.status === 'ACTIVE'
           ? [

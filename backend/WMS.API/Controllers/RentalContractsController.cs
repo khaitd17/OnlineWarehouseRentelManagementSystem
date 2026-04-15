@@ -413,8 +413,9 @@ public class RentalContractsController : ControllerBase
                 return NotFound(new { message = "No PDF available for this contract" });
             }
 
-            // Get physical path
-            var filePath = Path.Combine(_env.WebRootPath ?? _env.ContentRootPath, pdfUrl.TrimStart('/'));
+            // PDFs are generated into {ContentRoot}/uploads/contracts
+            var sourceFileName = Path.GetFileName(pdfUrl);
+            var filePath = Path.Combine(_env.ContentRootPath, "uploads", "contracts", sourceFileName);
 
             if (!System.IO.File.Exists(filePath))
             {

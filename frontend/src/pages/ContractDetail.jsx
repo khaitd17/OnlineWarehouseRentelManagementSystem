@@ -3,11 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import ContractSigningModal from "../components/ContractSigningModal";
 import TerminateContractModal from "../components/TerminateContractModal";
-import ExtensionRequestModal from "../components/ExtensionRequestModal";
-import ReturnWarehouseModal from "../components/ReturnWarehouseModal";
 import SigningHistoryTimeline from "../components/SigningHistoryTimeline";
 import AuditLogList from "../components/AuditLogList";
-import ExtendContractModal from "../components/ExtendContractModal";
 import ExpiryCountdown from "../components/ExpiryCountdown";
 
 const statusConfig = {
@@ -111,9 +108,6 @@ const ContractDetail = () => {
 
   // Modal states
   const [showTerminateModal, setShowTerminateModal] = useState(false);
-  const [showExtensionModal, setShowExtensionModal] = useState(false);
-  const [showReturnModal, setShowReturnModal] = useState(false);
-  const [showExtendContractModal, setShowExtendContractModal] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [isSubmittingDecline, setIsSubmittingDecline] = useState(false);
@@ -160,7 +154,7 @@ const ContractDetail = () => {
 
         if (contract?.isCurrentUserRenter) {
           alert(message || "Vui lòng thanh toán phí kết thúc sớm để hoàn tất.");
-          navigate(`/contracts/${contract.contractId}/payment/online?purpose=termination`);
+          navigate(`/contracts/${contract.contractId}/payment?purpose=termination`);
           return;
         }
 
@@ -287,8 +281,6 @@ const ContractDetail = () => {
   const daysUntilExpiry = contract?.endDate
     ? Math.ceil((new Date(contract.endDate) - new Date()) / (1000 * 60 * 60 * 24))
     : 0;
-  const canRequestExtension = contract?.status === "ACTIVE" && daysUntilExpiry <= 90 && daysUntilExpiry > 0;
-  const canReturn = ["ACTIVE", "COMPLETED"].includes(contract?.status);
 
   // Check if current user can approve/reject termination or close request
   const isPendingTermination = contract?.status === "PENDING_TERMINATION";
@@ -426,32 +418,7 @@ const ContractDetail = () => {
       </Section>
 
       {/* Thời hạn hợp đồng */}
-      <Section 
-        title="Thời hạn hợp đồng"
-        action={
-          contract.status === "ACTIVE" && contract.isCurrentUserRenter && (
-            <button
-              onClick={() => setShowExtendContractModal(true)}
-              style={{
-                padding: "0.5rem 1rem",
-                borderRadius: "8px",
-                backgroundColor: "#0095c7",
-                color: "#fff",
-                border: "none",
-                fontWeight: 600,
-                fontSize: "0.85rem",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px"
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>event_repeat</span>
-              Gia hạn
-            </button>
-          )
-        }
-      >
+      <Section title="Thời hạn hợp đồng">
         <InfoRow label="Ngày bắt đầu" value={formatDate(contract.startDate)} />
         <InfoRow label="Ngày kết thúc" value={formatDate(contract.endDate)} />
         {contract.status === "ACTIVE" && daysUntilExpiry > 0 && daysUntilExpiry <= 30 && (
@@ -665,7 +632,7 @@ const ContractDetail = () => {
           {canPayTerminationFee && (
             <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
               <button
-                onClick={() => navigate(`/contracts/${contract.contractId}/payment/online?purpose=termination`)}
+                onClick={() => navigate(`/contracts/${contract.contractId}/payment?purpose=termination`)}
                 style={{
                   padding: "0.7rem 1.2rem",
                   borderRadius: "10px",
@@ -701,7 +668,7 @@ const ContractDetail = () => {
       )}
 
       {/* Actions Section */}
-      {(canTerminate || canRequestExtension || canReturn || canRequestClose) && !isPendingApproval && (
+      {(canTerminate || canRequestClose) && !isPendingApproval && (
         <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
           boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem" }}>
           <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
@@ -709,48 +676,6 @@ const ContractDetail = () => {
             Thao tác
           </h2>
           <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
-            {canRequestExtension && (
-              <button
-                onClick={() => setShowExtensionModal(true)}
-                style={{
-                  padding: "0.7rem 1.2rem",
-                  borderRadius: "10px",
-                  border: "none",
-                  backgroundColor: "#2563eb",
-                  color: "#fff",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>event_repeat</span>
-                Yêu cầu gia hạn
-              </button>
-            )}
-            {canReturn && (
-              <button
-                onClick={() => setShowReturnModal(true)}
-                style={{
-                  padding: "0.7rem 1.2rem",
-                  borderRadius: "10px",
-                  border: "none",
-                  backgroundColor: "#16a34a",
-                  color: "#fff",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontSize: "0.9rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>assignment_return</span>
-                Trả kho
-              </button>
-            )}
             {canRequestClose && (
               <button
                 onClick={handleRequestClose}
@@ -1073,41 +998,6 @@ const ContractDetail = () => {
         </div>
       )}
 
-      {/* Terminate Modal */}
-      {showExtensionModal && (
-        <ExtensionRequestModal
-          contract={contract}
-          onClose={() => setShowExtensionModal(false)}
-          onSuccess={reloadContract}
-        />
-      )}
-
-      {/* Return Modal */}
-      {showReturnModal && (
-        <ReturnWarehouseModal
-          contract={contract}
-          onClose={() => setShowReturnModal(false)}
-          onSuccess={reloadContract}
-        />
-      )}
-
-      {/* Extend Contract Modal */}
-      {showExtendContractModal && (
-        <ExtendContractModal
-          contract={contract}
-          isOpen={showExtendContractModal}
-          onClose={() => setShowExtendContractModal(false)}
-          onExtensionSuccess={(result) => {
-            // Navigate to payment page
-            if (result.payment) {
-              navigate(`/contracts/${contract.contractId}/payment`);
-            } else {
-              alert('Gia hạn thành công');
-              reloadContract();
-            }
-          }}
-        />
-      )}
     </div>
   );
 };

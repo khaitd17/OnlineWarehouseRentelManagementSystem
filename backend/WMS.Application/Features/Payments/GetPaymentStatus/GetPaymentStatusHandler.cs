@@ -54,14 +54,15 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
             }
         }
 
-        // If contract is already active and there is a completed payment in the same contract,
-        // return the completed payment status to prevent UI from being stuck on an outdated pending payment id.
+        // If there is a newer completed payment of the SAME payment type in this contract,
+        // return it to avoid stale pending rows. Do not mix deposit/monthly/penalty flows.
         if (!payment.IsCompleted)
         {
             var completedPayments = await _paymentRepo.GetCompletedByContractIdAsync(payment.ContractId)
                                    ?? Enumerable.Empty<WMS.Domain.Entities.RentalPayment>();
 
             var completedPayment = completedPayments
+                .Where(p => p.PaymentType == payment.PaymentType)
                 .OrderByDescending(p => p.CreatedAt)
                 .FirstOrDefault();
 

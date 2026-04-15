@@ -319,6 +319,29 @@ const contractExtensionService = {
     }
 
     return { eligible: true, reason: null };
+  },
+
+  /**
+   * Format date for display
+   * @param {string | null | undefined} dateString
+   * @returns {string}
+   */
+  formatDate: (dateString) => {
+    if (!dateString) return "—";
+    return new Date(dateString).toLocaleDateString("vi-VN");
+  },
+
+  /**
+   * Format currency for display
+   * @param {number | null | undefined} amount
+   * @returns {string}
+   */
+  formatCurrency: (amount) => {
+    if (amount == null) return "—";
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND"
+    }).format(amount);
   }
 };
 
