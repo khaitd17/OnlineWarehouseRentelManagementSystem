@@ -313,7 +313,8 @@ public class ApplicationDbContext : DbContext
         {
             entity.HasKey(e => e.EquipmentId).HasName("PK__equipmen__197068AFB451FEC1");
             entity.ToTable("equipments", tb => tb.HasTrigger("TR_equipments_updated_at"));
-            entity.HasIndex(e => e.IotDeviceId, "idx_equipments_iot");
+            entity.HasIndex(e => e.IotDeviceId, "UQ__equipments__iot").IsUnique();
+            entity.HasIndex(e => e.SerialNumber, "UQ__equipments__serial").IsUnique();
             entity.HasIndex(e => e.Status, "idx_equipments_status");
             entity.HasIndex(e => e.WarehouseId, "idx_equipments_warehouse");
             entity.HasIndex(e => e.RentalAreaId, "idx_equipments_area");

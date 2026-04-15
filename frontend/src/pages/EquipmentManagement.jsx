@@ -162,6 +162,12 @@ const EquipmentManagement = () => {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
+    // Frontend validation
+    if (!formData.name?.trim()) { alert('Tên thiết bị không được để trống'); return; }
+    if (formData.name.trim().length > 100) { alert('Tên thiết bị không được vượt quá 100 ký tự'); return; }
+    if (formData.maintenanceCycleDays && (parseInt(formData.maintenanceCycleDays) < 1 || parseInt(formData.maintenanceCycleDays) > 3650)) {
+      alert('Chu kỳ bảo trì phải từ 1 đến 3650 ngày'); return;
+    }
     try {
       const payload = {
         ...formData,
@@ -174,12 +180,18 @@ const EquipmentManagement = () => {
       resetFormData();
       fetchEquipments();
     } catch (err) {
-      alert('Thêm thiết bị thất bại: ' + (err.response?.data?.message || err.message));
+      alert('Thêm thiết bị thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || err.message));
     }
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    // Frontend validation
+    if (!formData.name?.trim()) { alert('Tên thiết bị không được để trống'); return; }
+    if (formData.name.trim().length > 100) { alert('Tên thiết bị không được vượt quá 100 ký tự'); return; }
+    if (formData.maintenanceCycleDays && (parseInt(formData.maintenanceCycleDays) < 1 || parseInt(formData.maintenanceCycleDays) > 3650)) {
+      alert('Chu kỳ bảo trì phải từ 1 đến 3650 ngày'); return;
+    }
     try {
       const payload = {
         ...formData,
@@ -190,7 +202,7 @@ const EquipmentManagement = () => {
       setShowEditModal(false);
       fetchEquipments();
     } catch (err) {
-      alert('Cập nhật thất bại: ' + (err.response?.data?.message || err.message));
+      alert('Cập nhật thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || err.message));
     }
   };
 

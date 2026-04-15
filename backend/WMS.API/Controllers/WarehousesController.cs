@@ -150,9 +150,16 @@ public class WarehouseController : ControllerBase
     [HttpPatch("{id}/submit")]
     public async Task<IActionResult> SubmitWarehouse(int id)
     {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
         await _mediator.Send(new SubmitWarehouseCommand
         {
-            WarehouseId = id
+            WarehouseId = id,
+            RequestUserId = int.Parse(userId)
         });
 
         return Ok(new

@@ -36,7 +36,7 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             OpenTime = request.OpenTime,
             CloseTime = request.CloseTime,
             MainDoorDirection = request.MainDoorDirection,
-            Status = request.Status ?? "HIDDEN",
+            Status = "DRAFT",
             PricePerM2 = request.PricePerM2
         };
 

@@ -48,6 +48,24 @@ public class ReportEquipmentIncidentHandler : IRequestHandler<ReportEquipmentInc
         var equipment = await _equipmentRepository.GetByIdAsync(request.EquipmentId, cancellationToken);
         if (equipment == null) throw new KeyNotFoundException("Equipment not found.");
 
+        if (equipment.Status == "RETIRED")
+            throw new InvalidOperationException("Không thể báo cáo sự cố cho thiết bị đã thanh lý.");
+
+        // Auto update equipment status if high/critical
+        if (request.Severity == "HIGH" || request.Severity == "CRITICAL")
+        {
+            await _equipmentRepository.UpdateStatusAsync(request.EquipmentId, "BROKEN", cancellationToken);
+            // Additionally we can log the history here, but let's just make the transition.
+            await _equipmentRepository.AddHistoryAsync(new EquipmentHistory
+            {
+                EquipmentId = request.EquipmentId,
+                PreviousStatus = equipment.Status ?? "AVAILABLE",
+                NewStatus = "BROKEN",
+                ChangedBy = request.RequestUserId,
+                Note = $"Auto-updated from incident report: {request.Title}"
+            }, cancellationToken);
+        }
+
         var incident = new EquipmentIncident
         {
             EquipmentId = request.EquipmentId,
