@@ -18,7 +18,15 @@ public class SubscriptionPackageRepository : ISubscriptionPackageRepository
 
     public async Task<SubscriptionPackage?> GetByNameAsync(string name)
     {
-        return await _db.SubscriptionPackages.FirstOrDefaultAsync(p => p.Name == name);
+        var normalized = (name ?? string.Empty).Trim().ToLower();
+        if (string.IsNullOrEmpty(normalized))
+        {
+            return null;
+        }
+
+        return await _db.SubscriptionPackages.FirstOrDefaultAsync(
+            p => p.Name != null && p.Name.Trim().ToLower() == normalized
+        );
     }
 
     public async Task<IEnumerable<SubscriptionPackage>> GetAllAsync()

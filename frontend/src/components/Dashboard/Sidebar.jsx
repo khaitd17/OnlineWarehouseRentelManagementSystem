@@ -240,12 +240,18 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const fetchPendingRequestCount = async () => {
     try {
+      const ctx = authService.getWarehouseContext();
+      const wid = ctx?.warehouses?.[0]?.warehouseId;   // same as StaffDashboard
+      const params = (type) => ({
+        type, status: 'PENDING', pageSize: 1,
+        ...(wid ? { warehouseId: wid } : {}),           // truyền warehouseId nếu có
+      });
       const [inbound, outbound] = await Promise.all([
-        axiosClient.get('/InventoryRequests', { params: { type: 'INBOUND', status: 'PENDING', pageSize: 1 } }),
-        axiosClient.get('/InventoryRequests', { params: { type: 'OUTBOUND', status: 'PENDING', pageSize: 1 } }),
+        axiosClient.get('/InventoryRequests', { params: params('INBOUND') }),
+        axiosClient.get('/InventoryRequests', { params: params('OUTBOUND') }),
       ]);
-      const countIn = inbound.data?.totalCount ?? (Array.isArray(inbound.data?.items) ? inbound.data.items.length : 0);
-      const countOut = outbound.data?.totalCount ?? (Array.isArray(outbound.data?.items) ? outbound.data.items.length : 0);
+      const countIn  = inbound.data?.totalCount  ?? 0;
+      const countOut = outbound.data?.totalCount ?? 0;
       setPendingRequestCount(countIn + countOut);
     } catch {
       setPendingRequestCount(0);

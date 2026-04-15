@@ -5,10 +5,184 @@ import Sidebar from '../components/Dashboard/Sidebar';
 import notificationService from '../services/notificationService';
 import authService from '../services/authService';
 
+const parseDateValue = (raw) => {
+  if (!raw) return null;
+  if (raw instanceof Date) return Number.isNaN(raw.getTime()) ? null : raw;
+  if (typeof raw === 'number') {
+    const fromNumber = new Date(raw);
+    return Number.isNaN(fromNumber.getTime()) ? null : fromNumber;
+  }
+  if (typeof raw !== 'string') return null;
+
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  // If timezone is present, parse directly.
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(trimmed);
+  if (hasTimezone) {
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  // Fallback for backend timestamps without timezone:
+  // try both local and UTC, then keep the one closer to current time.
+  const localParsed = new Date(trimmed);
+  const utcParsed = new Date(`${trimmed}Z`);
+  const localValid = !Number.isNaN(localParsed.getTime());
+  const utcValid = !Number.isNaN(utcParsed.getTime());
+
+  if (!localValid && !utcValid) return null;
+  if (!localValid) return utcParsed;
+  if (!utcValid) return localParsed;
+
+  const now = Date.now();
+  const localDistance = Math.abs(localParsed.getTime() - now);
+  const utcDistance = Math.abs(utcParsed.getTime() - now);
+  return utcDistance < localDistance ? utcParsed : localParsed;
+};
+
+const parseNotificationTime = (notification) => {
+  const raw = notification?.createdAt
+    ?? notification?.CreatedAt
+    ?? notification?.timestamp
+    ?? notification?.Timestamp
+    ?? null;
+  const parsed = parseDateValue(raw);
+  return parsed ? parsed.getTime() : 0;
+};
+
+const normalizeNotification = (notification) => {
+  if (!notification || typeof notification !== 'object') {
+    return null;
+  }
+
+  const isRead = Boolean(
+    notification?.isRead ?? notification?.IsRead ?? notification?.read ?? false
+  );
+
+  return {
+    ...notification,
+    notificationId:
+      notification?.notificationId
+      ?? notification?.NotificationId
+      ?? notification?.id
+      ?? null,
+    title: notification?.title ?? notification?.Title ?? '',
+    message: notification?.message ?? notification?.Message ?? '',
+    type: notification?.type ?? notification?.Type ?? '',
+    referenceId:
+      notification?.referenceId
+      ?? notification?.ReferenceId
+      ?? null,
+    referenceType:
+      notification?.referenceType
+      ?? notification?.ReferenceType
+      ?? null,
+    createdAt:
+      notification?.createdAt
+      ?? notification?.CreatedAt
+      ?? notification?.timestamp
+      ?? notification?.Timestamp
+      ?? null,
+    isRead,
+    IsRead: isRead,
+    read: isRead,
+  };
+};
+
+const getNotificationUniqueKey = (notification) => {
+  const id = notification?.notificationId;
+  if (id !== null && id !== undefined) {
+    return `id:${id}`;
+  }
+
+  return [
+    notification?.type ?? '',
+    notification?.referenceId ?? notification?.ReferenceId ?? '',
+    notification?.title ?? '',
+    notification?.message ?? '',
+    notification?.createdAt ?? '',
+  ].join('|');
+};
+
+const mergeNotificationsByNewest = (currentList, incomingList) => {
+  const merged = new Map();
+  const items = [
+    ...(Array.isArray(currentList) ? currentList : []),
+    ...(Array.isArray(incomingList) ? incomingList : []),
+  ];
+
+  items.forEach((rawItem) => {
+    const item = normalizeNotification(rawItem);
+    if (!item) {
+      return;
+    }
+
+    const key = getNotificationUniqueKey(item);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, item);
+      return;
+    }
+
+    const existingTime = parseNotificationTime(existing);
+    const itemTime = parseNotificationTime(item);
+    const preferred = itemTime >= existingTime
+      ? { ...existing, ...item }
+      : { ...item, ...existing };
+    const isRead = Boolean(existing.isRead || item.isRead);
+
+    merged.set(key, {
+      ...preferred,
+      isRead,
+      IsRead: isRead,
+      read: isRead,
+    });
+  });
+
+  return Array.from(merged.values())
+    .sort((a, b) => {
+      const timeDiff = parseNotificationTime(b) - parseNotificationTime(a);
+      if (timeDiff !== 0) {
+        return timeDiff;
+      }
+
+      const idA = Number(a?.notificationId ?? 0);
+      const idB = Number(b?.notificationId ?? 0);
+      return idB - idA;
+    })
+    .slice(0, 50);
+};
+
+const countUnreadNotifications = (list) =>
+  (Array.isArray(list) ? list : []).filter(
+    (n) => !Boolean(n?.isRead ?? n?.IsRead ?? n?.read ?? false)
+  ).length;
+const ROLE_PRIORITY_DASH = ['OWNER', 'OPERATOR', 'MANAGER', 'STAFF', 'RENTER'];
+
 const DashboardLayout = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userRole = (user.role || user.roleName || '').toUpperCase();
-  const searchPlaceholder = userRole === 'OWNER'
+  const ctx  = JSON.parse(localStorage.getItem('warehouseContext') || '{}');
+  const systemRole = (ctx.systemRole || user.role || user.roleName || 'user').toUpperCase();
+  const warehouseRoles = (ctx.warehouses || []).map(w => (w.role || '').toUpperCase());
+  // Effective role: ưu tiên warehouse role trước system role
+  const userRole = (() => {
+    if (systemRole === 'ADMIN') return 'ADMIN';
+    for (const r of ROLE_PRIORITY_DASH) {
+      if (warehouseRoles.includes(r)) return r;
+    }
+    if (systemRole === 'RENTER' && !warehouseRoles.includes('RENTER')) return 'USER';
+    return systemRole || 'USER';
+  })();
+
+  const dashboardPath = (() => {
+    if (userRole === 'MANAGER' || userRole === 'STAFF') return '/staff-dashboard';
+    if (userRole === 'OWNER' || userRole === 'OPERATOR') return '/owner-dashboard';
+    if (userRole === 'RENTER') return '/renter-dashboard';
+    return null;
+  })();
+
+  const searchPlaceholder = userRole === 'OWNER' || userRole === 'OPERATOR'
     ? 'Search warehouses...'
     : userRole === 'RENTER'
       ? 'Tìm kiếm kho hàng, nhà kho...'
@@ -22,6 +196,7 @@ const DashboardLayout = () => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const dropdownRef = useRef(null);
   const connectionRef = useRef(null);
+  const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5276';
 
   const isMobile = windowWidth < 900;
 
@@ -36,17 +211,36 @@ const DashboardLayout = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    const syncNotificationsFromApi = async () => {
+      try {
+        const data = await notificationService.getNotifications();
+        const list = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+            ? data
+            : [];
+        const merged = mergeNotificationsByNewest([], list);
+        setNotifications(merged);
+        setUnreadCount(countUnreadNotifications(merged));
+      } catch {
+        // Keep current local state if sync fails.
+      }
+    };
+
     const connection = new HubConnectionBuilder()
-      .withUrl('http://localhost:5276/hubs/notifications', {
-        accessTokenFactory: () => token
+      .withUrl(`${apiBaseUrl}/hubs/notifications`, {
+        accessTokenFactory: () => localStorage.getItem('token') || token
       })
-      .withAutomaticReconnect()
+      .withAutomaticReconnect([0, 2000, 5000, 10000])
       .configureLogging(LogLevel.Warning)
       .build();
 
     connection.on('ReceiveNotification', async (notification) => {
-      setNotifications(prev => [notification, ...prev]);
-      setUnreadCount(prev => prev + 1);
+      setNotifications(prev => {
+        const merged = mergeNotificationsByNewest(prev, [notification]);
+        setUnreadCount(countUnreadNotifications(merged));
+        return merged;
+      });
       
       // When payment is confirmed/rejected, refresh warehouse context to update role
       if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED' || notification.type === 'SUBSCRIPTION_ACTIVE') {
@@ -60,11 +254,17 @@ const DashboardLayout = () => {
       }
     });
 
-    connection.start().catch(() => {});
+    connection.onreconnected(() => {
+      syncNotificationsFromApi();
+    });
+
+    connection.start().then(() => {
+      syncNotificationsFromApi();
+    }).catch(() => {});
     connectionRef.current = connection;
 
     return () => { connection.stop(); };
-  }, []);
+  }, [apiBaseUrl]);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -79,7 +279,14 @@ const DashboardLayout = () => {
   const fetchNotifications = useCallback(async () => {
     try {
       const data = await notificationService.getNotifications();
-      setNotifications(data.data || data || []);
+      const list = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data)
+          ? data
+          : [];
+      const merged = mergeNotificationsByNewest([], list);
+      setNotifications(merged);
+      setUnreadCount(countUnreadNotifications(merged));
     } catch (err) {
       setNotifications([]);
     }
@@ -113,6 +320,8 @@ const DashboardLayout = () => {
   };
 
   const handleNotificationClick = async (notification) => {
+    const notificationType = String(notification?.type ?? notification?.Type ?? '');
+    const referenceId = notification?.referenceId ?? notification?.ReferenceId ?? null;
     const wasUnread = !isNotificationRead(notification);
 
     if (wasUnread) {
@@ -134,49 +343,57 @@ const DashboardLayout = () => {
     setShowNotifications(false);
 
     // Handle payment-related notifications - refresh context and navigate
-    if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+    if (notificationType === 'PAYMENT_CONFIRMED' || notificationType === 'PAYMENT_REJECTED') {
       try {
         await authService.refreshWarehouseContext();
         window.dispatchEvent(new Event('authChange'));
       } catch (err) {
         console.warn('[DashboardLayout] Failed to refresh warehouse context:', err);
       }
-      if (notification.referenceId) {
-        navigate(`/contracts/${notification.referenceId}`);
+      if (referenceId) {
+        navigate(`/contracts/${referenceId}`);
       }
       return;
     }
 
-    if (notification.referenceId) {
-      if (notification.type === 'CONTRACT_APPROVED' ||
-          notification.type === 'CONTRACT_SENT' ||
-          notification.type === 'CONTRACT_SIGNED') {
-        navigate(`/contracts/${notification.referenceId}`);
-      } else if (notification.type === 'RENTAL_REQUEST_RECEIVED') {
-        navigate(`/rental-request/${notification.referenceId}`);
-      } else if (notification.type === 'CONTRACT_REJECTED') {
+    if (notificationType === 'CASH_PAYMENT_PENDING') {
+      navigate('/pending-cash-payments');
+      return;
+    }
+
+    if (referenceId) {
+      if (notificationType === 'CONTRACT_APPROVED' ||
+          notificationType === 'CONTRACT_SENT' ||
+          notificationType === 'CONTRACT_SIGNED') {
+        navigate(`/contracts/${referenceId}`);
+      } else if (notificationType === 'RENTAL_REQUEST_RECEIVED') {
+        navigate(`/rental-request/${referenceId}`);
+      } else if (notificationType === 'CONTRACT_REJECTED') {
         navigate('/my-rental-requests');
-      } else if (notification.type === 'EXTENSION_REQUEST_RECEIVED') {
+      } else if (notificationType === 'EXTENSION_REQUEST_RECEIVED') {
         navigate('/contract-extensions');
-      } else if (notification.type === 'EXTENSION_APPROVED' ||
-                 notification.type === 'EXTENSION_REJECTED') {
+      } else if (notificationType === 'EXTENSION_APPROVED' ||
+                 notificationType === 'EXTENSION_REJECTED') {
         navigate('/contract-extensions-renter');
-      } else if (notification.type === 'CONTRACT_EXTENSION_SIGNATURE_NEEDED') {
+      } else if (notificationType === 'CONTRACT_EXTENSION_SIGNATURE_NEEDED') {
         // Navigate to appropriate signing page based on user role
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const userRole = (user.role || user.roleName || '').toUpperCase();
         if (userRole === 'OWNER' || userRole === 'OPERATOR') {
-          navigate(`/sign-contract-owner/${notification.referenceId}`);
+          navigate(`/sign-contract-owner/${referenceId}`);
         } else {
-          navigate(`/sign-contract/${notification.referenceId}`);
+          navigate(`/sign-contract/${referenceId}`);
         }
-      } else if (notification.type === 'contract_terminated' || 
-                 notification.type === 'termination_approved' ||
-                 notification.type === 'termination_request') {
+      } else if (notificationType === 'contract_terminated' ||
+                 notificationType === 'termination_approved' ||
+                 notificationType === 'termination_request' ||
+                 notificationType === 'termination_rejected' ||
+                 notificationType === 'TERMINATION_FEE_PAID' ||
+                 notificationType === 'PAYMENT_COMPLETED') {
         // Navigate to contract detail for termination-related notifications
-        navigate(`/contracts/${notification.referenceId}`);
+        navigate(`/contracts/${referenceId}`);
       }
-    } else if (notification.type === 'CONTRACT_REJECTED') {
+    } else if (notificationType === 'CONTRACT_REJECTED') {
       navigate('/my-rental-requests');
     }
   };
@@ -190,7 +407,8 @@ const DashboardLayout = () => {
 
   const formatTime = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = parseDateValue(dateStr);
+    if (!date) return '';
     const now = new Date();
     const diff = Math.floor((now - date) / 1000);
     if (diff < 60) return 'Vừa xong';
@@ -337,7 +555,7 @@ const DashboardLayout = () => {
                   ) : (
                     notifications.map((n) => (
                       <div
-                        key={n.notificationId}
+                        key={getNotificationUniqueKey(n)}
                         onClick={() => handleNotificationClick(n)}
                         style={{
                           padding: '14px 20px', cursor: 'pointer',
@@ -450,11 +668,14 @@ const DashboardLayout = () => {
                 </div>
 
                 <Link to="/profile" className="nav-dropdown-item">Hồ sơ</Link>
-                {userRole === 'RENTER' && (
-                  <Link to="/my-favorites" className="nav-dropdown-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#f43f5e' }}>favorite</span>
-                    Kho yêu thích
+                {/* Dashboard link — dùng dashboardPath đã resolve theo role */}
+                {dashboardPath && (
+                  <Link to={dashboardPath} className="nav-dropdown-item">
+                    Dashboard
                   </Link>
+                )}
+                {userRole === 'RENTER' && (
+                  <Link to="/my-favorites" className="nav-dropdown-item">Kho yêu thích</Link>
                 )}
                 <div className="nav-dropdown-divider" />
                 <button className="nav-dropdown-item logout" onClick={handleLogout}>Đăng xuất</button>

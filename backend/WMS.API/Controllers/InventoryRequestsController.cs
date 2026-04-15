@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using WMS.Application.Features.InventoryRequests.ApproveRequest;
+using WMS.Application.Features.InventoryRequests.AssignRequest;
 using WMS.Application.Features.InventoryRequests.ConfirmRequest;
 using WMS.Application.Features.InventoryRequests.CreateRequest;
 using WMS.Application.Features.InventoryRequests.DeleteRequest;
@@ -45,10 +46,12 @@ public class InventoryRequestsController : ControllerBase
     {
         var userId = GetUserId();
 
-        // Lấy RoleCode trực tiếp từ membership — không quy đổi, handler tự xử lý
+        // Resolve viewAs: ưu tiên membership của kho cụ thể, fallback về membership đầu tiên của user
         string viewAs = "RENTER";
+
         if (warehouseId.HasValue)
         {
+            // Có warehouseId → lấy role membership chính xác trong kho đó
             var membership = await _membershipRepo.GetCallerMembershipAsync(
                 userId, warehouseId.Value, HttpContext.RequestAborted);
             if (membership != null)
@@ -99,8 +102,10 @@ public class InventoryRequestsController : ControllerBase
         [FromQuery] int warehouseId,
         [FromQuery] string? type = null)
     {
-        var result = await _mediator.Send(new GetAssignedRequestsQuery
+        var staffId = GetUserId();
+        var result  = await _mediator.Send(new GetAssignedRequestsQuery
         {
+            StaffId     = staffId,
             WarehouseId = warehouseId,
             Type        = type?.ToUpper(),
         });
@@ -196,6 +201,40 @@ public class InventoryRequestsController : ControllerBase
     }
 
 
+    [HttpPost("{id:int}/assign")]
+    public async Task<IActionResult> Assign(int id, [FromBody] AssignRequestBody body)
+    {
+        var managerId = GetUserId();
+        var request   = await _mediator.Send(new GetInventoryRequestByIdQuery { Id = id });
+        if (request == null) return NotFound(new { message = "Yêu cầu không tồn tại." });
+
+        var membership = await _membershipRepo.GetCallerMembershipAsync(
+            managerId, request.WarehouseId, HttpContext.RequestAborted);
+        if (membership == null || membership.RoleCode is not ("MANAGER" or "OPERATOR"))
+            return StatusCode(403, new { message = "Chỉ MANAGER / OPERATOR được giao việc." });
+
+        // Kiểm tra staff được giao có thuộc kho này không
+        var staffMembership = await _membershipRepo.GetCallerMembershipAsync(
+            body.StaffId, request.WarehouseId, HttpContext.RequestAborted);
+        if (staffMembership == null || staffMembership.RoleCode != "STAFF")
+            return BadRequest(new { message = "Nhân viên được chọn không thuộc kho này hoặc không phải STAFF." });
+
+        try
+        {
+            var result = await _mediator.Send(new AssignInventoryRequestCommand
+            {
+                Id        = id,
+                ManagerId = managerId,
+                StaffId   = body.StaffId,
+                Note      = body.Note,
+            });
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)    { return NotFound(new { message = ex.Message }); }
+        catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+
     [HttpPost("{id:int}/approve")]
     public async Task<IActionResult> Approve(int id, [FromBody] ApproveRequestBody? body = null)
     {
@@ -239,6 +278,7 @@ public class InventoryRequestsController : ControllerBase
     }
 }
 
+public record AssignRequestBody    { public int StaffId { get; init; } public string? Note { get; init; } }
 public record ApproveRequestBody   { public string? Note    { get; init; } }
 public record ConfirmRequestBody   { public string? Notes   { get; init; } }
 public record RejectRequestBody    { public string? Reason   { get; init; } }

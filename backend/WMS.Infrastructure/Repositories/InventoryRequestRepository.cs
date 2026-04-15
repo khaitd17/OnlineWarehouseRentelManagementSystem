@@ -114,6 +114,25 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<List<InventoryRequest>> GetAssignedToStaffByWarehouseAsync(
+        int staffId, int warehouseId, string? type, CancellationToken cancellationToken)
+    {
+        var query = _context.InventoryRequests
+            .Include(r => r.Renter)
+            .Include(r => r.Warehouse)
+            .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
+            .Where(r => r.WarehouseId == warehouseId
+                     && r.Status == "ASSIGNED"
+                     && r.AssignedStaffId == staffId);
+
+        if (!string.IsNullOrEmpty(type))
+            query = query.Where(r => r.Type == type.ToUpper());
+
+        return await query
+            .OrderByDescending(r => r.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
     // ── CREATE ──────────────────────────────────────────────────────────────
     public async Task<InventoryRequest> CreateAsync(InventoryRequest request, CancellationToken cancellationToken)
     {

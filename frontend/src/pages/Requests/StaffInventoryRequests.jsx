@@ -10,6 +10,7 @@ const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN', { day:'2-digit'
 const STATUS_MAP = {
   PENDING:   { label: 'Chờ duyệt',   bg:'#fef3c7', color:'#d97706', border:'#fde68a', dot:'#f59e0b' },
   CONFIRMED: { label: 'Đã duyệt',    bg:'#dcfce7', color:'#166534', border:'#bbf7d0', dot:'#22c55e' },
+  ASSIGNED:  { label: 'Đã giao',     bg:'#ede9fe', color:'#6d28d9', border:'#c4b5fd', dot:'#8b5cf6' },
   COMPLETED: { label: 'Hoàn thành',  bg:'#f0fdf4', color:'#15803d', border:'#86efac', dot:'#16a34a' },
   REJECTED:  { label: 'Từ chối',     bg:'#fee2e2', color:'#dc2626', border:'#fecaca', dot:'#ef4444' },
 };
@@ -24,7 +25,78 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-/* ── Approve Modal ──────────────────────────────────────────── */
+/* ── Assign Modal ───────────────────────────────────────────── */
+const AssignModal = ({ req, staffList, onClose, onAssign, loading }) => {
+  const [selectedStaffId, setSelectedStaffId] = useState('');
+  const [note, setNote]                       = useState('');
+  if (!req) return null;
+  const accent = req.type === 'INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
+  const availableStaff = staffList.filter(s => s.isActive !== false);
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
+      <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:480, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+          <div style={{ width:48, height:48, borderRadius:14, background:'#ede9fe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem' }}>👤</div>
+          <div>
+            <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Giao việc cho nhân viên</h2>
+            <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>#{req.invReqId} · {req.type==='INBOUND'?'Nhập kho':'Xuất kho'} · {req.warehouseName}</p>
+          </div>
+        </div>
+
+        {/* Hàng hóa tóm tắt */}
+        <div style={{ background:'#f8fafc', borderRadius:10, padding:'12px 14px', marginBottom:18 }}>
+          <p style={{ margin:'0 0 8px', fontSize:'0.7rem', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em' }}>Hàng hóa</p>
+          {(req.items||[]).slice(0,3).map((it,i)=>(
+            <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.85rem', marginBottom:4 }}>
+              <span style={{ fontWeight:600, color:'#1e293b' }}>{it.itemName}</span>
+              <span style={{ color:'#64748b' }}>{it.quantity} {it.unit}</span>
+            </div>
+          ))}
+          {(req.items||[]).length > 3 && <p style={{ margin:'4px 0 0', fontSize:'0.75rem', color:'#94a3b8' }}>+{req.items.length-3} mặt hàng khác</p>}
+        </div>
+
+        {/* Chọn nhân viên */}
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Chọn nhân viên</label>
+          {availableStaff.length === 0 ? (
+            <p style={{ color:'#dc2626', fontSize:'0.85rem', margin:0 }}>Không có nhân viên nào trong kho này.</p>
+          ) : (
+            <select value={selectedStaffId} onChange={e=>setSelectedStaffId(e.target.value)}
+              style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid #e2e8f0', fontSize:'0.875rem', outline:'none', fontFamily:'Inter,sans-serif', background:'#f8fafc', cursor:'pointer' }}
+              onFocus={e=>e.target.style.borderColor='#8b5cf6'} onBlur={e=>e.target.style.borderColor='#e2e8f0'}>
+              <option value=''>-- Chọn nhân viên --</option>
+              {availableStaff.map(s => (
+                <option key={s.userId} value={s.userId}>{s.fullName} ({s.email})</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Ghi chú */}
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Ghi chú hướng dẫn (tùy chọn)</label>
+          <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
+            placeholder='VD: Ưu tiên xử lý ngay hôm nay, khu A cột 3...'
+            style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1.5px solid #e2e8f0', fontSize:'0.875rem', outline:'none', resize:'vertical', fontFamily:'Inter,sans-serif' }}
+            onFocus={e=>e.target.style.borderColor='#8b5cf6'} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
+        </div>
+
+        <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+          <button onClick={onClose} disabled={loading} style={{ padding:'10px 22px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', cursor:'pointer', fontWeight:600, fontSize:'0.875rem', color:'#64748b' }}>Hủy</button>
+          <button
+            onClick={() => { if(!selectedStaffId){ alert('Vui lòng chọn nhân viên!'); return; } onAssign(req.invReqId, Number(selectedStaffId), note); }}
+            disabled={loading || !selectedStaffId}
+            style={{ padding:'10px 24px', borderRadius:10, border:'none', background: loading || !selectedStaffId ? '#e2e8f0' : 'linear-gradient(135deg,#8b5cf6,#6d28d9)', color: loading || !selectedStaffId ? '#94a3b8' : '#fff', cursor: loading || !selectedStaffId ? 'not-allowed' : 'pointer', fontWeight:700, fontSize:'0.875rem', display:'flex', alignItems:'center', gap:8, boxShadow: loading || !selectedStaffId ? 'none' : '0 4px 14px rgba(139,92,246,0.4)' }}>
+            {loading && <span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }}/>}
+            {loading ? 'Đang giao...' : '👤 Giao việc'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── Approve Modal ───────────────────────────────────────────── */
 const ApproveModal = ({ req, onClose, onApprove, loading }) => {
   const [note, setNote] = useState('');
   if (!req) return null;
@@ -176,17 +248,20 @@ const DetailModal = ({ req, onClose }) => {
 };
 
 /* ── Main Component (Manager view) ──────────────────────────── */
-const ManagerInventoryRequests = () => {
-  const [activeTab, setActiveTab]       = useState('INBOUND');
+const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
+  const [activeTab, setActiveTab]       = useState(defaultTab);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch]             = useState('');
   const [page, setPage]                 = useState(1);
   const [data, setData]                 = useState({ items:[], totalCount:0, totalPages:0 });
   const [loading, setLoading]           = useState(false);
   const [tabCounts, setTabCounts]       = useState({ INBOUND:0, OUTBOUND:0 });
+  const [pendingCounts, setPendingCounts] = useState({ INBOUND:0, OUTBOUND:0 });
   const [detailReq, setDetailReq]       = useState(null);
   const [approveReq, setApproveReq]     = useState(null);
   const [rejectReq, setRejectReq]       = useState(null);
+  const [assignReq, setAssignReq]       = useState(null);
+  const [staffList, setStaffList]       = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast]               = useState(null);
 
@@ -225,6 +300,29 @@ const ManagerInventoryRequests = () => {
     fetchTabCounts();
   },[]);
 
+  // Fetch pending-only counts (for red badge on tabs & sidebar sync)
+  const fetchPendingCounts = useCallback(async()=>{
+    try {
+      const [inRes, outRes] = await Promise.all([
+        inventoryService.getInventoryRequests({ type:'INBOUND',  status:'PENDING', page:1, pageSize:1 }),
+        inventoryService.getInventoryRequests({ type:'OUTBOUND', status:'PENDING', page:1, pageSize:1 }),
+      ]);
+      setPendingCounts({
+        INBOUND:  inRes.data?.totalCount  ?? 0,
+        OUTBOUND: outRes.data?.totalCount ?? 0,
+      });
+    } catch {}
+  },[]);
+
+  useEffect(()=>{ fetchPendingCounts(); },[fetchPendingCounts]);
+
+  // Re-fetch badge counts when an action completes (approve/reject/assign)
+  useEffect(()=>{
+    const handler = () => { fetchPendingCounts(); fetchData(); };
+    window.addEventListener('inventoryRequestUpdated', handler);
+    return () => window.removeEventListener('inventoryRequestUpdated', handler);
+  },[fetchPendingCounts, fetchData]);
+
   const filtered = search
     ? data.items.filter(r => r.renterName?.toLowerCase().includes(search.toLowerCase()) || r.warehouseName?.toLowerCase().includes(search.toLowerCase()) || String(r.invReqId).includes(search))
     : data.items;
@@ -233,6 +331,7 @@ const ManagerInventoryRequests = () => {
     total:     data.totalCount,
     pending:   data.items.filter(r=>r.status==='PENDING').length,
     confirmed: data.items.filter(r=>r.status==='CONFIRMED').length,
+    assigned:  data.items.filter(r=>r.status==='ASSIGNED').length,
     completed: data.items.filter(r=>r.status==='COMPLETED').length,
   };
 
@@ -241,7 +340,7 @@ const ManagerInventoryRequests = () => {
     try {
       await axiosClient.post(`/InventoryRequests/${id}/approve`, { note });
       showToast(`Đã duyệt yêu cầu #${id} — nhân viên kho có thể xử lý ngay!`);
-      setApproveReq(null); fetchData();
+      setApproveReq(null); fetchData(); fetchPendingCounts();
       window.dispatchEvent(new Event('inventoryRequestUpdated'));
     } catch(err){ showToast(err?.response?.data?.message||'Duyệt thất bại.', true); }
     finally{ setActionLoading(false); }
@@ -252,19 +351,43 @@ const ManagerInventoryRequests = () => {
     try {
       await axiosClient.post(`/InventoryRequests/${id}/reject`, { reason });
       showToast(`Đã từ chối yêu cầu #${id}.`);
-      setRejectReq(null); fetchData();
+      setRejectReq(null); fetchData(); fetchPendingCounts();
       window.dispatchEvent(new Event('inventoryRequestUpdated'));
     } catch(err){ showToast(err?.response?.data?.message||'Từ chối thất bại.', true); }
     finally{ setActionLoading(false); }
   };
 
+  // Mở modal Assign — load staff list của kho tương ứng
+  const openAssignModal = async (req) => {
+    setAssignReq(req);
+    try {
+      const res = await axiosClient.get(`/staff/list`, { params: { warehouseId: req.warehouseId, pageSize: 200 } });
+      const list = Array.isArray(res.data?.items) ? res.data.items
+                 : Array.isArray(res.data)         ? res.data
+                 : [];
+      // Chỉ lấy STAFF active
+      setStaffList(list.filter(s => (s.roleCode === 'STAFF' || s.roleName === 'STAFF') && s.membershipIsActive !== false));
+    } catch { setStaffList([]); }
+  };
+
+  const handleAssign = async(id, staffId, note)=>{
+    setActionLoading(true);
+    try {
+      await axiosClient.post(`/InventoryRequests/${id}/assign`, { staffId, note });
+      showToast(`Đã giao yêu cầu #${id} cho nhân viên thành công!`);
+      setAssignReq(null); fetchData(); fetchPendingCounts();
+      window.dispatchEvent(new Event('inventoryRequestUpdated'));
+    } catch(err){ showToast(err?.response?.data?.message||'Giao việc thất bại.', true); }
+    finally{ setActionLoading(false); }
+  };
+
   const card = { background:'#fff', borderRadius:16, border:'1px solid #e2e8f0', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' };
 
-  // Status filter chips — bỏ ASSIGNED
   const STATUS_FILTERS = [
     { key:'', label:'Tất cả', count: counts.total },
     { key:'PENDING',   ...STATUS_MAP.PENDING,   count: counts.pending },
     { key:'CONFIRMED', ...STATUS_MAP.CONFIRMED,  count: counts.confirmed },
+    { key:'ASSIGNED',  ...STATUS_MAP.ASSIGNED,   count: counts.assigned },
     { key:'COMPLETED', ...STATUS_MAP.COMPLETED,  count: counts.completed },
   ];
 
@@ -273,6 +396,7 @@ const ManagerInventoryRequests = () => {
       <style>{`
         @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes slide-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes badgePop { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.25)} 100%{transform:scale(1);opacity:1} }
         .mgr-row:hover { background:#fafbff !important; }
       `}</style>
 
@@ -320,7 +444,7 @@ const ManagerInventoryRequests = () => {
           {v:'OUTBOUND', label:'Xuất kho', icon:'📤', color:OUTBOUND_COLOR},
         ].map(({v,label,icon,color})=>(
           <button key={v} onClick={()=>{ setActiveTab(v); setPage(1); setSearch(''); setStatusFilter(''); }}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 18px', borderRadius:8, border:`1.5px solid ${activeTab===v?color:'#e2e8f0'}`, background:activeTab===v?color:'#fff', color:activeTab===v?'#fff':'#64748b', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', transition:'all 0.18s' }}>
+            style={{ position:'relative', display:'flex', alignItems:'center', gap:6, padding:'6px 18px', borderRadius:8, border:`1.5px solid ${activeTab===v?color:'#e2e8f0'}`, background:activeTab===v?color:'#fff', color:activeTab===v?'#fff':'#64748b', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', transition:'all 0.18s' }}>
             <span>{icon}</span>
             {label}
             {tabCounts[v] > 0 && (
@@ -331,6 +455,22 @@ const ManagerInventoryRequests = () => {
                 color: activeTab===v ? '#fff' : color,
                 padding:'0 5px', lineHeight:1,
               }}>{tabCounts[v]}</span>
+            )}
+            {/* Red pending badge — only shows when there are PENDING requests for this type */}
+            {pendingCounts[v] > 0 && (
+              <span style={{
+                position:'absolute', top:'-7px', right:'-7px',
+                minWidth:'18px', height:'18px', borderRadius:'999px',
+                background:'#ef4444', color:'#fff',
+                fontSize:'0.62rem', fontWeight:800,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                padding:'0 4px', lineHeight:1,
+                boxShadow:'0 0 8px rgba(239,68,68,.7)',
+                border:'2px solid #fff',
+                animation:'badgePop 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+              }}>
+                {pendingCounts[v] > 99 ? '99+' : pendingCounts[v]}
+              </span>
             )}
           </button>
         ))}
@@ -401,7 +541,7 @@ const ManagerInventoryRequests = () => {
                     </td>
                     <td style={{ padding:'13px 14px' }}><StatusBadge status={req.status}/></td>
                     <td style={{ padding:'13px 14px', fontSize:'0.78rem', color:'#64748b' }}>{fmtDate(req.createdAt)}</td>
-                    {/* Actions — chỉ Duyệt và Từ chối, bỏ Giao */}
+                    {/* Actions */}
                     <td style={{ padding:'13px 14px' }}>
                       <div style={{ display:'flex', gap:6, alignItems:'center', justifyContent:'center' }}>
                         {/* Xem chi tiết */}
@@ -420,6 +560,21 @@ const ManagerInventoryRequests = () => {
                             ✓ Duyệt
                           </button>
                         )}
+                        {/* Giao việc — chỉ CONFIRMED */}
+                        {req.status==='CONFIRMED' && (
+                          <button onClick={()=>openAssignModal(req)} title="Giao cho nhân viên"
+                            style={{ padding:'5px 12px', border:'1.5px solid #c4b5fd', background:'#ede9fe', borderRadius:8, cursor:'pointer', color:'#6d28d9', fontSize:'0.78rem', fontWeight:700, display:'flex', alignItems:'center', gap:4, transition:'all 0.15s' }}
+                            onMouseEnter={e=>{e.currentTarget.style.background='#c4b5fd';}}
+                            onMouseLeave={e=>{e.currentTarget.style.background='#ede9fe';}}>
+                            👤 Giao
+                          </button>
+                        )}
+                        {/* Badge đã giao khi ASSIGNED */}
+                        {req.status==='ASSIGNED' && (
+                          <span style={{ padding:'4px 10px', borderRadius:8, background:'#ede9fe', border:'1.5px solid #c4b5fd', color:'#6d28d9', fontSize:'0.72rem', fontWeight:700, whiteSpace:'nowrap' }}>
+                            👤 {req.assignedStaffName || 'Đã giao'}
+                          </span>
+                        )}
                         {/* Từ chối — PENDING hoặc CONFIRMED */}
                         {(req.status==='PENDING'||req.status==='CONFIRMED') && (
                           <button onClick={()=>setRejectReq(req)} title="Từ chối"
@@ -428,12 +583,6 @@ const ManagerInventoryRequests = () => {
                             onMouseLeave={e=>{e.currentTarget.style.background='#fef2f2';}}>
                             ✕
                           </button>
-                        )}
-                        {/* Badge "Đang xử lý" khi CONFIRMED */}
-                        {req.status==='CONFIRMED' && (
-                          <span style={{ padding:'4px 10px', borderRadius:8, background:'#f0fdf4', border:'1.5px solid #86efac', color:'#15803d', fontSize:'0.72rem', fontWeight:700, whiteSpace:'nowrap' }}>
-                            Chờ Staff
-                          </span>
                         )}
                       </div>
                     </td>
@@ -467,8 +616,10 @@ const ManagerInventoryRequests = () => {
       <DetailModal  req={detailReq}  onClose={()=>setDetailReq(null)}/>
       <ApproveModal req={approveReq} onClose={()=>setApproveReq(null)} onApprove={handleApprove} loading={actionLoading}/>
       <RejectModal  req={rejectReq}  onClose={()=>setRejectReq(null)} onReject={handleReject} loading={actionLoading}/>
+      <AssignModal  req={assignReq}  staffList={staffList} onClose={()=>setAssignReq(null)} onAssign={handleAssign} loading={actionLoading}/>
     </div>
   );
 };
 
 export default ManagerInventoryRequests;
+

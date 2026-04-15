@@ -634,6 +634,7 @@ const MainLayout = () => {
     const sysRole = (warehouseCtx.systemRole || user?.role || user?.roleName || '').toUpperCase();
     if (sysRole === 'ADMIN') return 'ADMIN';
     for (const r of ROLE_PRIORITY) { if (warehouseRoles.includes(r)) return r; }
+    if (sysRole === 'RENTER' && !warehouseRoles.includes('RENTER')) return 'USER';
     return sysRole || userRole || 'USER';
   })();
   const isRenter = effectiveRole === 'RENTER';

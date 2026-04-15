@@ -50,30 +50,50 @@ public class DeclineContractHandler : IRequestHandler<DeclineContractCommand, Un
         
         await _contractRepository.UpdateAsync(contract);
 
-        // Log cancellation
-        var cancellationLog = CancellationLog.Create(
-            rentalRequestId: null,
-            rentalContractId: contract.ContractId,
-            cancelledStage: "CONTRACT",
-            cancelledBy: cancelledBy,
-            cancellationReason: request.Reason,
-            refundAmount: null,
-            cancellationFee: null
-        );
-        await _cancellationLogRepository.AddAsync(cancellationLog);
+        // Log cancellation and send notification - these operations should not fail the main request
+        try
+        {
+            var cancellationLog = CancellationLog.Create(
+                rentalRequestId: null,
+                rentalContractId: contract.ContractId,
+                cancelledStage: "CONTRACT",
+                cancelledBy: cancelledBy,
+                cancellationReason: request.Reason,
+                refundAmount: null,
+                cancellationFee: null
+            );
+            await _cancellationLogRepository.AddAsync(cancellationLog);
+        }
+        catch (Exception ex)
+        {
+            // Log warning but don't fail - cancellation log is not critical
+            System.Diagnostics.Debug.WriteLine($"Failed to create cancellation log for contract {contract.ContractId}: {ex.Message}");
+        }
 
         // Send notification to other party
-        var recipientId = isRenter ? contract.Warehouse!.OwnerId : contract.RenterId;
-        
-        var notification = Notification.Create(
-            receiverUserId: recipientId,
-            title: "Hợp đồng thuê kho đã bị từ chối",
-            message: $"{(isRenter ? "Người thuê" : "Chủ kho")} đã từ chối ký hợp đồng {contract.ContractNumber}. Lý do: {request.Reason}",
-            notificationType: "IN_APP",
-            referenceId: contract.ContractId,
-            referenceType: "RentalContract"
-        );
-        await _notificationRepository.AddAsync(notification);
+        try
+        {
+            var recipientId = isRenter ? contract.Warehouse?.OwnerId : contract.RenterId;
+            
+            // Only send notification if we have a valid recipient
+            if (recipientId.HasValue)
+            {
+                var notification = Notification.Create(
+                    receiverUserId: recipientId.Value,
+                    title: "Hợp đồng thuê kho đã bị từ chối",
+                    message: $"{(isRenter ? "Người thuê" : "Chủ kho")} đã từ chối ký hợp đồng {contract.ContractNumber}. Lý do: {request.Reason}",
+                    notificationType: "IN_APP",
+                    referenceId: contract.ContractId,
+                    referenceType: "RentalContract"
+                );
+                await _notificationRepository.AddAsync(notification);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log warning but don't fail - notification is not critical
+            System.Diagnostics.Debug.WriteLine($"Failed to send notification for declined contract {contract.ContractId}: {ex.Message}");
+        }
 
         return Unit.Value;
     }

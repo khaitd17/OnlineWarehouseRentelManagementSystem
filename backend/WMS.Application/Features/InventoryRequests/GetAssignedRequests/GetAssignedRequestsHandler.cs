@@ -7,9 +7,9 @@ namespace WMS.Application.Features.InventoryRequests.GetAssignedRequests;
 // ─── Query ───────────────────────────────────────────────────────────────────
 public record GetAssignedRequestsQuery : IRequest<List<InventoryRequestDto>>
 {
+    public int StaffId    { get; init; }
     public int WarehouseId { get; init; }
-
-    public string? Type { get; init; }
+    public string? Type   { get; init; }
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -24,8 +24,8 @@ public class GetAssignedRequestsHandler
     public async Task<List<InventoryRequestDto>> Handle(
         GetAssignedRequestsQuery query, CancellationToken cancellationToken)
     {
-        var requests = await _repo.GetConfirmedByWarehouseAsync(
-            query.WarehouseId, query.Type, cancellationToken);
+        var requests = await _repo.GetAssignedToStaffByWarehouseAsync(
+            query.StaffId, query.WarehouseId, query.Type, cancellationToken);
 
         return requests.Select(InventoryRequestMapper.ToDto).ToList();
     }
