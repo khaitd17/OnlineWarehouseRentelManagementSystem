@@ -46,14 +46,39 @@ public class InventoryRequestsController : ControllerBase
     {
         var userId = GetUserId();
 
-        // Lấy RoleCode trực tiếp từ membership — không quy đổi, handler tự xử lý
+        // Resolve viewAs: ưu tiên membership của kho cụ thể, fallback về membership đầu tiên của user
         string viewAs = "RENTER";
+
         if (warehouseId.HasValue)
         {
+            // Có warehouseId → lấy role membership chính xác trong kho đó
             var membership = await _membershipRepo.GetCallerMembershipAsync(
                 userId, warehouseId.Value, HttpContext.RequestAborted);
             if (membership != null)
                 viewAs = membership.RoleCode;
+        }
+        else
+        {
+            // Không có warehouseId → tìm tất cả kho user thuộc về (staff / manager / owner / operator)
+            // GetMyWarehousesAsync trả về các kho với roleCode tương ứng
+            var myWarehouses = await _membershipRepo.GetMyWarehousesAsync(userId);
+            if (myWarehouses.Count > 0)
+            {
+                // Lấy role cao nhất theo thứ tự ưu tiên
+                var rolePriority = new[] { "OWNER", "OPERATOR", "MANAGER", "STAFF" };
+                string? bestRole = null;
+                foreach (var rp in rolePriority)
+                {
+                    if (myWarehouses.Any(w => w.RoleCode.ToUpper() == rp))
+                    {
+                        bestRole = rp;
+                        break;
+                    }
+                }
+                if (bestRole != null)
+                    viewAs = bestRole;
+            }
+            // Nếu myWarehouses rỗng → user là RENTER, giữ viewAs = "RENTER"
         }
 
         var result = await _mediator.Send(new GetInventoryRequestsQuery

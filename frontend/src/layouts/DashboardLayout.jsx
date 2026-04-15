@@ -477,10 +477,7 @@ const DashboardLayout = () => {
                   </Link>
                 )}
                 {userRole === 'RENTER' && (
-                  <Link to="/my-favorites" className="nav-dropdown-item" style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize:'16px', color:'#f43f5e' }}>favorite</span>
-                    Kho yêu thích
-                  </Link>
+                  <Link to="/my-favorites" className="nav-dropdown-item">Kho yêu thích</Link>
                 )}
                 <div className="nav-dropdown-divider" />
                 <button className="nav-dropdown-item logout" onClick={handleLogout}>Đăng xuất</button>

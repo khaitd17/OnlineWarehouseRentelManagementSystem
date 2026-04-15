@@ -256,6 +256,7 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
   const [data, setData]                 = useState({ items:[], totalCount:0, totalPages:0 });
   const [loading, setLoading]           = useState(false);
   const [tabCounts, setTabCounts]       = useState({ INBOUND:0, OUTBOUND:0 });
+  const [pendingCounts, setPendingCounts] = useState({ INBOUND:0, OUTBOUND:0 });
   const [detailReq, setDetailReq]       = useState(null);
   const [approveReq, setApproveReq]     = useState(null);
   const [rejectReq, setRejectReq]       = useState(null);
@@ -299,6 +300,29 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
     fetchTabCounts();
   },[]);
 
+  // Fetch pending-only counts (for red badge on tabs & sidebar sync)
+  const fetchPendingCounts = useCallback(async()=>{
+    try {
+      const [inRes, outRes] = await Promise.all([
+        inventoryService.getInventoryRequests({ type:'INBOUND',  status:'PENDING', page:1, pageSize:1 }),
+        inventoryService.getInventoryRequests({ type:'OUTBOUND', status:'PENDING', page:1, pageSize:1 }),
+      ]);
+      setPendingCounts({
+        INBOUND:  inRes.data?.totalCount  ?? 0,
+        OUTBOUND: outRes.data?.totalCount ?? 0,
+      });
+    } catch {}
+  },[]);
+
+  useEffect(()=>{ fetchPendingCounts(); },[fetchPendingCounts]);
+
+  // Re-fetch badge counts when an action completes (approve/reject/assign)
+  useEffect(()=>{
+    const handler = () => { fetchPendingCounts(); fetchData(); };
+    window.addEventListener('inventoryRequestUpdated', handler);
+    return () => window.removeEventListener('inventoryRequestUpdated', handler);
+  },[fetchPendingCounts, fetchData]);
+
   const filtered = search
     ? data.items.filter(r => r.renterName?.toLowerCase().includes(search.toLowerCase()) || r.warehouseName?.toLowerCase().includes(search.toLowerCase()) || String(r.invReqId).includes(search))
     : data.items;
@@ -316,7 +340,7 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
     try {
       await axiosClient.post(`/InventoryRequests/${id}/approve`, { note });
       showToast(`Đã duyệt yêu cầu #${id} — nhân viên kho có thể xử lý ngay!`);
-      setApproveReq(null); fetchData();
+      setApproveReq(null); fetchData(); fetchPendingCounts();
       window.dispatchEvent(new Event('inventoryRequestUpdated'));
     } catch(err){ showToast(err?.response?.data?.message||'Duyệt thất bại.', true); }
     finally{ setActionLoading(false); }
@@ -327,7 +351,7 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
     try {
       await axiosClient.post(`/InventoryRequests/${id}/reject`, { reason });
       showToast(`Đã từ chối yêu cầu #${id}.`);
-      setRejectReq(null); fetchData();
+      setRejectReq(null); fetchData(); fetchPendingCounts();
       window.dispatchEvent(new Event('inventoryRequestUpdated'));
     } catch(err){ showToast(err?.response?.data?.message||'Từ chối thất bại.', true); }
     finally{ setActionLoading(false); }
@@ -351,7 +375,7 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
     try {
       await axiosClient.post(`/InventoryRequests/${id}/assign`, { staffId, note });
       showToast(`Đã giao yêu cầu #${id} cho nhân viên thành công!`);
-      setAssignReq(null); fetchData();
+      setAssignReq(null); fetchData(); fetchPendingCounts();
       window.dispatchEvent(new Event('inventoryRequestUpdated'));
     } catch(err){ showToast(err?.response?.data?.message||'Giao việc thất bại.', true); }
     finally{ setActionLoading(false); }
@@ -372,6 +396,7 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
       <style>{`
         @keyframes spin { to { transform:rotate(360deg); } }
         @keyframes slide-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes badgePop { 0%{transform:scale(0);opacity:0} 70%{transform:scale(1.25)} 100%{transform:scale(1);opacity:1} }
         .mgr-row:hover { background:#fafbff !important; }
       `}</style>
 
@@ -419,7 +444,7 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
           {v:'OUTBOUND', label:'Xuất kho', icon:'📤', color:OUTBOUND_COLOR},
         ].map(({v,label,icon,color})=>(
           <button key={v} onClick={()=>{ setActiveTab(v); setPage(1); setSearch(''); setStatusFilter(''); }}
-            style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 18px', borderRadius:8, border:`1.5px solid ${activeTab===v?color:'#e2e8f0'}`, background:activeTab===v?color:'#fff', color:activeTab===v?'#fff':'#64748b', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', transition:'all 0.18s' }}>
+            style={{ position:'relative', display:'flex', alignItems:'center', gap:6, padding:'6px 18px', borderRadius:8, border:`1.5px solid ${activeTab===v?color:'#e2e8f0'}`, background:activeTab===v?color:'#fff', color:activeTab===v?'#fff':'#64748b', fontWeight:700, fontSize:'0.85rem', cursor:'pointer', transition:'all 0.18s' }}>
             <span>{icon}</span>
             {label}
             {tabCounts[v] > 0 && (
@@ -430,6 +455,22 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
                 color: activeTab===v ? '#fff' : color,
                 padding:'0 5px', lineHeight:1,
               }}>{tabCounts[v]}</span>
+            )}
+            {/* Red pending badge — only shows when there are PENDING requests for this type */}
+            {pendingCounts[v] > 0 && (
+              <span style={{
+                position:'absolute', top:'-7px', right:'-7px',
+                minWidth:'18px', height:'18px', borderRadius:'999px',
+                background:'#ef4444', color:'#fff',
+                fontSize:'0.62rem', fontWeight:800,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                padding:'0 4px', lineHeight:1,
+                boxShadow:'0 0 8px rgba(239,68,68,.7)',
+                border:'2px solid #fff',
+                animation:'badgePop 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+              }}>
+                {pendingCounts[v] > 99 ? '99+' : pendingCounts[v]}
+              </span>
             )}
           </button>
         ))}
