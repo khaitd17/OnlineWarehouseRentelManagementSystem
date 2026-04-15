@@ -15,6 +15,8 @@ public class GetAuditSessionsQuery : IRequest<ApiResponse<PagedResult<AuditSessi
     // Role-based filtering
     public int? UserId { get; set; }
     public string? UserRole { get; set; }
+    /// <summary>Khi true, luôn lọc theo assignedTo == UserId — dùng cho trang Staff.</summary>
+    public bool OnlyAssignedToMe { get; set; } = false;
 }
 
 public record AuditSessionDto(
