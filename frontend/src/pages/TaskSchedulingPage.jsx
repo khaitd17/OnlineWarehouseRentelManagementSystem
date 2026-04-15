@@ -304,7 +304,7 @@ function CreateTaskModal({ warehouseId, taskTypes, defaultDate, onClose, onCreat
 
   const handleSubmit = async e => {
     e.preventDefault();
-    if (!form.taskTypeId) return setErr("Vui lòng chọn loại task.");
+    if (!form.taskTypeId) return setErr("Vui lòng chọn loại công việc.");
     if (!form.scheduledAt) return setErr("Vui lòng chọn ngày.");
     setSaving(true);
     try {
@@ -320,11 +320,11 @@ function CreateTaskModal({ warehouseId, taskTypes, defaultDate, onClose, onCreat
 
   return (
     <Modal onClose={onClose}>
-      <div style={{ fontWeight:800, fontSize:15, color:C.text, marginBottom:16 }}>Tạo Task Mới</div>
+      <div style={{ fontWeight:800, fontSize:15, color:C.text, marginBottom:16 }}>Tạo Công việc Mới</div>
       {err && <div style={{ padding:"8px 12px", background:"#fff1f2", color:"#dc2626", borderRadius:6, fontSize:11, marginBottom:10, border:"1px solid #fecaca" }}>{err}</div>}
       <form onSubmit={handleSubmit}>
         <div style={grp}>
-          <label style={lbl}>Loại task *</label>
+          <label style={lbl}>Loại công việc *</label>
           <select value={form.taskTypeId} onChange={e => setForm(f=>({...f,taskTypeId:e.target.value}))} style={inp}>
             {manualTypes.map(tt => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
           </select>
@@ -351,7 +351,7 @@ function CreateTaskModal({ warehouseId, taskTypes, defaultDate, onClose, onCreat
           </button>
           <button type="submit" disabled={saving}
             style={{ flex:1, padding:"8px 0", borderRadius:7, border:"none", background:C.accent, color:"#fff", cursor:saving?"not-allowed":"pointer", fontSize:12, fontWeight:700, opacity:saving?.7:1 }}>
-            {saving ? "Đang tạo..." : "Tạo task"}
+            {saving ? "Đang tạo..." : "Tạo công việc"}
           </button>
         </div>
       </form>
@@ -432,7 +432,7 @@ export default function TaskSchedulingPage() {
           {/* Title + warehouse */}
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <div>
-              <h1 style={{ margin:0, fontSize:17, fontWeight:800, color:C.text }}>Quản lý Task</h1>
+              <h1 style={{ margin:0, fontSize:17, fontWeight:800, color:C.text }}>Quản lý Công việc</h1>
               <p style={{ margin:0, fontSize:11, color:C.sub }}>Lịch công việc theo tuần</p>
             </div>
             {warehouses.length > 1 && (
@@ -465,7 +465,7 @@ export default function TaskSchedulingPage() {
 
       {/* ── Filter bar ── */}
       <div style={{ background:C.surface, borderBottom:`1px solid ${C.border}`, padding:"8px 24px", display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" }}>
-        <span style={{ fontSize:10, fontWeight:700, color:C.sub, textTransform:"uppercase", letterSpacing:".5px", marginRight:4 }}>Loại task:</span>
+        <span style={{ fontSize:10, fontWeight:700, color:C.sub, textTransform:"uppercase", letterSpacing:".5px", marginRight:4 }}>Loại công việc:</span>
         {/* Tat ca */}
         <button
           onClick={() => setFilterType(null)}
@@ -498,7 +498,7 @@ export default function TaskSchedulingPage() {
           })
         }
         <span style={{ marginLeft:"auto", fontSize:10, color:C.subLight }}>
-          {filteredTasks.length} task hiển thị
+          {filteredTasks.length} công việc hiển thị
         </span>
       </div>
 
@@ -566,7 +566,7 @@ export default function TaskSchedulingPage() {
 
         {/* Task count summary */}
         <div style={{ marginTop:12, fontSize:11, color:C.sub, textAlign:"right" }}>
-          Tổng: {filteredTasks.length}/{tasks.length} task trong tuần này
+          Tổng: {filteredTasks.length}/{tasks.length} công việc trong tuần này
         </div>
       </div>
 

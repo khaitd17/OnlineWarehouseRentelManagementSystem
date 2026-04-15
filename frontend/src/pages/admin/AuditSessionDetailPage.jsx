@@ -14,8 +14,9 @@ export default function AuditSessionDetailPage() {
   const navigate = useNavigate();
   const showToast = useToast();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const userRole = (user.role || user.roleName || "").toUpperCase();
-  const isOwner = userRole === "OWNER";
+  // [PERMISSION FIX] Dùng warehouseContext thay vì JWT system role
+  const warehouseCtx = JSON.parse(localStorage.getItem("warehouseContext") || "{}");
+  const isOwner = (warehouseCtx?.warehouses || []).some(w => (w.role || "").toUpperCase() === "OWNER");
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [results, setResults] = useState({ items: [], totalCount: 0, page: 1, pageSize: 10, totalPages: 0 });
@@ -108,10 +109,12 @@ export default function AuditSessionDetailPage() {
     { key: "itemName", label: "Tên hàng hóa", sortable: true },
     { key: "expectedQty", label: "SL dự kiến", sortable: true },
     { key: "actualQty", label: "SL thực tế", sortable: true },
-    { key: "discrepancy", label: "Chênh lệch", sortable: true, render: (v) => {
-      if (v === 0) return <span style={{ color: "#10b981", fontWeight: 600 }}>0</span>;
-      return <span style={{ color: "#ef4444", fontWeight: 600 }}>{v > 0 ? `+${v}` : v}</span>;
-    }},
+    {
+      key: "discrepancy", label: "Chênh lệch", sortable: true, render: (v) => {
+        if (v === 0) return <span style={{ color: "#10b981", fontWeight: 600 }}>0</span>;
+        return <span style={{ color: "#ef4444", fontWeight: 600 }}>{v > 0 ? `+${v}` : v}</span>;
+      }
+    },
     { key: "discrepancyReason", label: "Lý do", render: (v) => v || "—" },
     { key: "createdAt", label: "Ngày ghi", render: (v) => v ? new Date(v).toLocaleDateString("vi-VN") : "—" },
   ];

@@ -61,21 +61,23 @@ public class InventoryRequestRepository : IInventoryRequestRepository
         return (items, total);
     }
 
-    // ── STAFF VIEW ──────────────────────────────────────────────────────────
+    // ── STAFF / MANAGER / OPERATOR VIEW ─────────────────────────────────────
+    // warehouseId BẮT BUỘC — không được phép query toàn hệ thống
     public async Task<(List<InventoryRequest> Items, int TotalCount)> GetForStaffAsync(
         string type, string? status, int? warehouseId,
         int page, int pageSize, CancellationToken cancellationToken)
     {
+        if (!warehouseId.HasValue)
+            throw new ArgumentException("warehouseId là bắt buộc khi truy vấn với vai trò vận hành kho.");
+
         var query = _context.InventoryRequests
             .Include(r => r.Renter)
             .Include(r => r.Warehouse)
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
-            .Where(r => r.Type == type);
+            .Where(r => r.Type == type && r.WarehouseId == warehouseId.Value);
 
         if (!string.IsNullOrEmpty(status))
             query = query.Where(r => r.Status == status);
-        if (warehouseId.HasValue)
-            query = query.Where(r => r.WarehouseId == warehouseId.Value);
 
         var total = await query.CountAsync(cancellationToken);
         var items = await query
@@ -115,7 +117,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
     // ── CREATE ──────────────────────────────────────────────────────────────
     public async Task<InventoryRequest> CreateAsync(InventoryRequest request, CancellationToken cancellationToken)
     {
-        request.CreatedAt = DateTime.Now;
+        request.CreatedAt = DateTime.UtcNow;
         request.Status = "PENDING";
         _context.InventoryRequests.Add(request);
         await _context.SaveChangesAsync(cancellationToken);
@@ -125,7 +127,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
     // ── UPDATE ──────────────────────────────────────────────────────────────
     public async Task UpdateAsync(InventoryRequest request, CancellationToken cancellationToken)
     {
-        request.UpdatedAt = DateTime.Now;
+        request.UpdatedAt = DateTime.UtcNow;
         _context.InventoryRequests.Update(request);
         await _context.SaveChangesAsync(cancellationToken);
     }

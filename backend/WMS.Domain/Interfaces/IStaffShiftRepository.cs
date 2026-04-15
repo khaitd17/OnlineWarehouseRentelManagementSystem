@@ -8,6 +8,21 @@ public interface IStaffShiftRepository
     Task<StaffScheduleDto?> GetMyScheduleAsync(int userId, int warehouseId, DateOnly from, DateOnly to, CancellationToken ct = default);
     Task<List<WarehouseShiftLookupDto>> GetWarehouseShiftsAsync(int warehouseId, CancellationToken ct = default);
     Task<GenerateScheduleSummary> GenerateScheduleAsync(int warehouseId, DateOnly from, DateOnly to, CancellationToken ct = default);
+
+    // Lay shift theo ID de dung trong check-in / check-out
+    Task<WMS.Domain.Entities.StaffShift?> GetByIdAsync(int staffShiftId, CancellationToken ct = default);
+
+    // Ghi check-in (chi ghi 1 lan, handler kiem tra truoc)
+    Task RecordCheckInAsync(int staffShiftId, DateTime capturedAt, string photoUrl, CancellationToken ct = default);
+
+    // Ghi / ghi de check-out  
+    Task RecordCheckOutAsync(int staffShiftId, DateTime capturedAt, string photoUrl, CancellationToken ct = default);
+
+    // Cap nhat so gio tang ca cho 1 shift
+    Task SetOvertimeAsync(int staffShiftId, decimal hours, CancellationToken ct = default);
+
+    // Cap nhat tang ca hang loat: nhieu membership, 1 ngay, cung so gio
+    Task BulkSetOvertimeAsync(int warehouseId, DateOnly date, List<int> membershipIds, decimal hours, CancellationToken ct = default);
 }
 
 public class StaffScheduleDto
@@ -24,12 +39,27 @@ public class StaffScheduleDto
 
 public class ShiftSlotDto
 {
+    // ID cua StaffShift, frontend can de goi check-in/out
+    public int? StaffShiftId { get; set; }
+
     public string? TimeIn1 { get; set; }
     public string? TimeOut1 { get; set; }
     public string? TimeIn2 { get; set; }
     public string? TimeOut2 { get; set; }
     public string? ShiftType { get; set; }
     public List<TaskSlotDto> Tasks { get; set; } = new();
+
+    // So gio tang ca
+    public decimal OvertimeHours { get; set; }
+
+    // Du lieu diem danh thuc te
+    public DateTime? CheckInAt { get; set; }
+    public string? CheckInPhoto { get; set; }
+    public DateTime? CheckOutAt { get; set; }
+    public string? CheckOutPhoto { get; set; }
+
+    // True neu check-out truoc gio tan ca
+    public bool IsEarlyLeave { get; set; }
 }
 
 public class TaskSlotDto
@@ -51,6 +81,8 @@ public class StaffShiftDto
     public string? TimeIn2 { get; set; }
     public string? TimeOut2 { get; set; }
     public string? ShiftType { get; set; }
+    // So gio tang ca
+    public decimal OvertimeHours { get; set; }
 }
 
 public class UpsertShiftDto : StaffShiftDto { }

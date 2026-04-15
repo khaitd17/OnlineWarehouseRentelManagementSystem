@@ -21,11 +21,12 @@ public class CreateTaskHandler : IRequestHandler<CreateTaskCommand, int>
     public async Task<int> Handle(CreateTaskCommand cmd, CancellationToken ct)
     {
         // Kiểm tra quyền: chỉ MANAGER hoặc OPERATOR mới được tạo task
-        var caller = await _membershipRepo.GetCallerMembershipAsync(cmd.CallerId, cmd.WarehouseId, ct)
-            ?? throw new UnauthorizedAccessException("Bạn không có quyền trong kho này.");
+        // Dùng HasRoleAsync để tránh bug khi user có cả OWNER+OPERATOR (GetCallerMembership trả OWNER)
+        bool isOperator = await _membershipRepo.HasRoleAsync(cmd.CallerId, cmd.WarehouseId, "OPERATOR", ct);
+        bool isManager  = await _membershipRepo.HasRoleAsync(cmd.CallerId, cmd.WarehouseId, "MANAGER",  ct);
 
-        if (!new[] { "MANAGER", "OPERATOR" }.Contains(caller.RoleCode))
-            throw new UnauthorizedAccessException("Chỉ Manager/Operator mới có quyền tạo task.");
+        if (!isOperator && !isManager)
+            throw new UnauthorizedAccessException("Chỉ OPERATOR / MANAGER mới có quyền tạo task.");
 
         // Kiểm tra loại task: chỉ cho phép tạo thủ công task nội bộ đơn giản
         var taskType = await _taskRepo.GetTaskTypeByIdAsync(cmd.TaskTypeId, ct)

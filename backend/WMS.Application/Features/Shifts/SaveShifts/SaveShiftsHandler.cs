@@ -18,11 +18,23 @@ public class SaveShiftsHandler : IRequestHandler<SaveShiftsCommand>
     {
         if (request.WarehouseId.HasValue)
         {
-            var membership = await _membershipRepo.GetCallerMembershipAsync(
-                request.CallerId, request.WarehouseId.Value, ct);
-            if (membership == null || membership.RoleCode is not ("MANAGER" or "OPERATOR"))
-                throw new UnauthorizedAccessException("Chỉ MANAGER / OPERATOR được lưu lịch ca.");
+            bool isOperator = await _membershipRepo.HasRoleAsync(request.CallerId, request.WarehouseId.Value, "OPERATOR", ct);
+            bool isManager  = await _membershipRepo.HasRoleAsync(request.CallerId, request.WarehouseId.Value, "MANAGER",  ct);
+            if (!isOperator && !isManager)
+                throw new UnauthorizedAccessException("Chỉ OPERATOR / MANAGER được lưu lịch ca.");
         }
+
+        // Khong cho tao / sua ca cho ngay da qua
+        var today   = DateOnly.FromDateTime(DateTime.Today);
+        var invalid = request.Shifts
+            .Where(s => DateOnly.TryParseExact(s.ShiftDate, "yyyy-MM-dd", null,
+                            System.Globalization.DateTimeStyles.None, out var d) && d < today)
+            .Select(s => s.ShiftDate)
+            .ToList();
+
+        if (invalid.Count > 0)
+            throw new InvalidOperationException(
+                $"Khong the tao/sua ca cho ngay da qua: {string.Join(", ", invalid)}");
 
         await _repo.SaveShiftsAsync(request.Shifts, ct);
     }

@@ -73,10 +73,16 @@ public class ScheduleController : ControllerBase
         [FromQuery] string to,
         CancellationToken ct)
     {
+        var callerId = GetCallerId();
+        if (callerId == null) return Unauthorized();
         if (!DateOnly.TryParse(from, out var f) || !DateOnly.TryParse(to, out var t))
             return BadRequest(new { message = "from và to phải có dạng YYYY-MM-DD." });
-        var result = await _mediator.Send(new GetShiftsCommand { WarehouseId = warehouseId, From = f, To = t }, ct);
-        return Ok(result);
+        try
+        {
+            var result = await _mediator.Send(new GetShiftsCommand { WarehouseId = warehouseId, From = f, To = t, CallerId = callerId.Value }, ct);
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { message = ex.Message }); }
     }
 
     [HttpPost("shifts")]

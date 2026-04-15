@@ -74,7 +74,14 @@ const ROLE_TYPES = [
 ];
 
 function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions, onClose, onSuccess }) {
-  const isOperator = callerMembership?.roleCode === "OPERATOR";
+  // Check từ warehouseContext.roles[] để hỗ trợ OWNER+OPERATOR
+  const ctx = JSON.parse(localStorage.getItem("warehouseContext") || "{}");
+  const warehouseEntry = (ctx.warehouses || []).find(w => w.warehouseId === warehouseId);
+  const callerRoles = new Set(
+    (warehouseEntry?.roles?.length ? warehouseEntry.roles : [warehouseEntry?.role || ""])
+      .map(r => r.toUpperCase())
+  );
+  const isOperator = callerRoles.has("OPERATOR") || callerMembership?.roleCode === "OPERATOR";
 
   // Determine current skill code from staff's skills list
   const currentSkillCode = staff.skills?.find(s => ROLE_TYPES.some(r => r.code === s.code))?.code ?? null;
@@ -197,7 +204,7 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
   const [showReassign, setReassign] = useState(false);
 
   const handleToggle = async () => {
-    if (!window.confirm(isActive ? `Deactivate ${staff.fullName}?` : `Activate lại ${staff.fullName}?`)) return;
+    if (!window.confirm(isActive ? `Vô hiệu hoá ${staff.fullName}?` : `Kích hoạt lại ${staff.fullName}?`)) return;
     setBusy(true);
     try {
       if (isActive) await staffService.deactivateMembership(staff.membershipId);
@@ -207,8 +214,16 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
     finally { setBusy(false); }
   };
 
+  // Lấy tất cả roles của caller trong kho này từ warehouseContext (bao gồm cả OPERATOR nếu là OWNER+OPERATOR)
+  const ctx = JSON.parse(localStorage.getItem("warehouseContext") || "{}");
+  const warehouseEntry = (ctx.warehouses || []).find(w => w.warehouseId === (warehouseId || parseInt(warehouseId)));
+  const callerRoles = new Set(
+    (warehouseEntry?.roles?.length ? warehouseEntry.roles : [warehouseEntry?.role || ""])
+      .map(r => r.toUpperCase())
+  );
+
   const canReassign = callerMembership &&
-    (callerMembership.roleCode === "OPERATOR" || callerMembership.roleCode === "MANAGER") &&
+    (callerRoles.has("OPERATOR") || callerRoles.has("MANAGER")) &&
     staff.roleCode !== "OPERATOR";
 
   return (
@@ -238,7 +253,7 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
             <span style={{ fontWeight:700, fontSize:14, color:C.text }}>{staff.fullName}</span>
             <RoleBadge code={staff.roleCode} name={staff.roleName} />
             <span style={{ fontSize:11, color: isActive ? C.green : C.sub }}>
-              <StatusDot active={isActive} />{isActive ? "Active" : "Inactive"}
+              <StatusDot active={isActive} />{isActive ? "Hoạt động" : "Không hoạt động"}
             </span>
           </div>
 
@@ -273,7 +288,7 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
                 background: isActive ? C.redBg : C.greenBg,
                 color: isActive ? C.red : C.green,
                 cursor: busy ? "not-allowed" : "pointer", fontSize:11, fontWeight:700, opacity:busy?.6:1 }}>
-              {busy ? "..." : isActive ? "Deactivate" : "Activate"}
+              {busy ? "..." : isActive ? "Vô hiệu hoá" : "Kích hoạt"}
             </button>
           )}
         </div>

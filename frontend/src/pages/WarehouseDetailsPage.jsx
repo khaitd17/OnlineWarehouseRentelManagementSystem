@@ -32,8 +32,13 @@ const WarehouseDetailsPage = () => {
   const [showThankPopup, setShowThankPopup] = useState(false);
   const isLoggedIn = !!localStorage.getItem('token');
   const currentUser = authService.getCurrentUser();
-  const userRole = (currentUser?.role || currentUser?.roleName || '').toUpperCase();
-  const isRenter = userRole === 'RENTER';
+  // [PERMISSION FIX] Kiểm tra warehouseContext cho kho hiện tại thay vì JWT system role
+  const warehouseCtx = authService.getWarehouseContext();
+  const warehouseList = warehouseCtx?.warehouses || [];
+  const isRenter = warehouseList.some(
+    w => String(w.warehouseId) === String(id) && (w.role || '').toUpperCase() === 'RENTER'
+  );
+  // isOwner: so sánh userId với ownerId của kho (không quan tớm JWT role)
   const isOwner = currentUser && warehouseData && currentUser.userId === warehouseData.ownerId;
 
   useEffect(() => {

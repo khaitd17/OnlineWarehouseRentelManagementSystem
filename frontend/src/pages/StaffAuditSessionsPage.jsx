@@ -6,6 +6,7 @@ const accentColor = "#00b2d6";
 
 export default function StaffAuditSessionsPage() {
   const navigate = useNavigate();
+  const currentUserId = parseInt(JSON.parse(localStorage.getItem('user') || '{}')?.userId || '0');
   const [data, setData] = useState({ items: [], totalCount: 0, page: 1, pageSize: 10, totalPages: 0 });
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ search: "", status: "", page: 1, pageSize: 10 });
@@ -68,6 +69,7 @@ export default function StaffAuditSessionsPage() {
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500" style={{ width: 60 }}>ID</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Kho</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Trạng thái</th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">NV kiểm kê</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Kết quả</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Ngày tạo</th>
                 <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Thao tác</th>
@@ -75,9 +77,9 @@ export default function StaffAuditSessionsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-12 text-slate-400">Đang tải...</td></tr>
+                <tr><td colSpan={7} className="text-center py-12 text-slate-400">Đang tải...</td></tr>
               ) : data.items.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 text-slate-400">Chưa có phiếu kiểm kê nào được giao.</td></tr>
+                <tr><td colSpan={7} className="text-center py-12 text-slate-400">Chưa có phiếu kiểm kê nào được giao.</td></tr>
               ) : data.items.map(row => (
                 <tr key={row.auditId} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-semibold text-slate-600">#{row.auditId}</td>
@@ -87,12 +89,25 @@ export default function StaffAuditSessionsPage() {
                       {statusLabel(row.status)}
                     </span>
                   </td>
+                  <td className="px-4 py-3 text-slate-600">
+                    {row.assignedTo === currentUserId
+                      ? <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600"><span style={{fontSize:'0.9em'}}>✅</span> Giao cho tôi</span>
+                      : <span className="text-slate-400 text-xs">{row.assignedToName || '—'}</span>
+                    }
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{row.totalResults} mục</td>
-                  <td className="px-4 py-3 text-slate-500">{row.createdAt ? new Date(row.createdAt).toLocaleDateString("vi-VN") : "—"}</td>
+                  <td className="px-4 py-3 text-slate-500">{row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => navigate(`/staff-audit-sessions/${row.auditId}`)} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all" style={{ backgroundColor: accentColor + "15", color: accentColor }}>
-                        {row.status === "APPROVED" || row.status === "IN_PROGRESS" ? "Kiểm kê" : "Xem"}
+                      <button
+                        onClick={() => navigate(`/staff-audit-sessions/${row.auditId}`)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                        style={{ backgroundColor: accentColor + '15', color: accentColor }}
+                      >
+                        {(row.status === 'APPROVED' || row.status === 'IN_PROGRESS') && row.assignedTo === currentUserId
+                          ? 'Kiểm kê'
+                          : 'Xem'
+                        }
                       </button>
                     </div>
                   </td>

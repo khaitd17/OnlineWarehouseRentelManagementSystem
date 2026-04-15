@@ -12,17 +12,20 @@ namespace WMS.Application.Features.ContractExtensions.ReviewExtension
         private readonly IRentalContractRepository _contractRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly INotificationSender _notificationSender;
+        private readonly IWarehouseRepository _warehouseRepository;
 
         public ReviewExtensionHandler(
             IContractExtensionRepository extensionRepository,
             IRentalContractRepository contractRepository,
             INotificationRepository notificationRepository,
-            INotificationSender notificationSender)
+            INotificationSender notificationSender,
+            IWarehouseRepository warehouseRepository)
         {
             _extensionRepository = extensionRepository;
             _contractRepository = contractRepository;
             _notificationRepository = notificationRepository;
             _notificationSender = notificationSender;
+            _warehouseRepository = warehouseRepository;
         }
 
         public async Task<ReviewExtensionResponse> Handle(ReviewExtensionCommand request, CancellationToken cancellationToken)
@@ -49,6 +52,18 @@ namespace WMS.Application.Features.ContractExtensions.ReviewExtension
                     {
                         Success = false,
                         Message = "Original contract not found",
+                        ExtensionId = request.ExtensionId
+                    };
+                }
+
+                // Chỉ OWNER của kho mới được duyệt/từ chối gia hạn hợp đồng
+                var warehouse = await _warehouseRepository.GetByIdAsync(originalContract.WarehouseId, cancellationToken);
+                if (warehouse == null || warehouse.OwnerId != request.ReviewerId)
+                {
+                    return new ReviewExtensionResponse
+                    {
+                        Success = false,
+                        Message = "Bạn không có quyền duyệt gia hạn hợp đồng này. Chỉ chủ kho mới được thực hiện.",
                         ExtensionId = request.ExtensionId
                     };
                 }

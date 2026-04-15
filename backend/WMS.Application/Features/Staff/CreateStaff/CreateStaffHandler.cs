@@ -28,18 +28,23 @@ namespace WMS.Application.Features.Staff.CreateStaff
         public async Task<int> Handle(CreateStaffCommand request, CancellationToken cancellationToken)
         {
             // ── 1. Kiểm tra quyền của caller ──────────────────────────────────
-            var callerMembership = await _membershipRepository.GetCallerMembershipAsync(
-                request.CallerId, request.WarehouseId, cancellationToken);
+            // Dùng HasRoleAsync để tránh bug priority (user có cả OWNER+OPERATOR → GetCallerMembership trả OWNER)
+            bool callerIsOperator = await _membershipRepository.HasRoleAsync(
+                request.CallerId, request.WarehouseId, "OPERATOR", cancellationToken);
+            bool callerIsManager  = await _membershipRepository.HasRoleAsync(
+                request.CallerId, request.WarehouseId, "MANAGER", cancellationToken);
 
-            if (callerMembership == null)
+            if (!callerIsOperator && !callerIsManager)
                 throw new UnauthorizedAccessException(
-                    "Bạn không có quyền truy cập vào kho này hoặc membership không hợp lệ.");
+                    "Chỉ OPERATOR hoặc MANAGER mới có quyền tạo nhân viên.");
 
-            var callerRole = callerMembership.RoleCode;
+            var callerRole = callerIsOperator ? "OPERATOR" : "MANAGER";
 
-            if (callerRole != "OPERATOR" && callerRole != "MANAGER")
-                throw new UnauthorizedAccessException(
-                    $"Role '{callerRole}' không có quyền tạo nhân viên.");
+            // Lấy skill của MANAGER (nếu caller là MANAGER) để kiểm tra scope
+            var callerMembership = callerIsManager
+                ? await _membershipRepository.GetMembershipByRoleAsync(
+                    request.CallerId, request.WarehouseId, "MANAGER", cancellationToken)
+                : null;
 
             var targetRole = request.TargetRoleCode.ToUpper();
 
@@ -76,7 +81,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
                         "Manager không được phép gán toàn bộ skill. Chỉ Operator mới có quyền này.");
 
                 // MANAGER chỉ được gán skill trong phạm vi của mình
-                if (!callerMembership.IsAllSkill && request.SkillIds.Any())
+                if (callerMembership != null && !callerMembership.IsAllSkill && request.SkillIds.Any())
                 {
                     var invalidSkills = request.SkillIds.Except(callerMembership.SkillIds).ToList();
                     if (invalidSkills.Any())

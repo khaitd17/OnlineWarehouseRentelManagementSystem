@@ -3,18 +3,18 @@ import { useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
 
 const statusConfig = {
-  DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
+  DRAFT: { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
   PENDING_OWNER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ chủ kho ký" },
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
-  SIGNED:     { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
+  SIGNED: { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
   PENDING_PAYMENT: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ thanh toán" },
-  ACTIVE:     { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
-  COMPLETED:  { bg: "#e0e7ff", color: "#6366f1", label: "Đã hoàn thành" },
-  CLOSED:     { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
-  EXPIRED:    { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
+  ACTIVE: { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
+  COMPLETED: { bg: "#e0e7ff", color: "#6366f1", label: "Đã hoàn thành" },
+  CLOSED: { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
+  EXPIRED: { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
-  CANCELLED:  { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
-  OVERDUE:    { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
+  CANCELLED: { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
+  OVERDUE: { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
   // 2-party approval statuses
   PENDING_TERMINATION: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ xác nhận kết thúc sớm" },
   PENDING_CLOSE: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ xác nhận kết thúc" },
@@ -37,12 +37,13 @@ const MyContracts = () => {
   const navigate = useNavigate();
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const userRole = (user.role || user.roleName || "").toUpperCase();
-  const isOwner = userRole === "OWNER";
-  // USER role cũng có thể là renter (người thuê kho)
-  const isRenter = userRole === "RENTER" || userRole === "USER";
+  // [PERMISSION FIX] Đọc warehouse role từ warehouseContext thay vì system role JWT
+  const warehouseCtx = JSON.parse(localStorage.getItem("warehouseContext") || "{}");
+  const warehouses = warehouseCtx?.warehouses || [];
+  const isOwner = warehouses.some(w => (w.role || "").toUpperCase() === "OWNER");
+  const isRenter = !isOwner; // Mọi user không phải OWNER đều có thể xem hợp đồng thuê
 
-  console.log('MyContracts - User role:', userRole, 'isOwner:', isOwner, 'isRenter:', isRenter);
+  console.log('[MyContracts] warehouses:', warehouses, 'isOwner:', isOwner);
 
   useEffect(() => {
     const fetchContracts = async () => {
@@ -81,8 +82,10 @@ const MyContracts = () => {
       </div>
 
       {error && (
-        <div style={{ color: "#dc2626", padding: "12px 16px", marginBottom: "1.5rem",
-          backgroundColor: "#fef2f2", borderRadius: "12px", border: "1px solid #fecaca" }}>
+        <div style={{
+          color: "#dc2626", padding: "12px 16px", marginBottom: "1.5rem",
+          backgroundColor: "#fef2f2", borderRadius: "12px", border: "1px solid #fecaca"
+        }}>
           {error}
         </div>
       )}

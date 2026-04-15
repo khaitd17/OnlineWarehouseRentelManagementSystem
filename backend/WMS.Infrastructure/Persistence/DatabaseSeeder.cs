@@ -26,31 +26,44 @@ namespace WMS.Infrastructure.Persistence
             context.SaveChanges();
 
             // ══════════════════════════════════════════════════
-            // 1. ROLES
+            // 1. SYSTEM ROLES — chỉ 2 loại: USER và ADMIN
+            //    Mọi phân quyền liên quan đến kho đều dùng warehouse_roles (OWNER/MANAGER/OPERATOR/STAFF/RENTER)
             // ══════════════════════════════════════════════════
-            var roles = new[]
+            var systemRoles = new[]
             {
-                new Role { RoleName = "ADMIN",   Description = "Quản trị viên hệ thống" },
-                new Role { RoleName = "OWNER",   Description = "Chủ kho" },
-                new Role { RoleName = "RENTER",  Description = "Người thuê kho" },
-                new Role { RoleName = "STAFF",   Description = "Nhân viên kho" },
-                new Role { RoleName = "MANAGER", Description = "Quản lý kho" },
-                new Role { RoleName = "USER",    Description = "Người dùng chung" }
+                new Role { RoleName = "USER",  Description = "Người dùng thường" },
+                new Role { RoleName = "ADMIN", Description = "Quản trị viên hệ thống" },
             };
-
-            foreach (var role in roles)
+            foreach (var role in systemRoles)
             {
                 if (!context.Roles.Any(r => r.RoleName == role.RoleName))
                     context.Roles.Add(role);
             }
             context.SaveChanges();
 
-            var adminRoleId   = context.Roles.First(r => r.RoleName == "ADMIN").RoleId;
-            var ownerRoleId   = context.Roles.First(r => r.RoleName == "OWNER").RoleId;
-            var renterRoleId  = context.Roles.First(r => r.RoleName == "RENTER").RoleId;
-            var staffRoleId   = context.Roles.First(r => r.RoleName == "STAFF").RoleId;
-            var managerRoleId = context.Roles.First(r => r.RoleName == "MANAGER").RoleId;
-            var userRoleId    = context.Roles.First(r => r.RoleName == "USER").RoleId;
+            var adminRoleId = context.Roles.First(r => r.RoleName == "ADMIN").RoleId;
+            var userRoleId  = context.Roles.First(r => r.RoleName == "USER").RoleId;
+
+            // ── Migration: cập nhật các user có system role sai (OWNER/RENTER/STAFF/MANAGER → USER) ──
+            var legacyRoleNames = new[] { "OWNER", "RENTER", "STAFF", "MANAGER" };
+            var legacyRoleIds = context.Roles
+                .Where(r => legacyRoleNames.Contains(r.RoleName))
+                .Select(r => r.RoleId)
+                .ToList();
+            if (legacyRoleIds.Any())
+            {
+                var usersToMigrate = context.Users
+                    .Where(u => legacyRoleIds.Contains(u.RoleId))
+                    .ToList();
+                foreach (var u in usersToMigrate)
+                    u.RoleId = userRoleId;
+                context.SaveChanges();
+                var rolesToDelete = context.Roles
+                    .Where(r => legacyRoleNames.Contains(r.RoleName))
+                    .ToList();
+                context.Roles.RemoveRange(rolesToDelete);
+                context.SaveChanges();
+            }
 
             string defaultPasswordHash = BCrypt.Net.BCrypt.HashPassword("123456");
             string pw = defaultPasswordHash;
@@ -59,17 +72,17 @@ namespace WMS.Infrastructure.Persistence
             // 2. USERS — đủ mỗi role, password: 123456
             // ══════════════════════════════════════════════════
             // ── Tài khoản hệ thống chính ──────────────────────────────────────────
-            var adminUser   = EnsureUser(context, "admin@owrms.com",     "Nguyễn Minh Quản Trị",  pw, adminRoleId,   "0900000001");
-            var ownerUser   = EnsureUser(context, "owner@owrms.com",     "Trần Văn Bình",          pw, ownerRoleId,   "0900000002");
-            var renterUser  = EnsureUser(context, "renter@owrms.com",    "Lê Văn Đạt",             pw, renterRoleId,  "0900000004");
-            var renterUser2 = EnsureUser(context, "renter2@owrms.com",   "Ngô Thị Thu",            pw, renterRoleId,  "0900000005");
-            var managerUser = EnsureUser(context, "manager@owrms.com",   "Đỗ Minh Khoa",           pw, managerRoleId, "0900000008");
-            // 3 nhân viên mẫu chính với email chuẩn theo skill
+            // Tất cả user đều là USER ở system level — phân quyền kho qua warehouse_memberships
+            var adminUser   = EnsureUser(context, "admin@owrms.com",     "Nguyễn Minh Quản Trị",  pw, adminRoleId,  "0900000001");
+            var ownerUser   = EnsureUser(context, "owner@owrms.com",     "Trần Văn Bình",          pw, userRoleId,   "0900000002");
+            var renterUser  = EnsureUser(context, "renter@owrms.com",    "Lê Văn Đạt",             pw, userRoleId,   "0900000004");
+            var renterUser2 = EnsureUser(context, "renter2@owrms.com",   "Ngô Thị Thu",            pw, userRoleId,   "0900000005");
+            var managerUser = EnsureUser(context, "manager@owrms.com",   "Đỗ Minh Khoa",           pw, userRoleId,   "0900000008");
+            // Nhân viên kho — system role = USER, warehouse role trong membership
             var checkerUser   = EnsureUser(context, "checker@owrms.com",   "Nguyễn Thị Lan",    pw, userRoleId, "0900000010");
             var inventoryUser = EnsureUser(context, "inventory@owrms.com", "Phạm Văn Tuấn",     pw, userRoleId, "0900000011");
             var workerUser    = EnsureUser(context, "worker@owrms.com",    "Hoàng Thị Mai",     pw, userRoleId, "0900000012");
             var allSkillUser  = EnsureUser(context, "allskill@owrms.com",  "Lý Văn Toàn Năng",  pw, userRoleId, "0900000013");
-            // Giữ lại staff@owrms.com + staff2@owrms.com để tương thích dữ liệu cũ (nếu có)
             var staffUser  = EnsureUser(context, "staff@owrms.com",  "Nguyễn Văn Phúc",  pw, userRoleId, "0900000006");
             var staffUser2 = EnsureUser(context, "staff2@owrms.com", "Hoàng Văn Dũng",   pw, userRoleId, "0900000007");
             context.SaveChanges();
@@ -241,12 +254,13 @@ namespace WMS.Infrastructure.Persistence
             // ══════════════════════════════════════════════════
             // 8. WAREHOUSE MEMBERSHIPS
             // ══════════════════════════════════════════════════
-            // Owner → cả 2 membership: OWNER (thương mại) + OPERATOR (vận hành)
-            // Nhất quán với CreateWarehouseHandler — tách biệt 2 role trong DB từ đầu.
+            // Owner → OWNER membership (thương mại) — CreateWarehouseHandler cũng tạo OPERATOR, đây chỉ là seed fallback
             EnsureMembership(context, ownerUser.UserId, warehouse.WarehouseId, ownerWhRole.Id,    true, true);
             EnsureMembership(context, ownerUser.UserId, warehouse.WarehouseId, operatorWhRole.Id, true, true);
-            // warehouse2/warehouse3 memberships nếu tồn tại trong DB cũ sẽ được giữ nguyên, không tạo mới
 
+            // Renter → RENTER membership (để CreateAuditSession và các permission check qua GetCallerMembershipAsync)
+            EnsureMembership(context, renterUser.UserId,  warehouse.WarehouseId, renterWhRole.Id, false, false);
+            EnsureMembership(context, renterUser2.UserId, warehouse.WarehouseId, renterWhRole.Id, false, false);
 
             // Staff → STAFF membership (skill + zone cụ thể)
             var staffMembership = EnsureMembership(context, staffUser.UserId, warehouse.WarehouseId, staffWhRole.Id, false, false);
@@ -266,8 +280,6 @@ namespace WMS.Infrastructure.Persistence
                 if (zB != null) staffMembership.Zones.Add(zB);
                 context.SaveChanges();
             }
-            // staff@owrms.com → STAFF membership trong warehouse 1 (skill CHECKER)
-            EnsureMembership(context, staffUser.UserId, warehouse.WarehouseId, staffWhRole.Id, false, false);
 
             // Manager → MANAGER membership trong warehouse 1
             EnsureMembership(context, managerUser.UserId, warehouse.WarehouseId, managerWhRole.Id, true, true);
@@ -1049,7 +1061,9 @@ namespace WMS.Infrastructure.Persistence
 
         private static WarehouseMembership EnsureMembership(ApplicationDbContext ctx, int userId, int warehouseId, int roleId, bool allSkill, bool allZone)
         {
-            var m = ctx.WarehouseMemberships.FirstOrDefault(x => x.UserId == userId && x.WarehouseId == warehouseId);
+            // Kiểm tra theo cả roleId — 1 user có thể có nhiều role khác nhau trong cùng 1 kho
+            var m = ctx.WarehouseMemberships
+                .FirstOrDefault(x => x.UserId == userId && x.WarehouseId == warehouseId && x.WarehouseRoleId == roleId);
             if (m == null)
             {
                 m = new WarehouseMembership

@@ -16,10 +16,10 @@ public class GenerateScheduleHandler : IRequestHandler<GenerateScheduleCommand, 
 
     public async Task<GenerateScheduleResult> Handle(GenerateScheduleCommand request, CancellationToken ct)
     {
-        var membership = await _membershipRepo.GetCallerMembershipAsync(
-            request.CallerId, request.WarehouseId, ct);
-        if (membership == null || membership.RoleCode is not ("MANAGER" or "OPERATOR"))
-            throw new UnauthorizedAccessException("Chỉ MANAGER / OPERATOR được tạo lịch tự động.");
+        bool isOperator = await _membershipRepo.HasRoleAsync(request.CallerId, request.WarehouseId, "OPERATOR", ct);
+        bool isManager  = await _membershipRepo.HasRoleAsync(request.CallerId, request.WarehouseId, "MANAGER",  ct);
+        if (!isOperator && !isManager)
+            throw new UnauthorizedAccessException("Chỉ OPERATOR / MANAGER được tạo lịch tự động.");
 
         var summary = await _repo.GenerateScheduleAsync(request.WarehouseId, request.From, request.To, ct);
         return new GenerateScheduleResult

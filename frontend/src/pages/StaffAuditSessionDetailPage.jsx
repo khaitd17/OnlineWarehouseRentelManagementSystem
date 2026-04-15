@@ -13,6 +13,8 @@ export default function StaffAuditSessionDetailPage() {
   const [resultsLoading, setResultsLoading] = useState(false);
   const [resFilters, setResFilters] = useState({ search: "", page: 1, pageSize: 10, filterStatus: "all" });
   const [toast, setToast] = useState(null);
+  // ID người dùng hiện tại — so sánh với assignedTo
+  const currentUserId = parseInt(JSON.parse(localStorage.getItem('user') || '{}')?.userId || '0');
 
   const defaultRecordModal = { open: false, items: [], completeSession: false, loading: false };
   const [recordModal, setRecordModal] = useState(defaultRecordModal);
@@ -151,7 +153,9 @@ export default function StaffAuditSessionDetailPage() {
   if (loading) return <div className="text-center py-16 text-slate-400">Đang tải...</div>;
   if (!session) return <div className="text-center py-16 text-red-500">Không tìm thấy phiên kiểm kê.</div>;
 
-  const canRecord = session.status === "APPROVED" || session.status === "IN_PROGRESS";
+  // Chỉ người được giao (assignedTo) mới ghi được; session phải APPROVED hoặc IN_PROGRESS
+  const isAssignedToMe = session.assignedTo === currentUserId || session.assignedToId === currentUserId;
+  const canRecord = (session.status === "APPROVED" || session.status === "IN_PROGRESS") && isAssignedToMe;
 
   return (
     <div style={{ fontFamily: "Inter, sans-serif" }}>

@@ -27,6 +27,9 @@ public interface IStaffMembershipRepository
     Task<List<MyWarehouseItemDto>> GetMyWarehousesAsync(int userId, CancellationToken ct = default);
 
     Task<List<SkillDto>> GetSkillsAsync(CancellationToken ct = default);
+
+    Task<bool> HasRoleAsync(int userId, int warehouseId, string roleCode, CancellationToken ct = default);
+    Task<CallerMembershipDto?> GetMembershipByRoleAsync(int userId, int warehouseId, string roleCode, CancellationToken ct = default);
 }
 
 public class StaffMembershipDto

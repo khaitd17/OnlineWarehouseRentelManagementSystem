@@ -143,14 +143,30 @@ public class StaffShiftRepository : IStaffShiftRepository
                     {
                         var dateKey = s.ShiftDate.ToString("yyyy-MM-dd");
                         var tasks = taskMap.TryGetValue((s.MembershipId, dateKey), out var t) ? t : new List<TaskSlotDto>();
+
+                        // Tinh IsEarlyLeave: so sanh checkout voi gio tan ca
+                        bool isEarly = false;
+                        if (s.CheckOutAt.HasValue && !string.IsNullOrEmpty(s.TimeOut1))
+                        {
+                            var shiftEnd = ComputeShiftEnd(s.ShiftDate, s.TimeIn1, s.TimeOut1, s.OvertimeHours);
+                            isEarly = s.CheckOutAt.Value < shiftEnd;
+                        }
+
                         return (ShiftSlotDto?)new ShiftSlotDto
                         {
-                            TimeIn1   = s.TimeIn1,
-                            TimeOut1  = s.TimeOut1,
-                            TimeIn2   = s.TimeIn2,
-                            TimeOut2  = s.TimeOut2,
-                            ShiftType = s.ShiftType,
-                            Tasks     = tasks,
+                            StaffShiftId  = s.Id,
+                            TimeIn1       = s.TimeIn1,
+                            TimeOut1      = s.TimeOut1,
+                            TimeIn2       = s.TimeIn2,
+                            TimeOut2      = s.TimeOut2,
+                            ShiftType     = s.ShiftType,
+                            OvertimeHours = s.OvertimeHours,
+                            Tasks         = tasks,
+                            CheckInAt     = s.CheckInAt,
+                            CheckInPhoto  = s.CheckInPhoto,
+                            CheckOutAt    = s.CheckOutAt,
+                            CheckOutPhoto = s.CheckOutPhoto,
+                            IsEarlyLeave  = isEarly,
                         };
                     }));
 
@@ -225,16 +241,32 @@ public class StaffShiftRepository : IStaffShiftRepository
             {
                 shiftDict.TryGetValue(date, out var shift);
                 taskByDate.TryGetValue(date, out var tasks);
+
+                bool isEarly = false;
+                if (shift?.CheckOutAt != null && !string.IsNullOrEmpty(shift.TimeOut1))
+                {
+                    var shiftEnd = ComputeShiftEnd(shift.ShiftDate, shift.TimeIn1, shift.TimeOut1, shift.OvertimeHours);
+                    isEarly = shift.CheckOutAt.Value < shiftEnd;
+                }
+
                 return (ShiftSlotDto?)new ShiftSlotDto
                 {
-                    TimeIn1   = shift?.TimeIn1,
-                    TimeOut1  = shift?.TimeOut1,
-                    TimeIn2   = shift?.TimeIn2,
-                    TimeOut2  = shift?.TimeOut2,
-                    ShiftType = shift?.ShiftType,
-                    Tasks     = tasks ?? new List<TaskSlotDto>(),
+                    StaffShiftId  = shift?.Id,
+                    TimeIn1       = shift?.TimeIn1,
+                    TimeOut1      = shift?.TimeOut1,
+                    TimeIn2       = shift?.TimeIn2,
+                    TimeOut2      = shift?.TimeOut2,
+                    ShiftType     = shift?.ShiftType,
+                    OvertimeHours = shift?.OvertimeHours ?? 0,
+                    Tasks         = tasks ?? new List<TaskSlotDto>(),
+                    CheckInAt     = shift?.CheckInAt,
+                    CheckInPhoto  = shift?.CheckInPhoto,
+                    CheckOutAt    = shift?.CheckOutAt,
+                    CheckOutPhoto = shift?.CheckOutPhoto,
+                    IsEarlyLeave  = isEarly,
                 };
             });
+
 
         return new StaffScheduleDto
         {
@@ -270,24 +302,26 @@ public class StaffShiftRepository : IStaffShiftRepository
             if (existing != null)
             {
                 // Update
-                existing.TimeIn1   = NullIfEmpty(dto.TimeIn1);
-                existing.TimeOut1  = NullIfEmpty(dto.TimeOut1);
-                existing.TimeIn2   = NullIfEmpty(dto.TimeIn2);
-                existing.TimeOut2  = NullIfEmpty(dto.TimeOut2);
-                existing.ShiftType = NullIfEmpty(dto.ShiftType);
+                existing.TimeIn1      = NullIfEmpty(dto.TimeIn1);
+                existing.TimeOut1     = NullIfEmpty(dto.TimeOut1);
+                existing.TimeIn2      = NullIfEmpty(dto.TimeIn2);
+                existing.TimeOut2     = NullIfEmpty(dto.TimeOut2);
+                existing.ShiftType    = NullIfEmpty(dto.ShiftType);
+                existing.OvertimeHours = dto.OvertimeHours;
             }
             else
             {
                 // Insert
                 _db.StaffShifts.Add(new StaffShift
                 {
-                    MembershipId = dto.MembershipId,
-                    ShiftDate    = date,
-                    TimeIn1      = NullIfEmpty(dto.TimeIn1),
-                    TimeOut1     = NullIfEmpty(dto.TimeOut1),
-                    TimeIn2      = NullIfEmpty(dto.TimeIn2),
-                    TimeOut2     = NullIfEmpty(dto.TimeOut2),
-                    ShiftType    = NullIfEmpty(dto.ShiftType),
+                    MembershipId  = dto.MembershipId,
+                    ShiftDate     = date,
+                    TimeIn1       = NullIfEmpty(dto.TimeIn1),
+                    TimeOut1      = NullIfEmpty(dto.TimeOut1),
+                    TimeIn2       = NullIfEmpty(dto.TimeIn2),
+                    TimeOut2      = NullIfEmpty(dto.TimeOut2),
+                    ShiftType     = NullIfEmpty(dto.ShiftType),
+                    OvertimeHours = dto.OvertimeHours,
                 });
             }
         }
@@ -375,5 +409,74 @@ public class StaffShiftRepository : IStaffShiftRepository
             Created = created,
             Skipped = skipped,
         };
+    }
+
+    // Helper: tinh thoi diem ket thuc ca (xu ly ca dem va tang ca)
+    private static DateTime ComputeShiftEnd(DateOnly shiftDate, string? timeIn, string? timeOut, decimal overtimeHours)
+    {
+        if (string.IsNullOrEmpty(timeOut)) return shiftDate.ToDateTime(TimeOnly.MaxValue);
+
+        var outTime = TimeOnly.Parse(timeOut);
+        var baseDate = shiftDate.ToDateTime(outTime);
+
+        // Ca dem: gio ra nho hon gio vao thi qua ngay hom sau
+        if (!string.IsNullOrEmpty(timeIn))
+        {
+            var inTime = TimeOnly.Parse(timeIn);
+            if (outTime < inTime)
+                baseDate = baseDate.AddDays(1);
+        }
+
+        return baseDate.AddHours((double)overtimeHours);
+    }
+
+    // ── GetByIdAsync ──────────────────────────────────────────────────────────
+    public async Task<WMS.Domain.Entities.StaffShift?> GetByIdAsync(int staffShiftId, CancellationToken ct = default)
+        => await _db.StaffShifts
+            .Include(s => s.Membership)
+            .FirstOrDefaultAsync(s => s.Id == staffShiftId, ct);
+
+    // ── RecordCheckInAsync ────────────────────────────────────────────────────
+    public async Task RecordCheckInAsync(int staffShiftId, DateTime capturedAt, string photoUrl, CancellationToken ct = default)
+    {
+        var shift = await _db.StaffShifts.FindAsync(new object[] { staffShiftId }, ct)
+            ?? throw new KeyNotFoundException("Khong tim thay ca lam viec.");
+        shift.CheckInAt    = capturedAt;
+        shift.CheckInPhoto = photoUrl;
+        await _db.SaveChangesAsync(ct);
+    }
+
+    // ── RecordCheckOutAsync (ghi de moi lan) ──────────────────────────────────
+    public async Task RecordCheckOutAsync(int staffShiftId, DateTime capturedAt, string photoUrl, CancellationToken ct = default)
+    {
+        var shift = await _db.StaffShifts.FindAsync(new object[] { staffShiftId }, ct)
+            ?? throw new KeyNotFoundException("Khong tim thay ca lam viec.");
+        shift.CheckOutAt    = capturedAt;
+        shift.CheckOutPhoto = photoUrl;
+        await _db.SaveChangesAsync(ct);
+    }
+
+    // ── SetOvertimeAsync ──────────────────────────────────────────────────────
+    public async Task SetOvertimeAsync(int staffShiftId, decimal hours, CancellationToken ct = default)
+    {
+        var shift = await _db.StaffShifts.FindAsync(new object[] { staffShiftId }, ct)
+            ?? throw new KeyNotFoundException("Khong tim thay ca lam viec.");
+        shift.OvertimeHours = hours;
+        await _db.SaveChangesAsync(ct);
+    }
+
+    // ── BulkSetOvertimeAsync ──────────────────────────────────────────────────
+    public async Task BulkSetOvertimeAsync(int warehouseId, DateOnly date, List<int> membershipIds, decimal hours, CancellationToken ct = default)
+    {
+        var shifts = await _db.StaffShifts
+            .Where(s => membershipIds.Contains(s.MembershipId)
+                     && s.ShiftDate == date
+                     && s.Membership.WarehouseId == warehouseId)
+            .ToListAsync(ct);
+
+        foreach (var s in shifts)
+            s.OvertimeHours = hours;
+
+        await _db.SaveChangesAsync(ct);
     }
 }
