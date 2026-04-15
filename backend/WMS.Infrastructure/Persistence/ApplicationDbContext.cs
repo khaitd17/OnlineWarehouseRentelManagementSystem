@@ -770,6 +770,11 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Price).HasColumnType("decimal(15, 2)").HasColumnName("price");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.DurationMonths).HasDefaultValue(1).HasColumnName("duration_months");
+            entity.Property(e => e.MaxWarehouses).HasDefaultValue(1).HasColumnName("max_warehouses");
+            entity.Property(e => e.MaxStaffPerWarehouse).HasDefaultValue(5).HasColumnName("max_staff_per_warehouse");
+            entity.Property(e => e.MaxZonesPerWarehouse).HasDefaultValue(3).HasColumnName("max_zones_per_warehouse");
+            entity.Property(e => e.MaxTotalArea).HasColumnType("decimal(18, 2)").HasDefaultValue(500).HasColumnName("max_total_area");
+            entity.Property(e => e.AllowEquipmentManagement).HasDefaultValue(false).HasColumnName("allow_equipment_management");
             entity.Property(e => e.IsActive).HasDefaultValue(true).HasColumnName("is_active");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");

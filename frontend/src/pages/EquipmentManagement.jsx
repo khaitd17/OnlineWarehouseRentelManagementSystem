@@ -5,6 +5,9 @@ import equipmentIncidentService from '../services/equipmentIncidentService';
 import { getMyWarehouses } from '../services/warehouseService';
 import axiosClient from '../services/axiosClient';
 import authService from '../services/authService';
+import subscriptionService from '../services/subscriptionService';
+import { Modal, Result, Button, Spin } from 'antd';
+import { useNavigate } from 'react-router-dom';
 
 const COLORS = {
   primary: '#00b2d6',
@@ -22,6 +25,11 @@ const COLORS = {
 const EquipmentManagement = () => {
   const [searchParams] = useSearchParams();
   const warehouseIdParam = searchParams.get('warehouseId');
+  const navigate = useNavigate();
+
+  const [subStatus, setSubStatus] = useState(null);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [checkLoading, setCheckLoading] = useState(true);
 
   const [warehouses, setWarehouses] = useState([]);
   const [currentUser] = useState(authService.getCurrentUser());
@@ -85,6 +93,19 @@ const EquipmentManagement = () => {
   });
 
   useEffect(() => {
+    // Check subscription status
+    subscriptionService.getSubscriptionStatus().then(res => {
+      setSubStatus(res.data);
+      if (!res.data || !res.data.isActive || !res.data.allowEquipmentManagement) {
+        setIsBlocked(true);
+      }
+    }).catch(err => {
+      console.error("Sub check failed", err);
+      setIsBlocked(true); 
+    }).finally(() => {
+      setCheckLoading(false);
+    });
+
     // 1. Get warehouses from context (Staff/Manager/Operator/Renter)
     const ctx = authService.getWarehouseContext();
     const ctxWarehouses = (ctx?.warehouses || []).map(w => ({
@@ -322,6 +343,44 @@ const EquipmentManagement = () => {
   });
 
   const equipmentTypes = [...new Set(equipments.map(e => e.type).filter(Boolean))];
+
+  if (checkLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', gap: '20px' }}>
+        <Spin size="large" />
+        <p style={{ color: COLORS.textLight }}>Đang kiểm tra quyền hạn...</p>
+      </div>
+    );
+  }
+
+  if (isBlocked) {
+    return (
+      <div style={{ padding: '80px 24px', textAlign: 'center', backgroundColor: COLORS.bg, minHeight: '100vh' }}>
+        <Result
+          status="warning"
+          title="Tính năng Cao Cấp"
+          subTitle={`Rất tiếc, gói ${subStatus?.plan} của bạn không hỗ trợ tính năng Quản lý thiết bị vòng đời.`}
+          extra={[
+            <Button type="primary" key="upgrade" onClick={() => navigate('/subscription')} size="large" style={{ height: '48px', borderRadius: '12px' }}>
+              Nâng cấp gói Premium ngay
+            </Button>,
+            <Button key="back" onClick={() => navigate('/owner-dashboard')} size="large" style={{ height: '48px', borderRadius: '12px' }}>
+              Quay lại Bảng điều khiển
+            </Button>
+          ]}
+        />
+        <div style={{ marginTop: '40px', maxWidth: '600px', margin: '40px auto 0', padding: '24px', background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', textAlign: 'left' }}>
+           <h3 style={{ fontWeight: 800 }}>Tính năng bao gồm trong Premium:</h3>
+           <ul style={{ color: COLORS.textLight, lineHeight: 2 }}>
+             <li>✅ Theo dõi vòng đời thiết bị (Forklift, Camera, Cảm biến...)</li>
+             <li>✅ Quản lý bảo trì định kỳ và cảnh báo tự động</li>
+             <li>✅ Báo cáo sự cố thiết bị và theo dõi lịch sử sửa chữa</li>
+             <li>✅ Điều khiển từ xa qua kết nối IoT</li>
+           </ul>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '24px', backgroundColor: COLORS.bg, minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>

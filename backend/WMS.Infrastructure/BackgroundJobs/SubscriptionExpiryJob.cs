@@ -37,9 +37,12 @@ public class SubscriptionExpiryJob
             sub.Status = SubscriptionStatus.Expired;
             _logger.LogInformation("Subscription {SubId} của User {UserId} đã chuyển sang hết hạn.", sub.SubscriptionId, sub.UserId);
 
-            // Kiểm tra xem User còn gói nào khác đang Active không (ví dụ họ vừa gia hạn, tạo 1 record Subscription khác)
-            // Nếu còn gói Active, KHÔNG khóa kho.
-            bool hasOtherActive = _db.Subscriptions.Any(s => s.UserId == sub.UserId && s.Status == SubscriptionStatus.Active && s.SubscriptionId != sub.SubscriptionId);
+            // Kiểm tra xem User còn gói nào khác đang Active và đã bắt đầu không
+            bool hasOtherActive = _db.Subscriptions.Any(s => 
+                s.UserId == sub.UserId && 
+                s.Status == SubscriptionStatus.Active && 
+                s.SubscriptionId != sub.SubscriptionId &&
+                s.StartDate <= now);
             
             if (!hasOtherActive)
             {

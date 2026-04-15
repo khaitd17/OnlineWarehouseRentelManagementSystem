@@ -36,13 +36,19 @@ public class WarehouseController : ControllerBase
 
         command.OwnerId = int.Parse(userId);
 
-        var id = await _mediator.Send(command);
-
-        return Ok(new
+        try
         {
-            message = "Warehouse created successfully",
-            warehouseId = id
-        });
+            var id = await _mediator.Send(command);
+            return Ok(new
+            {
+                message = "Warehouse created successfully",
+                warehouseId = id
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("approved")]

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
+using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -158,23 +159,58 @@ public class SepayService : ISepayService
                 var subscription = _db.Subscriptions.FirstOrDefault(s => s.TransactionReference == paymentCode && s.Status == SubscriptionStatus.Pending);
                 if (subscription == null) return WebhookResult.Ignored($"Subscription {paymentCode} not found or not pending");
 
-                subscription.Status = SubscriptionStatus.Active;
+                var newPackage = await _db.SubscriptionPackages.FirstOrDefaultAsync(p => p.Name == subscription.Plan);
+                if (newPackage == null) throw new Exception($"Package {subscription.Plan} not found");
 
-                // Find if there is an existing active subscription to extend
-                var lastActiveSub = _db.Subscriptions
-                    .Where(s => s.UserId == subscription.UserId && s.Status == SubscriptionStatus.Active && s.SubscriptionId != subscription.SubscriptionId)
+                // Find existing active subscription
+                var currentActiveSub = _db.Subscriptions
+                    .Where(s => s.UserId == subscription.UserId && s.Status == SubscriptionStatus.Active && s.SubscriptionId != subscription.SubscriptionId && s.EndDate > DateTime.UtcNow)
                     .OrderByDescending(s => s.EndDate)
                     .FirstOrDefault();
 
-                if (lastActiveSub != null && lastActiveSub.EndDate > DateTime.UtcNow)
+                if (currentActiveSub != null)
                 {
-                    subscription.StartDate = lastActiveSub.EndDate;
-                    subscription.EndDate = lastActiveSub.EndDate.Value.AddDays(30);
+                    var currentPackage = await _db.SubscriptionPackages.FirstOrDefaultAsync(p => p.Name == currentActiveSub.Plan);
+                    
+                    decimal currentDailyPrice = currentPackage != null ? currentPackage.Price / (currentPackage.DurationMonths * 30m) : 0;
+                    decimal newDailyPrice = newPackage.Price / (newPackage.DurationMonths * 30m);
+                    
+                    bool isDowngrade = currentPackage != null && newDailyPrice < currentDailyPrice;
+
+                    if (!isDowngrade)
+                    {
+                        // Upgrade or Same Tier: convert remaining days based on daily price ratio
+                        double remainingDays = (currentActiveSub.EndDate.Value - DateTime.UtcNow).TotalDays;
+                        if (remainingDays < 0) remainingDays = 0;
+
+                        double convertedDays = remainingDays;
+
+                        // Only convert if it's an actual upgrade (different package prices)
+                        if (currentPackage != null && newDailyPrice > 0 && currentDailyPrice < newDailyPrice)
+                        {
+                            convertedDays = (double)((decimal)remainingDays * (currentDailyPrice / newDailyPrice));
+                        }
+
+                        currentActiveSub.Status = SubscriptionStatus.Expired; // Đóng gói cũ
+                        
+                        subscription.Status = SubscriptionStatus.Active;
+                        subscription.StartDate = DateTime.UtcNow;
+                        double totalDays = Math.Round(convertedDays + (newPackage.DurationMonths * 30.0), MidpointRounding.AwayFromZero);
+                        subscription.EndDate = DateTime.UtcNow.AddDays(totalDays);
+                    }
+                    else
+                    {
+                        // Downgrade: queue the new subscription after current ends
+                        subscription.Status = SubscriptionStatus.Active;
+                        subscription.StartDate = currentActiveSub.EndDate;
+                        subscription.EndDate = currentActiveSub.EndDate.Value.AddDays(newPackage.DurationMonths * 30);
+                    }
                 }
                 else
                 {
+                    subscription.Status = SubscriptionStatus.Active;
                     subscription.StartDate = DateTime.UtcNow;
-                    subscription.EndDate = DateTime.UtcNow.AddDays(30);
+                    subscription.EndDate = DateTime.UtcNow.AddDays(newPackage.DurationMonths * 30);
                 }
 
                 // Create or unlock warehouses

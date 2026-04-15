@@ -10,7 +10,10 @@ const SubscriptionPage = () => {
   const [fetchLoading, setFetchLoading] = useState(true);
   const [packages, setPackages] = useState([]);
   const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
   const [paymentInfo, setPaymentInfo] = useState(null);
+  const [targetPlan, setTargetPlan] = useState("");
 
   React.useEffect(() => {
     const loadPackages = async () => {
@@ -31,8 +34,28 @@ const SubscriptionPage = () => {
   const handleSubscribe = async (planValue) => {
     try {
       setLoading(true);
-      const res = await subscriptionService.createSubscription(planValue);
+      const res = await subscriptionService.getPreview(planValue);
       if (res.data?.success) {
+        setPreviewData(res.data);
+        setTargetPlan(planValue);
+        setConfirmModalVisible(true);
+      } else {
+        message.error(res.data?.message || 'Không thể lấy thông tin xem trước.');
+      }
+    } catch (err) {
+      console.error(err);
+      message.error(err.response?.data?.message || 'Có lỗi xảy ra.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmSubscription = async () => {
+    try {
+      setLoading(true);
+      const res = await subscriptionService.createSubscription(targetPlan);
+      if (res.data?.success) {
+        setConfirmModalVisible(false);
         setPaymentInfo(res.data.paymentInfo);
         setQrModalVisible(true);
       } else {
@@ -151,9 +174,36 @@ const SubscriptionPage = () => {
                           <span style={{ fontSize: '16px', color: isPremium ? '#94a3b8' : '#64748b', fontWeight: 500 }}> / {pkg.durationMonths * 30} ngày</span>
                         </div>
             
-                        <Paragraph style={{ color: isPremium ? '#cbd5e1' : '#475569', fontSize: '15px', textAlign: 'center', minHeight: '44px' }}>
-                          {pkg.description || "Gói dịch vụ mặc định."}
+                        <Paragraph style={{ color: isPremium ? '#cbd5e1' : '#475569', fontSize: '15px', textAlign: 'center', minHeight: '44px', marginBottom: '8px' }}>
+                          {pkg.name === 'Basic' ? 'Giải pháp khởi đầu cho quản lý kho nhỏ.' : 'Giải pháp toàn diện cho chuỗi kho bãi chuyên nghiệp.'}
                         </Paragraph>
+
+                        <div style={{ padding: '16px 0', borderTop: `1px solid ${isPremium ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}`, borderBottom: `1px solid ${isPremium ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}` }}>
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: isPremium ? '#fff' : '#1e293b', fontSize: '14px' }}>
+                            <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                               <CheckCircleOutlined style={{ color: '#10b981' }} />
+                               <span>Tối đa <strong>{pkg.name === 'Basic' ? '1' : '5'}</strong> kho bãi</span>
+                            </li>
+                            <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                               <CheckCircleOutlined style={{ color: '#10b981' }} />
+                               <span><strong>{pkg.name === 'Basic' ? '5' : '50'}</strong> nhân viên / mỗi kho</span>
+                            </li>
+                            <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                               <CheckCircleOutlined style={{ color: '#10b981' }} />
+                               <span><strong>{pkg.name === 'Basic' ? '3' : '10'}</strong> khu vực (Zones) / kho</span>
+                            </li>
+                            <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                               <CheckCircleOutlined style={{ color: '#10b981' }} />
+                               <span>Tổng diện tích: <strong>{pkg.name === 'Basic' ? '500' : '5000'}</strong> m²</span>
+                            </li>
+                            <li style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: pkg.name === 'Basic' ? 0.5 : 1 }}>
+                               <span className="material-symbols-outlined" style={{ fontSize: '16px', color: pkg.name === 'Basic' ? '#94a3b8' : '#10b981' }}>
+                                 {pkg.name === 'Basic' ? 'block' : 'check_circle'}
+                               </span>
+                               <span style={{ textDecoration: pkg.name === 'Basic' ? 'line-through' : 'none' }}>Quản lý thiết bị vòng đời</span>
+                            </li>
+                          </ul>
+                        </div>
             
                         <div style={{ flex: 1 }}></div>
                         <Button type={isPremium ? "primary" : "default"} size="large" onClick={() => handleSubscribe(pkg.name)} loading={loading} style={{
@@ -173,51 +223,112 @@ const SubscriptionPage = () => {
       </Row>
 
       <Modal
-        visible={qrModalVisible}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span className="material-symbols-outlined" style={{ color: '#0ea5e9' }}>verified</span>
+            <span>Xác nhận đăng ký / Nâng cấp</span>
+          </div>
+        }
+        open={confirmModalVisible}
+        onCancel={() => setConfirmModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setConfirmModalVisible(false)} disabled={loading}>
+            Để sau
+          </Button>,
+          <Button key="confirm" type="primary" onClick={handleConfirmSubscription} loading={loading} style={{ background: '#0ea5e9', border: 'none' }}>
+            Xác nhận thanh toán
+          </Button>
+        ]}
+        width={500}
+      >
+        {previewData && (
+          <div style={{ padding: '10px 0' }}>
+            <div style={{ background: '#f0f9ff', padding: '16px', borderRadius: '12px', border: '1px solid #e0f2fe', marginBottom: '20px' }}>
+              <div style={{ color: '#0369a1', fontWeight: 600, fontSize: '15px' }}>
+                {previewData.transitionType === 'Upgrade' ? '🚀 Bạn đang nâng cấp lên Premium' : 
+                 previewData.transitionType === 'Renewal' ? '🔄 Bạn đang gia hạn gói cước' : '📦 Đăng ký gói mới'}
+              </div>
+            </div>
+
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              <Row gutter={[16, 16]}>
+                <Col span={12}>
+                  <Text type="secondary">Gói hiện tại</Text>
+                  <div style={{ fontSize: '16px', fontWeight: 700 }}>{previewData.currentPlan === 'None' ? 'Chưa có' : previewData.currentPlan}</div>
+                </Col>
+                <Col span={12}>
+                  <Text type="secondary">Gói đăng ký</Text>
+                  <div style={{ fontSize: '16px', fontWeight: 700, color: '#0ea5e9' }}>{previewData.targetPlan}</div>
+                </Col>
+              </Row>
+
+              <div style={{ height: '1px', background: '#f1f5f9', margin: '8px 0' }} />
+
+              {previewData.transitionType === 'Upgrade' && (
+                <div style={{ background: '#ecfdf5', padding: '12px', borderRadius: '8px', border: '1px solid #d1fae5' }}>
+                  <Space align="start">
+                    <CheckCircleOutlined style={{ color: '#10b981', marginTop: '4px' }} />
+                    <Text style={{ fontSize: '14px' }}>
+                      Bạn còn <strong>{previewData.remainingDays} ngày</strong> {previewData.currentPlan}. 
+                      Được quy đổi thành <strong>{previewData.convertedDays} ngày</strong> {previewData.targetPlan}.
+                    </Text>
+                  </Space>
+                </div>
+              )}
+
+              {previewData.transitionType === 'Renewal' && previewData.remainingDays > 0 && (
+                <div style={{ background: '#ecfdf5', padding: '12px', borderRadius: '8px', border: '1px solid #d1fae5' }}>
+                  <Space align="start">
+                    <CheckCircleOutlined style={{ color: '#10b981', marginTop: '4px' }} />
+                    <Text style={{ fontSize: '14px' }}>
+                      Bạn đang còn <strong>{previewData.remainingDays} ngày</strong>. 
+                      Sau khi gia hạn bạn sẽ có tổng cộng <strong>{previewData.newDuration} ngày</strong> sử dụng.
+                    </Text>
+                  </Space>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
+                <Text strong>Ngày hết hạn dự kiến:</Text>
+                <Text strong style={{ color: '#0ea5e9', fontSize: '16px' }}>
+                  {new Date(previewData.newEndDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </Text>
+              </div>
+
+              {previewData.message && (
+                <div style={{ background: '#fffbeb', padding: '12px', borderRadius: '8px', border: '1px solid #fef3c7', fontSize: '13px', color: '#92400e' }}>
+                  <Text type="warning" style={{ fontSize: '13px' }}>⚠️ {previewData.message}</Text>
+                </div>
+              )}
+            </Space>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        title="Thanh toán qua QR Code"
+        open={qrModalVisible}
         onCancel={handleModalClose}
         footer={null}
         width={400}
-        centered
-        className="qr-payment-modal"
       >
-        <div style={{ textAlign: 'center', padding: '20px 0' }}>
-          <Title level={3} style={{ color: '#0f172a', fontWeight: 700, marginBottom: '8px' }}>
-            Thanh Toán Gói
-          </Title>
-          <Paragraph style={{ color: '#64748b', fontSize: '15px', marginBottom: '24px' }}>
-            Quét mã QR bằng ứng dụng ngân hàng của bạn. Hệ thống tự động xác nhận sau 1-3 phút.
-          </Paragraph>
-
-          {paymentInfo ? (
-            <div style={{
-              background: '#f8fafc',
-              padding: '24px',
-              borderRadius: '20px',
-              border: '1px solid #e2e8f0',
-              display: 'inline-block'
-            }}>
-              <img 
-                src={paymentInfo.qrImageUrl} 
-                alt="QR Code" 
-                style={{ width: '250px', height: '250px', objectFit: 'cover', borderRadius: '12px', marginBottom: '16px' }}
-              />
-              <div style={{ background: '#fff', padding: '12px', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-                <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>Mã giao dịch:</p>
-                <p style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#0f172a', letterSpacing: '1px' }}>
-                  {paymentInfo.paymentCode}
-                </p>
-              </div>
+        {paymentInfo ? (
+          <div style={{ textAlign: 'center' }}>
+            <Paragraph>Quét mã QR để hoàn tất thanh toán cho gói <strong>{targetPlan}</strong></Paragraph>
+            <img src={paymentInfo.qrImageUrl} alt="QR Code" style={{ width: '100%', marginBottom: '20px' }} />
+            <div style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', textAlign: 'left' }}>
+              <Paragraph style={{ marginBottom: '4px' }}><strong>Mã giao dịch:</strong> {paymentInfo.paymentCode}</Paragraph>
+              <Paragraph style={{ marginBottom: '4px' }}><strong>Số tiền:</strong> {new Intl.NumberFormat('vi-VN').format(paymentInfo.amount)} ₫</Paragraph>
             </div>
-          ) : (
-            <Spin size="large" />
-          )}
-
-          <div style={{ marginTop: '24px' }}>
-            <Button onClick={handleModalClose} style={{ height: '44px', borderRadius: '8px', fontWeight: 600 }}>
-              Đóng và Chờ xác nhận
+            <Button type="primary" block style={{ marginTop: '20px' }} onClick={() => setQrModalVisible(false)}>
+              Tôi đã thanh toán
             </Button>
           </div>
-        </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <Spin size="large" />
+          </div>
+        )}
       </Modal>
 
       <style>{`
