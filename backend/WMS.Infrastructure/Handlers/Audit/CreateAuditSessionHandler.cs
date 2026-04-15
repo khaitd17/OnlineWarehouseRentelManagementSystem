@@ -19,8 +19,8 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
         ITaskRepository taskRepo,
         IRentalContractRepository contractRepo)
     {
-        _db           = db;
-        _taskRepo     = taskRepo;
+        _db = db;
+        _taskRepo = taskRepo;
         _contractRepo = contractRepo;
     }
 
@@ -43,37 +43,27 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
             return ApiResponse<int>.ErrorResponse(
                 "Chỉ người thuê kho (có hợp đồng đang hiệu lực) mới có thể tạo yêu cầu kiểm kê.");
 
-        var now          = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
         var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var hasCreatedThisMonth = await _db.AuditSessions
             .AnyAsync(a =>
                 a.WarehouseId == request.WarehouseId &&
-                a.CreatedBy   == request.CreatedBy   &&
-                a.CreatedAt   >= startOfMonth        &&
-                a.Status      != "REJECTED"          &&
-                a.Status      != "CANCELLED",
+                a.CreatedBy == request.CreatedBy &&
+                a.CreatedAt >= startOfMonth &&
+                a.Status != "REJECTED" &&
+                a.Status != "CANCELLED",
                 cancellationToken);
         if (hasCreatedThisMonth)
             return ApiResponse<int>.ErrorResponse(
                 "Bạn chỉ được tạo yêu cầu kiểm kê 1 lần/tháng cho mỗi kho. Vui lòng đợi sang tháng sau.");
 
-        var existingOpen = await _db.AuditSessions
-            .AnyAsync(a =>
-                a.WarehouseId == request.WarehouseId &&
-                (a.Status == "OPEN" || a.Status == "PENDING_APPROVAL" ||
-                 a.Status == "APPROVED" || a.Status == "IN_PROGRESS"),
-                cancellationToken);
-        if (existingOpen)
-            return ApiResponse<int>.ErrorResponse(
-                "Kho này đã có phiên kiểm kê đang hoạt động. Vui lòng hoàn thành phiên hiện tại trước.");
-
         var session = new AuditSession
         {
             WarehouseId = request.WarehouseId,
-            CreatedBy   = request.CreatedBy,
-            Status      = "PENDING_APPROVAL",
-            Notes       = string.IsNullOrWhiteSpace(request.Notes) ? null : $"Người thuê: {request.Notes}",
-            CreatedAt   = DateTime.UtcNow
+            CreatedBy = request.CreatedBy,
+            Status = "PENDING_APPROVAL",
+            Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : $"Người thuê: {request.Notes}",
+            CreatedAt = DateTime.UtcNow
         };
 
         _db.AuditSessions.Add(session);

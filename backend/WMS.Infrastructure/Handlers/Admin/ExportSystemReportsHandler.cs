@@ -28,21 +28,21 @@ public class ExportSystemReportsHandler : IRequestHandler<ExportSystemReportsQue
         sb.AppendLine($"Từ ngày: {fromDate:dd/MM/yyyy},Đến ngày: {toDate:dd/MM/yyyy}");
         sb.AppendLine();
 
-        // ── USER STATS ──
-        sb.AppendLine("THỐNG KÊ NGƯỜI DÙNG");
+        // ── USER STATS (filtered by registration date) ──
+        sb.AppendLine("THỐNG KÊ NGƯỜI DÙNG (trong kỳ)");
         sb.AppendLine("Chỉ số,Giá trị");
-        sb.AppendLine($"Tổng số người dùng,{await _db.Users.CountAsync(cancellationToken)}");
-        sb.AppendLine($"Hoạt động,{await _db.Users.CountAsync(u => u.Status == "ACTIVE", cancellationToken)}");
-        sb.AppendLine($"Bị khóa,{await _db.Users.CountAsync(u => u.Status == "LOCKED", cancellationToken)}");
+        sb.AppendLine($"Người dùng đăng ký mới,{await _db.Users.CountAsync(u => u.CreatedAt >= fromDate && u.CreatedAt <= toDate, cancellationToken)}");
+        sb.AppendLine($"Đang hoạt động,{await _db.Users.CountAsync(u => u.Status == "ACTIVE" && u.CreatedAt >= fromDate && u.CreatedAt <= toDate, cancellationToken)}");
+        sb.AppendLine($"Bị khóa,{await _db.Users.CountAsync(u => u.Status == "LOCKED" && u.CreatedAt >= fromDate && u.CreatedAt <= toDate, cancellationToken)}");
         sb.AppendLine();
 
-        // ── WAREHOUSE STATS ──
-        sb.AppendLine("THỐNG KÊ KHO BÃI");
+        // ── WAREHOUSE STATS (filtered by creation date) ──
+        sb.AppendLine("THỐNG KÊ KHO BÃI (trong kỳ)");
         sb.AppendLine("Chỉ số,Giá trị");
-        sb.AppendLine($"Tổng số kho,{await _db.Warehouses.CountAsync(w => w.Status != "DELETED", cancellationToken)}");
-        sb.AppendLine($"Trạng thái: Đã duyệt,{await _db.Warehouses.CountAsync(w => w.Status == "APPROVED", cancellationToken)}");
-        sb.AppendLine($"Trạng thái: Chờ duyệt,{await _db.Warehouses.CountAsync(w => w.Status == "PENDING", cancellationToken)}");
-        sb.AppendLine($"Trạng thái: Chưa công khai,{await _db.Warehouses.CountAsync(w => w.Status == "HIDDEN", cancellationToken)}");
+        sb.AppendLine($"Kho được tạo mới,{await _db.Warehouses.CountAsync(w => w.Status != "DELETED" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken)}");
+        sb.AppendLine($"Trạng thái: Đã duyệt,{await _db.Warehouses.CountAsync(w => w.Status == "APPROVED" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken)}");
+        sb.AppendLine($"Trạng thái: Chờ duyệt,{await _db.Warehouses.CountAsync(w => w.Status == "PENDING" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken)}");
+        sb.AppendLine($"Trạng thái: Chưa công khai,{await _db.Warehouses.CountAsync(w => w.Status == "HIDDEN" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken)}");
         sb.AppendLine();
 
         // ── SUBSCRIPTION & FINANCIAL STATS ──
@@ -56,16 +56,15 @@ public class ExportSystemReportsHandler : IRequestHandler<ExportSystemReportsQue
             
         var totalRevenue = subscriptions.Sum(x => x.Amount);
         
-        var currentMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
         var totalNewSubscriptionsThisMonth = await _db.Subscriptions
-            .CountAsync(s => s.StartDate >= currentMonthStart, cancellationToken);
+            .CountAsync(s => s.StartDate >= fromDate && s.StartDate <= toDate, cancellationToken);
             
         var nextSevenDays = DateTime.UtcNow.AddDays(7);
         var expiringSubscriptions = await _db.Subscriptions
             .CountAsync(s => s.Status == WMS.Domain.Entities.SubscriptionStatus.Active && s.EndDate <= nextSevenDays, cancellationToken);
 
         sb.AppendLine($"Tổng doanh thu (VNĐ),{totalRevenue}");
-        sb.AppendLine($"Đăng ký mới (Tháng này),{totalNewSubscriptionsThisMonth}");
+        sb.AppendLine($"Đăng ký gói cước mới (trong kỳ),{totalNewSubscriptionsThisMonth}");
         sb.AppendLine($"Kho sắp hết gói cước,{expiringSubscriptions}");
         
         var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(sb.ToString())).ToArray();
