@@ -101,6 +101,10 @@ const DashboardRedirect = () => {
     const systemRole = (ctx.systemRole || user.role || user.roleName || 'user').toLowerCase();
     const roles = (ctx.warehouses || []).map(w => (w.role || '').toUpperCase());
     if (systemRole === 'admin') { _navigate('/admin', { replace: true }); return; }
+    if (systemRole === 'renter' && !roles.includes('RENTER')) {
+      _navigate('/my-rental-requests', { replace: true });
+      return;
+    }
     for (const r of ROLE_PRIORITY_REDIRECT) {
       if (roles.includes(r)) {
         if (r === 'OWNER' || r === 'OPERATOR') _navigate('/owner-dashboard', { replace: true });
@@ -133,6 +137,7 @@ function AppRoutes() {
         <Route element={<ProtectedRoute />}>
           <Route path="/profile" element={<ProfilePage />} />
           <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<DashboardRedirect />} />
             <Route path="/my-rental-requests" element={<MyRentalRequests />} />
             <Route path="/my-contracts" element={<MyContracts />} />
             <Route path="/contracts/:id" element={<ContractDetail />} />
@@ -142,6 +147,7 @@ function AppRoutes() {
             <Route path="/sign-contract/:contractId" element={<ContractSigningWrapper userRole="RENTER" />} />
             <Route path="/sign-contract/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="RENTER" />} />
             <Route path="/settings" element={<ProfilePage />} />
+            <Route path="/subscriptions" element={<SubscriptionPage />} />
             <Route path="/create-warehouse" element={<CreateWarehouse />} />
             <Route path="/post-warehouse" element={<PostWarehousePage />} />
           </Route>
@@ -150,7 +156,6 @@ function AppRoutes() {
         {/* ── OWNER / OPERATOR ── */}
         <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR']} />}>
           <Route element={<DashboardLayout />}>
-            <Route path="/dashboard" element={<DashboardRedirect />} />
             <Route path="/owner-dashboard" element={<Dashboard />} />
             <Route path="/occupancy-dashboard" element={<OccupancyDashboard />} />
             <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
@@ -167,7 +172,6 @@ function AppRoutes() {
             <Route path="/sign-contract-owner/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="OWNER" />} />
             <Route path="/owner-inventory-requests" element={<OwnerInventoryRequests />} />
             <Route path="/owner-inventory" element={<OwnerInventoryPage />} />
-            <Route path="/subscriptions" element={<SubscriptionPage />} />
           </Route>
         </Route>
 

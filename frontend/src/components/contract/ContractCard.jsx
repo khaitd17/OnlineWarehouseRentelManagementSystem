@@ -41,8 +41,21 @@ const ContractCard = ({
       'PENDING_OWNER_SIGNATURE': { color: 'warning', text: 'Chờ chủ kho ký' },
       'PENDING_RENTER_SIGNATURE': { color: 'warning', text: 'Chờ người thuê ký' },
       'PENDING_PAYMENT': { color: 'processing', text: 'Chờ thanh toán' },
+      'PAYMENT_FAILED': { color: 'error', text: 'Thanh toán thất bại' },
       'DRAFT': { color: 'default', text: 'Nháp' },
-      'CANCELLED': { color: 'error', text: 'Đã hủy' },
+      'SIGNED': { color: 'processing', text: 'Đã ký' },
+      'COMPLETED': { color: 'success', text: 'Đã hoàn thành' },
+      'CLOSED': { color: 'success', text: 'Đã đóng' },
+      'OVERDUE': { color: 'error', text: 'Quá hạn' },
+      'TERMINATED': { color: 'error', text: 'Đã chấm dứt' },
+      'PENDING_TERMINATION': { color: 'warning', text: 'Chờ chấm dứt' },
+      'PENDING_CLOSE': { color: 'warning', text: 'Chờ đóng' },
+      'CANCELLED': { color: 'default', text: 'Đã hủy' },
+      'CANCELLED_BY_USER': { color: 'default', text: 'Người dùng hủy' },
+      'CANCELLED_BY_OWNER': { color: 'default', text: 'Chủ kho hủy' },
+      'CANCELLED_NO_PAYMENT': { color: 'default', text: 'Hủy - Không thanh toán' },
+      'EXPIRED_SIGNATURE': { color: 'error', text: 'Hết hạn ký' },
+      'EXPIRED_PAYMENT': { color: 'error', text: 'Hết hạn thanh toán' },
       'EXPIRED': { color: 'error', text: 'Hết hạn' }
     };
     return statusMap[status] || { color: 'default', text: status };

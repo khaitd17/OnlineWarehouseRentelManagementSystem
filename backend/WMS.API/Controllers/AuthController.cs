@@ -73,25 +73,8 @@ public class AuthController : ControllerBase
             if (user == null)
                 return NotFound(new { message = "User not found." });
 
-            var memberships = await _db.WarehouseMemberships
-                .Where(m => m.UserId == userId && m.IsActive)
-                .Include(m => m.Warehouse)
-                .Include(m => m.Role)
-                .Include(m => m.Skills)
-                .ToListAsync();
-
-            var warehouseItems = memberships.Select(m => new WarehouseContextItem
-            {
-                warehouseId   = m.WarehouseId,
-                warehouseName = m.Warehouse?.Name ?? "",
-                role          = m.Role?.Code ?? "",
-                skills        = m.Skills.Select(skill => skill.Code).ToList(),
-                isAllSkill    = m.IsAllSkill,
-            }).ToList();
-
-            // Include warehouses where the user has an active/pending rental contract (RENTER role)
-            // Only add RENTER role if user has active contracts
-            // Exclude terminated and cancelled contracts
+            // Only keep renter role when user still has an active/pending rental contract.
+            // This prevents stale renter memberships from keeping dashboard "warehouse" menus.
             var activeContracts = await _db.Contracts
                 .Where(c => c.RenterId == userId && 
                            (c.Status == "ACTIVE" || c.Status == "PENDING_PAYMENT") &&
@@ -103,6 +86,33 @@ public class AuthController : ControllerBase
                            c.Status != "CANCELLED_BY_OWNER")
                 .Include(c => c.Warehouse)
                 .ToListAsync();
+
+            var activeRenterWarehouseIds = activeContracts
+                .Select(c => c.WarehouseId)
+                .ToHashSet();
+
+            var memberships = await _db.WarehouseMemberships
+                .Where(m => m.UserId == userId && m.IsActive)
+                .Include(m => m.Warehouse)
+                .Include(m => m.Role)
+                .Include(m => m.Skills)
+                .ToListAsync();
+
+            var warehouseItems = memberships
+                .Where(m =>
+                {
+                    var roleCode = (m.Role?.Code ?? "").ToUpper();
+                    return roleCode != "RENTER" || activeRenterWarehouseIds.Contains(m.WarehouseId);
+                })
+                .Select(m => new WarehouseContextItem
+                {
+                    warehouseId   = m.WarehouseId,
+                    warehouseName = m.Warehouse?.Name ?? "",
+                    role          = m.Role?.Code ?? "",
+                    skills        = m.Skills.Select(skill => skill.Code).ToList(),
+                    isAllSkill    = m.IsAllSkill,
+                })
+                .ToList();
 
             foreach (var contract in activeContracts)
             {

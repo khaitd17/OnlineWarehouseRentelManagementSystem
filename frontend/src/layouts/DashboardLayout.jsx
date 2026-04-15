@@ -5,14 +5,50 @@ import Sidebar from '../components/Dashboard/Sidebar';
 import notificationService from '../services/notificationService';
 import authService from '../services/authService';
 
+const parseDateValue = (raw) => {
+  if (!raw) return null;
+  if (raw instanceof Date) return Number.isNaN(raw.getTime()) ? null : raw;
+  if (typeof raw === 'number') {
+    const fromNumber = new Date(raw);
+    return Number.isNaN(fromNumber.getTime()) ? null : fromNumber;
+  }
+  if (typeof raw !== 'string') return null;
+
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  // If timezone is present, parse directly.
+  const hasTimezone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(trimmed);
+  if (hasTimezone) {
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  // Fallback for backend timestamps without timezone:
+  // try both local and UTC, then keep the one closer to current time.
+  const localParsed = new Date(trimmed);
+  const utcParsed = new Date(`${trimmed}Z`);
+  const localValid = !Number.isNaN(localParsed.getTime());
+  const utcValid = !Number.isNaN(utcParsed.getTime());
+
+  if (!localValid && !utcValid) return null;
+  if (!localValid) return utcParsed;
+  if (!utcValid) return localParsed;
+
+  const now = Date.now();
+  const localDistance = Math.abs(localParsed.getTime() - now);
+  const utcDistance = Math.abs(utcParsed.getTime() - now);
+  return utcDistance < localDistance ? utcParsed : localParsed;
+};
+
 const parseNotificationTime = (notification) => {
   const raw = notification?.createdAt
     ?? notification?.CreatedAt
     ?? notification?.timestamp
     ?? notification?.Timestamp
     ?? null;
-  const value = raw ? new Date(raw).getTime() : 0;
-  return Number.isFinite(value) ? value : 0;
+  const parsed = parseDateValue(raw);
+  return parsed ? parsed.getTime() : 0;
 };
 
 const normalizeNotification = (notification) => {
@@ -30,6 +66,17 @@ const normalizeNotification = (notification) => {
       notification?.notificationId
       ?? notification?.NotificationId
       ?? notification?.id
+      ?? null,
+    title: notification?.title ?? notification?.Title ?? '',
+    message: notification?.message ?? notification?.Message ?? '',
+    type: notification?.type ?? notification?.Type ?? '',
+    referenceId:
+      notification?.referenceId
+      ?? notification?.ReferenceId
+      ?? null,
+    referenceType:
+      notification?.referenceType
+      ?? notification?.ReferenceType
       ?? null,
     createdAt:
       notification?.createdAt
@@ -124,6 +171,7 @@ const DashboardLayout = () => {
     for (const r of ROLE_PRIORITY_DASH) {
       if (warehouseRoles.includes(r)) return r;
     }
+    if (systemRole === 'RENTER' && !warehouseRoles.includes('RENTER')) return 'USER';
     return systemRole || 'USER';
   })();
 
@@ -272,6 +320,8 @@ const DashboardLayout = () => {
   };
 
   const handleNotificationClick = async (notification) => {
+    const notificationType = String(notification?.type ?? notification?.Type ?? '');
+    const referenceId = notification?.referenceId ?? notification?.ReferenceId ?? null;
     const wasUnread = !isNotificationRead(notification);
 
     if (wasUnread) {
@@ -293,49 +343,57 @@ const DashboardLayout = () => {
     setShowNotifications(false);
 
     // Handle payment-related notifications - refresh context and navigate
-    if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED') {
+    if (notificationType === 'PAYMENT_CONFIRMED' || notificationType === 'PAYMENT_REJECTED') {
       try {
         await authService.refreshWarehouseContext();
         window.dispatchEvent(new Event('authChange'));
       } catch (err) {
         console.warn('[DashboardLayout] Failed to refresh warehouse context:', err);
       }
-      if (notification.referenceId) {
-        navigate(`/contracts/${notification.referenceId}`);
+      if (referenceId) {
+        navigate(`/contracts/${referenceId}`);
       }
       return;
     }
 
-    if (notification.referenceId) {
-      if (notification.type === 'CONTRACT_APPROVED' ||
-          notification.type === 'CONTRACT_SENT' ||
-          notification.type === 'CONTRACT_SIGNED') {
-        navigate(`/contracts/${notification.referenceId}`);
-      } else if (notification.type === 'RENTAL_REQUEST_RECEIVED') {
-        navigate(`/rental-request/${notification.referenceId}`);
-      } else if (notification.type === 'CONTRACT_REJECTED') {
+    if (notificationType === 'CASH_PAYMENT_PENDING') {
+      navigate('/pending-cash-payments');
+      return;
+    }
+
+    if (referenceId) {
+      if (notificationType === 'CONTRACT_APPROVED' ||
+          notificationType === 'CONTRACT_SENT' ||
+          notificationType === 'CONTRACT_SIGNED') {
+        navigate(`/contracts/${referenceId}`);
+      } else if (notificationType === 'RENTAL_REQUEST_RECEIVED') {
+        navigate(`/rental-request/${referenceId}`);
+      } else if (notificationType === 'CONTRACT_REJECTED') {
         navigate('/my-rental-requests');
-      } else if (notification.type === 'EXTENSION_REQUEST_RECEIVED') {
+      } else if (notificationType === 'EXTENSION_REQUEST_RECEIVED') {
         navigate('/contract-extensions');
-      } else if (notification.type === 'EXTENSION_APPROVED' ||
-                 notification.type === 'EXTENSION_REJECTED') {
+      } else if (notificationType === 'EXTENSION_APPROVED' ||
+                 notificationType === 'EXTENSION_REJECTED') {
         navigate('/contract-extensions-renter');
-      } else if (notification.type === 'CONTRACT_EXTENSION_SIGNATURE_NEEDED') {
+      } else if (notificationType === 'CONTRACT_EXTENSION_SIGNATURE_NEEDED') {
         // Navigate to appropriate signing page based on user role
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         const userRole = (user.role || user.roleName || '').toUpperCase();
         if (userRole === 'OWNER' || userRole === 'OPERATOR') {
-          navigate(`/sign-contract-owner/${notification.referenceId}`);
+          navigate(`/sign-contract-owner/${referenceId}`);
         } else {
-          navigate(`/sign-contract/${notification.referenceId}`);
+          navigate(`/sign-contract/${referenceId}`);
         }
-      } else if (notification.type === 'contract_terminated' || 
-                 notification.type === 'termination_approved' ||
-                 notification.type === 'termination_request') {
+      } else if (notificationType === 'contract_terminated' ||
+                 notificationType === 'termination_approved' ||
+                 notificationType === 'termination_request' ||
+                 notificationType === 'termination_rejected' ||
+                 notificationType === 'TERMINATION_FEE_PAID' ||
+                 notificationType === 'PAYMENT_COMPLETED') {
         // Navigate to contract detail for termination-related notifications
-        navigate(`/contracts/${notification.referenceId}`);
+        navigate(`/contracts/${referenceId}`);
       }
-    } else if (notification.type === 'CONTRACT_REJECTED') {
+    } else if (notificationType === 'CONTRACT_REJECTED') {
       navigate('/my-rental-requests');
     }
   };
@@ -349,7 +407,8 @@ const DashboardLayout = () => {
 
   const formatTime = (dateStr) => {
     if (!dateStr) return '';
-    const date = new Date(dateStr);
+    const date = parseDateValue(dateStr);
+    if (!date) return '';
     const now = new Date();
     const diff = Math.floor((now - date) / 1000);
     if (diff < 60) return 'Vừa xong';
@@ -496,7 +555,7 @@ const DashboardLayout = () => {
                   ) : (
                     notifications.map((n) => (
                       <div
-                        key={n.notificationId}
+                        key={getNotificationUniqueKey(n)}
                         onClick={() => handleNotificationClick(n)}
                         style={{
                           padding: '14px 20px', cursor: 'pointer',

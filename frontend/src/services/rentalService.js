@@ -338,6 +338,12 @@ const rentalService = {
         icon: '✏️',
         description: 'Đang chờ chủ kho xác nhận và ký hợp đồng'
       },
+      'PENDING_RENTER_SIGNATURE': {
+        text: 'Chờ người thuê ký',
+        color: 'yellow',
+        icon: '✍️',
+        description: 'Đang chờ người thuê ký xác nhận'
+      },
       'PENDING_SIGNATURE': {
         text: 'Chờ người thuê ký',
         color: 'yellow',
@@ -355,6 +361,12 @@ const rentalService = {
         color: 'purple',
         icon: '💳',
         description: 'Chờ thanh toán để kích hoạt hợp đồng'
+      },
+      'PAYMENT_FAILED': {
+        text: 'Thanh toán thất bại',
+        color: 'red',
+        icon: '❌',
+        description: 'Thanh toán không thành công, vui lòng thử lại'
       },
       'ACTIVE': {
         text: 'Đang hiệu lực',
@@ -386,11 +398,53 @@ const rentalService = {
         icon: '🚫',
         description: 'Hợp đồng bị chấm dứt sớm'
       },
+      'PENDING_TERMINATION': {
+        text: 'Chờ chấm dứt',
+        color: 'orange',
+        icon: '⏳',
+        description: 'Chờ xác nhận chấm dứt hợp đồng'
+      },
+      'PENDING_CLOSE': {
+        text: 'Chờ đóng',
+        color: 'orange',
+        icon: '⏳',
+        description: 'Chờ xác nhận đóng hợp đồng'
+      },
       'CANCELLED': {
         text: 'Đã hủy',
         color: 'gray',
         icon: '❌',
         description: 'Hợp đồng đã bị hủy bỏ'
+      },
+      'CANCELLED_BY_USER': {
+        text: 'Người dùng hủy',
+        color: 'gray',
+        icon: '❌',
+        description: 'Hợp đồng bị hủy bởi người nước ngoài'
+      },
+      'CANCELLED_BY_OWNER': {
+        text: 'Chủ kho hủy',
+        color: 'gray',
+        icon: '❌',
+        description: 'Hợp đồng bị hủy bởi chủ kho'
+      },
+      'CANCELLED_NO_PAYMENT': {
+        text: 'Hủy - Không thanh toán',
+        color: 'gray',
+        icon: '❌',
+        description: 'Hợp đồng bị hủy do không thanh toán'
+      },
+      'EXPIRED_SIGNATURE': {
+        text: 'Hết hạn ký',
+        color: 'red',
+        icon: '⏰',
+        description: 'Quá hạn để ký hợp đồng'
+      },
+      'EXPIRED_PAYMENT': {
+        text: 'Hết hạn thanh toán',
+        color: 'red',
+        icon: '⏰',
+        description: 'Quá hạn để thanh toán'
       },
       'EXPIRED': {
         text: 'Hết hạn',
