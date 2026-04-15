@@ -471,7 +471,7 @@ export default function CreateInventoryRequest() {
         await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'OUTBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processedItems });
         clearDraft();
         navigate('/renter-inventory-history?tab=outbound',{state:{created:true,type:'OUTBOUND'}});
-      } catch(err){ setError(err?.message||err?.response?.data?.message||'Tạo yêu cầu thất bại.'); }
+      } catch(err){ setError(err?.response?.data?.message || err?.message || 'Tạo yêu cầu thất bại.'); }
       finally{ setSubmitting(false); }
       return;
     }
@@ -499,7 +499,7 @@ export default function CreateInventoryRequest() {
       await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'INBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed });
       clearDraft();
       navigate('/renter-inventory-history?tab=inbound',{state:{created:true,type:'INBOUND'}});
-    } catch(err){ setError(err?.message||err?.response?.data?.message||'Tạo yêu cầu thất bại.'); }
+    } catch(err){ setError(err?.response?.data?.message || err?.message || 'Tạo yêu cầu thất bại.'); }
     finally{ setSubmitting(false); }
   };
 

@@ -42,8 +42,23 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
 
         var warehouseId = await _repository.CreateAsync(warehouse, cancellationToken);
 
-        // Tự động gán OPERATOR membership cho chủ kho vừa tạo.
-        // Khi chủ kho tạo kho, họ mặc định trở thành OPERATOR để vận hành kho.
+        // Khi tạo kho, tự động tạo 2 memberships cho chủ kho:
+        //   OWNER    → quyền thương mại (hợp đồng, thanh toán, yêu cầu thuê)
+        //   OPERATOR → quyền vận hành (nhân sự, ca, nhiệm vụ, nhập/xuất kho)
+        //
+        // Lý do tách biệt 2 role trong DB ngay từ đầu:
+        //   → Sau này muốn bàn giao người vận hành (chuyển OPERATOR sang người khác)
+        //     chỉ cần thay đổi membership OPERATOR trong DB, không cần sửa code.
+        //   → OWNER luôn gắn với chủ sở hữu, không bị ảnh hưởng khi bàn giao.
+        await _membershipRepository.CreateMembershipAsync(new CreateMembershipDto
+        {
+            UserId      = request.OwnerId,
+            WarehouseId = warehouseId,
+            RoleCode    = "OWNER",
+            IsAllSkill  = true,
+            SkillIds    = new List<int>(),
+        }, cancellationToken);
+
         await _membershipRepository.CreateMembershipAsync(new CreateMembershipDto
         {
             UserId      = request.OwnerId,

@@ -10,6 +10,7 @@ const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN', { day:'2-digit'
 const STATUS_MAP = {
   PENDING:   { label: 'Chờ duyệt',   bg:'#fef3c7', color:'#d97706', border:'#fde68a', dot:'#f59e0b' },
   CONFIRMED: { label: 'Đã duyệt',    bg:'#dcfce7', color:'#166534', border:'#bbf7d0', dot:'#22c55e' },
+  ASSIGNED:  { label: 'Đã giao',     bg:'#ede9fe', color:'#6d28d9', border:'#c4b5fd', dot:'#8b5cf6' },
   COMPLETED: { label: 'Hoàn thành',  bg:'#f0fdf4', color:'#15803d', border:'#86efac', dot:'#16a34a' },
   REJECTED:  { label: 'Từ chối',     bg:'#fee2e2', color:'#dc2626', border:'#fecaca', dot:'#ef4444' },
 };
@@ -24,7 +25,78 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-/* ── Approve Modal ──────────────────────────────────────────── */
+/* ── Assign Modal ───────────────────────────────────────────── */
+const AssignModal = ({ req, staffList, onClose, onAssign, loading }) => {
+  const [selectedStaffId, setSelectedStaffId] = useState('');
+  const [note, setNote]                       = useState('');
+  if (!req) return null;
+  const accent = req.type === 'INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
+  const availableStaff = staffList.filter(s => s.isActive !== false);
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
+      <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:480, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
+          <div style={{ width:48, height:48, borderRadius:14, background:'#ede9fe', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem' }}>👤</div>
+          <div>
+            <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Giao việc cho nhân viên</h2>
+            <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>#{req.invReqId} · {req.type==='INBOUND'?'Nhập kho':'Xuất kho'} · {req.warehouseName}</p>
+          </div>
+        </div>
+
+        {/* Hàng hóa tóm tắt */}
+        <div style={{ background:'#f8fafc', borderRadius:10, padding:'12px 14px', marginBottom:18 }}>
+          <p style={{ margin:'0 0 8px', fontSize:'0.7rem', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em' }}>Hàng hóa</p>
+          {(req.items||[]).slice(0,3).map((it,i)=>(
+            <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.85rem', marginBottom:4 }}>
+              <span style={{ fontWeight:600, color:'#1e293b' }}>{it.itemName}</span>
+              <span style={{ color:'#64748b' }}>{it.quantity} {it.unit}</span>
+            </div>
+          ))}
+          {(req.items||[]).length > 3 && <p style={{ margin:'4px 0 0', fontSize:'0.75rem', color:'#94a3b8' }}>+{req.items.length-3} mặt hàng khác</p>}
+        </div>
+
+        {/* Chọn nhân viên */}
+        <div style={{ marginBottom:16 }}>
+          <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Chọn nhân viên</label>
+          {availableStaff.length === 0 ? (
+            <p style={{ color:'#dc2626', fontSize:'0.85rem', margin:0 }}>Không có nhân viên nào trong kho này.</p>
+          ) : (
+            <select value={selectedStaffId} onChange={e=>setSelectedStaffId(e.target.value)}
+              style={{ width:'100%', padding:'10px 12px', borderRadius:10, border:'1.5px solid #e2e8f0', fontSize:'0.875rem', outline:'none', fontFamily:'Inter,sans-serif', background:'#f8fafc', cursor:'pointer' }}
+              onFocus={e=>e.target.style.borderColor='#8b5cf6'} onBlur={e=>e.target.style.borderColor='#e2e8f0'}>
+              <option value=''>-- Chọn nhân viên --</option>
+              {availableStaff.map(s => (
+                <option key={s.userId} value={s.userId}>{s.fullName} ({s.email})</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Ghi chú */}
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>Ghi chú hướng dẫn (tùy chọn)</label>
+          <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
+            placeholder='VD: Ưu tiên xử lý ngay hôm nay, khu A cột 3...'
+            style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px', borderRadius:10, border:'1.5px solid #e2e8f0', fontSize:'0.875rem', outline:'none', resize:'vertical', fontFamily:'Inter,sans-serif' }}
+            onFocus={e=>e.target.style.borderColor='#8b5cf6'} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
+        </div>
+
+        <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
+          <button onClick={onClose} disabled={loading} style={{ padding:'10px 22px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', cursor:'pointer', fontWeight:600, fontSize:'0.875rem', color:'#64748b' }}>Hủy</button>
+          <button
+            onClick={() => { if(!selectedStaffId){ alert('Vui lòng chọn nhân viên!'); return; } onAssign(req.invReqId, Number(selectedStaffId), note); }}
+            disabled={loading || !selectedStaffId}
+            style={{ padding:'10px 24px', borderRadius:10, border:'none', background: loading || !selectedStaffId ? '#e2e8f0' : 'linear-gradient(135deg,#8b5cf6,#6d28d9)', color: loading || !selectedStaffId ? '#94a3b8' : '#fff', cursor: loading || !selectedStaffId ? 'not-allowed' : 'pointer', fontWeight:700, fontSize:'0.875rem', display:'flex', alignItems:'center', gap:8, boxShadow: loading || !selectedStaffId ? 'none' : '0 4px 14px rgba(139,92,246,0.4)' }}>
+            {loading && <span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }}/>}
+            {loading ? 'Đang giao...' : '👤 Giao việc'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ── Approve Modal ───────────────────────────────────────────── */
 const ApproveModal = ({ req, onClose, onApprove, loading }) => {
   const [note, setNote] = useState('');
   if (!req) return null;
@@ -176,8 +248,8 @@ const DetailModal = ({ req, onClose }) => {
 };
 
 /* ── Main Component (Manager view) ──────────────────────────── */
-const ManagerInventoryRequests = () => {
-  const [activeTab, setActiveTab]       = useState('INBOUND');
+const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
+  const [activeTab, setActiveTab]       = useState(defaultTab);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch]             = useState('');
   const [page, setPage]                 = useState(1);
@@ -187,6 +259,8 @@ const ManagerInventoryRequests = () => {
   const [detailReq, setDetailReq]       = useState(null);
   const [approveReq, setApproveReq]     = useState(null);
   const [rejectReq, setRejectReq]       = useState(null);
+  const [assignReq, setAssignReq]       = useState(null);
+  const [staffList, setStaffList]       = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast]               = useState(null);
 
@@ -233,6 +307,7 @@ const ManagerInventoryRequests = () => {
     total:     data.totalCount,
     pending:   data.items.filter(r=>r.status==='PENDING').length,
     confirmed: data.items.filter(r=>r.status==='CONFIRMED').length,
+    assigned:  data.items.filter(r=>r.status==='ASSIGNED').length,
     completed: data.items.filter(r=>r.status==='COMPLETED').length,
   };
 
@@ -258,13 +333,37 @@ const ManagerInventoryRequests = () => {
     finally{ setActionLoading(false); }
   };
 
+  // Mở modal Assign — load staff list của kho tương ứng
+  const openAssignModal = async (req) => {
+    setAssignReq(req);
+    try {
+      const res = await axiosClient.get(`/staff/list`, { params: { warehouseId: req.warehouseId, pageSize: 200 } });
+      const list = Array.isArray(res.data?.items) ? res.data.items
+                 : Array.isArray(res.data)         ? res.data
+                 : [];
+      // Chỉ lấy STAFF active
+      setStaffList(list.filter(s => (s.roleCode === 'STAFF' || s.roleName === 'STAFF') && s.membershipIsActive !== false));
+    } catch { setStaffList([]); }
+  };
+
+  const handleAssign = async(id, staffId, note)=>{
+    setActionLoading(true);
+    try {
+      await axiosClient.post(`/InventoryRequests/${id}/assign`, { staffId, note });
+      showToast(`Đã giao yêu cầu #${id} cho nhân viên thành công!`);
+      setAssignReq(null); fetchData();
+      window.dispatchEvent(new Event('inventoryRequestUpdated'));
+    } catch(err){ showToast(err?.response?.data?.message||'Giao việc thất bại.', true); }
+    finally{ setActionLoading(false); }
+  };
+
   const card = { background:'#fff', borderRadius:16, border:'1px solid #e2e8f0', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' };
 
-  // Status filter chips — bỏ ASSIGNED
   const STATUS_FILTERS = [
     { key:'', label:'Tất cả', count: counts.total },
     { key:'PENDING',   ...STATUS_MAP.PENDING,   count: counts.pending },
     { key:'CONFIRMED', ...STATUS_MAP.CONFIRMED,  count: counts.confirmed },
+    { key:'ASSIGNED',  ...STATUS_MAP.ASSIGNED,   count: counts.assigned },
     { key:'COMPLETED', ...STATUS_MAP.COMPLETED,  count: counts.completed },
   ];
 
@@ -401,7 +500,7 @@ const ManagerInventoryRequests = () => {
                     </td>
                     <td style={{ padding:'13px 14px' }}><StatusBadge status={req.status}/></td>
                     <td style={{ padding:'13px 14px', fontSize:'0.78rem', color:'#64748b' }}>{fmtDate(req.createdAt)}</td>
-                    {/* Actions — chỉ Duyệt và Từ chối, bỏ Giao */}
+                    {/* Actions */}
                     <td style={{ padding:'13px 14px' }}>
                       <div style={{ display:'flex', gap:6, alignItems:'center', justifyContent:'center' }}>
                         {/* Xem chi tiết */}
@@ -420,6 +519,21 @@ const ManagerInventoryRequests = () => {
                             ✓ Duyệt
                           </button>
                         )}
+                        {/* Giao việc — chỉ CONFIRMED */}
+                        {req.status==='CONFIRMED' && (
+                          <button onClick={()=>openAssignModal(req)} title="Giao cho nhân viên"
+                            style={{ padding:'5px 12px', border:'1.5px solid #c4b5fd', background:'#ede9fe', borderRadius:8, cursor:'pointer', color:'#6d28d9', fontSize:'0.78rem', fontWeight:700, display:'flex', alignItems:'center', gap:4, transition:'all 0.15s' }}
+                            onMouseEnter={e=>{e.currentTarget.style.background='#c4b5fd';}}
+                            onMouseLeave={e=>{e.currentTarget.style.background='#ede9fe';}}>
+                            👤 Giao
+                          </button>
+                        )}
+                        {/* Badge đã giao khi ASSIGNED */}
+                        {req.status==='ASSIGNED' && (
+                          <span style={{ padding:'4px 10px', borderRadius:8, background:'#ede9fe', border:'1.5px solid #c4b5fd', color:'#6d28d9', fontSize:'0.72rem', fontWeight:700, whiteSpace:'nowrap' }}>
+                            👤 {req.assignedStaffName || 'Đã giao'}
+                          </span>
+                        )}
                         {/* Từ chối — PENDING hoặc CONFIRMED */}
                         {(req.status==='PENDING'||req.status==='CONFIRMED') && (
                           <button onClick={()=>setRejectReq(req)} title="Từ chối"
@@ -428,12 +542,6 @@ const ManagerInventoryRequests = () => {
                             onMouseLeave={e=>{e.currentTarget.style.background='#fef2f2';}}>
                             ✕
                           </button>
-                        )}
-                        {/* Badge "Đang xử lý" khi CONFIRMED */}
-                        {req.status==='CONFIRMED' && (
-                          <span style={{ padding:'4px 10px', borderRadius:8, background:'#f0fdf4', border:'1.5px solid #86efac', color:'#15803d', fontSize:'0.72rem', fontWeight:700, whiteSpace:'nowrap' }}>
-                            Chờ Staff
-                          </span>
                         )}
                       </div>
                     </td>
@@ -467,8 +575,10 @@ const ManagerInventoryRequests = () => {
       <DetailModal  req={detailReq}  onClose={()=>setDetailReq(null)}/>
       <ApproveModal req={approveReq} onClose={()=>setApproveReq(null)} onApprove={handleApprove} loading={actionLoading}/>
       <RejectModal  req={rejectReq}  onClose={()=>setRejectReq(null)} onReject={handleReject} loading={actionLoading}/>
+      <AssignModal  req={assignReq}  staffList={staffList} onClose={()=>setAssignReq(null)} onAssign={handleAssign} loading={actionLoading}/>
     </div>
   );
 };
 
 export default ManagerInventoryRequests;
+

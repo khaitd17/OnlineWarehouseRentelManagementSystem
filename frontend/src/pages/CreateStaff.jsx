@@ -17,7 +17,6 @@ const S = {
   input:    { width:"100%", padding:"10px 14px", border:"1.5px solid #d1d5db", borderRadius:8, fontSize:14, boxSizing:"border-box", outline:"none", transition:"border .2s", fontFamily:"inherit" },
   select:   { width:"100%", padding:"10px 14px", border:"1.5px solid #d1d5db", borderRadius:8, fontSize:14, boxSizing:"border-box", background:"#fff", cursor:"pointer", fontFamily:"inherit" },
   group:    { marginBottom:20 },
-  chip:   (a) => ({ padding:"5px 13px", borderRadius:99, border:`1.5px solid ${a?"#4f46e5":"#d1d5db"}`, background:a?"#ede9fe":"#fff", color:a?"#4f46e5":"#374151", cursor:"pointer", fontSize:13, fontWeight:500, transition:"all .15s" }),
   tabBtn: (a) => ({ padding:"8px 20px", border:`2px solid ${a?A:"#d1d5db"}`, borderRadius:20, background:a?A:"#fff", color:a?"#fff":"#6b7280", fontWeight:600, cursor:"pointer", fontSize:14, transition:"all .2s" }),
   btn:    (danger) => ({ width:"100%", padding:"12px", background:danger?"#ef4444":A, color:"#fff", border:"none", borderRadius:8, fontSize:15, fontWeight:700, cursor:"pointer", transition:"background .2s" }),
   btnOut:   { width:"100%", padding:"12px", background:"#f3f4f6", color:"#374151", border:"none", borderRadius:8, fontSize:14, fontWeight:600, cursor:"pointer", marginTop:10 },
@@ -34,42 +33,71 @@ const S = {
     transition:"all .25s",
   }),
   userCard: { display:"flex", alignItems:"center", gap:14, padding:"14px 16px", background:"#f5f3ff", borderRadius:10, border:`1.5px solid ${ALT}`, marginBottom:20 },
-  chips:    { display:"flex", flexWrap:"wrap", gap:8, padding:"12px", border:"1.5px solid #d1d5db", borderRadius:8, minHeight:48, background:"#fafafa" },
+  skillCard: (active, color) => ({
+    display:"flex", alignItems:"flex-start", gap:12,
+    padding:"12px 16px", borderRadius:10, cursor:"pointer",
+    border:`2px solid ${active ? color : "#d1d5db"}`,
+    background: active ? color + "18" : "#fafafa",
+    transition:"all .18s", userSelect:"none",
+  }),
 };
+
+/* ─── Skill definitions ──────────────────────────────────── */
+const SKILL_DEFS = [
+  {
+    code: "CHECKER",
+    label: "Checker",
+    desc: "Xác nhận nhập/xuất hàng vật lý (bước cuối — confirm movement)",
+    color: "#4f46e5",
+    icon: "✅",
+  },
+  {
+    code: "INVENTORY_OPERATOR",
+    label: "Inventory Operator",
+    desc: "Kiểm kê định kỳ, ghi nhận kết quả kiểm kê (audit session)",
+    color: "#0369a1",
+    icon: "📦",
+  },
+  {
+    code: "WAREHOUSE_WORKER",
+    label: "Warehouse Worker",
+    desc: "Nhân viên phổ thông — tham gia ca làm việc, điểm danh",
+    color: "#15803d",
+    icon: "👷",
+  },
+];
 
 /* ─── Component ──────────────────────────────────────────── */
 export default function CreateStaff() {
   const navigate = useNavigate();
 
   // ── Global state ────────────────────────────────────────
-  const [step, setStep] = useState(1); // 1=lookup, 2=warehouse, (3 unused)
-  const [managedWarehouses,      setManagedWarehouses]      = useState([]);
-  const [loadingInit,            setLoadingInit]            = useState(true);
-  const [accessDenied,           setAccessDenied]           = useState(false);
-  const [error,                  setError]                  = useState("");
-  const [success,                setSuccess]                = useState("");
+  const [step, setStep] = useState(1);
+  const [managedWarehouses,   setManagedWarehouses]   = useState([]);
+  const [loadingInit,         setLoadingInit]         = useState(true);
+  const [accessDenied,        setAccessDenied]        = useState(false);
+  const [error,               setError]               = useState("");
+  const [success,             setSuccess]             = useState("");
 
   // ── Step 1: email lookup ─────────────────────────────────
-  const [emailInput,   setEmailInput]   = useState("");
-  const [checking,     setChecking]     = useState(false);
-  const [foundUser,    setFoundUser]    = useState(null); // {exists, userId, fullName, email, phone} | null
-  const [newUserInfo,  setNewUserInfo]  = useState({ fullName:"", phone:"" });
+  const [emailInput,  setEmailInput]  = useState("");
+  const [checking,    setChecking]    = useState(false);
+  const [foundUser,   setFoundUser]   = useState(null);
+  const [newUserInfo, setNewUserInfo] = useState({ fullName:"", phone:"" });
 
   // ── Step 2: warehouse assignment ─────────────────────────
-  const [selectedWarehouseId,    setSelectedWarehouseId]    = useState("");
-  const [callerMembership,       setCallerMembership]       = useState(null);
-  const [warehouseOptions,       setWarehouseOptions]       = useState({ skills:[] });
-  const [warehouseShifts,        setWarehouseShifts]        = useState([]);
-  const [loadingWhOptions,       setLoadingWhOptions]       = useState(false);
-  const [form, setForm] = useState({ targetRoleCode:"STAFF", skillIds:[], isAllSkill:false, warehouseShiftId:null, selectedSkillCode:null });
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+  const [callerMembership,    setCallerMembership]    = useState(null);
+  const [warehouseOptions,    setWarehouseOptions]    = useState({ skills:[] });
+  const [warehouseShifts,     setWarehouseShifts]     = useState([]);
+  const [loadingWhOptions,    setLoadingWhOptions]    = useState(false);
+  const [form, setForm] = useState({
+    targetRoleCode:     "STAFF",
+    selectedSkillCodes: [],   // multi-select: array of skill CODE strings
+    isAllSkill:         false,
+    warehouseShiftId:   null,
+  });
   const [submitting, setSubmitting] = useState(false);
-
-  // ── 3 loại nhân viên cố định ──────────────────────────────
-  const ROLE_TYPES = [
-    { code:"CHECKER",            label:"Checker",            desc:"Nhận hàng & Xuất hàng (Inbound / Outbound)",  color:"#4f46e5", bg:"#ede9fe" },
-    { code:"INVENTORY_OPERATOR", label:"Inventory Operator", desc:"Sắp xếp vị trí & Xử lý kiểm kê",             color:"#0369a1", bg:"#e0f2fe" },
-    { code:"WAREHOUSE_WORKER",   label:"Warehouse Worker",   desc:"Nhân viên phổ thông — quản lý ca (Shift)",    color:"#15803d", bg:"#dcfce7" },
-  ];
 
   /* ── Init: load managed warehouses ── */
   useEffect(() => {
@@ -89,15 +117,11 @@ export default function CreateStaff() {
     const email = emailInput.trim();
     if (!email) return setError("Vui lòng nhập email.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setError("Email không hợp lệ.");
-
     setChecking(true);
     try {
       const res = await axiosClient.get(`/staff/check-email?email=${encodeURIComponent(email)}`);
-      const data = res.data;
-      setFoundUser(data);
-      if (!data.exists) {
-        setNewUserInfo({ fullName:"", phone:"" });
-      }
+      setFoundUser(res.data);
+      if (!res.data.exists) setNewUserInfo({ fullName:"", phone:"" });
       setStep(2);
     } catch {
       setError("Không thể kiểm tra email. Vui lòng thử lại.");
@@ -112,7 +136,7 @@ export default function CreateStaff() {
     setCallerMembership(null);
     setWarehouseOptions({ skills:[] });
     setWarehouseShifts([]);
-    setForm(f => ({ ...f, targetRoleCode:"STAFF", skillIds:[], isAllSkill:false, warehouseShiftId:null, selectedSkillCode:null }));
+    setForm(f => ({ ...f, targetRoleCode:"STAFF", selectedSkillCodes:[], isAllSkill:false, warehouseShiftId:null }));
     if (!warehouseId) return;
     setLoadingWhOptions(true);
     try {
@@ -134,12 +158,21 @@ export default function CreateStaff() {
   const isOperator = callerMembership?.roleCode === "OPERATOR";
   const isManager  = callerMembership?.roleCode === "MANAGER";
 
-  // Map skill code -> skill ID from warehouse-options API
-  const getSkillIdByCode = (code) => warehouseOptions.skills?.find(s => s.code === code)?.id ?? null;
+  // Get skill ID from code using warehouse options API data
+  const getSkillIdByCode = (code) =>
+    warehouseOptions.skills?.find(s => s.code === code)?.id ?? null;
 
-  const selectRoleType = (code) => {
-    const id = getSkillIdByCode(code);
-    setForm(f => ({ ...f, selectedSkillCode: code, skillIds: id ? [id] : [], isAllSkill: false }));
+  // Toggle a skill in multi-select
+  const toggleSkill = (code) => {
+    setForm(f => {
+      const already = f.selectedSkillCodes.includes(code);
+      return {
+        ...f,
+        selectedSkillCodes: already
+          ? f.selectedSkillCodes.filter(c => c !== code)
+          : [...f.selectedSkillCodes, code],
+      };
+    });
   };
 
   /* ── Submit ── */
@@ -150,23 +183,23 @@ export default function CreateStaff() {
     if (!foundUser?.exists && !newUserInfo.fullName.trim()) return setError("Vui lòng nhập họ và tên.");
     if (isManager && form.targetRoleCode !== "STAFF") return setError("Manager chỉ được tạo STAFF.");
 
+    // Resolve skill IDs from selected codes
+    const skillIds = form.selectedSkillCodes
+      .map(code => getSkillIdByCode(code))
+      .filter(id => id !== null);
+
     setSubmitting(true);
     try {
-      const emailVal = emailInput.trim();
-      const fullName = foundUser?.exists ? foundUser.fullName : newUserInfo.fullName.trim();
-      const phone    = foundUser?.exists ? foundUser.phone    : newUserInfo.phone.trim() || null;
-
       const payload = {
-        fullName,
-        email:            emailVal,
-        phone,
+        fullName:         foundUser?.exists ? foundUser.fullName : newUserInfo.fullName.trim(),
+        email:            emailInput.trim(),
+        phone:            foundUser?.exists ? foundUser.phone : (newUserInfo.phone.trim() || null),
         warehouseId:      parseInt(selectedWarehouseId),
         targetRoleCode:   form.targetRoleCode,
-        skillIds:         form.skillIds,
-        isAllSkill:       false,
+        skillIds,
+        isAllSkill:       form.isAllSkill,
         warehouseShiftId: form.warehouseShiftId || null,
       };
-
       const result = await staffService.createStaff(payload);
       setSuccess(`✅ Nhân viên đã được gán vào kho thành công! (User ID: ${result.staffUserId})`);
       setTimeout(() => navigate("/list-staff"), 2000);
@@ -189,7 +222,9 @@ export default function CreateStaff() {
       <div style={{ fontSize:48, marginBottom:16 }}>🔒</div>
       <h2 style={{ color:"#b91c1c" }}>Không có quyền truy cập</h2>
       <p style={{ color:"#6b7280" }}>Bạn cần role <strong>OPERATOR</strong> hoặc <strong>MANAGER</strong> trong ít nhất một kho.</p>
-      <button onClick={() => navigate("/dashboard")} style={{ ...S.btn(), width:"auto", padding:"10px 24px", marginTop:24 }}>Quay lại Dashboard</button>
+      <button onClick={() => navigate("/owner-dashboard")} style={{ ...S.btn(), width:"auto", padding:"10px 24px", marginTop:24 }}>
+        Quay lại
+      </button>
     </div>
   );
 
@@ -206,26 +241,21 @@ export default function CreateStaff() {
 
         {/* Steps bar */}
         <div style={S.steps}>
-          <div style={S.step(step===1, step>1)}>
-            {step>1?"✓ ":""}1. Tìm kiếm email
-          </div>
-          <div style={S.step(step===2, step>2)}>
-            2. Phân quyền theo kho
-          </div>
+          <div style={S.step(step===1, step>1)}>{step>1?"✓ ":""}1. Tìm kiếm email</div>
+          <div style={S.step(step===2, step>2)}>2. Phân quyền theo kho</div>
         </div>
 
         <div style={S.body}>
           {error   && <div style={S.alert("error")}>{error}</div>}
           {success && <div style={S.alert("success")}>{success}</div>}
 
-          {/* ─── STEP 1: Email lookup ─── */}
+          {/* ─── STEP 1 ─── */}
           {step === 1 && (
             <form onSubmit={handleCheckEmail}>
               <div style={S.group}>
                 <label style={S.label}>Email nhân viên <span style={{ color:"#ef4444" }}>*</span></label>
                 <input
-                  style={S.input}
-                  type="email"
+                  style={S.input} type="email"
                   placeholder="Nhập địa chỉ email..."
                   value={emailInput}
                   onChange={e => { setEmailInput(e.target.value); setError(""); }}
@@ -239,11 +269,11 @@ export default function CreateStaff() {
             </form>
           )}
 
-          {/* ─── STEP 2: Warehouse assignment ─── */}
+          {/* ─── STEP 2 ─── */}
           {step === 2 && (
             <form onSubmit={handleSubmit}>
 
-              {/* User info card */}
+              {/* User info */}
               {foundUser?.exists ? (
                 <div style={S.userCard}>
                   <div style={{ width:44, height:44, borderRadius:"50%", background:A, display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontSize:18, fontWeight:700, flexShrink:0 }}>
@@ -268,12 +298,14 @@ export default function CreateStaff() {
                     <input style={S.input} placeholder="Nhập họ và tên đầy đủ" value={newUserInfo.fullName}
                       onChange={e => setNewUserInfo(f => ({ ...f, fullName:e.target.value }))} />
                   </div>
-                  <div style={{ marginBottom:0 }}>
+                  <div>
                     <label style={S.label}>Số điện thoại</label>
                     <input style={S.input} placeholder="Nhập số điện thoại (tuỳ chọn)" value={newUserInfo.phone}
                       onChange={e => setNewUserInfo(f => ({ ...f, phone:e.target.value }))} />
                   </div>
-                  <div style={{ ...S.note, marginTop:10, color:"#92400e" }}>💌 Hệ thống sẽ tự tạo tài khoản và gửi mật khẩu qua email này.</div>
+                  <div style={{ ...S.note, marginTop:10, color:"#92400e" }}>
+                    💌 Hệ thống sẽ tự tạo tài khoản và gửi mật khẩu tạm + link đặt lại mật khẩu qua email.
+                  </div>
                 </div>
               )}
 
@@ -296,7 +328,7 @@ export default function CreateStaff() {
 
               {callerMembership && !loadingWhOptions && (
                 <>
-                  {/* Role trong kho */}
+                  {/* Role của caller */}
                   <div style={{ marginBottom:12, padding:"8px 14px", background:"#f0f9ff", borderRadius:8, fontSize:13, color:"#0369a1", border:"1px solid #bae6fd" }}>
                     Quyền của bạn:
                     <span style={S.badge(isOperator?"#4f46e5":"#7c3aed")}>
@@ -304,13 +336,14 @@ export default function CreateStaff() {
                     </span>
                   </div>
 
+                  {/* Role target */}
                   <div style={S.group}>
                     <label style={S.label}>Role trong kho <span style={{ color:"#ef4444" }}>*</span></label>
                     {isOperator ? (
                       <div style={{ display:"flex", gap:8 }}>
                         {["STAFF","MANAGER"].map(r => (
                           <button key={r} type="button" style={S.tabBtn(form.targetRoleCode===r)}
-                            onClick={() => setForm(f => ({ ...f, targetRoleCode:r, skillIds:[], isAllSkill:r==="MANAGER" }))}>
+                            onClick={() => setForm(f => ({ ...f, targetRoleCode:r, selectedSkillCodes:[], isAllSkill:r==="MANAGER" }))}>
                             {r==="STAFF"?"👷 Nhân viên (STAFF)":"🗂 Quản lý (MANAGER)"}
                           </button>
                         ))}
@@ -322,30 +355,68 @@ export default function CreateStaff() {
                     )}
                   </div>
 
-                  {/* Loại nhân viên */}
+                  {/* ─── Multi-select Skills ─── */}
                   <div style={S.group}>
-                    <label style={S.label}>Loại nhân viên <span style={{ color:"#ef4444" }}>*</span></label>
-                    <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-                      {ROLE_TYPES.map(rt => {
-                        const active = form.selectedSkillCode === rt.code;
+                    <label style={S.label}>
+                      Kỹ năng nhân viên
+                      <span style={{ color:"#9ca3af", fontWeight:400, fontSize:12, marginLeft:6 }}>
+                        (chọn 1 hoặc nhiều — bỏ trống = nhân viên phổ thông)
+                      </span>
+                    </label>
+
+                    {/* All Skill toggle — chỉ OPERATOR tạo MANAGER */}
+                    {isOperator && form.targetRoleCode === "MANAGER" && (
+                      <div
+                        onClick={() => setForm(f => ({ ...f, isAllSkill:!f.isAllSkill, selectedSkillCodes:[] }))}
+                        style={{ ...S.skillCard(form.isAllSkill, "#7c3aed"), marginBottom:8 }}>
+                        <div style={{ fontSize:20 }}>⭐</div>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontWeight:700, fontSize:14, color:form.isAllSkill?"#7c3aed":"#374151" }}>Toàn kỹ năng (All Skill)</div>
+                          <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>Manager này quản lý tất cả kỹ năng trong kho</div>
+                        </div>
+                        <input type="checkbox" readOnly checked={form.isAllSkill} style={{ width:18, height:18, accentColor:"#7c3aed" }} />
+                      </div>
+                    )}
+
+                    {/* Individual skill checkboxes */}
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                      {SKILL_DEFS.map(sk => {
+                        const active   = form.selectedSkillCodes.includes(sk.code);
+                        const disabled = form.isAllSkill;
                         return (
-                          <div key={rt.code} onClick={() => selectRoleType(rt.code)} style={{
-                            display:"flex", alignItems:"center", gap:12,
-                            padding:"12px 16px", borderRadius:10, cursor:"pointer",
-                            border:`2px solid ${active ? rt.color : "#d1d5db"}`,
-                            background: active ? rt.bg : "#fafafa",
-                            transition:"all .18s",
-                          }}>
-                            <div>
-                              <div style={{ fontWeight:700, fontSize:14, color: active ? rt.color : "#374151" }}>{rt.label}</div>
-                              <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>{rt.desc}</div>
+                          <div
+                            key={sk.code}
+                            onClick={() => !disabled && toggleSkill(sk.code)}
+                            style={{
+                              ...S.skillCard(active && !disabled, sk.color),
+                              opacity: disabled ? 0.45 : 1,
+                              cursor:  disabled ? "not-allowed" : "pointer",
+                            }}>
+                            <div style={{ fontSize:20 }}>{sk.icon}</div>
+                            <div style={{ flex:1 }}>
+                              <div style={{ fontWeight:700, fontSize:14, color:active && !disabled ? sk.color : "#374151" }}>
+                                {sk.label}
+                              </div>
+                              <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>{sk.desc}</div>
                             </div>
-                            {active && <span style={{ marginLeft:"auto", fontSize:13, fontWeight:700, color:rt.color }}>OK</span>}
+                            <input type="checkbox" readOnly checked={form.isAllSkill || active}
+                              style={{ width:16, height:16, accentColor:sk.color }} />
                           </div>
                         );
                       })}
                     </div>
-                    <div style={S.note}>Chọn loại nhân viên phù hợp với chức năng trong kho.</div>
+
+                    {/* Hint text */}
+                    {!form.isAllSkill && form.selectedSkillCodes.length === 0 && (
+                      <div style={{ ...S.note, color:"#92400e", marginTop:8 }}>
+                        ℹ️ Không chọn kỹ năng → nhân viên phổ thông (chỉ điểm danh, không xác nhận nhập/xuất hay kiểm kê)
+                      </div>
+                    )}
+                    {!form.isAllSkill && form.selectedSkillCodes.length > 0 && (
+                      <div style={{ ...S.note, color:"#166534", marginTop:8 }}>
+                        ✓ Đã chọn: {form.selectedSkillCodes.join(", ")}
+                      </div>
+                    )}
                   </div>
 
                   {/* Ca làm việc */}
@@ -363,7 +434,7 @@ export default function CreateStaff() {
                         ))}
                       </select>
                     )}
-                    <div style={S.note}>Ca cố định sẽ được dùng khi Generate Schedule.</div>
+                    <div style={S.note}>Ca cố định được dùng khi Generate Schedule tự động.</div>
                   </div>
 
                   <button type="submit" disabled={submitting} style={{ ...S.btn(), opacity:submitting?.7:1 }}>
@@ -372,7 +443,9 @@ export default function CreateStaff() {
                 </>
               )}
 
-              <button type="button" onClick={() => { setStep(1); setFoundUser(null); setSelectedWarehouseId(""); setCallerMembership(null); setError(""); }} style={S.btnOut}>
+              <button type="button"
+                onClick={() => { setStep(1); setFoundUser(null); setSelectedWarehouseId(""); setCallerMembership(null); setError(""); }}
+                style={S.btnOut}>
                 ← Quay lại tìm email khác
               </button>
             </form>

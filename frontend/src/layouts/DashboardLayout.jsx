@@ -111,11 +111,30 @@ const countUnreadNotifications = (list) =>
   (Array.isArray(list) ? list : []).filter(
     (n) => !Boolean(n?.isRead ?? n?.IsRead ?? n?.read ?? false)
   ).length;
+const ROLE_PRIORITY_DASH = ['OWNER', 'OPERATOR', 'MANAGER', 'STAFF', 'RENTER'];
 
 const DashboardLayout = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userRole = (user.role || user.roleName || '').toUpperCase();
-  const searchPlaceholder = userRole === 'OWNER'
+  const ctx  = JSON.parse(localStorage.getItem('warehouseContext') || '{}');
+  const systemRole = (ctx.systemRole || user.role || user.roleName || 'user').toUpperCase();
+  const warehouseRoles = (ctx.warehouses || []).map(w => (w.role || '').toUpperCase());
+  // Effective role: ưu tiên warehouse role trước system role
+  const userRole = (() => {
+    if (systemRole === 'ADMIN') return 'ADMIN';
+    for (const r of ROLE_PRIORITY_DASH) {
+      if (warehouseRoles.includes(r)) return r;
+    }
+    return systemRole || 'USER';
+  })();
+
+  const dashboardPath = (() => {
+    if (userRole === 'MANAGER' || userRole === 'STAFF') return '/staff-dashboard';
+    if (userRole === 'OWNER' || userRole === 'OPERATOR') return '/owner-dashboard';
+    if (userRole === 'RENTER') return '/renter-dashboard';
+    return null;
+  })();
+
+  const searchPlaceholder = userRole === 'OWNER' || userRole === 'OPERATOR'
     ? 'Search warehouses...'
     : userRole === 'RENTER'
       ? 'Tìm kiếm kho hàng, nhà kho...'
@@ -590,9 +609,15 @@ const DashboardLayout = () => {
                 </div>
 
                 <Link to="/profile" className="nav-dropdown-item">Hồ sơ</Link>
+                {/* Dashboard link — dùng dashboardPath đã resolve theo role */}
+                {dashboardPath && (
+                  <Link to={dashboardPath} className="nav-dropdown-item">
+                    Dashboard
+                  </Link>
+                )}
                 {userRole === 'RENTER' && (
-                  <Link to="/my-favorites" className="nav-dropdown-item" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#f43f5e' }}>favorite</span>
+                  <Link to="/my-favorites" className="nav-dropdown-item" style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize:'16px', color:'#f43f5e' }}>favorite</span>
                     Kho yêu thích
                   </Link>
                 )}

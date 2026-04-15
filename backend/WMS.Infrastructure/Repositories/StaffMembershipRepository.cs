@@ -148,6 +148,7 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             RoleCode     = m.Role.Code,
             IsAllSkill   = m.IsAllSkill,
             SkillIds     = m.Skills.Select(s => s.Id).ToList(),
+            SkillCodes   = m.Skills.Select(s => s.Code).ToList(),
         };
     }
 

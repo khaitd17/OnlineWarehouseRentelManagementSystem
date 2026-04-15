@@ -20,6 +20,11 @@ public interface IInventoryRequestRepository
 
     Task<List<InventoryRequest>> GetConfirmedByWarehouseAsync(int warehouseId, string? type, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Lấy các request có status ASSIGNED được giao cho staffId trong warehouseId.
+    /// </summary>
+    Task<List<InventoryRequest>> GetAssignedToStaffByWarehouseAsync(int staffId, int warehouseId, string? type, CancellationToken cancellationToken);
+
     Task<InventoryRequest?> GetByIdAsync(int id, CancellationToken cancellationToken);
 
     // Write
