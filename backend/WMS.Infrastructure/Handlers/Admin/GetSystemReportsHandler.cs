@@ -22,16 +22,16 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
         var toDate = toDateRaw.Date.AddDays(1).AddTicks(-1);
         var fromDate = request.FromDate ?? toDate.Date.AddMonths(-12);
 
-        // ── User Stats ──
-        var totalUsers = await _db.Users.CountAsync(cancellationToken);
-        var activeUsers = await _db.Users.CountAsync(u => u.Status == "ACTIVE", cancellationToken);
-        var lockedUsers = await _db.Users.CountAsync(u => u.Status == "LOCKED", cancellationToken);
+        // ── User Stats (filtered by registration date) ──
+        var totalUsers = await _db.Users.CountAsync(u => u.CreatedAt >= fromDate && u.CreatedAt <= toDate, cancellationToken);
+        var activeUsers = await _db.Users.CountAsync(u => u.Status == "ACTIVE" && u.CreatedAt >= fromDate && u.CreatedAt <= toDate, cancellationToken);
+        var lockedUsers = await _db.Users.CountAsync(u => u.Status == "LOCKED" && u.CreatedAt >= fromDate && u.CreatedAt <= toDate, cancellationToken);
 
-        // ── Warehouse Stats ──
-        var totalWarehouses = await _db.Warehouses.CountAsync(w => w.Status != "DELETED", cancellationToken);
-        var approvedWarehouses = await _db.Warehouses.CountAsync(w => w.Status == "APPROVED", cancellationToken);
-        var pendingWarehouses = await _db.Warehouses.CountAsync(w => w.Status == "PENDING", cancellationToken);
-        var hiddenWarehouses = await _db.Warehouses.CountAsync(w => w.Status == "HIDDEN", cancellationToken);
+        // ── Warehouse Stats (filtered by creation date) ──
+        var totalWarehouses = await _db.Warehouses.CountAsync(w => w.Status != "DELETED" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken);
+        var approvedWarehouses = await _db.Warehouses.CountAsync(w => w.Status == "APPROVED" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken);
+        var pendingWarehouses = await _db.Warehouses.CountAsync(w => w.Status == "PENDING" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken);
+        var hiddenWarehouses = await _db.Warehouses.CountAsync(w => w.Status == "HIDDEN" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken);
 
         // ── Subscription & Financial Stats ──
         // Use LEFT JOIN (DefaultIfEmpty) so we don't crash when subscription_packages is empty/missing
@@ -79,9 +79,9 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
 
         try
         {
-            var currentMonthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+            // Count new subscriptions within the selected date range
             totalNewSubscriptionsThisMonth = await _db.Subscriptions
-                .CountAsync(s => s.StartDate >= currentMonthStart, cancellationToken);
+                .CountAsync(s => s.StartDate >= fromDate && s.StartDate <= toDate, cancellationToken);
 
             var nextSevenDays = DateTime.UtcNow.AddDays(7);
             expiringSubscriptions = await _db.Subscriptions

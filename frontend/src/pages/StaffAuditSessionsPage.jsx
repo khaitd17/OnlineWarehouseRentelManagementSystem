@@ -17,7 +17,7 @@ export default function StaffAuditSessionsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { ...filters };
+      const params = { ...filters, onlyAssignedToMe: true };
       if (!params.status) delete params.status;
       if (!params.search) delete params.search;
       const res = await adminService.getAuditSessions(params);

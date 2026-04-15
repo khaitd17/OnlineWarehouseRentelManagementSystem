@@ -25,9 +25,17 @@ public class CloseAuditSessionHandler : IRequestHandler<CloseAuditSessionCommand
         if (session == null)
             return ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê.");
 
-        // Kiểm tra quyền sở hữu kho
-        if (session.Warehouse.OwnerId != request.UserId)
-            return ApiResponse<bool>.ErrorResponse("Bạn không có quyền đóng phiên kiểm kê này. Chỉ chủ kho mới có thể thực hiện.");
+        // Chỉ chủ kho (OwnerId) hoặc điều phối viên (OPERATOR) mới được đóng phiên kiểm kê.
+        bool isOwner = session.Warehouse.OwnerId == request.UserId;
+        bool isOperator = await _db.WarehouseMemberships
+            .Include(m => m.Role)
+            .AnyAsync(m => m.UserId == request.UserId
+                && m.WarehouseId == session.WarehouseId
+                && m.IsActive
+                && m.Role.Code == "OPERATOR", cancellationToken);
+
+        if (!isOwner && !isOperator)
+            return ApiResponse<bool>.ErrorResponse("Chỉ chủ kho hoặc điều phối viên của kho mới có thể đóng phiên kiểm kê.");
 
         if (session.Status == "COMPLETED")
             return ApiResponse<bool>.ErrorResponse("Phiên kiểm kê đã được đóng trước đó.");
@@ -52,9 +60,10 @@ public class CloseAuditSessionHandler : IRequestHandler<CloseAuditSessionCommand
 
         if (!string.IsNullOrWhiteSpace(request.Notes))
         {
+            var closerLabel = isOwner ? "Chủ kho" : "Điều phối viên";
             session.Notes = string.IsNullOrWhiteSpace(session.Notes)
-                ? $"Chủ kho: {request.Notes}"
-                : session.Notes + "\n" + $"Chủ kho: {request.Notes}";
+                ? $"{closerLabel}: {request.Notes}"
+                : session.Notes + "\n" + $"{closerLabel}: {request.Notes}";
         }
 
         await _db.SaveChangesAsync(cancellationToken);

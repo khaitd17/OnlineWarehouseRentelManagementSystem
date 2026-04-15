@@ -15,8 +15,6 @@ export default function OwnerAuditSessionsPage() {
   const [filters, setFilters] = useState({ search: "", warehouseId: "", status: "", page: 1, pageSize: 10 });
   const [toast, setToast] = useState(null);
 
-  const defaultCreateModal = { open: false, warehouseId: "", notes: "", errors: {}, loading: false };
-  const [createModal, setCreateModal] = useState(defaultCreateModal);
   const [closeModal, setCloseModal] = useState({ open: false, auditId: null, notes: "", loading: false });
   const [approveModal, setApproveModal] = useState({ open: false, auditId: null, warehouseId: null, assignedTo: "", notes: "", loading: false });
   const [rejectModal, setRejectModal] = useState({ open: false, auditId: null, reason: "", loading: false });
@@ -53,19 +51,6 @@ export default function OwnerAuditSessionsPage() {
       const list = Array.isArray(res.data) ? res.data : (res.data?.data || []);
       setStaffList(list);
     } catch { setStaffList([]); }
-  };
-
-  const handleCreate = async () => {
-    const errors = {};
-    if (!createModal.warehouseId) errors.warehouseId = "Vui lòng chọn kho";
-    if (Object.keys(errors).length > 0) { setCreateModal(p => ({ ...p, errors })); return; }
-    setCreateModal(p => ({ ...p, loading: true }));
-    try {
-      const res = await adminService.createAuditSession({ warehouseId: parseInt(createModal.warehouseId), notes: createModal.notes || null });
-      if (res.data.success) { showToast(res.data.message); fetchData(); setCreateModal(defaultCreateModal); }
-      else showToast(res.data.message, "error");
-    } catch (e) { showToast(e.response?.data?.message || "Lỗi", "error"); }
-    setCreateModal(p => ({ ...p, loading: false }));
   };
 
   const handleApprove = async () => {
@@ -211,31 +196,6 @@ export default function OwnerAuditSessionsPage() {
           </div>
         )}
       </div>
-
-      {/* Create Modal */}
-      {createModal.open && (
-        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setCreateModal(defaultCreateModal)}>
-          <div style={{ backgroundColor: "#fff", borderRadius: 12, padding: 24, width: "100%", maxWidth: 440, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-slate-900 mb-4">Tạo phiên kiểm kê mới</h3>
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Kho *</label>
-              <select className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400" value={createModal.warehouseId} onChange={e => setCreateModal(p => ({ ...p, warehouseId: e.target.value, errors: {} }))}>
-                <option value="">-- Chọn kho --</option>
-                {warehouses.map(w => <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>)}
-              </select>
-              {createModal.errors.warehouseId && <p className="text-xs text-red-500 mt-1">{createModal.errors.warehouseId}</p>}
-            </div>
-            <div className="mb-4">
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Ghi chú</label>
-              <textarea className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400" rows={3} value={createModal.notes} onChange={e => setCreateModal(p => ({ ...p, notes: e.target.value }))} placeholder="Ghi chú (tuỳ chọn)..." />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setCreateModal(defaultCreateModal)} className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all" disabled={createModal.loading}>Hủy</button>
-              <button onClick={handleCreate} className="px-4 py-2 rounded-lg text-sm font-bold text-white transition-all" style={{ backgroundColor: accentColor }} disabled={createModal.loading}>{createModal.loading ? "Đang tạo..." : "Tạo phiên"}</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Approve Modal */}
       {approveModal.open && (
