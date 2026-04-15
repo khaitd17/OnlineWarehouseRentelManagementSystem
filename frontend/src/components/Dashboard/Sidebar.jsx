@@ -553,7 +553,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
         {/* ── Navigation ── */}
         <nav className="sb-nav" style={{ flex: 1, overflowY: 'auto', padding: '10px 8px', position: 'relative', zIndex: 1 }}>
-          {MENU_BY_ROLE[effectiveRole]?.map((item, idx) => {
+          {menuItems?.map((item, idx) => {
             const isActive = location.pathname === item.path;
             const badge = item.badgeKey ? (badgeValues[item.badgeKey] || 0) : 0;
             const isLocked = subStatus && subStatus.isActive && 
