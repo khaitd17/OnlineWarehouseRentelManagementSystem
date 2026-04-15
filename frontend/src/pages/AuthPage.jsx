@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import authService from '../services/authService';
@@ -336,6 +336,9 @@ const VALIDATORS = {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim())) return 'Địa chỉ email không đúng định dạng.';
     if (!v.trim().toLowerCase().endsWith('.com')) return 'Email phải kết thúc bằng .com (VD: example@gmail.com).';
     if (v.trim().length > 100) return 'Email không được vượt quá 100 ký tự.';
+    // Kiểm tra domain không phải tên hợp lệ (chỉ có @ và TLD, thiếu domain)
+    const domain = v.trim().split('@')[1] || '';
+    if (domain.split('.').some(p => p.length === 0)) return 'Tên miền email không hợp lệ.';
     return '';
   },
   password: (v) => {
@@ -357,7 +360,37 @@ const VALIDATORS = {
   },
 };
 
+// Danh sách domain email phổ biến & các dạng typo thường gặp
+const DOMAIN_SUGGESTIONS = [
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',
+  'icloud.com', 'fpt.edu.vn', 'hcmut.edu.vn', 'live.com',
+];
+
+function levenshtein(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) =>
+    Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+  return dp[a.length][b.length];
+}
+
+function getSuggestedDomain(email) {
+  const at = email.lastIndexOf('@');
+  if (at < 1) return null;
+  const domain = email.slice(at + 1).toLowerCase();
+  if (DOMAIN_SUGGESTIONS.includes(domain)) return null;
+  let best = null, bestDist = 99;
+  for (const d of DOMAIN_SUGGESTIONS) {
+    const dist = levenshtein(domain, d);
+    if (dist < bestDist && dist <= 3) { best = d; bestDist = dist; }
+  }
+  return best ? `${email.slice(0, at + 1)}${best}` : null;
+}
+
 const getPasswordStrength = (v) => {
+
   let score = 0;
   if (v.length >= 6) score++;
   if (v.length >= 10) score++;
@@ -393,6 +426,15 @@ const AuthPage = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // OTP step state
+  const [step, setStep] = useState('form'); // 'form' | 'otp'
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', '']);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
+
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
@@ -479,13 +521,105 @@ const AuthPage = () => {
         await authService.login(formData.email, formData.password);
         window.dispatchEvent(new Event('authChange')); redirectAfterAuth();
       } else {
-        await authService.register({ fullName: formData.fullName, email: formData.email, password: formData.password, phone: formData.phone, roleName: formData.roleName });
-        await authService.login(formData.email, formData.password);
-        window.dispatchEvent(new Event('authChange')); redirectAfterAuth();
+        // REGISTER FLOW: send OTP first
+        const res = await fetch('http://localhost:5276/api/auth/send-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: formData.fullName,
+            email: formData.email,
+            password: formData.password,
+            phone: formData.phone,
+            roleName: formData.roleName,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Không thể gửi OTP.');
+        // Switch to OTP step
+        setOtpDigits(['', '', '', '', '', '']);
+        setOtpError('');
+        setResendCooldown(60);
+        setStep('otp');
       }
-    } catch (err) { setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.'); }
+    } catch (err) { setError(err.message || err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.'); }
     finally { setLoading(false); }
   };
+
+  // Countdown timer for resend
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => setResendCooldown(s => s - 1), 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  const handleOtpChange = (index, value) => {
+    // Handle paste of full OTP
+    if (value.length > 1) {
+      const digits = value.replace(/\D/g, '').slice(0, 6).split('');
+      const newOtp = ['', '', '', '', '', ''].map((_, i) => digits[i] || '');
+      setOtpDigits(newOtp);
+      const nextEmpty = newOtp.findIndex((d, i) => i >= digits.length - 1);
+      const focusIdx = Math.min(digits.length, 5);
+      otpRefs[focusIdx]?.current?.focus();
+      return;
+    }
+    const digit = value.replace(/\D/g, '');
+    const newOtp = [...otpDigits];
+    newOtp[index] = digit;
+    setOtpDigits(newOtp);
+    setOtpError('');
+    if (digit && index < 5) otpRefs[index + 1]?.current?.focus();
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpRefs[index - 1]?.current?.focus();
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const otp = otpDigits.join('');
+    if (otp.length < 6) { setOtpError('Vui lòng nhập đủ 6 chữ số OTP.'); return; }
+    setOtpLoading(true); setOtpError('');
+    try {
+      const res = await fetch('http://localhost:5276/api/auth/verify-otp-register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, otp }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setOtpError(data.message || 'OTP không đúng hoặc đã hết hạn.'); return; }
+      // Auto login after successful registration
+      await authService.login(formData.email, formData.password);
+      window.dispatchEvent(new Event('authChange'));
+      navigate('/');
+    } catch {
+      setOtpError('Có lỗi xảy ra. Vui lòng thử lại.');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+    setOtpError('');
+    try {
+      const res = await fetch('http://localhost:5276/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+          roleName: formData.roleName,
+        }),
+      });
+      if (res.ok) { setResendCooldown(60); setOtpDigits(['', '', '', '', '', '']); otpRefs[0]?.current?.focus(); }
+      else { const d = await res.json(); setOtpError(d.message || 'Không thể gửi lại OTP.'); }
+    } catch { setOtpError('Không thể gửi lại OTP.'); }
+  };
+
 
   return (
     <>
@@ -555,6 +689,58 @@ const AuthPage = () => {
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
+
+          {/* ── OTP STEP ── */}
+          {step === 'otp' ? (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+              <div style={{ width:'72px', height:'72px', borderRadius:'50%', background:'linear-gradient(135deg,rgba(99,102,241,0.25),rgba(124,58,237,0.2))', border:'1.5px solid rgba(99,102,241,0.4)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'20px' }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </div>
+              <h2 style={{ margin:'0 0 8px', fontSize:'1.3rem', fontWeight:800, color:'#f1f5f9', textAlign:'center' }}>Xác thực Email</h2>
+              <p style={{ margin:'0 0 4px', fontSize:'0.84rem', color:'rgba(148,163,184,0.8)', textAlign:'center' }}>Mã OTP 6 số đã được gửi đến</p>
+              <p style={{ margin:'0 0 28px', fontSize:'0.88rem', fontWeight:700, color:'#818cf8', textAlign:'center' }}>{formData.email}</p>
+              {/* 6 OTP boxes */}
+              <div style={{ display:'flex', gap:'10px', marginBottom:'16px' }}>
+                {otpDigits.map((digit, i) => (
+                  <input
+                    key={i} ref={otpRefs[i]} type="text" inputMode="numeric" maxLength={6} value={digit}
+                    onChange={e => handleOtpChange(i, e.target.value)}
+                    onKeyDown={e => handleOtpKeyDown(i, e)}
+                    onFocus={e => e.target.select()}
+                    style={{
+                      width:'48px', height:'58px', textAlign:'center', fontSize:'1.5rem', fontWeight:800, fontFamily:'monospace',
+                      background: otpError ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.06)',
+                      border:`2px solid ${otpError ? 'rgba(239,68,68,0.6)' : digit ? 'rgba(99,102,241,0.8)' : 'rgba(255,255,255,0.12)'}`,
+                      borderRadius:'12px', color:'#e2e8f0', outline:'none', caretColor:'#818cf8', transition:'border-color 0.2s',
+                    }}
+                  />
+                ))}
+              </div>
+              {otpError && (
+                <div style={{ display:'flex', alignItems:'center', gap:'6px', color:'#f87171', fontSize:'0.82rem', marginBottom:'14px' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  {otpError}
+                </div>
+              )}
+              <button onClick={handleVerifyOtp} disabled={otpLoading || otpDigits.join('').length < 6} className="auth-submit-btn" style={{ marginBottom:'16px', width:'100%' }}>
+                {otpLoading ? (
+                  <span style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation:'spin 0.8s linear infinite' }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                    Đang xác nhận...
+                  </span>
+                ) : '✓ Xác nhận OTP'}
+              </button>
+              <button onClick={handleResendOtp} disabled={resendCooldown > 0} style={{ background:'none', border:'none', cursor:resendCooldown>0?'not-allowed':'pointer', color:resendCooldown>0?'rgba(148,163,184,0.4)':'#818cf8', fontSize:'0.84rem', fontWeight:600, fontFamily:'Inter,sans-serif', marginBottom:'10px' }}>
+                {resendCooldown > 0 ? `Gửi lại sau ${resendCooldown}s` : '↺ Gửi lại OTP'}
+              </button>
+              <button onClick={() => { setStep('form'); setOtpError(''); setError(''); }} style={{ background:'none', border:'none', cursor:'pointer', color:'rgba(148,163,184,0.55)', fontSize:'0.82rem', fontFamily:'Inter,sans-serif' }}
+                onMouseEnter={e => e.currentTarget.style.color='#94a3b8'} onMouseLeave={e => e.currentTarget.style.color='rgba(148,163,184,0.55)'}>
+                ← Quay lại sửa thông tin
+              </button>
+            </div>
+          ) : (<>
 
           {/* ── Logo + Brand ── */}
           <div style={{ textAlign:'center', marginBottom:'28px' }}>
@@ -644,7 +830,29 @@ const AuthPage = () => {
                 />
               </InputWrapper>
               <FieldError msg={fieldErrors.email} />
+              {/* Gợi ý domain khi có typo — chỉ hiện ở form đăng ký */}
+              {!isLogin && !fieldErrors.email && formData.email.includes('@') && (() => {
+                const suggestion = getSuggestedDomain(formData.email);
+                if (!suggestion) return null;
+                return (
+                  <div style={{ marginTop:'6px', display:'flex', alignItems:'center', gap:'6px', fontSize:'0.78rem', color:'#f59e0b', animation:'slideUp 0.2s ease both' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}>
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    Ý bạn là{' '}
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, email: suggestion }))}
+                      style={{ background:'none', border:'none', padding:0, cursor:'pointer', color:'#818cf8', fontWeight:700, fontSize:'0.78rem', fontFamily:'Inter,sans-serif', textDecoration:'underline' }}
+                    >
+                      {suggestion}
+                    </button>
+                    {' '}?
+                  </div>
+                );
+              })()}
             </div>
+
 
             <div>
               <div style={{ marginBottom:'6px' }}>
@@ -730,6 +938,7 @@ const AuthPage = () => {
             <a href="#" style={{ color:'#818cf8', textDecoration:'none' }}>Chính sách bảo mật</a>
             {' '}của chúng tôi.
           </p>
+          </>)}
         </div>
       </div>
 
@@ -741,3 +950,4 @@ const AuthPage = () => {
 };
 
 export default AuthPage;
+

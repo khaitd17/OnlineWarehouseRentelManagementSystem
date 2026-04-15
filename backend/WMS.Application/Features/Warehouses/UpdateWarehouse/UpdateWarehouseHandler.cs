@@ -36,6 +36,7 @@ public class UpdateWarehouseHandler : IRequestHandler<UpdateWarehouseCommand>
         warehouse.Lat              = request.Lat;
         warehouse.Lng              = request.Lng;
         warehouse.Description      = request.Description;
+        warehouse.WarehouseType    = request.WarehouseType;
         warehouse.OperatingHours   = request.OperatingHours;
         warehouse.Is24HoursAccess  = request.Is24HoursAccess;
         warehouse.OpenTime         = request.OpenTime;

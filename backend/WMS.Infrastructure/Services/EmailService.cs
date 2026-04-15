@@ -14,7 +14,36 @@ public class EmailService : IEmailService
         _config = config;
     }
 
+    public async Task SendOtpEmailAsync(string toEmail, string toName, string otp)
+    {
+        var subject = "🔐 Mã xác thực OTP đăng ký tài khoản OWRMS";
+        var body = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; border-top: 4px solid #6366f1;'>
+    <div style='text-align: center; margin-bottom: 28px;'>
+        <h2 style='color: #0f172a; margin-bottom: 8px; font-size: 22px;'>Xác thực tài khoản OWRMS</h2>
+        <p style='color: #64748b; font-size: 14px; margin: 0;'>Xin chào <strong>{toName}</strong>, cảm ơn bạn đã đăng ký!</p>
+    </div>
+
+    <div style='background: linear-gradient(135deg, #ede9fe 0%, #e0e7ff 100%); padding: 32px 24px; border-radius: 12px; text-align: center; margin-bottom: 24px;'>
+        <p style='margin: 0 0 12px; color: #4c1d95; font-size: 14px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;'>Mã OTP của bạn</p>
+        <div style='font-size: 42px; font-weight: 800; letter-spacing: 12px; color: #4f46e5; font-family: monospace; padding: 8px 0;'>{otp}</div>
+        <p style='margin: 14px 0 0; color: #7c3aed; font-size: 13px;'>⏱ Mã có hiệu lực trong <strong>10 phút</strong></p>
+    </div>
+
+    <div style='background-color: #fef3c7; padding: 14px 18px; border-radius: 8px; border-left: 4px solid #f59e0b; margin-bottom: 20px;'>
+        <p style='margin: 0; color: #92400e; font-size: 13px;'>🔒 <strong>Bảo mật:</strong> Không chia sẻ mã này với bất kỳ ai. OWRMS sẽ không bao giờ yêu cầu mã OTP của bạn.</p>
+    </div>
+
+    <div style='font-size: 12px; color: #94a3b8; line-height: 1.6; text-align: center;'>
+        <p>Nếu bạn không thực hiện đăng ký này, hãy bỏ qua email này.</p>
+        <p style='margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 16px;'>© 2024 Online Warehouse Rental Management System (OWRMS)</p>
+    </div>
+</div>";
+        await SendInfo(toEmail, toName, subject, body);
+    }
+
     public async Task SendInfo(string email, string toName, string subject, string htmlContent)
+
     {
         var smtpHost = _config["Smtp:Host"] ?? "smtp.mailtrap.io";
         var smtpPort = int.TryParse(_config["Smtp:Port"], out int p) ? p : 587;

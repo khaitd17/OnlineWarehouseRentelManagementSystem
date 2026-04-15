@@ -47,6 +47,62 @@ const Step1WarehouseInfo = ({
         />
       </div>
 
+      {/* Loại kho */}
+      <div style={groupStyle}>
+        <label style={labelStyle}>Loại kho</label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          {[
+            { label: "Kho lạnh / mát" },
+            { label: "Kho chung" },
+            { label: "Kho tự quản" },
+            { label: "Kho xưởng" },
+            { label: "Kho ngoại quan" },
+            { label: "Khác" }
+          ].map(type => {
+            const isSelected = formData.warehouseType === type.label;
+
+            return (
+              <div 
+                key={type.label}
+                onClick={() => handleChange({ target: { name: "warehouseType", value: type.label }})}
+                style={{
+                  padding: "12px",
+                  borderRadius: "12px",
+                  border: isSelected ? "2px solid #00b2d6" : "1px solid #e2e8f0",
+                  backgroundColor: isSelected ? "#f0f9ff" : "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  transition: "all 0.2s"
+                }}
+              >
+                <div style={{
+                  width: "18px", height: "18px", borderRadius: "50%", 
+                  border: isSelected ? "5px solid #00b2d6" : "1px solid #cbd5e1",
+                  display: "flex", alignItems: "center", justifyContent: "center"
+                }}>
+                </div>
+                <span style={{ fontSize: "0.95rem", color: "#1e293b", fontWeight: isSelected ? 600 : 400 }}>
+                  {type.label}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        {formData.warehouseType === "Khác" && (
+          <input
+            name="customWarehouseType"
+            value={formData.customWarehouseType || ""}
+            placeholder="Nhập loại kho của bạn"
+            onChange={handleChange}
+            required
+            style={{...inputStyle, marginTop: "10px"}}
+            autoFocus
+          />
+        )}
+      </div>
+
       {/* Địa chỉ */}
       <div style={groupStyle}>
         <label style={labelStyle}>Địa chỉ</label>

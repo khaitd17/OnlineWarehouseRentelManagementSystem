@@ -68,6 +68,7 @@ public class GetWarehouseDetailHandler : IRequestHandler<GetWarehouseDetailQuery
         var dto = new WarehouseDetailDto(
             warehouse.WarehouseId, warehouse.Name, warehouse.Address,
             warehouse.Lat, warehouse.Lng, warehouse.Description,
+            warehouse.WarehouseType,
             warehouse.TotalArea, warehouse.AvailableArea, warehouse.PricePerM2,
             warehouse.OperatingHours, warehouse.Status,
             warehouse.CreatedAt, warehouse.UpdatedAt, warehouse.ApprovedAt,

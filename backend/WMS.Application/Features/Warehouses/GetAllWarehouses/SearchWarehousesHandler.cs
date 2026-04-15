@@ -45,8 +45,7 @@ public class SearchWarehousesHandler
             && request.WarehouseType != "all")
         {
             query = query.Where(w =>
-                (w.Name?.Contains(request.WarehouseType, StringComparison.OrdinalIgnoreCase) == true) ||
-                (w.Description?.Contains(request.WarehouseType, StringComparison.OrdinalIgnoreCase) == true));
+                (w.WarehouseType?.Equals(request.WarehouseType, StringComparison.OrdinalIgnoreCase) == true));
         }
 
         // ── 5. Lọc theo Diện tích (fix: dùng AvailableArea thay TotalArea) ──
@@ -126,6 +125,7 @@ public class SearchWarehousesHandler
                     ImageUrl        = w.Images.FirstOrDefault()?.MediaUrl,
                     CreatedAt       = w.CreatedAt ?? DateTime.UtcNow,
                     PricePerM2      = w.PricePerM2,
+                    WarehouseType   = w.WarehouseType,
                     Is24HoursAccess = w.Is24HoursAccess,
                     OperatingHours  = w.OperatingHours,
                     AverageRating   = rStats.count > 0 ? Math.Round(rStats.avg, 1) : null,

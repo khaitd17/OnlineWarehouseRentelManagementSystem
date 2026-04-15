@@ -85,7 +85,12 @@ export default function WarehousesPage() {
   const columns = [
     { key: "warehouseId", label: "ID", width: "55px", render: v => <span style={{ fontSize: 12, fontWeight: 600, color: "#9ca3af" }}>#{String(v).padStart(4,"0")}</span> },
     { key: "name", label: "Tên kho", sortable: true, render: (v, row) => (
-      <span style={{ color: "#0095c7", cursor: "pointer", fontWeight: 600 }} onClick={() => navigate(`/admin/warehouses/${row.warehouseId}`)}>{v}</span>
+      <div>
+        <span style={{ color: "#0095c7", cursor: "pointer", fontWeight: 600, display: "block" }} onClick={() => navigate(`/admin/warehouses/${row.warehouseId}`)}>{v}</span>
+        <div style={{ display: "inline-block", background: "#f1f5f9", color: "#475569", fontSize: 11, padding: "2px 6px", borderRadius: 4, fontWeight: 500, marginTop: 4 }}>
+          {row.warehouseType || "Khác"}
+        </div>
+      </div>
     )},
     // Show owner info when listing all warehouses
     ...(!selectedOwner ? [{

@@ -2,6 +2,7 @@ namespace WMS.Application.Interfaces;
 
 public interface IEmailService
 {
+    Task SendOtpEmailAsync(string toEmail, string toName, string otp);
     Task SendPasswordResetEmailAsync(string toEmail, string toName, string resetToken, string resetLink);
     Task SendInfo(string email, string toName, string subject, string htmlContent);
     

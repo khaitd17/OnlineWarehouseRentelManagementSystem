@@ -182,11 +182,7 @@ const DashboardLayout = () => {
     return null;
   })();
 
-  const searchPlaceholder = userRole === 'OWNER' || userRole === 'OPERATOR'
-    ? 'Search warehouses...'
-    : userRole === 'RENTER'
-      ? 'Tìm kiếm kho hàng, nhà kho...'
-      : 'Tìm kiếm yêu cầu hoặc mặt hàng...';
+
 
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -445,8 +441,8 @@ const DashboardLayout = () => {
           boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
           gap: '0.75rem',
         }}>
-          {/* Left: Hamburger (mobile only) + Search */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+          {/* Left: Hamburger (mobile only) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* Hamburger — chỉ hiện ở mobile */}
             <button
               id="sidebar-toggle-btn"
@@ -462,26 +458,6 @@ const DashboardLayout = () => {
             >
               <span className="material-symbols-outlined">menu</span>
             </button>
-
-            {/* Search bar */}
-            <div style={{ position: 'relative', flex: 1, maxWidth: '480px' }} className="topbar-search">
-              <span className="material-symbols-outlined" style={{
-                position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)',
-                color: '#94a3b8', fontSize: '18px',
-              }}>search</span>
-              <input
-                style={{
-                  width: '100%', paddingLeft: '40px', paddingRight: '16px',
-                  paddingTop: '8px', paddingBottom: '8px',
-                  borderRadius: '8px', border: '1px solid #e2e8f0',
-                  backgroundColor: '#f8fafc', outline: 'none',
-                  fontSize: '14px', color: '#374151',
-                  fontFamily: 'Inter, sans-serif',
-                }}
-                placeholder={searchPlaceholder}
-                type="text"
-              />
-            </div>
           </div>
 
           {/* Right: Bell + Avatar */}
@@ -699,17 +675,11 @@ const DashboardLayout = () => {
           .hamburger-btn {
             display: flex !important;
           }
-          .topbar-search {
-            max-width: 100% !important;
-          }
           .dashboard-content {
             padding: 1rem !important;
           }
         }
         @media (max-width: 480px) {
-          .topbar-search {
-            display: none !important;
-          }
           .dashboard-content {
             padding: 0.75rem !important;
           }

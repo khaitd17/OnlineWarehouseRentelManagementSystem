@@ -20,6 +20,8 @@ public partial class Warehouse
 
     public string? Description { get; set; }
 
+    public string? WarehouseType { get; set; }
+
     public double TotalArea { get; set; }
 
     public double? Width { get; set; }
