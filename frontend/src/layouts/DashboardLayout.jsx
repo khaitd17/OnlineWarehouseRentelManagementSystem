@@ -5,6 +5,113 @@ import Sidebar from '../components/Dashboard/Sidebar';
 import notificationService from '../services/notificationService';
 import authService from '../services/authService';
 
+const parseNotificationTime = (notification) => {
+  const raw = notification?.createdAt
+    ?? notification?.CreatedAt
+    ?? notification?.timestamp
+    ?? notification?.Timestamp
+    ?? null;
+  const value = raw ? new Date(raw).getTime() : 0;
+  return Number.isFinite(value) ? value : 0;
+};
+
+const normalizeNotification = (notification) => {
+  if (!notification || typeof notification !== 'object') {
+    return null;
+  }
+
+  const isRead = Boolean(
+    notification?.isRead ?? notification?.IsRead ?? notification?.read ?? false
+  );
+
+  return {
+    ...notification,
+    notificationId:
+      notification?.notificationId
+      ?? notification?.NotificationId
+      ?? notification?.id
+      ?? null,
+    createdAt:
+      notification?.createdAt
+      ?? notification?.CreatedAt
+      ?? notification?.timestamp
+      ?? notification?.Timestamp
+      ?? null,
+    isRead,
+    IsRead: isRead,
+    read: isRead,
+  };
+};
+
+const getNotificationUniqueKey = (notification) => {
+  const id = notification?.notificationId;
+  if (id !== null && id !== undefined) {
+    return `id:${id}`;
+  }
+
+  return [
+    notification?.type ?? '',
+    notification?.referenceId ?? notification?.ReferenceId ?? '',
+    notification?.title ?? '',
+    notification?.message ?? '',
+    notification?.createdAt ?? '',
+  ].join('|');
+};
+
+const mergeNotificationsByNewest = (currentList, incomingList) => {
+  const merged = new Map();
+  const items = [
+    ...(Array.isArray(currentList) ? currentList : []),
+    ...(Array.isArray(incomingList) ? incomingList : []),
+  ];
+
+  items.forEach((rawItem) => {
+    const item = normalizeNotification(rawItem);
+    if (!item) {
+      return;
+    }
+
+    const key = getNotificationUniqueKey(item);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, item);
+      return;
+    }
+
+    const existingTime = parseNotificationTime(existing);
+    const itemTime = parseNotificationTime(item);
+    const preferred = itemTime >= existingTime
+      ? { ...existing, ...item }
+      : { ...item, ...existing };
+    const isRead = Boolean(existing.isRead || item.isRead);
+
+    merged.set(key, {
+      ...preferred,
+      isRead,
+      IsRead: isRead,
+      read: isRead,
+    });
+  });
+
+  return Array.from(merged.values())
+    .sort((a, b) => {
+      const timeDiff = parseNotificationTime(b) - parseNotificationTime(a);
+      if (timeDiff !== 0) {
+        return timeDiff;
+      }
+
+      const idA = Number(a?.notificationId ?? 0);
+      const idB = Number(b?.notificationId ?? 0);
+      return idB - idA;
+    })
+    .slice(0, 50);
+};
+
+const countUnreadNotifications = (list) =>
+  (Array.isArray(list) ? list : []).filter(
+    (n) => !Boolean(n?.isRead ?? n?.IsRead ?? n?.read ?? false)
+  ).length;
+
 const DashboardLayout = () => {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userRole = (user.role || user.roleName || '').toUpperCase();
@@ -22,6 +129,7 @@ const DashboardLayout = () => {
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const dropdownRef = useRef(null);
   const connectionRef = useRef(null);
+  const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5276';
 
   const isMobile = windowWidth < 900;
 
@@ -36,17 +144,36 @@ const DashboardLayout = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    const syncNotificationsFromApi = async () => {
+      try {
+        const data = await notificationService.getNotifications();
+        const list = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+            ? data
+            : [];
+        const merged = mergeNotificationsByNewest([], list);
+        setNotifications(merged);
+        setUnreadCount(countUnreadNotifications(merged));
+      } catch {
+        // Keep current local state if sync fails.
+      }
+    };
+
     const connection = new HubConnectionBuilder()
-      .withUrl('http://localhost:5276/hubs/notifications', {
-        accessTokenFactory: () => token
+      .withUrl(`${apiBaseUrl}/hubs/notifications`, {
+        accessTokenFactory: () => localStorage.getItem('token') || token
       })
-      .withAutomaticReconnect()
+      .withAutomaticReconnect([0, 2000, 5000, 10000])
       .configureLogging(LogLevel.Warning)
       .build();
 
     connection.on('ReceiveNotification', async (notification) => {
-      setNotifications(prev => [notification, ...prev]);
-      setUnreadCount(prev => prev + 1);
+      setNotifications(prev => {
+        const merged = mergeNotificationsByNewest(prev, [notification]);
+        setUnreadCount(countUnreadNotifications(merged));
+        return merged;
+      });
       
       // When payment is confirmed/rejected, refresh warehouse context to update role
       if (notification.type === 'PAYMENT_CONFIRMED' || notification.type === 'PAYMENT_REJECTED' || notification.type === 'SUBSCRIPTION_ACTIVE') {
@@ -60,11 +187,17 @@ const DashboardLayout = () => {
       }
     });
 
-    connection.start().catch(() => {});
+    connection.onreconnected(() => {
+      syncNotificationsFromApi();
+    });
+
+    connection.start().then(() => {
+      syncNotificationsFromApi();
+    }).catch(() => {});
     connectionRef.current = connection;
 
     return () => { connection.stop(); };
-  }, []);
+  }, [apiBaseUrl]);
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -79,7 +212,14 @@ const DashboardLayout = () => {
   const fetchNotifications = useCallback(async () => {
     try {
       const data = await notificationService.getNotifications();
-      setNotifications(data.data || data || []);
+      const list = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data)
+          ? data
+          : [];
+      const merged = mergeNotificationsByNewest([], list);
+      setNotifications(merged);
+      setUnreadCount(countUnreadNotifications(merged));
     } catch (err) {
       setNotifications([]);
     }
