@@ -18,6 +18,8 @@ public class UpdateWarehouseCommand : IRequest
 
     public string? Description { get; set; }
 
+    public string? WarehouseType { get; set; }
+
     public string? OperatingHours { get; set; }
 
     public bool Is24HoursAccess { get; set; }

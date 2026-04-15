@@ -12,6 +12,7 @@ public record WarehouseDetailDto(
     double? Lat,
     double? Lng,
     string? Description,
+    string? WarehouseType,
     double TotalArea,
     double AvailableArea,
     decimal? PricePerM2,

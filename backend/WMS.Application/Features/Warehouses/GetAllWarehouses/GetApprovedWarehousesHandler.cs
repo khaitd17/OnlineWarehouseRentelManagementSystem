@@ -30,6 +30,7 @@ public class GetApprovedWarehousesHandler
             AvailableArea = w.AvailableArea,
             ImageUrl = w.Images.FirstOrDefault()?.MediaUrl,
             CreatedAt = w.CreatedAt ?? DateTime.UtcNow,
+            WarehouseType = w.WarehouseType,
             PricePerM2 = w.PricePerM2
         }).ToList();
     }

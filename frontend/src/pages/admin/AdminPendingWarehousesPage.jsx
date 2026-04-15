@@ -212,9 +212,12 @@ export default function AdminPendingWarehousesPage() {
                     <td>
                       <button
                         onClick={() => openDetail(row)}
-                        style={{ background: "none", border: "none", color: "#0095c7", fontWeight: 600, fontSize: 14, cursor: "pointer", padding: 0, textAlign: "left" }}>
+                        style={{ background: "none", border: "none", color: "#0095c7", fontWeight: 600, fontSize: 14, cursor: "pointer", padding: 0, textAlign: "left", marginBottom: "4px" }}>
                         {row.name}
                       </button>
+                      <div style={{ display: "inline-block", background: "#f1f5f9", color: "#475569", fontSize: 11, padding: "2px 6px", borderRadius: 4, fontWeight: 500 }}>
+                        {row.warehouseType || "Khác"}
+                      </div>
                     </td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -354,6 +357,7 @@ export default function AdminPendingWarehousesPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 18 }}>
                     {[
                       ["Địa chỉ", wh.address],
+                      ["Loại kho", wh.warehouseType || "Khác"],
                       ["Diện tích tổng", `${wh.totalArea} m²`],
                       ["Diện tích khả dụng", `${wh.availableArea} m²`],
                       ["Giờ hoạt động", wh.operatingHours || (wh.is24HoursAccess ? "24/7" : "—")],

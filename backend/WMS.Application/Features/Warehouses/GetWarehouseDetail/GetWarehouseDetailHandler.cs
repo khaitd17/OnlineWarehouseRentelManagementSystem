@@ -44,6 +44,7 @@ public class GetWarehouseDetailHandler
             Lat = warehouse.Lat,
             Lng = warehouse.Lng,
             Description = warehouse.Description,
+            WarehouseType = warehouse.WarehouseType,
             TotalArea = warehouse.TotalArea,
             Width = warehouse.Width,
             Length = warehouse.Length,

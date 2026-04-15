@@ -1,5 +1,6 @@
 using Moq;
 using WMS.Application.Features.Warehouses.CreateWarehouse;
+using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 
@@ -32,7 +33,12 @@ public class CreateWarehouseHandlerTests
     {
         var warehouseRepo  = new Mock<IWarehouseRepository>();
         var membershipRepo = new Mock<IStaffMembershipRepository>();
-        var handler = new CreateWarehouseHandler(warehouseRepo.Object, membershipRepo.Object);
+        var subscriptionService = new Mock<ISubscriptionService>();
+        // Default: subscription always active and limits always allowed
+        subscriptionService.Setup(x => x.IsSubscriptionActiveAsync(It.IsAny<int>())).ReturnsAsync(true);
+        subscriptionService.Setup(x => x.CheckLimitAsync(It.IsAny<int>(), It.IsAny<SubscriptionLimitType>(), It.IsAny<decimal>()))
+            .ReturnsAsync((true, string.Empty));
+        var handler = new CreateWarehouseHandler(warehouseRepo.Object, membershipRepo.Object, subscriptionService.Object);
         return (handler, warehouseRepo, membershipRepo);
     }
 

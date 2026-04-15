@@ -26,6 +26,11 @@ public class DeleteEquipmentHandler : BaseEquipmentHandler, IRequestHandler<Dele
         // Only OWNER or OPERATOR can delete
         await EnsureCanManageEquipment(equipment.WarehouseId, request.RequestUserId, cancellationToken, isDelete: true);
 
+        if (equipment.Status == "IN_USE")
+        {
+            throw new InvalidOperationException("Không thể xóa thiết bị đang được sử dụng (IN_USE).");
+        }
+
         // Optional: Check if equipment is linked to something. 
         // For now, no explicit links found in domain entities.
 

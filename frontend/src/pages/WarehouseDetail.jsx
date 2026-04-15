@@ -160,6 +160,17 @@ const WarehouseDetail = () => {
           >
             📍 {warehouse.address}
           </p>
+          <p
+            style={{
+              opacity: 0.9,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              marginTop: "10px"
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>category</span> {warehouse.warehouseType || "Khác"}
+          </p>
         </div>
       </section>
 
@@ -323,6 +334,15 @@ const WarehouseDetail = () => {
                   gap: "16px"
                 }}
               >
+
+                <div>
+                  <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                    Loại kho
+                  </div>
+                  <div style={{ fontWeight: 700 }}>
+                    {warehouse.warehouseType || "Khác"}
+                  </div>
+                </div>
 
                 <div>
                   <div style={{ color: "#64748b", fontSize: "0.9rem" }}>

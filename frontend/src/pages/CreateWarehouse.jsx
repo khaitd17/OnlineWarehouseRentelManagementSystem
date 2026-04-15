@@ -20,9 +20,11 @@ const CreateWarehouse = () => {
   const [warehouseId, setWarehouseId] = useState(null);
   const [loadingDraft, setLoadingDraft] = useState(false);
 
-  const [formData, setFormData] = useState({
-    name: "",
-    address: "",
+    const [formData, setFormData] = useState({
+      name: "",
+      warehouseType: "Kho chung",
+      customWarehouseType: "",
+      address: "",
     lat: "",
     lng: "",
     width: "",
@@ -56,8 +58,11 @@ const CreateWarehouse = () => {
       const data = res.data;
       
       // Map data to form
+      const predefinedTypes = ["Kho lạnh / mát", "Kho chung", "Kho tự quản", "Kho xưởng", "Kho ngoại quan"];
       setFormData({
         name: data.name || "",
+        warehouseType: !data.warehouseType || predefinedTypes.includes(data.warehouseType) ? (data.warehouseType || "Kho chung") : "Khác",
+        customWarehouseType: predefinedTypes.includes(data.warehouseType) ? "" : (data.warehouseType || ""),
         address: data.address || "",
         lat: data.lat || "",
         lng: data.lng || "",
@@ -119,10 +124,37 @@ const CreateWarehouse = () => {
 
   const handleStep1Submit = async (e) => {
     e.preventDefault();
+    // Frontend validation matching backend CreateWarehouseValidator rules
+    if (!formData.name?.trim()) { alert('Tên kho không được để trống'); return; }
+    if (formData.name.trim().length > 255) { alert('Tên kho không được vượt quá 255 ký tự'); return; }
+    if (!formData.address?.trim()) { alert('Địa chỉ không được để trống'); return; }
+    const totalArea = parseFloat(formData.totalArea);
+    if (!formData.totalArea || isNaN(totalArea) || totalArea < 10 || totalArea > 1000000) {
+      alert('Diện tích kho phải từ 10 đến 1,000,000 m²'); return;
+    }
+    const price = parseFloat(formData.pricePerM2);
+    if (formData.pricePerM2 && !isNaN(price) && (price < 1000 || price > 100000000)) {
+      alert('Giá thuê phải từ 1,000 đến 100,000,000 VNĐ/m²/tháng'); return;
+    }
+    if (formData.lat && (parseFloat(formData.lat) < -90 || parseFloat(formData.lat) > 90)) {
+      alert('Vĩ độ phải từ -90 đến 90'); return;
+    }
+    if (formData.lng && (parseFloat(formData.lng) < -180 || parseFloat(formData.lng) > 180)) {
+      alert('Kinh độ phải từ -180 đến 180'); return;
+    }
+    if (!formData.is24HoursAccess) {
+      if (!formData.openTime || !formData.closeTime) {
+        alert('Vui lòng nhập giờ mở cửa và giờ đóng cửa'); return;
+      }
+      if (formData.openTime >= formData.closeTime) {
+        alert('Giờ mở cửa phải trước giờ đóng cửa'); return;
+      }
+    }
     try {
       const payload = {
         ownerId: user.userId,
         name: formData.name,
+        warehouseType: formData.warehouseType === "Khác" ? formData.customWarehouseType : formData.warehouseType,
         address: formData.address,
         lat: formData.lat ? parseFloat(formData.lat) : null,
         lng: formData.lng ? parseFloat(formData.lng) : null,
