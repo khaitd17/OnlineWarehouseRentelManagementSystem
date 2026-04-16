@@ -92,6 +92,7 @@ const ProfilePage = () => {
   const [pwErrors, setPwErrors] = useState({});
   const [pwTouched, setPwTouched] = useState({});
   const [pwLoading, setPwLoading] = useState(false);
+  const [showPw, setShowPw] = useState({ currentPassword: false, newPassword: false, confirmPassword: false });
   const [toast, setToast] = useState(null);
 
   /* ── validators ── */
@@ -128,7 +129,9 @@ const ProfilePage = () => {
             ? 'Mật khẩu phải chứa ít nhất 1 chữ thường (a-z).'
             : !/[0-9]/.test(data.newPassword)
               ? 'Mật khẩu phải chứa ít nhất 1 chữ số (0-9).'
-              : '',
+              : data.currentPassword && data.newPassword === data.currentPassword
+                ? 'Mật khẩu mới phải khác mật khẩu hiện tại.'
+                : '',
     confirmPassword: !data.confirmPassword
       ? 'Vui lòng xác nhận mật khẩu.'
       : data.confirmPassword !== data.newPassword
@@ -568,21 +571,46 @@ const ProfilePage = () => {
                   ].map(f => (
                     <div key={f.key}>
                       <label style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "#374151", marginBottom: 6, textTransform: "uppercase", letterSpacing: ".05em" }}>{f.label}</label>
-                      <input
-                        type="password" value={pwForm[f.key]}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setPwForm(p => ({ ...p, [f.key]: val }));
-                          if (pwTouched[f.key]) setPwErrors(p => ({ ...p, [f.key]: validatePw({ ...pwForm, [f.key]: val })[f.key] }));
-                        }}
-                        onBlur={e => {
-                          setPwTouched(p => ({ ...p, [f.key]: true }));
-                          setPwErrors(p => ({ ...p, [f.key]: validatePw({ ...pwForm, [f.key]: e.target.value })[f.key] }));
-                        }}
-                        placeholder="••••••••"
-                        style={{ ...inputStyle, borderColor: pwTouched[f.key] && pwErrors[f.key] ? '#ef4444' : '#e2e8f0' }}
-                        onFocus={e => { if (!(pwTouched[f.key] && pwErrors[f.key])) { e.target.style.borderColor = "#0095c7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,149,199,.1)"; } }}
-                      />
+                      <div style={{ position: "relative" }}>
+                        <input
+                          type={showPw[f.key] ? "text" : "password"} value={pwForm[f.key]}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setPwForm(p => ({ ...p, [f.key]: val }));
+                            if (pwTouched[f.key]) setPwErrors(p => ({ ...p, [f.key]: validatePw({ ...pwForm, [f.key]: val })[f.key] }));
+                          }}
+                          onBlur={e => {
+                            setPwTouched(p => ({ ...p, [f.key]: true }));
+                            setPwErrors(p => ({ ...p, [f.key]: validatePw({ ...pwForm, [f.key]: e.target.value })[f.key] }));
+                          }}
+                          placeholder="••••••••"
+                          style={{ ...inputStyle, paddingRight: 40, borderColor: pwTouched[f.key] && pwErrors[f.key] ? '#ef4444' : '#e2e8f0' }}
+                          onFocus={e => { if (!(pwTouched[f.key] && pwErrors[f.key])) { e.target.style.borderColor = "#0095c7"; e.target.style.boxShadow = "0 0 0 3px rgba(0,149,199,.1)"; } }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPw(p => ({ ...p, [f.key]: !p[f.key] }))}
+                          style={{
+                            position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)",
+                            background: "none", border: "none", cursor: "pointer", padding: 2,
+                            color: "#94a3b8", display: "flex", alignItems: "center", lineHeight: 1,
+                          }}
+                          title={showPw[f.key] ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                        >
+                          {showPw[f.key] ? (
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                              <line x1="1" y1="1" x2="23" y2="23"/>
+                            </svg>
+                          ) : (
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                              <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                          )}
+                        </button>
+                      </div>
                       {pwTouched[f.key] && pwErrors[f.key] && (
                         <div style={{ marginTop: 4, fontSize: "0.74rem", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
