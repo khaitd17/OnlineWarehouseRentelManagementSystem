@@ -117,47 +117,31 @@ namespace WMS.Application.Features.Staff.CreateStaff
 
                 staffUserId = await _userRepository.CreateAsync(dto, cancellationToken);
 
-                // Tạo reset-password token (hết hạn sau 7 ngày — đủ để nhân viên mới đăng nhập)
-                string rawToken = Convert.ToBase64String(
-                        System.Security.Cryptography.RandomNumberGenerator.GetBytes(64))
-                    .Replace("+", "-").Replace("/", "_").Replace("=", "");
-
-                // Gửi email kèm link reset password
+                // Gửi email thông tin đăng nhập + link login
                 try
                 {
-                    await _userRepository.InvalidateOldTokensAsync(staffUserId, cancellationToken);
-                    await _userRepository.SaveResetTokenAsync(
-                        userId:    staffUserId,
-                        rawToken:  rawToken,
-                        expiresAt: DateTime.UtcNow.AddDays(7),
-                        ct:        cancellationToken);
+                    string loginLink = "http://localhost:3000/login";
 
-                    string resetLink = $"http://localhost:3000/reset-password?token={rawToken}";
+                    var subject  = "[OWRMS] Tài khoản nhân viên của bạn đã được tạo";
+                    var htmlBody = $@"Xin chào {request.FullName},
 
-                    var subject = "[OWRMS] Tài khoản nhân viên đã được tạo";
-                    var htmlBody = $@"
-<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;border:1px solid #e2e8f0;border-radius:12px;border-top:4px solid #4f46e5'>
-  <h2 style='color:#1a1a2e'>Chào mừng, {request.FullName}!</h2>
-  <p style='color:#374151'>Tài khoản nhân viên của bạn trên hệ thống <strong>OWRMS</strong> đã được tạo thành công.</p>
-  <div style='background:#f5f3ff;padding:16px 20px;border-radius:8px;margin:20px 0;border-left:4px solid #4f46e5'>
-    <p style='margin:0 0 8px;color:#6b7280;font-size:13px;text-transform:uppercase;letter-spacing:.04em'>Thông tin đăng nhập</p>
-    <p style='margin:0 0 4px'><strong>Email:</strong> {request.Email}</p>
-    <p style='margin:0 0 4px'><strong>Mật khẩu tạm:</strong> <span style='font-family:monospace;font-size:16px;color:#4f46e5'>{rawPassword}</span></p>
-  </div>
-  <div style='background:#fefce8;padding:16px 20px;border-radius:8px;margin:20px 0;border-left:4px solid #eab308'>
-    <p style='margin:0 0 8px;font-weight:700;color:#92400e'>⚠️ Đặt lại mật khẩu ngay</p>
-    <p style='margin:0 0 12px;color:#78350f;font-size:14px'>Vui lòng click vào nút bên dưới để đặt mật khẩu mới của bạn. Link có hiệu lực trong <strong>7 ngày</strong>.</p>
-    <a href='{resetLink}' style='display:inline-block;padding:10px 24px;background:#4f46e5;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px'>🔑 Đặt lại mật khẩu</a>
-  </div>
-  <p style='color:#6b7280;font-size:13px'>Hoặc copy link: <span style='color:#4f46e5;word-break:break-all'>{resetLink}</span></p>
-  <hr style='border:none;border-top:1px solid #f1f5f9;margin:20px 0'>
-  <p style='color:#94a3b8;font-size:12px'>© 2024 Online Warehouse Rental Management System (OWRMS)</p>
-</div>";
+Tài khoản nhân viên của bạn trên hệ thống OWRMS đã được tạo.
+
+Thông tin đăng nhập:
+- Email: {request.Email}
+- Mật khẩu tạm: {rawPassword}
+
+Truy cập hệ thống tại: {loginLink}
+
+Lưu ý: Vui lòng đổi mật khẩu sau khi đăng nhập lần đầu để bảo mật tài khoản.
+
+---
+Hệ thống OWRMS";
                     await _emailService.SendInfo(request.Email, request.FullName, subject, htmlBody);
                 }
                 catch
                 {
-                    // Email / token thất bại: không block tạo nhân viên
+                    // Email thất bại: không block tạo nhân viên
                 }
             }
             else

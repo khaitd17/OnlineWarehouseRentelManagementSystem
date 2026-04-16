@@ -67,15 +67,21 @@ public class StaffMembershipPagedResult
 public class CallerMembershipDto
 {
     public int MembershipId { get; set; }
-    public string RoleCode { get; set; } = null!;
+    public string RoleCode { get; set; } = null!;  // Role cao nhất (theo priority)
     public bool IsAllSkill { get; set; }
     public List<int> SkillIds { get; set; } = new();
     /// <summary>Skill codes (e.g. "CHECKER", "INVENTORY_OPERATOR") — populated by GetCallerMembershipAsync.</summary>
     public List<string> SkillCodes { get; set; } = new();
+    /// <summary>Tất cả role codes user có trong kho này (ví dụ ["OWNER","OPERATOR"]). Dùng để check quyền chính xác.</summary>
+    public List<string> AllRoleCodes { get; set; } = new();
 
     /// <summary>True nếu user có skill cụ thể hoặc IsAllSkill.</summary>
     public bool HasSkill(string skillCode) =>
         IsAllSkill || SkillCodes.Contains(skillCode, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>True nếu user có role cụ thể trong kho (kể cả khi không phải role cao nhất).</summary>
+    public bool HasRole(string roleCode) =>
+        AllRoleCodes.Contains(roleCode, StringComparer.OrdinalIgnoreCase);
 }
 
 public class CreateMembershipDto

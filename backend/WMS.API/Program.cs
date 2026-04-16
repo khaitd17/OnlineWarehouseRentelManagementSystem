@@ -233,6 +233,10 @@ using (var scope = app.Services.CreateScope())
             // Patch: Thêm cột xác minh hàng hóa thực tế cho nhân viên kho
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_items') AND name = 'verified_quantity') ALTER TABLE inventory_items ADD verified_quantity INT NULL;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_items') AND name = 'verify_note') ALTER TABLE inventory_items ADD verify_note NVARCHAR(500) NULL;",
+            // Patch: Thêm cột retry tracking cho rental_payments
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_payments') AND name = 'RetryCount') ALTER TABLE rental_payments ADD RetryCount INT NOT NULL DEFAULT 0;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_payments') AND name = 'MaxRetry') ALTER TABLE rental_payments ADD MaxRetry INT NOT NULL DEFAULT 3;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_payments') AND name = 'LastRetryAt') ALTER TABLE rental_payments ADD LastRetryAt DATETIME2 NULL;",
             // Patch: Cập nhật dữ liệu chuẩn cho các gói (Basic vs Premium)
             "UPDATE subscription_packages SET max_warehouses = 1, max_staff_per_warehouse = 5, max_zones_per_warehouse = 3, max_total_area = 500, allow_equipment_management = 0 WHERE name = 'Basic';",
             "UPDATE subscription_packages SET max_warehouses = 5, max_staff_per_warehouse = 50, max_zones_per_warehouse = 10, max_total_area = 5000, allow_equipment_management = 1 WHERE name = 'Premium';",

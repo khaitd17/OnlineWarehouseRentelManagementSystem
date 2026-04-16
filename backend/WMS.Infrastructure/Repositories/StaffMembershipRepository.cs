@@ -90,21 +90,37 @@ public class StaffMembershipRepository : IStaffMembershipRepository
                 m.User.Email.ToLower().Contains(s));
         }
 
-        // Bước 5: count + paginate
-        var total = await query
-            .Include(m => m.User)
-            .Include(m => m.Role)
-            .CountAsync(ct);
-
-        var items = await query
+        // Bước 5: Load tất cả matching, group by UserId → giữ role cao nhất mỗi user
+        // Fix: 1 user có nhiều memberships (vd OWNER + OPERATOR) sẽ chỉ hiển thị 1 lần
+        var allMatching = await query
             .Include(m => m.User)
             .Include(m => m.Role)
             .Include(m => m.Skills)
-            .OrderBy(m => m.Role.Code)
+            .ToListAsync(ct);
+
+        var rolePriority = new[] { "OWNER", "OPERATOR", "MANAGER", "STAFF", "RENTER" };
+
+        var grouped = allMatching
+            .GroupBy(m => m.UserId)
+            .Select(g => g.OrderBy(m =>
+            {
+                var idx = Array.IndexOf(rolePriority, m.Role?.Code ?? "");
+                return idx < 0 ? 999 : idx;
+            }).First())
+            .OrderBy(m =>
+            {
+                var idx = Array.IndexOf(rolePriority, m.Role?.Code ?? "");
+                return idx < 0 ? 999 : idx;
+            })
             .ThenBy(m => m.User.FullName)
+            .ToList();
+
+        var total = grouped.Count;
+
+        var items = grouped
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync(ct);
+            .ToList();
 
         var dtos = items.Select(m => new StaffMembershipDto
         {
@@ -177,6 +193,7 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             IsAllSkill   = best.IsAllSkill,
             SkillIds     = best.Skills.Select(s => s.Id).ToList(),
             SkillCodes   = best.Skills.Select(s => s.Code).ToList(),
+            AllRoleCodes = memberships.Select(m => m.Role.Code).Distinct().ToList(),
         };
     }
 
