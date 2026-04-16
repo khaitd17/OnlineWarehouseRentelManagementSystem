@@ -8,10 +8,12 @@ namespace WMS.Infrastructure.Services;
 public class SubscriptionService : ISubscriptionService
 {
     private readonly ApplicationDbContext _context;
+    private readonly ISepayService _sepayService;
 
-    public SubscriptionService(ApplicationDbContext context)
+    public SubscriptionService(ApplicationDbContext context, ISepayService sepayService)
     {
         _context = context;
+        _sepayService = sepayService;
     }
 
     public async Task<bool> IsSubscriptionActiveAsync(int userId)
@@ -109,6 +111,11 @@ public class SubscriptionService : ISubscriptionService
             .OrderByDescending(s => s.EndDate)
             .FirstOrDefaultAsync();
 
+        if (subscription == null)
+        {
+            subscription = await TryActivatePendingSubscriptionAsync(userId);
+        }
+
         if (subscription == null) return new { success = true, isActive = false, plan = "None" };
 
         var package = await _context.SubscriptionPackages
@@ -133,6 +140,38 @@ public class SubscriptionService : ISubscriptionService
             maxStaffPerWarehouse = package?.MaxStaffPerWarehouse ?? 0,
             maxZonesPerWarehouse = package?.MaxZonesPerWarehouse ?? 0
         };
+    }
+
+    private async Task<Subscription?> TryActivatePendingSubscriptionAsync(int userId)
+    {
+        var pending = await _context.Subscriptions
+            .Where(s => s.UserId == userId && s.Status == SubscriptionStatus.Pending && s.TransactionReference != null)
+            .OrderByDescending(s => s.SubscriptionId)
+            .FirstOrDefaultAsync();
+
+        if (pending == null) return null;
+
+        var transaction = await _sepayService.CheckTransactionAsync(pending.TransactionReference!);
+        if (transaction == null || transaction.Amount <= 0) return null;
+
+        var payload = new SepayWebhookPayload
+        {
+            Id = transaction.Id,
+            TransactionDate = transaction.TransactionDate,
+            TransferType = "in",
+            TransferAmount = transaction.Amount,
+            ReferenceCode = transaction.ReferenceCode,
+            Content = string.IsNullOrWhiteSpace(transaction.Content)
+                ? pending.TransactionReference
+                : transaction.Content
+        };
+
+        await _sepayService.ProcessWebhookAsync(payload);
+
+        return await _context.Subscriptions
+            .Where(s => s.UserId == userId && s.Status == SubscriptionStatus.Active && s.StartDate <= DateTime.UtcNow)
+            .OrderByDescending(s => s.EndDate)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<dynamic> PreviewSubscriptionAsync(int userId, string targetPlan)

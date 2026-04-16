@@ -293,6 +293,31 @@ using (var scope = app.Services.CreateScope())
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_total_area') ALTER TABLE subscription_packages ADD max_total_area decimal(18,2) NOT NULL DEFAULT 500;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'allow_equipment_management') ALTER TABLE subscription_packages ADD allow_equipment_management bit NOT NULL DEFAULT 0;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('task_types') AND name = 'is_manual') ALTER TABLE task_types ADD is_manual bit NOT NULL CONSTRAINT DF_task_types_is_manual DEFAULT 0;",
+            // Patch: đảm bảo tasks có ref_type/ref_id (luồng tạo task từ nhập/xuất)
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('tasks') AND name = 'ref_type') ALTER TABLE tasks ADD ref_type nvarchar(20) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('tasks') AND name = 'ref_id') ALTER TABLE tasks ADD ref_id int NULL;",
+            // Patch: tạo bảng unit_tasks nếu thiếu (phục vụ auto-create UnitTasks)
+            @"IF OBJECT_ID('unit_tasks', 'U') IS NULL
+              BEGIN
+                  CREATE TABLE [unit_tasks] (
+                      [unit_task_id] int NOT NULL IDENTITY,
+                      [warehouse_task_id] int NOT NULL,
+                      [unit_task_type_code] nvarchar(50) NULL,
+                      [order] int NOT NULL DEFAULT 0,
+                      [description] nvarchar(max) NOT NULL,
+                      [status] nvarchar(20) NOT NULL DEFAULT N'Pending',
+                      [created_at] datetime2 NOT NULL DEFAULT ((getdate())),
+                      [completed_at] datetime2 NULL,
+                      [completed_by] int NULL,
+                      CONSTRAINT [PK_unit_tasks] PRIMARY KEY ([unit_task_id]),
+                      CONSTRAINT [FK_unit_tasks_tasks_warehouse_task_id] FOREIGN KEY ([warehouse_task_id]) REFERENCES [tasks] ([task_id]),
+                      CONSTRAINT [FK_unit_tasks_users_completed_by] FOREIGN KEY ([completed_by]) REFERENCES [users] ([user_id])
+                  );
+              END;",
+            "IF OBJECT_ID('unit_tasks', 'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_unit_tasks_completed_by' AND object_id = OBJECT_ID('unit_tasks')) CREATE INDEX [IX_unit_tasks_completed_by] ON [unit_tasks] ([completed_by]);",
+            "IF OBJECT_ID('unit_tasks', 'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_unit_tasks_warehouse_task_id' AND object_id = OBJECT_ID('unit_tasks')) CREATE INDEX [IX_unit_tasks_warehouse_task_id] ON [unit_tasks] ([warehouse_task_id]);",
+            // Patch: Thêm cột ScheduledDate cho inventory_requests (nếu thiếu)
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'ScheduledDate') ALTER TABLE inventory_requests ADD ScheduledDate datetime2 NULL;",
             // Patch: Thêm cột xác minh hàng hóa thực tế cho nhân viên kho
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_items') AND name = 'verified_quantity') ALTER TABLE inventory_items ADD verified_quantity INT NULL;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_items') AND name = 'verify_note') ALTER TABLE inventory_items ADD verify_note NVARCHAR(500) NULL;",

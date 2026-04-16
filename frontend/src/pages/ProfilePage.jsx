@@ -19,8 +19,8 @@ const CONTRACT_STATUS = {
 };
 
 const ROLE_LABEL = {
-  RENTER: "Người thuê", OWNER: "Chủ kho", STAFF: "Nhân viên",
-  MANAGER: "Quản lý", ADMIN: "Quản trị viên", USER: "Người dùng",
+  RENTER: "Người thuê", OWNER: "Chủ kho", OPERATOR: "Vận hành",
+  STAFF: "Nhân viên", MANAGER: "Quản lý", ADMIN: "Quản trị viên", USER: "Người dùng",
 };
 
 /** Read role from JWT stored in localStorage as fallback */
@@ -41,6 +41,20 @@ const getStoredRole = () => {
     const u = JSON.parse(localStorage.getItem("user") || "{}");
     return (u.roleName || u.role || "").toUpperCase() || getRoleFromToken() || "";
   } catch { return getRoleFromToken() || ""; }
+};
+
+const getRoleFromWarehouseContext = () => {
+  try {
+    const ctx = JSON.parse(localStorage.getItem("warehouseContext") || "{}");
+    const roles = (ctx.warehouses || []).map(w => (w.role || "").toUpperCase());
+    const rolePriority = ["OWNER", "OPERATOR", "MANAGER", "STAFF", "RENTER"];
+    for (const r of rolePriority) {
+      if (roles.includes(r)) return r;
+    }
+  } catch (err) {
+    console.warn("Failed to parse warehouseContext", err);
+  }
+  return "";
 };
 
 /* ─── sub-components ──────────────────────────────────────── */
@@ -268,15 +282,19 @@ const ProfilePage = () => {
 
   // Determine effective role: localStorage (most reliable) → profile API → JWT
   const storedUser = (() => { try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; } })();
+  const systemRole = (storedUser?.roleName || storedUser?.role || "").toUpperCase();
+  const warehouseRole = getRoleFromWarehouseContext();
   const effectiveRole = (
-    (storedUser?.roleName || storedUser?.role || "").toUpperCase() ||
+    (systemRole === "ADMIN" ? "ADMIN" : "") ||
+    warehouseRole ||
     (profile?.role || profile?.roleName || "").toUpperCase() ||
+    systemRole ||
     getRoleFromToken() ||
     ""
   );
 
   const roleLabel = ROLE_LABEL[effectiveRole] || effectiveRole || "User";
-  const isOwner = effectiveRole === "OWNER";
+  const isOwner = effectiveRole === "OWNER" || effectiveRole === "OPERATOR";
 
   const tabs = [
     { id: "profile", icon: "👤", label: "Thông tin cá nhân" },
