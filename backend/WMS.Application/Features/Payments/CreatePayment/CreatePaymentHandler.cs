@@ -8,6 +8,8 @@ namespace WMS.Application.Features.Payments.CreatePayment;
 
 public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, CreatePaymentResult>
 {
+    private const int PaymentExpiryHours = 24;
+
     private readonly IRentalPaymentRepository _paymentRepo;
     private readonly IRentalContractRepository _contractRepo;
     private readonly IWarehouseRepository _warehouseRepo;
@@ -90,15 +92,24 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             }
             else
             {
-            // Return existing pending payment
-            return new CreatePaymentResult
-            {
-                PaymentId = existingPendingPayment.PaymentId,
-                PaymentCode = existingPendingPayment.PaymentCode,
-                Amount = existingPendingPayment.Amount,
-                Status = existingPendingPayment.Status,
-                ExpiredAt = existingPendingPayment.ExpiredAt
-            };
+                // Normalize legacy pending payments to the current expiry policy (24h max from now).
+                var maxAllowedExpiry = DateTime.UtcNow.AddHours(PaymentExpiryHours);
+                if (!existingPendingPayment.ExpiredAt.HasValue || existingPendingPayment.ExpiredAt.Value > maxAllowedExpiry)
+                {
+                    var expiredAtProp = existingPendingPayment.GetType().GetProperty("ExpiredAt");
+                    expiredAtProp?.SetValue(existingPendingPayment, maxAllowedExpiry);
+                    await _paymentRepo.UpdateAsync(existingPendingPayment);
+                }
+
+                // Return existing pending payment
+                return new CreatePaymentResult
+                {
+                    PaymentId = existingPendingPayment.PaymentId,
+                    PaymentCode = existingPendingPayment.PaymentCode,
+                    Amount = existingPendingPayment.Amount,
+                    Status = existingPendingPayment.Status,
+                    ExpiredAt = existingPendingPayment.ExpiredAt
+                };
             }
         }
 
@@ -107,7 +118,7 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             contractId: request.ContractId,
             amount: amount,
             paymentType: request.PaymentType,
-            expiryHours: 48
+            expiryHours: PaymentExpiryHours
         );
 
         // Set payment method

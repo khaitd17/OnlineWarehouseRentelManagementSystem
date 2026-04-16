@@ -71,6 +71,24 @@ const ContractPayment = () => {
           currentPayment = relevantPayments.find(p => 
             (p.status === 'PENDING' || p.status === 'RETRY_PENDING') && Number(p.amount) > 0
           );
+
+          // Ensure current pending payment follows latest expiry policy (24h).
+          if (currentPayment?.status === 'PENDING') {
+            try {
+              const normalizedPayment = await paymentService.createPayment({
+                contractId: parseInt(id, 10),
+                amountOverride: isTerminationPayment
+                  ? contractData.earlyTerminationFee
+                  : (contractData.depositAmount || contractData.monthlyPayment),
+                paymentType: targetPaymentType
+              });
+              if (normalizedPayment?.paymentId === currentPayment.paymentId) {
+                currentPayment = { ...currentPayment, ...normalizedPayment };
+              }
+            } catch (normalizeErr) {
+              console.warn('Failed to normalize payment expiry policy:', normalizeErr);
+            }
+          }
           
           if (!currentPayment) {
             // Check for failed/expired payments that can be retried

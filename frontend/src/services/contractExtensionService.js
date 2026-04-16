@@ -259,6 +259,23 @@ const contractExtensionService = {
   },
 
   /**
+   * Get duration options for UI
+   * @returns {Array<{value:number,label:string}>}
+   */
+  getDurationOptions: () => {
+    return [
+      { value: 1, label: '1 tháng' },
+      { value: 2, label: '2 tháng' },
+      { value: 3, label: '3 tháng' },
+      { value: 6, label: '6 tháng' },
+      { value: 9, label: '9 tháng' },
+      { value: 12, label: '12 tháng (1 năm)' },
+      { value: 18, label: '18 tháng' },
+      { value: 24, label: '24 tháng (2 năm)' },
+    ];
+  },
+
+  /**
    * Get extension reasons templates
    * @returns {Array} predefined reasons
    */
