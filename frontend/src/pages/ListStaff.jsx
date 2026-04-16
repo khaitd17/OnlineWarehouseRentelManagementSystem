@@ -216,15 +216,18 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
 
   // Lấy tất cả roles của caller trong kho này từ warehouseContext (bao gồm cả OPERATOR nếu là OWNER+OPERATOR)
   const ctx = JSON.parse(localStorage.getItem("warehouseContext") || "{}");
+  const currentUserId = ctx.userId ?? -1;  // ID người dùng hiện tại — dùng để ẩn nút vô hiệu hóa cho bản thân
   const warehouseEntry = (ctx.warehouses || []).find(w => w.warehouseId === (warehouseId || parseInt(warehouseId)));
   const callerRoles = new Set(
     (warehouseEntry?.roles?.length ? warehouseEntry.roles : [warehouseEntry?.role || ""])
       .map(r => r.toUpperCase())
   );
 
+  const isSelf      = staff.userId === currentUserId;   // true nếu thẻ này là chính mình
   const canReassign = callerMembership &&
     (callerRoles.has("OPERATOR") || callerRoles.has("MANAGER")) &&
-    staff.roleCode !== "OPERATOR";
+    staff.roleCode !== "OPERATOR" &&
+    !isSelf;
 
   return (
     <>
@@ -282,7 +285,7 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
               Phân quyền
             </button>
           )}
-          {staff.roleCode !== "OWNER" && (
+          {staff.roleCode !== "OWNER" && !isSelf && (
             <button onClick={handleToggle} disabled={busy}
               style={{ padding:"6px 12px", borderRadius:8, border:"none",
                 background: isActive ? C.redBg : C.greenBg,

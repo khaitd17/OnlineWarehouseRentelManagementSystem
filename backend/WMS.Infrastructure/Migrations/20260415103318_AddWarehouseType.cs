@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,46 +10,17 @@ namespace WMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "early_termination_fee",
-                table: "rental_contracts",
-                newName: "EarlyTerminationFee");
+            // Use safe SQL to avoid errors if columns were already added by startup patches in Program.cs
 
-            migrationBuilder.RenameColumn(
-                name: "cancellation_fee",
-                table: "rental_contracts",
-                newName: "CancellationFee");
+            // Add WarehouseType to warehouses (safe)
+            migrationBuilder.Sql(
+                "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('warehouses') AND name = 'WarehouseType') " +
+                "ALTER TABLE [warehouses] ADD [WarehouseType] nvarchar(max) NULL;");
 
-            migrationBuilder.AddColumn<string>(
-                name: "WarehouseType",
-                table: "warehouses",
-                type: "nvarchar(max)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<bool>(
-                name: "is_manual",
-                table: "task_types",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
-
-            migrationBuilder.AlterColumn<decimal>(
-                name: "EarlyTerminationFee",
-                table: "rental_contracts",
-                type: "decimal(18,2)",
-                nullable: true,
-                oldClrType: typeof(decimal),
-                oldType: "decimal(15,2)",
-                oldNullable: true);
-
-            migrationBuilder.AlterColumn<decimal>(
-                name: "CancellationFee",
-                table: "rental_contracts",
-                type: "decimal(18,2)",
-                nullable: true,
-                oldClrType: typeof(decimal),
-                oldType: "decimal(15,2)",
-                oldNullable: true);
+            // Add is_manual to task_types (safe)
+            migrationBuilder.Sql(
+                "IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('task_types') AND name = 'is_manual') " +
+                "ALTER TABLE [task_types] ADD [is_manual] bit NOT NULL CONSTRAINT DF_task_types_is_manual DEFAULT 0;");
         }
 
         /// <inheritdoc />
@@ -63,29 +34,20 @@ namespace WMS.Infrastructure.Migrations
                 name: "is_manual",
                 table: "task_types");
 
-            migrationBuilder.RenameColumn(
+            // RenameColumn removed: columns stay in PascalCase
+            migrationBuilder.AlterColumn<decimal>(
                 name: "EarlyTerminationFee",
                 table: "rental_contracts",
-                newName: "early_termination_fee");
-
-            migrationBuilder.RenameColumn(
-                name: "CancellationFee",
-                table: "rental_contracts",
-                newName: "cancellation_fee");
-
-            migrationBuilder.AlterColumn<decimal>(
-                name: "early_termination_fee",
-                table: "rental_contracts",
-                type: "decimal(15,2)",
+                type: "decimal(18,2)",
                 nullable: true,
                 oldClrType: typeof(decimal),
                 oldType: "decimal(18,2)",
                 oldNullable: true);
 
             migrationBuilder.AlterColumn<decimal>(
-                name: "cancellation_fee",
+                name: "CancellationFee",
                 table: "rental_contracts",
-                type: "decimal(15,2)",
+                type: "decimal(18,2)",
                 nullable: true,
                 oldClrType: typeof(decimal),
                 oldType: "decimal(18,2)",

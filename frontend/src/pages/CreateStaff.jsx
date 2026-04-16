@@ -3,89 +3,77 @@ import staffService from "../services/staffService";
 import axiosClient from "../services/axiosClient";
 import { useNavigate } from "react-router-dom";
 
-/* ─── Accent palette ────────────────────────────────────── */
-const A = "#4f46e5";
+const A   = "#4f46e5";
 const ALT = "#e0e7ff";
 
-/* ─── Styles ─────────────────────────────────────────────── */
 const S = {
-  page:     { padding:"32px", fontFamily:"'Inter','Segoe UI',sans-serif", maxWidth:"680px", margin:"0 auto" },
-  card:     { background:"#fff", borderRadius:"16px", boxShadow:"0 4px 32px rgba(0,0,0,.1)", overflow:"hidden" },
-  header:   { background:`linear-gradient(135deg,${A},#7c3aed)`, padding:"28px 32px", color:"#fff" },
-  body:     { padding:"28px 32px" },
-  label:    { display:"block", fontWeight:600, color:"#374151", marginBottom:6, fontSize:14 },
-  input:    { width:"100%", padding:"10px 14px", border:"1.5px solid #d1d5db", borderRadius:8, fontSize:14, boxSizing:"border-box", outline:"none", transition:"border .2s", fontFamily:"inherit" },
-  select:   { width:"100%", padding:"10px 14px", border:"1.5px solid #d1d5db", borderRadius:8, fontSize:14, boxSizing:"border-box", background:"#fff", cursor:"pointer", fontFamily:"inherit" },
-  group:    { marginBottom:20 },
-  tabBtn: (a) => ({ padding:"8px 20px", border:`2px solid ${a?A:"#d1d5db"}`, borderRadius:20, background:a?A:"#fff", color:a?"#fff":"#6b7280", fontWeight:600, cursor:"pointer", fontSize:14, transition:"all .2s" }),
-  btn:    (danger) => ({ width:"100%", padding:"12px", background:danger?"#ef4444":A, color:"#fff", border:"none", borderRadius:8, fontSize:15, fontWeight:700, cursor:"pointer", transition:"background .2s" }),
-  btnOut:   { width:"100%", padding:"12px", background:"#f3f4f6", color:"#374151", border:"none", borderRadius:8, fontSize:14, fontWeight:600, cursor:"pointer", marginTop:10 },
-  alert:  (t) => ({ padding:"12px 16px", borderRadius:8, marginBottom:16, fontSize:14, background:t==="error"?"#fef2f2":"#f0fdf4", color:t==="error"?"#b91c1c":"#166534", border:`1px solid ${t==="error"?"#fecaca":"#bbf7d0"}` }),
-  badge:  (c) => ({ display:"inline-block", background:c, color:"#fff", padding:"2px 10px", borderRadius:12, fontSize:12, fontWeight:600, marginLeft:8 }),
-  note:     { fontSize:12, color:"#6b7280", marginTop:4 },
-  divider:  { height:1, background:"#f1f5f9", margin:"24px 0" },
-  steps:    { display:"flex", gap:0, marginBottom:28 },
-  step:   (active, done) => ({
+  page:    { padding:"32px", fontFamily:"'Inter','Segoe UI',sans-serif", maxWidth:"680px", margin:"0 auto" },
+  card:    { background:"#fff", borderRadius:"16px", boxShadow:"0 4px 32px rgba(0,0,0,.1)", overflow:"hidden" },
+  header:  { background:`linear-gradient(135deg,${A},#7c3aed)`, padding:"28px 32px", color:"#fff" },
+  body:    { padding:"28px 32px" },
+  label:   { display:"block", fontWeight:600, color:"#374151", marginBottom:6, fontSize:14 },
+  input:   { width:"100%", padding:"10px 14px", border:"1.5px solid #d1d5db", borderRadius:8, fontSize:14, boxSizing:"border-box", outline:"none", fontFamily:"inherit" },
+  select:  { width:"100%", padding:"10px 14px", border:"1.5px solid #d1d5db", borderRadius:8, fontSize:14, boxSizing:"border-box", background:"#fff", cursor:"pointer", fontFamily:"inherit" },
+  group:   { marginBottom:20 },
+  tabBtn:  (a) => ({ padding:"8px 20px", border:`2px solid ${a?A:"#d1d5db"}`, borderRadius:20, background:a?A:"#fff", color:a?"#fff":"#6b7280", fontWeight:600, cursor:"pointer", fontSize:14, transition:"all .2s" }),
+  btn:     () => ({ width:"100%", padding:"12px", background:A, color:"#fff", border:"none", borderRadius:8, fontSize:15, fontWeight:700, cursor:"pointer" }),
+  btnOut:  { width:"100%", padding:"12px", background:"#f3f4f6", color:"#374151", border:"none", borderRadius:8, fontSize:14, fontWeight:600, cursor:"pointer", marginTop:10 },
+  alert:   (t) => ({ padding:"12px 16px", borderRadius:8, marginBottom:12, fontSize:14, background:t==="error"?"#fef2f2":"#f0fdf4", color:t==="error"?"#b91c1c":"#166534", border:`1px solid ${t==="error"?"#fecaca":"#bbf7d0"}` }),
+  badge:   (c) => ({ display:"inline-block", background:c, color:"#fff", padding:"2px 10px", borderRadius:12, fontSize:12, fontWeight:600, marginLeft:8 }),
+  note:    { fontSize:12, color:"#6b7280", marginTop:4 },
+  divider: { height:1, background:"#f1f5f9", margin:"20px 0" },
+  steps:   { display:"flex" },
+  step:    (active, done) => ({
     flex:1, padding:"10px 0", textAlign:"center", fontSize:12, fontWeight:600,
-    color: done ? "#166534" : active ? A : "#9ca3af",
-    background: done ? "#f0fdf4" : active ? ALT : "#f8fafc",
+    color: done?"#166534":active?A:"#9ca3af",
+    background: done?"#f0fdf4":active?ALT:"#f8fafc",
     borderBottom:`2px solid ${done?"#22c55e":active?A:"transparent"}`,
-    transition:"all .25s",
   }),
   userCard: { display:"flex", alignItems:"center", gap:14, padding:"14px 16px", background:"#f5f3ff", borderRadius:10, border:`1.5px solid ${ALT}`, marginBottom:20 },
   skillCard: (active, color) => ({
     display:"flex", alignItems:"flex-start", gap:12,
     padding:"12px 16px", borderRadius:10, cursor:"pointer",
-    border:`2px solid ${active ? color : "#d1d5db"}`,
-    background: active ? color + "18" : "#fafafa",
+    border:`2px solid ${active?color:"#d1d5db"}`,
+    background: active?color+"18":"#fafafa",
     transition:"all .18s", userSelect:"none",
   }),
 };
 
-/* ─── Skill definitions ──────────────────────────────────── */
 const SKILL_DEFS = [
-  {
-    code: "CHECKER",
-    label: "Checker",
-    desc: "Xác nhận nhập/xuất hàng vật lý (bước cuối — confirm movement)",
-    color: "#4f46e5",
-    icon: "✅",
-  },
-  {
-    code: "INVENTORY_OPERATOR",
-    label: "Inventory Operator",
-    desc: "Kiểm kê định kỳ, ghi nhận kết quả kiểm kê (audit session)",
-    color: "#0369a1",
-    icon: "📦",
-  },
-  {
-    code: "WAREHOUSE_WORKER",
-    label: "Warehouse Worker",
-    desc: "Nhân viên phổ thông — tham gia ca làm việc, điểm danh",
-    color: "#15803d",
-    icon: "👷",
-  },
+  { code:"CHECKER",            label:"Checker",            desc:"Xác nhận nhập/xuất hàng vật lý (bước cuối — confirm movement)", color:"#4f46e5", icon:"✅" },
+  { code:"INVENTORY_OPERATOR", label:"Inventory Operator", desc:"Kiểm kê định kỳ, ghi nhận kết quả kiểm kê (audit session)",      color:"#0369a1", icon:"📦" },
+  { code:"WAREHOUSE_WORKER",   label:"Warehouse Worker",   desc:"Nhân viên phổ thông — tham gia ca làm việc, điểm danh",          color:"#15803d", icon:"👷" },
 ];
 
-/* ─── Component ──────────────────────────────────────────── */
+// Dedup warehouses by warehouseId: ưu tiên OPERATOR > MANAGER > OWNER
+const ROLE_PRIO = { OPERATOR:0, MANAGER:1, OWNER:2 };
+function deduplicateWarehouses(list) {
+  const map = {};
+  for (const w of list) {
+    const ex = map[w.warehouseId];
+    if (!ex) { map[w.warehouseId] = w; continue; }
+    if ((ROLE_PRIO[w.roleCode] ?? 99) < (ROLE_PRIO[ex.roleCode] ?? 99)) map[w.warehouseId] = w;
+  }
+  return Object.values(map);
+}
+
 export default function CreateStaff() {
   const navigate = useNavigate();
 
-  // ── Global state ────────────────────────────────────────
-  const [step, setStep] = useState(1);
-  const [managedWarehouses,   setManagedWarehouses]   = useState([]);
-  const [loadingInit,         setLoadingInit]         = useState(true);
-  const [accessDenied,        setAccessDenied]        = useState(false);
-  const [error,               setError]               = useState("");
-  const [success,             setSuccess]             = useState("");
+  const [step,              setStep]             = useState(1);
+  const [managedWarehouses, setManagedWarehouses]= useState([]);
+  const [loadingInit,       setLoadingInit]      = useState(true);
+  const [accessDenied,      setAccessDenied]     = useState(false);
+  const [error,             setError]            = useState("");
+  const [success,           setSuccess]          = useState("");
 
-  // ── Step 1: email lookup ─────────────────────────────────
+  // Step 1
   const [emailInput,  setEmailInput]  = useState("");
   const [checking,    setChecking]    = useState(false);
   const [foundUser,   setFoundUser]   = useState(null);
   const [newUserInfo, setNewUserInfo] = useState({ fullName:"", phone:"" });
 
-  // ── Step 2: warehouse assignment ─────────────────────────
+  // Step 2
   const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
   const [callerMembership,    setCallerMembership]    = useState(null);
   const [warehouseOptions,    setWarehouseOptions]    = useState({ skills:[] });
@@ -93,18 +81,19 @@ export default function CreateStaff() {
   const [loadingWhOptions,    setLoadingWhOptions]    = useState(false);
   const [form, setForm] = useState({
     targetRoleCode:     "STAFF",
-    selectedSkillCodes: [],   // multi-select: array of skill CODE strings
-    isAllSkill:         false,
+    selectedSkillCodes: [],
+    isAllSkill:         true,   // STAFF default = allSkill
     warehouseShiftId:   null,
   });
   const [submitting, setSubmitting] = useState(false);
 
-  /* ── Init: load managed warehouses ── */
+  /* ── Init ── */
   useEffect(() => {
     staffService.getMyManagedWarehouses()
       .then(w => {
-        setManagedWarehouses(w || []);
-        if (!w || w.length === 0) setAccessDenied(true);
+        const deduped = deduplicateWarehouses(w || []);
+        setManagedWarehouses(deduped);
+        if (deduped.length === 0) setAccessDenied(true);
       })
       .catch(() => setAccessDenied(true))
       .finally(() => setLoadingInit(false));
@@ -120,23 +109,21 @@ export default function CreateStaff() {
     setChecking(true);
     try {
       const res = await axiosClient.get(`/staff/check-email?email=${encodeURIComponent(email)}`);
-      setFoundUser(res.data);
+      setFoundUser({ ...res.data, email });
       if (!res.data.exists) setNewUserInfo({ fullName:"", phone:"" });
       setStep(2);
     } catch {
       setError("Không thể kiểm tra email. Vui lòng thử lại.");
-    } finally {
-      setChecking(false);
-    }
+    } finally { setChecking(false); }
   };
 
-  /* ── Step 2: load warehouse options ── */
+  /* ── Step 2: warehouse change ── */
   const handleWarehouseChange = useCallback(async (warehouseId) => {
     setSelectedWarehouseId(warehouseId);
     setCallerMembership(null);
     setWarehouseOptions({ skills:[] });
     setWarehouseShifts([]);
-    setForm(f => ({ ...f, targetRoleCode:"STAFF", selectedSkillCodes:[], isAllSkill:false, warehouseShiftId:null }));
+    setForm(f => ({ ...f, targetRoleCode:"STAFF", selectedSkillCodes:[], isAllSkill:true, warehouseShiftId:null }));
     if (!warehouseId) return;
     setLoadingWhOptions(true);
     try {
@@ -150,29 +137,28 @@ export default function CreateStaff() {
       setWarehouseShifts(shifts || []);
     } catch (err) {
       setError("Không thể tải thông tin kho: " + (err.response?.data?.message || err.message));
-    } finally {
-      setLoadingWhOptions(false);
-    }
+    } finally { setLoadingWhOptions(false); }
   }, []);
 
-  const isOperator = callerMembership?.roleCode === "OPERATOR";
-  const isManager  = callerMembership?.roleCode === "MANAGER";
+  const isOperator = callerMembership?.allRoleCodes?.includes("OPERATOR")
+                  || callerMembership?.roleCode === "OPERATOR";
+  const isManager  = callerMembership?.roleCode === "MANAGER" && !isOperator;
 
-  // Get skill ID from code using warehouse options API data
   const getSkillIdByCode = (code) =>
     warehouseOptions.skills?.find(s => s.code === code)?.id ?? null;
 
-  // Toggle a skill in multi-select
   const toggleSkill = (code) => {
-    setForm(f => {
-      const already = f.selectedSkillCodes.includes(code);
-      return {
-        ...f,
-        selectedSkillCodes: already
-          ? f.selectedSkillCodes.filter(c => c !== code)
-          : [...f.selectedSkillCodes, code],
-      };
-    });
+    setForm(f => ({
+      ...f,
+      selectedSkillCodes: f.selectedSkillCodes.includes(code)
+        ? f.selectedSkillCodes.filter(c => c !== code)
+        : [...f.selectedSkillCodes, code],
+    }));
+  };
+
+  // Khi đổi role: MANAGER → allSkill=true (ẩn picker); STAFF → allSkill=true (mặc định, có thể đổi)
+  const handleRoleChange = (roleCode) => {
+    setForm(f => ({ ...f, targetRoleCode:roleCode, isAllSkill:true, selectedSkillCodes:[] }));
   };
 
   /* ── Submit ── */
@@ -183,10 +169,8 @@ export default function CreateStaff() {
     if (!foundUser?.exists && !newUserInfo.fullName.trim()) return setError("Vui lòng nhập họ và tên.");
     if (isManager && form.targetRoleCode !== "STAFF") return setError("Manager chỉ được tạo STAFF.");
 
-    // Resolve skill IDs from selected codes
-    const skillIds = form.selectedSkillCodes
-      .map(code => getSkillIdByCode(code))
-      .filter(id => id !== null);
+    const isManagerTarget = form.targetRoleCode === "MANAGER";
+    const skillIds = form.selectedSkillCodes.map(c => getSkillIdByCode(c)).filter(id => id !== null);
 
     setSubmitting(true);
     try {
@@ -196,8 +180,8 @@ export default function CreateStaff() {
         phone:            foundUser?.exists ? foundUser.phone : (newUserInfo.phone.trim() || null),
         warehouseId:      parseInt(selectedWarehouseId),
         targetRoleCode:   form.targetRoleCode,
-        skillIds,
-        isAllSkill:       form.isAllSkill,
+        skillIds:         isManagerTarget ? [] : skillIds,
+        isAllSkill:       isManagerTarget ? true : form.isAllSkill,
         warehouseShiftId: form.warehouseShiftId || null,
       };
       const result = await staffService.createStaff(payload);
@@ -205,9 +189,7 @@ export default function CreateStaff() {
       setTimeout(() => navigate("/list-staff"), 2000);
     } catch (err) {
       setError("❌ " + (err.response?.data?.message || err.message));
-    } finally {
-      setSubmitting(false);
-    }
+    } finally { setSubmitting(false); }
   };
 
   /* ── Guards ── */
@@ -216,40 +198,34 @@ export default function CreateStaff() {
       <div style={{ fontSize:18, color:"#6b7280" }}>⏳ Đang kiểm tra quyền truy cập...</div>
     </div>
   );
-
   if (accessDenied) return (
     <div style={{ ...S.page, textAlign:"center", paddingTop:80 }}>
       <div style={{ fontSize:48, marginBottom:16 }}>🔒</div>
       <h2 style={{ color:"#b91c1c" }}>Không có quyền truy cập</h2>
       <p style={{ color:"#6b7280" }}>Bạn cần role <strong>OPERATOR</strong> hoặc <strong>MANAGER</strong> trong ít nhất một kho.</p>
-      <button onClick={() => navigate("/owner-dashboard")} style={{ ...S.btn(), width:"auto", padding:"10px 24px", marginTop:24 }}>
-        Quay lại
-      </button>
+      <button onClick={() => navigate("/owner-dashboard")} style={{ ...S.btn(), width:"auto", padding:"10px 24px", marginTop:24 }}>Quay lại</button>
     </div>
   );
 
-  /* ── RENDER ── */
   return (
     <div style={S.page}>
       <div style={S.card}>
 
-        {/* Header */}
         <div style={S.header}>
           <h2 style={{ margin:0, fontSize:22, fontWeight:800 }}>👤 Thêm Nhân Viên</h2>
           <p style={{ margin:"6px 0 0", opacity:.8, fontSize:13 }}>Tìm kiếm nhân viên theo email và phân quyền theo kho</p>
         </div>
 
-        {/* Steps bar */}
         <div style={S.steps}>
           <div style={S.step(step===1, step>1)}>{step>1?"✓ ":""}1. Tìm kiếm email</div>
-          <div style={S.step(step===2, step>2)}>2. Phân quyền theo kho</div>
+          <div style={S.step(step===2, false)}>2. Phân quyền theo kho</div>
         </div>
 
         <div style={S.body}>
           {error   && <div style={S.alert("error")}>{error}</div>}
           {success && <div style={S.alert("success")}>{success}</div>}
 
-          {/* ─── STEP 1 ─── */}
+          {/* ── STEP 1 ── */}
           {step === 1 && (
             <form onSubmit={handleCheckEmail}>
               <div style={S.group}>
@@ -269,7 +245,7 @@ export default function CreateStaff() {
             </form>
           )}
 
-          {/* ─── STEP 2 ─── */}
+          {/* ── STEP 2 ── */}
           {step === 2 && (
             <form onSubmit={handleSubmit}>
 
@@ -300,25 +276,25 @@ export default function CreateStaff() {
                   </div>
                   <div>
                     <label style={S.label}>Số điện thoại</label>
-                    <input style={S.input} placeholder="Nhập số điện thoại (tuỳ chọn)" value={newUserInfo.phone}
+                    <input style={S.input} placeholder="Số điện thoại (tuỳ chọn)" value={newUserInfo.phone}
                       onChange={e => setNewUserInfo(f => ({ ...f, phone:e.target.value }))} />
                   </div>
                   <div style={{ ...S.note, marginTop:10, color:"#92400e" }}>
-                    💌 Hệ thống sẽ tự tạo tài khoản và gửi mật khẩu tạm + link đặt lại mật khẩu qua email.
+                    💌 Hệ thống sẽ tự tạo tài khoản và gửi mật khẩu tạm qua email.
                   </div>
                 </div>
               )}
 
               <div style={S.divider} />
 
-              {/* Chọn kho */}
+              {/* Chọn kho — deduped, 1 mục / kho */}
               <div style={S.group}>
                 <label style={S.label}>Kho làm việc <span style={{ color:"#ef4444" }}>*</span></label>
                 <select style={S.select} value={selectedWarehouseId} onChange={e => handleWarehouseChange(e.target.value)}>
                   <option value="">-- Chọn kho --</option>
                   {managedWarehouses.map(w => (
                     <option key={w.warehouseId} value={w.warehouseId}>
-                      {w.warehouseName}{w.roleCode==="OPERATOR"?" 🔑 (Operator)":" 🗂 (Manager)"}
+                      {w.warehouseName}
                     </option>
                   ))}
                 </select>
@@ -328,96 +304,84 @@ export default function CreateStaff() {
 
               {callerMembership && !loadingWhOptions && (
                 <>
-                  {/* Role của caller */}
-                  <div style={{ marginBottom:12, padding:"8px 14px", background:"#f0f9ff", borderRadius:8, fontSize:13, color:"#0369a1", border:"1px solid #bae6fd" }}>
+                  {/* Caller role */}
+                  <div style={{ marginBottom:16, padding:"8px 14px", background:"#f0f9ff", borderRadius:8, fontSize:13, color:"#0369a1", border:"1px solid #bae6fd" }}>
                     Quyền của bạn:
                     <span style={S.badge(isOperator?"#4f46e5":"#7c3aed")}>
                       {callerMembership.roleCode}{isOperator?" — Điều phối viên":" — Quản lý"}
                     </span>
                   </div>
 
-                  {/* Role target */}
+                  {/* Target role */}
                   <div style={S.group}>
                     <label style={S.label}>Role trong kho <span style={{ color:"#ef4444" }}>*</span></label>
                     {isOperator ? (
                       <div style={{ display:"flex", gap:8 }}>
                         {["STAFF","MANAGER"].map(r => (
                           <button key={r} type="button" style={S.tabBtn(form.targetRoleCode===r)}
-                            onClick={() => setForm(f => ({ ...f, targetRoleCode:r, selectedSkillCodes:[], isAllSkill:r==="MANAGER" }))}>
-                            {r==="STAFF"?"👷 Nhân viên (STAFF)":"🗂 Quản lý (MANAGER)"}
+                            onClick={() => handleRoleChange(r)}>
+                            {r==="STAFF" ? "👷 Nhân viên (STAFF)" : "🗂 Quản lý (MANAGER)"}
                           </button>
                         ))}
                       </div>
                     ) : (
                       <div style={{ padding:"10px 14px", background:"#f9fafb", borderRadius:8, border:"1.5px solid #d1d5db", color:"#374151", fontSize:14 }}>
-                        👷 Nhân viên (STAFF) <span style={{ color:"#9ca3af", fontSize:12 }}>— Manager chỉ được tạo STAFF</span>
+                        👷 Nhân viên (STAFF)
+                        <span style={{ color:"#9ca3af", fontSize:12, marginLeft:8 }}>— Manager chỉ được tạo STAFF</span>
                       </div>
                     )}
                   </div>
 
-                  {/* ─── Multi-select Skills ─── */}
-                  <div style={S.group}>
-                    <label style={S.label}>
-                      Kỹ năng nhân viên
-                      <span style={{ color:"#9ca3af", fontWeight:400, fontSize:12, marginLeft:6 }}>
-                        (chọn 1 hoặc nhiều — bỏ trống = nhân viên phổ thông)
-                      </span>
-                    </label>
+                  {/* Skills — ẩn hoàn toàn khi MANAGER */}
+                  {form.targetRoleCode !== "MANAGER" && (
+                    <div style={S.group}>
+                      <label style={S.label}>
+                        Kỹ năng nhân viên
+                        <span style={{ color:"#9ca3af", fontWeight:400, fontSize:12, marginLeft:6 }}>
+                          (mặc định: toàn kỹ năng — có thể thay đổi)
+                        </span>
+                      </label>
 
-                    {/* All Skill toggle — chỉ OPERATOR tạo MANAGER */}
-                    {isOperator && form.targetRoleCode === "MANAGER" && (
+                      {/* All Skill toggle */}
                       <div
                         onClick={() => setForm(f => ({ ...f, isAllSkill:!f.isAllSkill, selectedSkillCodes:[] }))}
                         style={{ ...S.skillCard(form.isAllSkill, "#7c3aed"), marginBottom:8 }}>
-                        <div style={{ fontSize:20 }}>⭐</div>
                         <div style={{ flex:1 }}>
                           <div style={{ fontWeight:700, fontSize:14, color:form.isAllSkill?"#7c3aed":"#374151" }}>Toàn kỹ năng (All Skill)</div>
-                          <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>Manager này quản lý tất cả kỹ năng trong kho</div>
+                          <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>Nhân viên này không bị giới hạn kỹ năng trong kho</div>
                         </div>
                         <input type="checkbox" readOnly checked={form.isAllSkill} style={{ width:18, height:18, accentColor:"#7c3aed" }} />
                       </div>
-                    )}
 
-                    {/* Individual skill checkboxes */}
-                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                      {SKILL_DEFS.map(sk => {
-                        const active   = form.selectedSkillCodes.includes(sk.code);
-                        const disabled = form.isAllSkill;
-                        return (
-                          <div
-                            key={sk.code}
-                            onClick={() => !disabled && toggleSkill(sk.code)}
-                            style={{
-                              ...S.skillCard(active && !disabled, sk.color),
-                              opacity: disabled ? 0.45 : 1,
-                              cursor:  disabled ? "not-allowed" : "pointer",
-                            }}>
-                            <div style={{ fontSize:20 }}>{sk.icon}</div>
-                            <div style={{ flex:1 }}>
-                              <div style={{ fontWeight:700, fontSize:14, color:active && !disabled ? sk.color : "#374151" }}>
-                                {sk.label}
+                      {/* Individual skills */}
+                      <div style={{ display:"flex", flexDirection:"column", gap:8, opacity:form.isAllSkill?.4:1, transition:"opacity .2s" }}>
+                        {SKILL_DEFS.map(sk => {
+                          const active   = !form.isAllSkill && form.selectedSkillCodes.includes(sk.code);
+                          const disabled = form.isAllSkill;
+                          return (
+                            <div key={sk.code}
+                              onClick={() => !disabled && toggleSkill(sk.code)}
+                              style={{ ...S.skillCard(active, sk.color), cursor:disabled?"not-allowed":"pointer" }}>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontWeight:700, fontSize:14, color:active?sk.color:"#374151" }}>{sk.label}</div>
+                                <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>{sk.desc}</div>
                               </div>
-                              <div style={{ fontSize:12, color:"#6b7280", marginTop:2 }}>{sk.desc}</div>
+                              <input type="checkbox" readOnly
+                                checked={form.isAllSkill || form.selectedSkillCodes.includes(sk.code)}
+                                style={{ width:16, height:16, accentColor:sk.color }} />
                             </div>
-                            <input type="checkbox" readOnly checked={form.isAllSkill || active}
-                              style={{ width:16, height:16, accentColor:sk.color }} />
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
+                  )}
 
-                    {/* Hint text */}
-                    {!form.isAllSkill && form.selectedSkillCodes.length === 0 && (
-                      <div style={{ ...S.note, color:"#92400e", marginTop:8 }}>
-                        ℹ️ Không chọn kỹ năng → nhân viên phổ thông (chỉ điểm danh, không xác nhận nhập/xuất hay kiểm kê)
-                      </div>
-                    )}
-                    {!form.isAllSkill && form.selectedSkillCodes.length > 0 && (
-                      <div style={{ ...S.note, color:"#166534", marginTop:8 }}>
-                        ✓ Đã chọn: {form.selectedSkillCodes.join(", ")}
-                      </div>
-                    )}
-                  </div>
+                  {/* MANAGER notice */}
+                  {form.targetRoleCode === "MANAGER" && (
+                    <div style={{ ...S.alert("success"), marginBottom:16 }}>
+                      ⭐ Quản lý được cấp <strong>toàn quyền kỹ năng</strong> mặc định trong kho.
+                    </div>
+                  )}
 
                   {/* Ca làm việc */}
                   <div style={S.group}>
@@ -434,7 +398,7 @@ export default function CreateStaff() {
                         ))}
                       </select>
                     )}
-                    <div style={S.note}>Ca cố định được dùng khi tạo lịch tự động Schedule tự động.</div>
+                    <div style={S.note}>Ca cố định được dùng khi tạo lịch tự động.</div>
                   </div>
 
                   <button type="submit" disabled={submitting} style={{ ...S.btn(), opacity:submitting?.7:1 }}>

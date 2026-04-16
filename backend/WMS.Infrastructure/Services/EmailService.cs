@@ -59,10 +59,10 @@ public class EmailService : IEmailService
 
         using var message = new MailMessage
         {
-            From = new MailAddress(smtpUser, fromName),
-            Subject = subject,
-            Body = htmlContent,
-            IsBodyHtml = true
+            From       = new MailAddress(smtpUser, fromName),
+            Subject    = subject,
+            Body       = htmlContent,
+            IsBodyHtml = htmlContent.TrimStart().StartsWith("<"),  // plain text nếu không bắt đầu bằng tag
         };
 
         message.To.Add(new MailAddress(email, toName));
