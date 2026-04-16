@@ -325,6 +325,28 @@ using (var scope = app.Services.CreateScope())
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_payments') AND name = 'RetryCount') ALTER TABLE rental_payments ADD RetryCount INT NOT NULL DEFAULT 0;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_payments') AND name = 'MaxRetry') ALTER TABLE rental_payments ADD MaxRetry INT NOT NULL DEFAULT 3;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_payments') AND name = 'LastRetryAt') ALTER TABLE rental_payments ADD LastRetryAt DATETIME2 NULL;",
+            // Patch: Tạo bảng staff_shifts nếu thiếu (cho shift scheduling)
+            @"IF OBJECT_ID('staff_shifts', 'U') IS NULL
+              BEGIN
+                  CREATE TABLE [staff_shifts] (
+                      [id] int NOT NULL IDENTITY,
+                      [membership_id] int NOT NULL,
+                      [shift_date] date NOT NULL,
+                      [time_in1] nvarchar(5) NULL,
+                      [time_out1] nvarchar(5) NULL,
+                      [time_in2] nvarchar(5) NULL,
+                      [time_out2] nvarchar(5) NULL,
+                      [shift_type] nvarchar(10) NULL,
+                      [overtime_hours] decimal(18,2) NOT NULL DEFAULT 0,
+                      [check_in_at] datetime2 NULL,
+                      [check_in_photo] nvarchar(max) NULL,
+                      [check_out_at] datetime2 NULL,
+                      [check_out_photo] nvarchar(max) NULL,
+                      CONSTRAINT [PK_staff_shifts] PRIMARY KEY ([id]),
+                      CONSTRAINT [FK_staff_shifts_membership] FOREIGN KEY ([membership_id]) REFERENCES [warehouse_memberships] ([membership_id]) ON DELETE CASCADE
+                  );
+              END;",
+            "IF OBJECT_ID('staff_shifts', 'U') IS NOT NULL AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_staff_shifts_membership_date' AND object_id = OBJECT_ID('staff_shifts')) CREATE UNIQUE INDEX [UQ_staff_shifts_membership_date] ON [staff_shifts] ([membership_id], [shift_date]);",
             // Patch: Cập nhật dữ liệu chuẩn cho các gói (Basic vs Premium)
             "UPDATE subscription_packages SET max_warehouses = 1, max_staff_per_warehouse = 5, max_zones_per_warehouse = 3, max_total_area = 500, allow_equipment_management = 0 WHERE name = 'Basic';",
             "UPDATE subscription_packages SET max_warehouses = 5, max_staff_per_warehouse = 50, max_zones_per_warehouse = 10, max_total_area = 5000, allow_equipment_management = 1 WHERE name = 'Premium';",
