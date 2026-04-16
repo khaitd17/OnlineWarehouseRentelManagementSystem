@@ -170,6 +170,60 @@ public class PaymentsController : ControllerBase
     }
 
     /// <summary>
+    /// Lấy danh sách thanh toán tiền mặt của chủ kho (đã xác nhận + chưa xác nhận)
+    /// </summary>
+    [Authorize]
+    [HttpGet("cash-confirmation-list")]
+    public async Task<IActionResult> GetOwnerCashPayments()
+    {
+        var ownerId = GetCurrentUserId();
+
+        var warehouseIds = await _db.Warehouses
+            .Where(w => w.OwnerId == ownerId)
+            .Select(w => w.WarehouseId)
+            .ToListAsync();
+
+        if (!warehouseIds.Any())
+            return Ok(new List<object>());
+
+        var statuses = new[] { "PENDING_CONFIRMATION", "COMPLETED" };
+
+        var payments = await _db.RentalPayments
+            .AsNoTracking()
+            .Include(p => p.Contract)
+            .Where(p => p.PaymentMethod == "CASH"
+                        && p.Contract != null
+                        && statuses.Contains(p.Status)
+                        && warehouseIds.Contains(p.Contract.WarehouseId))
+            .OrderByDescending(p => p.UpdatedAt ?? p.CreatedAt)
+            .Select(p => new
+            {
+                p.PaymentId,
+                p.PaymentCode,
+                p.Amount,
+                p.PaymentType,
+                p.Status,
+                p.CreatedAt,
+                p.UpdatedAt,
+                p.PaidAt,
+                Contract = new
+                {
+                    p.Contract!.ContractId,
+                    p.Contract.ContractNumber,
+                    p.Contract.RenterId,
+                    RenterName = _db.Users.Where(u => u.UserId == p.Contract.RenterId).Select(u => u.FullName).FirstOrDefault(),
+                    Warehouse = _db.Warehouses
+                        .Where(w => w.WarehouseId == p.Contract.WarehouseId)
+                        .Select(w => new { w.WarehouseId, w.Name })
+                        .FirstOrDefault()
+                }
+            })
+            .ToListAsync();
+
+        return Ok(payments);
+    }
+
+    /// <summary>
     /// Lịch sử thanh toán của người dùng (bao gồm online + tiền mặt)
     /// </summary>
     [Authorize]

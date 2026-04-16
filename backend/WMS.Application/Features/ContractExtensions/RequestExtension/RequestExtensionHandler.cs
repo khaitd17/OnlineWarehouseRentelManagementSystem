@@ -98,14 +98,21 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
                         Title = "Yêu cầu gia hạn hợp đồng mới",
                         Message = $"Người thuê đã gửi yêu cầu gia hạn hợp đồng {originalContract.ContractNumber}. " +
                                   $"Thời hạn gia hạn: {request.DurationMonths} tháng.",
-                        Type = "CONTRACT_EXTENSION_REQUEST",
+                        Type = "EXTENSION_REQUEST_RECEIVED",
                         ReferenceId = savedExtension.ExtensionId,
                         ReferenceType = "CONTRACT_EXTENSION",
                         CreatedAt = DateTime.UtcNow
                     };
 
-                    await _notificationRepository.AddAsync(notification);
-                    await _notificationSender.SendToUserAsync(warehouse.OwnerId, notification);
+                    try
+                    {
+                        await _notificationRepository.AddAsync(notification);
+                        await _notificationSender.SendToUserAsync(warehouse.OwnerId, notification);
+                    }
+                    catch
+                    {
+                        // Keep request success even if realtime/push notification fails.
+                    }
                 }
 
                 return new RequestExtensionResponse

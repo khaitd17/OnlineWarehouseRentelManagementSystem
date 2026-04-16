@@ -363,6 +363,12 @@ const DashboardLayout = () => {
       return;
     }
 
+    if (notificationTypeUpper === 'EXTENSION_REQUEST_RECEIVED' ||
+        notificationTypeUpper === 'CONTRACT_EXTENSION_REQUEST') {
+      navigate('/contract-extensions');
+      return;
+    }
+
     if (referenceId) {
       if (notificationTypeUpper === 'CONTRACT_APPROVED' ||
           notificationTypeUpper === 'CONTRACT_SENT' ||
@@ -372,8 +378,6 @@ const DashboardLayout = () => {
         navigate(`/rental-request/${referenceId}`);
       } else if (notificationTypeUpper === 'CONTRACT_REJECTED') {
         navigate('/my-rental-requests');
-      } else if (notificationTypeUpper === 'EXTENSION_REQUEST_RECEIVED') {
-        navigate('/contract-extensions');
       } else if (notificationTypeUpper === 'EXTENSION_APPROVED' ||
                  notificationTypeUpper === 'EXTENSION_REJECTED') {
         navigate('/contract-extensions-renter');
@@ -392,6 +396,7 @@ const DashboardLayout = () => {
                  notificationTypeLower === 'termination_rejected' ||
                  notificationTypeLower === 'close_request' ||
                  notificationTypeUpper === 'TERMINATION_FEE_PAID' ||
+                 notificationTypeUpper === 'EXTENSION_PAYMENT_COMPLETED' ||
                  notificationTypeUpper === 'PAYMENT_COMPLETED') {
         // Navigate to contract detail for termination-related notifications
         navigate(`/contracts/${referenceId}`);

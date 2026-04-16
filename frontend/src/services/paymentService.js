@@ -73,6 +73,15 @@ const paymentService = {
   },
 
   /**
+   * Lấy danh sách thanh toán tiền mặt của chủ kho (đã xác nhận + chưa xác nhận)
+   * @returns {Promise} danh sách cash payments
+   */
+  getOwnerCashPayments: async () => {
+    const response = await axiosClient.get("/payments/cash-confirmation-list");
+    return response.data;
+  },
+
+  /**
    * Xác nhận thanh toán tiền mặt (cho chủ kho)
    * @param {number} paymentId
    * @param {boolean} isApproved

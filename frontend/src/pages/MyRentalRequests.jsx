@@ -10,11 +10,21 @@ const statusConfig = {
   REJECTED:  { bg: "#fee2e2", color: "#dc2626", label: "Từ chối" },
   CANCELLED: { bg: "#f1f5f9", color: "#64748b", label: "Đã hủy" },
   // Contract statuses
+  PENDING_OWNER_SIGNATURE: { bg: "#dbeafe", color: "#2563eb", label: "Chờ chủ kho ký" },
+  PENDING_RENTER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ người thuê ký" },
+  PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
+  SIGNED: { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
+  PENDING_PAYMENT: { bg: "#fef3c7", color: "#d97706", label: "Chờ thanh toán" },
+  PAYMENT_FAILED: { bg: "#fee2e2", color: "#dc2626", label: "Thanh toán thất bại" },
   ACTIVE: { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
   CLOSED: { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
   TERMINATED: { bg: "#f1f5f9", color: "#64748b", label: "Đã kết thúc" },
   PENDING_CLOSE: { bg: "#fef3c7", color: "#d97706", label: "Chờ đóng" },
   PENDING_TERMINATION: { bg: "#fef3c7", color: "#d97706", label: "Chờ kết thúc" },
+  EXPIRED: { bg: "#fee2e2", color: "#dc2626", label: "Đã hết hạn" },
+  CANCELLED_BY_USER: { bg: "#f1f5f9", color: "#64748b", label: "Người dùng hủy" },
+  CANCELLED_BY_OWNER: { bg: "#f1f5f9", color: "#64748b", label: "Chủ kho hủy" },
+  CANCELLED_NO_PAYMENT: { bg: "#f1f5f9", color: "#64748b", label: "Hủy - Không thanh toán" },
 };
 
 const formatDate = (dateStr) => {

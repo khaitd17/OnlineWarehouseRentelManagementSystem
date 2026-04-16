@@ -12,17 +12,20 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
     private readonly IRentalContractRepository _contractRepo;
     private readonly ISepayService _sepayService;
     private readonly ILogger<GetPaymentStatusHandler> _logger;
+    private readonly IContractExtensionRepository _extensionRepo;
 
     public GetPaymentStatusHandler(
         IRentalPaymentRepository paymentRepo,
         IRentalContractRepository contractRepo,
         ISepayService sepayService,
-        ILogger<GetPaymentStatusHandler> logger)
+        ILogger<GetPaymentStatusHandler> logger,
+        IContractExtensionRepository extensionRepo)
     {
         _paymentRepo = paymentRepo;
         _contractRepo = contractRepo;
         _sepayService = sepayService;
         _logger = logger;
+        _extensionRepo = extensionRepo;
     }
 
     public async Task<PaymentStatusResult> Handle(GetPaymentStatusQuery request, CancellationToken cancellationToken)
@@ -224,6 +227,25 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
             await _contractRepo.UpdateAsync(contract);
 
             _logger.LogInformation("Activated pending contract {ContractId} from payment status reconciliation", payment.ContractId);
+            return;
+        }
+
+        if (payment.PaymentType == PaymentType.Extension)
+        {
+            var extension = await _extensionRepo.GetPendingByContractIdAsync(payment.ContractId);
+            if (extension != null && extension.Status == ContractExtensionStatus.PendingPayment)
+            {
+                var currentContract = await _contractRepo.GetByIdAsync(payment.ContractId);
+                if (currentContract != null)
+                {
+                    var approvedMonthly = extension.ProposedMonthlyPayment ?? currentContract.MonthlyPayment;
+                    await _contractRepo.ApplyExtensionAsync(payment.ContractId, extension.DurationMonths, approvedMonthly);
+
+                    extension.MarkCompleted();
+                    await _extensionRepo.UpdateAsync(extension);
+                }
+            }
+
             return;
         }
 

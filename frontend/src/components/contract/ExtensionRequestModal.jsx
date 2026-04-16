@@ -40,9 +40,10 @@ const ExtensionRequestModal = ({ contract, onClose, onSuccess }) => {
 
   const handleTemplateChange = useCallback((templateValue) => {
     if (templateValue) {
-      form.setFieldsValue({ reason: templateValue });
+      const selectedTemplate = reasonTemplates.find((item) => item.value === templateValue);
+      form.setFieldsValue({ reason: selectedTemplate?.template || '' });
     }
-  }, [form]);
+  }, [form, reasonTemplates]);
 
   const handleSubmit = async (values) => {
     try {

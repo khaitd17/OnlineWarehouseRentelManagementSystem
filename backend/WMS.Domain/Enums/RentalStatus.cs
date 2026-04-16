@@ -67,6 +67,7 @@ public static class PaymentType
     public const string Monthly = "MONTHLY";
     public const string Penalty = "PENALTY";
     public const string Damage = "DAMAGE";
+    public const string Extension = "EXTENSION";
 }
 
 public static class WarehouseReturnStatus
@@ -84,6 +85,8 @@ public static class ContractExtensionStatus
 {
     public const string Pending = "PENDING";
     public const string Approved = "APPROVED";
+    public const string PendingPayment = "PENDING_PAYMENT";
+    public const string Completed = "COMPLETED";
     public const string Rejected = "REJECTED";
     public const string Cancelled = "CANCELLED";
 }

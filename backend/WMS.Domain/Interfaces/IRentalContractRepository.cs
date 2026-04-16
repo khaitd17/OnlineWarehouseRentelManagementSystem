@@ -33,6 +33,7 @@ public interface IRentalContractRepository
     Task ApproveTerminationAsync(int contractId, string approvedBy, decimal? earlyTerminationFee = null);
     Task RejectTerminationAsync(int contractId);
     Task FinalizeTerminationAfterPaymentAsync(int contractId);
+    Task ApplyExtensionAsync(int contractId, int durationMonths, decimal approvedMonthlyPayment);
 
     Task<bool> IsRenterByContractAsync(int renterId, int warehouseId, CancellationToken ct = default);
 }

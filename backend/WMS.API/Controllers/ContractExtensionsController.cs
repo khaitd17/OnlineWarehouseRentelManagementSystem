@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using WMS.Application.Features.Payments.CreatePayment;
 using WMS.Application.Features.ContractExtensions.RequestExtension;
 using WMS.Application.Features.ContractExtensions.ReviewExtension;
 using WMS.Domain.Entities;
@@ -223,7 +224,38 @@ namespace WMS.API.Controllers
             {
                 var userId = GetUserId();
                 var extensions = await _extensionRepo.GetByRequesterIdAsync(userId);
-                
+
+                // Self-heal stale extension states: cash payment may have been confirmed
+                // while extension status was not finalized due previous legacy query behavior.
+                var latestPendingByContract = extensions
+                    .Where(e => e.Status == ContractExtensionStatus.PendingPayment)
+                    .GroupBy(e => e.OriginalContractId)
+                    .Select(g => g.OrderByDescending(e => e.RequestedAt).First())
+                    .ToList();
+
+                foreach (var extension in latestPendingByContract)
+                {
+                    var anchorTime = extension.UpdatedAt ?? extension.RequestedAt;
+                    var hasCompletedExtensionPayment = await _db.RentalPayments
+                        .AsNoTracking()
+                        .AnyAsync(p => p.ContractId == extension.OriginalContractId
+                                       && p.PaymentType == PaymentType.Extension
+                                       && p.Status == PaymentStatus.Completed
+                                       && (p.PaidAt ?? p.UpdatedAt ?? p.CreatedAt) >= anchorTime);
+
+                    if (!hasCompletedExtensionPayment)
+                        continue;
+
+                    var currentContract = await _contractRepo.GetByIdAsync(extension.OriginalContractId);
+                    if (currentContract == null)
+                        continue;
+
+                    var approvedMonthly = extension.ProposedMonthlyPayment ?? currentContract.MonthlyPayment;
+                    await _contractRepo.ApplyExtensionAsync(extension.OriginalContractId, extension.DurationMonths, approvedMonthly);
+                    extension.MarkCompleted();
+                    await _extensionRepo.UpdateAsync(extension);
+                }
+                 
                 // Load original contracts separately due to FK mapping issue
                 var contractIds = extensions.Select(e => e.OriginalContractId).Distinct().ToList();
                 var contracts = await _db.Contracts
@@ -371,10 +403,81 @@ namespace WMS.API.Controllers
                 if (!extension.IsPending)
                     return BadRequest(new { message = "Can only cancel pending extension requests" });
 
-                extension.Cancel();
+                extension.DeclineOffer();
                 await _extensionRepo.UpdateAsync(extension);
 
                 return Ok(new { message = "Extension cancelled successfully" });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Renter confirms or cancels an approved extension offer.
+        /// If accepted, create extension payment and link user to payment flow.
+        /// </summary>
+        [HttpPost("{id}/renter-decision")]
+        public async Task<IActionResult> SubmitRenterDecision(int id, [FromBody] RenterDecisionRequest request)
+        {
+            try
+            {
+                var userId = GetUserId();
+                var extension = await _extensionRepo.GetByIdAsync(id);
+
+                if (extension == null)
+                    return NotFound(new { message = "Extension not found" });
+
+                if (extension.RequesterId != userId)
+                    return Forbid("Bạn chỉ có thể xử lý yêu cầu gia hạn của chính mình.");
+
+                if (request.IsAccepted)
+                {
+                    if (extension.Status != ContractExtensionStatus.Approved && extension.Status != ContractExtensionStatus.PendingPayment)
+                        return BadRequest(new { message = "Yêu cầu gia hạn chưa ở trạng thái có thể thanh toán." });
+
+                    var approvedMonthly = extension.ProposedMonthlyPayment ?? 0;
+                    if (approvedMonthly <= 0)
+                        return BadRequest(new { message = "Chưa có giá gia hạn hợp lệ từ chủ kho." });
+
+                    var amount = approvedMonthly * extension.DurationMonths;
+
+                    if (extension.Status == ContractExtensionStatus.Approved)
+                    {
+                        extension.MarkPendingPayment();
+                        await _extensionRepo.UpdateAsync(extension);
+                    }
+
+                    var payment = await _mediator.Send(new CreatePaymentCommand
+                    {
+                        ContractId = extension.OriginalContractId,
+                        PaymentType = PaymentType.Extension,
+                        AmountOverride = amount
+                    });
+
+                    return Ok(new
+                    {
+                        message = "Đã xác nhận gia hạn. Vui lòng thanh toán để hoàn tất.",
+                        extensionId = extension.ExtensionId,
+                        contractId = extension.OriginalContractId,
+                        paymentId = payment.PaymentId,
+                        amount = payment.Amount,
+                        redirectUrl = $"/contracts/{extension.OriginalContractId}/payment?purpose=extension&extensionId={extension.ExtensionId}"
+                    });
+                }
+
+                if (extension.Status != ContractExtensionStatus.Approved)
+                    return BadRequest(new { message = "Yêu cầu gia hạn không ở trạng thái có thể hủy." });
+
+                extension.Cancel();
+                await _extensionRepo.UpdateAsync(extension);
+
+                return Ok(new { message = "Đã hủy yêu cầu gia hạn." });
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -505,5 +608,10 @@ namespace WMS.API.Controllers
     public class RejectExtensionRequest
     {
         public string Reason { get; set; } = string.Empty;
+    }
+
+    public class RenterDecisionRequest
+    {
+        public bool IsAccepted { get; set; }
     }
 }

@@ -8,6 +8,8 @@ namespace WMS.Application.Features.Payments.RetryPayment;
 
 public class RetryPaymentHandler : IRequestHandler<RetryPaymentCommand, RetryPaymentResult>
 {
+    private const int PaymentExpiryHours = 24;
+
     private readonly IRentalPaymentRepository _paymentRepository;
     private readonly IRentalContractRepository _contractRepository;
     private readonly INotificationRepository _notificationRepository;
@@ -75,9 +77,9 @@ public class RetryPaymentHandler : IRequestHandler<RetryPaymentCommand, RetryPay
         // Increment retry count and reset payment
         payment.IncrementRetry();
         
-        // Set new expiry (48 hours from now)
+        // Set new expiry (24 hours from now)
         var expiredAtProp = payment.GetType().GetProperty("ExpiredAt");
-        var newExpiry = DateTime.UtcNow.AddHours(48);
+        var newExpiry = DateTime.UtcNow.AddHours(PaymentExpiryHours);
         expiredAtProp?.SetValue(payment, newExpiry);
 
         await _paymentRepository.UpdateAsync(payment);
@@ -105,7 +107,7 @@ public class RetryPaymentHandler : IRequestHandler<RetryPaymentCommand, RetryPay
         var notification = Notification.Create(
             receiverUserId: contract.RenterId,
             title: "Thanh toán đã được khởi tạo lại",
-            message: $"Thanh toán cho hợp đồng {contract.ContractNumber} đã được khởi tạo lại (lần {payment.RetryCount}/{payment.MaxRetry}). Bạn có 48 giờ để hoàn tất.",
+            message: $"Thanh toán cho hợp đồng {contract.ContractNumber} đã được khởi tạo lại (lần {payment.RetryCount}/{payment.MaxRetry}). Bạn có 24 giờ để hoàn tất.",
             notificationType: "IN_APP",
             referenceId: payment.PaymentId,
             referenceType: "RentalPayment"

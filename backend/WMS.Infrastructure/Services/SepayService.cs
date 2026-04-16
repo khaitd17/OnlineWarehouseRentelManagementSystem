@@ -131,6 +131,28 @@ public class SepayService : ISepayService
                     contract.Status = RentalContractStatus.Active;
                     contract.UpdatedAt = DateTime.UtcNow;
                 }
+                else if (contract != null && payment.PaymentType == PaymentType.Extension)
+                {
+                    var extension = await _db.ContractExtensions
+                        .Where(e => e.OriginalContractId == payment.ContractId
+                                    && e.Status == ContractExtensionStatus.PendingPayment)
+                        .OrderByDescending(e => e.RequestedAt)
+                        .FirstOrDefaultAsync();
+
+                    if (extension != null)
+                    {
+                        var approvedMonthly = extension.ProposedMonthlyPayment ?? contract.MonthlyPayment;
+                        var updatedEndDate = contract.EndDate.AddMonths(extension.DurationMonths);
+                        var totalMonths = Math.Max(1, (updatedEndDate.Year - contract.StartDate.Year) * 12 + (updatedEndDate.Month - contract.StartDate.Month));
+
+                        contract.EndDate = updatedEndDate;
+                        contract.MonthlyPayment = approvedMonthly;
+                        contract.TotalValue = approvedMonthly * totalMonths;
+                        contract.UpdatedAt = DateTime.UtcNow;
+
+                        extension.MarkCompleted();
+                    }
+                }
                 else if (contract != null &&
                          payment.PaymentType == PaymentType.Penalty &&
                          contract.Status == RentalContractStatus.PendingTermination &&

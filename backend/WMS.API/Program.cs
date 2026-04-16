@@ -219,6 +219,69 @@ using (var scope = app.Services.CreateScope())
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'renter_approved_termination') ALTER TABLE contracts ADD renter_approved_termination bit NOT NULL DEFAULT 0;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_at') ALTER TABLE contracts ADD termination_requested_at datetime2 NULL;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_by') ALTER TABLE contracts ADD termination_requested_by nvarchar(50) NULL;",
+            // Patch: sửa FK contract_extensions đang trỏ nhầm rental_contracts -> contracts
+            @"IF OBJECT_ID('contract_extensions', 'U') IS NOT NULL
+              BEGIN
+                  DECLARE @fkOriginal NVARCHAR(128);
+                  SELECT TOP 1 @fkOriginal = fk.name
+                  FROM sys.foreign_keys fk
+                  JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+                  JOIN sys.tables pt ON fkc.parent_object_id = pt.object_id
+                  JOIN sys.columns pc ON pc.object_id = pt.object_id AND pc.column_id = fkc.parent_column_id
+                  JOIN sys.tables rt ON fkc.referenced_object_id = rt.object_id
+                  WHERE pt.name = 'contract_extensions'
+                    AND pc.name = 'original_contract_id'
+                    AND rt.name = 'rental_contracts';
+
+                  IF @fkOriginal IS NOT NULL
+                      EXEC('ALTER TABLE contract_extensions DROP CONSTRAINT [' + @fkOriginal + ']');
+
+                  IF NOT EXISTS (
+                      SELECT 1
+                      FROM sys.foreign_keys fk
+                      JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+                      JOIN sys.tables pt ON fkc.parent_object_id = pt.object_id
+                      JOIN sys.columns pc ON pc.object_id = pt.object_id AND pc.column_id = fkc.parent_column_id
+                      JOIN sys.tables rt ON fkc.referenced_object_id = rt.object_id
+                      WHERE pt.name = 'contract_extensions'
+                        AND pc.name = 'original_contract_id'
+                        AND rt.name = 'contracts'
+                  )
+                      ALTER TABLE contract_extensions WITH CHECK
+                      ADD CONSTRAINT FK_contract_extensions_contracts_original_contract_id
+                      FOREIGN KEY (original_contract_id) REFERENCES contracts(contract_id);
+              END;",
+            @"IF OBJECT_ID('contract_extensions', 'U') IS NOT NULL
+              BEGIN
+                  DECLARE @fkNew NVARCHAR(128);
+                  SELECT TOP 1 @fkNew = fk.name
+                  FROM sys.foreign_keys fk
+                  JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+                  JOIN sys.tables pt ON fkc.parent_object_id = pt.object_id
+                  JOIN sys.columns pc ON pc.object_id = pt.object_id AND pc.column_id = fkc.parent_column_id
+                  JOIN sys.tables rt ON fkc.referenced_object_id = rt.object_id
+                  WHERE pt.name = 'contract_extensions'
+                    AND pc.name = 'new_contract_id'
+                    AND rt.name = 'rental_contracts';
+
+                  IF @fkNew IS NOT NULL
+                      EXEC('ALTER TABLE contract_extensions DROP CONSTRAINT [' + @fkNew + ']');
+
+                  IF NOT EXISTS (
+                      SELECT 1
+                      FROM sys.foreign_keys fk
+                      JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+                      JOIN sys.tables pt ON fkc.parent_object_id = pt.object_id
+                      JOIN sys.columns pc ON pc.object_id = pt.object_id AND pc.column_id = fkc.parent_column_id
+                      JOIN sys.tables rt ON fkc.referenced_object_id = rt.object_id
+                      WHERE pt.name = 'contract_extensions'
+                        AND pc.name = 'new_contract_id'
+                        AND rt.name = 'contracts'
+                  )
+                      ALTER TABLE contract_extensions WITH CHECK
+                      ADD CONSTRAINT FK_contract_extensions_contracts_new_contract_id
+                      FOREIGN KEY (new_contract_id) REFERENCES contracts(contract_id);
+              END;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminatedAt') ALTER TABLE rental_contracts ADD TerminatedAt datetime2 NULL;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminationReason') ALTER TABLE rental_contracts ADD TerminationReason nvarchar(max) NULL;",
             "IF OBJECT_ID('subscriptions', 'U') IS NULL BEGIN CREATE TABLE subscriptions (subscription_id int IDENTITY(1,1) NOT NULL PRIMARY KEY, user_id int NOT NULL, [plan] nvarchar(50) NOT NULL, [status] nvarchar(50) NOT NULL CONSTRAINT DF_subscriptions_status DEFAULT N'Pending', start_date datetime2 NULL, end_date datetime2 NULL, transaction_reference nvarchar(100) NULL, CONSTRAINT FK_subscriptions_users FOREIGN KEY (user_id) REFERENCES users(user_id)); END;",

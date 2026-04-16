@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
+import contractExtensionService from "../services/contractExtensionService";
 
 const formatCurrency = (amount) => {
   if (amount == null) return "—";
@@ -13,7 +14,9 @@ const ContractPaymentSelection = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const purpose = new URLSearchParams(location.search).get("purpose");
+  const extensionId = new URLSearchParams(location.search).get("extensionId");
   const isTerminationPayment = purpose === "termination";
+  const isExtensionPayment = purpose === "extension";
 
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,6 +24,7 @@ const ContractPaymentSelection = () => {
   const [confirmingCash, setConfirmingCash] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [cashPaymentSuccess, setCashPaymentSuccess] = useState(false);
+  const [extensionInfo, setExtensionInfo] = useState(null);
 
   useEffect(() => {
     const loadContract = async () => {
@@ -28,7 +32,7 @@ const ContractPaymentSelection = () => {
         const contractData = await rentalService.getContractById(id);
         setContract(contractData);
 
-        if (!isTerminationPayment && contractData.status === "ACTIVE") {
+        if (!isTerminationPayment && !isExtensionPayment && contractData.status === "ACTIVE") {
           navigate(`/contracts/${id}`);
           return;
         }
@@ -53,6 +57,23 @@ const ContractPaymentSelection = () => {
           }
         }
 
+        if (isExtensionPayment) {
+          if (!extensionId) {
+            throw new Error("Thiếu thông tin yêu cầu gia hạn.");
+          }
+
+          const ext = await contractExtensionService.getExtensionById(extensionId);
+          if (!ext || ext.originalContractId !== Number(id)) {
+            throw new Error("Yêu cầu gia hạn không hợp lệ.");
+          }
+
+          if (ext.status !== "APPROVED" && ext.status !== "PENDING_PAYMENT") {
+            throw new Error("Yêu cầu gia hạn không còn ở trạng thái có thể thanh toán.");
+          }
+
+          setExtensionInfo(ext);
+        }
+
         setLoading(false);
       } catch (err) {
         console.error("Error loading contract:", err);
@@ -62,10 +83,15 @@ const ContractPaymentSelection = () => {
     };
 
     loadContract();
-  }, [id, navigate, isTerminationPayment]);
+  }, [id, navigate, isTerminationPayment, isExtensionPayment, extensionId]);
 
   const handleOnlinePayment = () => {
-    navigate(`/contracts/${id}/payment/online${isTerminationPayment ? "?purpose=termination" : ""}`);
+    const query = isTerminationPayment
+      ? "?purpose=termination"
+      : isExtensionPayment
+        ? `?purpose=extension&extensionId=${extensionId}`
+        : "";
+    navigate(`/contracts/${id}/payment/online${query}`);
   };
 
   const handleCashPayment = () => {
@@ -81,8 +107,10 @@ const ContractPaymentSelection = () => {
         contractId: parseInt(id, 10),
         amount: isTerminationPayment
           ? (contract.earlyTerminationFee || 0)
-          : (contract.depositAmount || contract.monthlyPayment),
-        paymentType: isTerminationPayment ? "PENALTY" : "DEPOSIT"
+          : isExtensionPayment
+            ? ((extensionInfo?.proposedMonthlyPayment || 0) * (extensionInfo?.durationMonths || 0))
+            : (contract.depositAmount || contract.monthlyPayment),
+        paymentType: isTerminationPayment ? "PENALTY" : isExtensionPayment ? "EXTENSION" : "DEPOSIT"
       });
 
       setCashPaymentSuccess(true);
@@ -127,7 +155,9 @@ const ContractPaymentSelection = () => {
 
   const paymentAmount = isTerminationPayment
     ? (contract?.earlyTerminationFee || 0)
-    : (contract?.depositAmount || contract?.monthlyPayment || 0);
+    : isExtensionPayment
+      ? ((extensionInfo?.proposedMonthlyPayment || 0) * (extensionInfo?.durationMonths || 0))
+      : (contract?.depositAmount || contract?.monthlyPayment || 0);
 
   return (
     <div style={{ padding: "2rem", maxWidth: "700px", margin: "0 auto" }}>
@@ -274,7 +304,11 @@ const ContractPaymentSelection = () => {
               {formatCurrency(paymentAmount)}
             </div>
             <div style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "0.5rem" }}>
-              {isTerminationPayment ? "Phí kết thúc sớm" : (contract?.depositAmount ? "Tiền đặt cọc" : "Thanh toán tháng đầu")}
+              {isTerminationPayment
+                ? "Phí kết thúc sớm"
+                : isExtensionPayment
+                  ? `Phí gia hạn ${extensionInfo?.durationMonths || 0} tháng`
+                  : (contract?.depositAmount ? "Tiền đặt cọc" : "Thanh toán tháng đầu")}
             </div>
           </div>
 
