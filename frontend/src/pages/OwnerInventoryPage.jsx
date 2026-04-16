@@ -32,24 +32,26 @@ const OwnerInventoryPage = () => {
   const [warehouses,      setWarehouses]      = useState([]);
   const [selectedWh,      setSelectedWh]      = useState('');
   const [searchItem,      setSearchItem]      = useState('');
-  const [searchRenter,    setSearchRenter]    = useState('');
+  const [filterRenter,    setFilterRenter]    = useState('ALL');
+  const [stockStatus,     setStockStatus]     = useState('ALL'); // ALL, IN_STOCK, LOW_STOCK, OUT_OF_STOCK
 
-  /* Load warehouse list */
+  /* Load warehouse list — luôn fetch từ API để tránh stale cache */
   useEffect(() => {
-    const ctx  = authService.getWarehouseContext() || {};
-    const list = (ctx.warehouses || []).map(w => ({ id: String(w.warehouseId), name: w.warehouseName }));
-    if (list.length > 0) {
-      setWarehouses(list);
-      setSelectedWh(list[0].id);
-    } else {
-      getMyWarehouses()
-        .then(data => {
-          const m = (data || []).map(w => ({ id: String(w.warehouseId || w.id), name: w.name || w.warehouseName }));
-          setWarehouses(m);
-          if (m.length > 0) setSelectedWh(m[0].id);
-        })
-        .catch(() => {});
-    }
+    getMyWarehouses()
+      .then(data => {
+        const m = (data || [])
+          .filter(w => w.status === 'APPROVED' || !w.status) // chỉ lấy kho đang hoạt động
+          .map(w => ({ id: String(w.warehouseId || w.id), name: w.name || w.warehouseName }));
+        setWarehouses(m);
+        if (m.length > 0) setSelectedWh(m[0].id);
+      })
+      .catch(() => {
+        // Fallback về localStorage cache nếu API lỗi
+        const ctx  = authService.getWarehouseContext() || {};
+        const list = (ctx.warehouses || []).map(w => ({ id: String(w.warehouseId), name: w.warehouseName }));
+        setWarehouses(list);
+        if (list.length > 0) setSelectedWh(list[0].id);
+      });
   }, []);
 
   const fetchInventory = useCallback(async () => {
@@ -70,10 +72,15 @@ const OwnerInventoryPage = () => {
 
   const filtered = rows.filter(r => {
     const nameOk   = r.assetName?.toLowerCase().includes(searchItem.toLowerCase());
-    const renterOk = !searchRenter ||
-      r.renterName?.toLowerCase().includes(searchRenter.toLowerCase()) ||
-      r.renterEmail?.toLowerCase().includes(searchRenter.toLowerCase());
-    return nameOk && renterOk;
+    const renterOk = filterRenter === 'ALL' || String(r.renterId) === filterRenter;
+    
+    let stockOk = true;
+    const q = r.quantity || 0;
+    if (stockStatus === 'OUT_OF_STOCK') stockOk = q === 0;
+    else if (stockStatus === 'LOW_STOCK') stockOk = q > 0 && q <= 10;
+    else if (stockStatus === 'IN_STOCK') stockOk = q > 0;
+
+    return nameOk && renterOk && stockOk;
   });
 
   /* Stats */
@@ -81,7 +88,10 @@ const OwnerInventoryPage = () => {
   const totalQty   = filtered.reduce((s, r) => s + (r.quantity ?? 0), 0);
   const outOfStock = filtered.filter(r => r.quantity === 0).length;
 
-  const card = { background:'#fff', borderRadius:16, border:'1px solid #e2e8f0', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' };
+  // Extract unique renters from all rows (not just filtered)
+  const uniqueRenters = Array.from(new Map(rows.map(r => [r.renterId, { id: r.renterId, name: r.renterName }])).values());
+
+  const card = { background:'#fff', borderRadius:16, border:'1px solid #e2e8f0', boxShadow:'0 4px 20px rgba(0,0,0,0.03)' };
   const ACCENT = '#0ea5e9';
 
   return (
@@ -89,162 +99,199 @@ const OwnerInventoryPage = () => {
       style={{ fontFamily:'Inter, sans-serif', maxWidth:1100, margin:'0 auto', paddingBottom:48 }}>
       <style>{`
         @keyframes spin { to { transform:rotate(360deg); } }
-        .owninv-row:hover { background:#f8faff !important; }
+        .owninv-row:hover { background:#f8fafc !important; }
+        .tab-btn { padding: 8px 20px; border-radius: 99px; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; background: transparent; border: none; color: #64748b; }
+        .tab-btn:hover { background: #f1f5f9; color: #334155; }
+        .tab-btn.active { background: #0f172a; color: #fff; box-shadow: 0 4px 12px rgba(15,23,42,0.2); }
       `}</style>
 
       {/* ── Header ── */}
-      <div style={{ marginBottom:28 }}>
-        <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>
-          Tồn kho hàng thuê
-        </h1>
-        <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>
-          Toàn bộ hàng hoá của Người thuê đang lưu trong kho của bạn. Dữ liệu được cập nhật sau mỗi lần yêu cầu hoàn thành.
-        </p>
+      <div style={{ marginBottom:30, display:'flex', justifyContent:'space-between', alignItems:'flex-end' }}>
+        <div>
+          <h1 style={{ fontSize:'2rem', fontWeight:900, color:'#0f172a', margin:'0 0 6px', letterSpacing:'-0.02em' }}>
+            Tồn kho hàng thuê
+          </h1>
+          <p style={{ color:'#64748b', fontSize:'0.9rem', margin:0 }}>
+            Quản lý toàn bộ hàng hoá của Người thuê đang lưu trong các kho của bạn.
+          </p>
+        </div>
       </div>
 
-      {/* ── Warehouse Pill Tabs ── */}
+      {/* ── Stat Cards ── */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:28 }}>
+        {[
+          { icon:'group', label:'Người thuê',    val: renterSet.size,                       color:'#8b5cf6', bg:'#f5f3ff' },
+          { icon:'category', label:'Mặt hàng',   val: filtered.length,                      color:ACCENT, bg:'#f0f9ff' },
+          { icon:'inventory_2', label:'Tổng số lượng', val: totalQty.toLocaleString('vi-VN'), color:'#10b981', bg:'#f0fdf4' },
+        ].map(({icon,label,val,color,bg})=>(
+          <div key={label} style={{ ...card, padding:'20px 24px', display:'flex', alignItems:'center', gap:18 }}>
+            <div style={{ width:52, height:52, borderRadius:14, background:bg, display:'flex', alignItems:'center', justifyContent:'center', color:color, flexShrink:0 }}>
+              <span className="material-symbols-outlined" style={{ fontSize:28 }}>{icon}</span>
+            </div>
+            <div>
+              <p style={{ margin:0, fontSize:'0.8rem', color:'#64748b', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.05em' }}>{label}</p>
+              <p style={{ margin:'4px 0 0', fontSize:'1.85rem', fontWeight:900, color:'#0f172a', lineHeight:1 }}>{val}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Warehouse Selection ── */}
       {warehouses.length > 1 && (
-        <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:20 }}>
+        <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:20, background:'#fff', padding:6, borderRadius:100, border:'1px solid #e2e8f0', width:'fit-content', boxShadow:'0 2px 8px rgba(0,0,0,0.02)' }}>
           {warehouses.map(w => (
-            <button key={w.id} onClick={() => { setSelectedWh(w.id); setSearchItem(''); setSearchRenter(''); }}
-              style={{ padding:'7px 18px', borderRadius:20, border:`1.5px solid ${selectedWh===w.id?ACCENT:'#e2e8f0'}`, background:selectedWh===w.id?ACCENT:'#fff', color:selectedWh===w.id?'#fff':'#64748b', fontWeight:700, fontSize:'0.83rem', cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', gap:6 }}>
+            <button key={w.id} className={`tab-btn ${selectedWh===w.id ? 'active' : ''}`}
+              onClick={() => { setSelectedWh(w.id); setSearchItem(''); setFilterRenter('ALL'); setStockStatus('ALL'); }}>
               🏪 {w.name}
             </button>
           ))}
         </div>
       )}
 
-      {/* ── Stat Cards ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:24 }}>
-        {[
-          { emoji:'👥', label:'Người thuê',   val: renterSet.size,                       color:'#8b5cf6' },
-          { emoji:'📦', label:'Loại hàng hóa', val: filtered.length,                    color:ACCENT },
-          { emoji:'🔢', label:'Tổng số lượng', val: totalQty.toLocaleString('vi-VN'),    color:'#22c55e' },
-        ].map(({emoji,label,val,color})=>(
-          <div key={label} style={{ ...card, padding:'18px 22px', display:'flex', alignItems:'center', gap:14 }}>
-            <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.3rem', flexShrink:0 }}>{emoji}</div>
-            <div>
-              <p style={{ margin:0, fontSize:'0.75rem', color:'#64748b', fontWeight:500 }}>{label}</p>
-              <p style={{ margin:0, fontSize:'1.75rem', fontWeight:900, color:'#0f172a', lineHeight:1.1 }}>{val}</p>
+      {/* ── Main Data View ── */}
+      <div style={{ ...card, padding:0, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        
+        {/* ── Filter Toolbar ── */}
+        <div style={{ padding:'16px 20px', borderBottom:'1px solid #f1f5f9', background:'#fafbcc', display:'flex', gap:16, flexWrap:'wrap', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', gap:12, flexWrap:'wrap', flex:1 }}>
+            
+            {/* Search item */}
+            <div style={{ position:'relative', flex:'1 1 200px', maxWidth:280 }}>
+              <span className="material-symbols-outlined" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize:20 }}>search</span>
+              <input value={searchItem} onChange={e=>setSearchItem(e.target.value)} placeholder="Tìm tên hàng hóa..."
+                style={{ width:'100%', boxSizing:'border-box', padding:'10px 12px 10px 38px', borderRadius:8, border:'1px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s', background:'#fff' }}
+                onFocus={e=>e.target.style.borderColor=ACCENT} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
             </div>
-          </div>
-        ))}
-      </div>
+            
+            {/* Renter Filter */}
+            <div style={{ flexShrink:0 }}>
+              <select value={filterRenter} onChange={e=>setFilterRenter(e.target.value)}
+                style={{ width:'100%', minWidth:200, padding:'10px 36px 10px 14px', borderRadius:8, border:'1px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', background:'#fff', fontWeight:600, color:'#334155', cursor:'pointer', appearance:'none', backgroundImage:'url("data:image/svg+xml;utf8,<svg fill=%27none%27 viewBox=%270 0 24 24%27 stroke=%27%2364748b%27 xmlns=%27http://www.w3.org/2000/svg%27><path stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27M19 9l-7 7-7-7%27></path></svg>")', backgroundRepeat:'no-repeat', backgroundPosition:'right 12px center', backgroundSize:'16px' }}>
+                <option value="ALL">Tất cả người thuê</option>
+                {uniqueRenters.map(r => <option key={r.id} value={String(r.id)}>{r.name}</option>)}
+              </select>
+            </div>
 
-      {/* ── Search Bar ── */}
-      <div style={{ display:'flex', gap:12, flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-        <div style={{ display:'flex', gap:10, flexWrap:'wrap', flex:1 }}>
-          {/* Search item */}
-          <div style={{ position:'relative', flex:'1 1 200px', maxWidth:280 }}>
-            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}>📦</span>
-            <input value={searchItem} onChange={e=>setSearchItem(e.target.value)} placeholder="Tìm theo tên hàng..."
-              style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px 9px 32px', borderRadius:10, border:'1.5px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s' }}
-              onFocus={e=>e.target.style.borderColor=ACCENT} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
+            {/* Stock Status Filter */}
+            <div style={{ flexShrink:0 }}>
+              <select value={stockStatus} onChange={e=>setStockStatus(e.target.value)}
+                style={{ padding:'10px 36px 10px 14px', borderRadius:8, border:'1px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', background:'#fff', fontWeight:600, color:'#334155', cursor:'pointer', appearance:'none', backgroundImage:'url("data:image/svg+xml;utf8,<svg fill=%27none%27 viewBox=%270 0 24 24%27 stroke=%27%2364748b%27 xmlns=%27http://www.w3.org/2000/svg%27><path stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27M19 9l-7 7-7-7%27></path></svg>")', backgroundRepeat:'no-repeat', backgroundPosition:'right 12px center', backgroundSize:'16px' }}>
+                <option value="ALL">Tất cả tình trạng</option>
+                <option value="IN_STOCK">Còn hàng ({rows.filter(r=>r.quantity>0).length})</option>
+                <option value="LOW_STOCK">Sắp hết ({rows.filter(r=>r.quantity>0 && r.quantity<=10).length})</option>
+                <option value="OUT_OF_STOCK">Hết hàng ({rows.filter(r=>r.quantity===0).length})</option>
+              </select>
+            </div>
+
           </div>
-          {/* Search renter */}
-          <div style={{ position:'relative', flex:'1 1 200px', maxWidth:280 }}>
-            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}>👤</span>
-            <input value={searchRenter} onChange={e=>setSearchRenter(e.target.value)} placeholder="Tìm theo người thuê..."
-              style={{ width:'100%', boxSizing:'border-box', padding:'9px 12px 9px 32px', borderRadius:10, border:'1.5px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s' }}
-              onFocus={e=>e.target.style.borderColor=ACCENT} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
-          </div>
+
+          <button onClick={fetchInventory}
+            style={{ padding:'10px 16px', borderRadius:8, border:'1px solid #e2e8f0', background:'#fff', cursor:'pointer', color:'#475569', fontSize:'0.875rem', fontWeight:600, display:'flex', alignItems:'center', gap:6, transition:'all 0.15s', flexShrink:0 }}
+            onMouseEnter={e=>{e.currentTarget.style.background='#f8fafc';}}
+            onMouseLeave={e=>{e.currentTarget.style.background='#fff';}}>
+            <span className="material-symbols-outlined" style={{ fontSize:18 }}>refresh</span>
+            Làm mới
+          </button>
         </div>
-        <button onClick={fetchInventory}
-          style={{ padding:'9px 16px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', color:'#64748b', fontSize:'0.83rem', fontWeight:600, display:'flex', alignItems:'center', gap:5, transition:'all 0.15s', flexShrink:0 }}
-          onMouseEnter={e=>{e.currentTarget.style.background='#f1f5f9';e.currentTarget.style.borderColor='#cbd5e1';}}
-          onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.borderColor='#e2e8f0';}}>
-          🔄 Làm mới
-        </button>
-      </div>
 
-      {/* ── Table ── */}
-      <div style={card}>
-        {!selectedWh ? (
-          <div style={{ padding:64, textAlign:'center', color:'#94a3b8' }}>
-            <div style={{ fontSize:'3rem', marginBottom:10 }}>🏪</div>
-            <div style={{ fontWeight:600 }}>Vui lòng chọn kho để xem tồn kho.</div>
-          </div>
-        ) : loading ? (
-          <div style={{ padding:64, textAlign:'center', color:'#94a3b8' }}>
-            <div style={{ fontSize:'2rem', marginBottom:10, animation:'spin 1.2s linear infinite', display:'inline-block' }}>⏳</div>
-            <div style={{ fontWeight:500 }}>Đang tải dữ liệu...</div>
-          </div>
-        ) : error ? (
-          <div style={{ padding:64, textAlign:'center' }}>
-            <div style={{ fontSize:'2.5rem', marginBottom:10 }}>⚠️</div>
-            <p style={{ fontWeight:600, color:'#dc2626', margin:'0 0 12px' }}>{error}</p>
-            <button onClick={fetchInventory}
-              style={{ padding:'9px 22px', borderRadius:10, border:'none', background:'#dc2626', color:'#fff', fontWeight:700, cursor:'pointer' }}>
-              Thử lại
-            </button>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ padding:72, textAlign:'center' }}>
-            <div style={{ fontSize:'3rem', marginBottom:12 }}>📦</div>
-            <p style={{ fontWeight:700, color:'#0f172a', margin:'0 0 6px', fontSize:'1rem' }}>Chưa có hàng hoá nào</p>
-            <p style={{ color:'#94a3b8', fontSize:'0.87rem', margin:0 }}>
-              Kho chưa có hàng hoá hoặc chưa có yêu cầu nào được hoàn thành.
-            </p>
-          </div>
-        ) : (
-          <>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead>
-                <tr style={{ background:'#f8fafc' }}>
-                  {[['Hàng hóa','auto'],['Đơn vị','100px'],['Người thuê','220px'],['Số lượng','140px','center'],['Cập nhật','140px']].map(([h,w,align])=>(
-                    <th key={h} style={{ padding:'11px 16px', textAlign:align||'left', fontSize:'0.68rem', fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', textTransform:'uppercase', width:w }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((row, i) => (
-                  <tr key={row.inventoryId||i} className="owninv-row"
-                    style={{ borderBottom:'1px solid #f1f5f9', background: row.quantity===0 ? '#fff7f7' : 'transparent', transition:'background 0.15s' }}>
-                    {/* Hàng hóa */}
-                    <td style={{ padding:'13px 16px' }}>
-                      <div style={{ fontWeight:700, color:'#0f172a', fontSize:'0.9rem' }}>{row.assetName}</div>
-                      {row.description && <div style={{ fontSize:'0.72rem', color:'#94a3b8', marginTop:2 }}>{row.description}</div>}
-                    </td>
-                    {/* Đơn vị */}
-                    <td style={{ padding:'13px 16px' }}>
-                      <span style={{ background:'#f1f5f9', borderRadius:6, padding:'3px 10px', fontSize:'0.78rem', fontWeight:600, color:'#475569' }}>{row.unit||'—'}</span>
-                      {row.weightPerUnit && <div style={{ fontSize:'0.7rem', color:'#94a3b8', marginTop:3 }}>{row.weightPerUnit} kg/đv</div>}
-                    </td>
-                    {/* Người thuê */}
-                    <td style={{ padding:'13px 16px' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                        <div style={{ width:32, height:32, borderRadius:'50%', background:'#ede9fe', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:'0.9rem' }}>👤</div>
-                        <div>
-                          <div style={{ fontSize:'0.85rem', fontWeight:600, color:'#1e293b' }}>{row.renterName}</div>
-                          <div style={{ fontSize:'0.72rem', color:'#94a3b8' }}>{row.renterEmail}</div>
-                        </div>
-                      </div>
-                    </td>
-                    {/* Số lượng */}
-                    <td style={{ padding:'13px 16px', textAlign:'center' }}>
-                      <QtyBadge qty={row.quantity ?? 0}/>
-                    </td>
-                    {/* Cập nhật */}
-                    <td style={{ padding:'13px 16px', fontSize:'0.78rem', color:'#94a3b8' }}>{fmtDT(row.updatedAt)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Footer */}
-            <div style={{ padding:'10px 16px', borderTop:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-              <span style={{ fontSize:'0.78rem', color:'#94a3b8' }}>
-                <strong style={{ color:'#64748b' }}>{filtered.length}</strong> loại hàng · <strong style={{ color:'#64748b' }}>{renterSet.size}</strong> người thuê · tổng <strong style={{ color:'#64748b' }}>{totalQty.toLocaleString('vi-VN')}</strong> hàng
-              </span>
-              {outOfStock > 0 && (
-                <span style={{ fontSize:'0.75rem', color:'#dc2626', fontWeight:600 }}>⚠ {outOfStock} loại hết hàng</span>
-              )}
+        {/* ── Table Area ── */}
+        <div style={{ minHeight:300 }}>
+          {!selectedWh ? (
+            <div style={{ padding:80, textAlign:'center', color:'#94a3b8' }}>
+              <span className="material-symbols-outlined" style={{ fontSize:48, marginBottom:16, color:'#cbd5e1' }}>store</span>
+              <div style={{ fontWeight:600, fontSize:'1.1rem', color:'#475569' }}>Vui lòng chọn kho để xem tồn kho.</div>
             </div>
-          </>
+          ) : loading ? (
+            <div style={{ padding:80, textAlign:'center', color:'#94a3b8' }}>
+              <span className="material-symbols-outlined" style={{ fontSize:40, marginBottom:16, animation:'spin 1s linear infinite', color:ACCENT }}>sync</span>
+              <div style={{ fontWeight:500 }}>Đang tải dữ liệu...</div>
+            </div>
+          ) : error ? (
+            <div style={{ padding:80, textAlign:'center' }}>
+              <span className="material-symbols-outlined" style={{ fontSize:48, marginBottom:16, color:'#ef4444' }}>error</span>
+              <p style={{ fontWeight:600, color:'#dc2626', margin:'0 0 16px' }}>{error}</p>
+              <button onClick={fetchInventory}
+                style={{ padding:'10px 24px', borderRadius:8, border:'none', background:'#ef4444', color:'#fff', fontWeight:700, cursor:'pointer' }}>
+                Thử lại
+              </button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding:80, textAlign:'center' }}>
+              <span className="material-symbols-outlined" style={{ fontSize:64, marginBottom:16, color:'#e2e8f0' }}>inventory_2</span>
+              <p style={{ fontWeight:700, color:'#334155', margin:'0 0 8px', fontSize:'1.1rem' }}>Không tìm thấy hàng hoá nào</p>
+              <p style={{ color:'#94a3b8', fontSize:'0.9rem', margin:0 }}>
+                Bạn có thể thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX:'auto' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead>
+                  <tr style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0' }}>
+                    {[['Hàng hóa','auto'],['Đơn vị','100px'],['Người thuê','240px'],['Số lượng','140px','center'],['Cập nhật','140px']].map(([h,w,align])=>(
+                      <th key={h} style={{ padding:'14px 20px', textAlign:align||'left', fontSize:'0.75rem', fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.05em', width:w }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((row, i) => (
+                    <tr key={row.inventoryId||i} className="owninv-row"
+                      style={{ borderBottom:'1px solid #f1f5f9', background: row.quantity===0 ? '#fffafa' : '#fff', transition:'background 0.15s' }}>
+                      {/* Hàng hóa */}
+                      <td style={{ padding:'16px 20px' }}>
+                        <div style={{ fontWeight:700, color:'#0f172a', fontSize:'0.95rem' }}>{row.assetName}</div>
+                        {row.description && <div style={{ fontSize:'0.75rem', color:'#64748b', marginTop:4 }}>{row.description}</div>}
+                      </td>
+                      {/* Đơn vị */}
+                      <td style={{ padding:'16px 20px' }}>
+                        <span style={{ background:'#f1f5f9', borderRadius:6, padding:'4px 10px', fontSize:'0.8rem', fontWeight:600, color:'#334155' }}>
+                          {row.unit||'—'}
+                        </span>
+                        {row.weightPerUnit && <div style={{ fontSize:'0.72rem', color:'#94a3b8', marginTop:6 }}>{row.weightPerUnit} kg/đv</div>}
+                      </td>
+                      {/* Người thuê */}
+                      <td style={{ padding:'16px 20px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                          <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(row.renterName||'R')}&background=e2e8f0&color=475569`} alt="" style={{ width:36, height:36, borderRadius:'50%' }} />
+                          <div>
+                            <div style={{ fontSize:'0.875rem', fontWeight:700, color:'#1e293b' }}>{row.renterName}</div>
+                            <div style={{ fontSize:'0.75rem', color:'#64748b' }}>{row.renterEmail}</div>
+                          </div>
+                        </div>
+                      </td>
+                      {/* Số lượng */}
+                      <td style={{ padding:'16px 20px', textAlign:'center' }}>
+                        <QtyBadge qty={row.quantity ?? 0}/>
+                      </td>
+                      {/* Cập nhật */}
+                      <td style={{ padding:'16px 20px', fontSize:'0.8rem', color:'#64748b' }}>{fmtDT(row.updatedAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* ── Table Footer ── */}
+        {!loading && !error && filtered.length > 0 && (
+          <div style={{ padding:'14px 20px', borderTop:'1px solid #f1f5f9', background:'#fafbcc', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+            <span style={{ fontSize:'0.8rem', color:'#64748b' }}>
+              Hiển thị <strong style={{ color:'#0f172a' }}>{filtered.length}</strong> hàng hoá
+            </span>
+            {outOfStock > 0 && stockStatus !== 'OUT_OF_STOCK' && (
+              <span style={{ fontSize:'0.8rem', color:'#dc2626', fontWeight:600, display:'flex', alignItems:'center', gap:4 }}>
+                <span className="material-symbols-outlined" style={{ fontSize:16 }}>warning</span>
+                Có {outOfStock} loại mặt hàng đã hết
+              </span>
+            )}
+          </div>
         )}
       </div>
+
     </div>
   );
 };
 
 export default OwnerInventoryPage;
+

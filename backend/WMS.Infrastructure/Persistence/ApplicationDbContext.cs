@@ -405,6 +405,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Unit).HasMaxLength(50).HasColumnName("unit");
             entity.Property(e => e.Weight).HasColumnType("decimal(10, 2)").HasColumnName("weight");
             entity.Property(e => e.AssetId).HasColumnName("asset_id").IsRequired(false);
+            // Verify fields (added via patchSql, mapped manually)
+            entity.Property(e => e.VerifiedQuantity).HasColumnName("verified_quantity").IsRequired(false);
+            entity.Property(e => e.VerifyNote).HasMaxLength(500).HasColumnName("verify_note").IsRequired(false);
             entity.HasOne(d => d.InvReq).WithMany(p => p.InventoryItems).HasForeignKey(d => d.InvReqId).HasConstraintName("FK_inventory_items_request");
             entity.HasOne(d => d.Asset).WithMany(p => p.InventoryItems).HasForeignKey(d => d.AssetId)
                 .IsRequired(false).OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_inventory_items_asset");

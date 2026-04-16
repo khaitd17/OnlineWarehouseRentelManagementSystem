@@ -26,8 +26,13 @@ public class GetAuditSessionsHandler : IRequestHandler<GetAuditSessionsQuery, Ap
             .AsQueryable();
 
         // Role-based filtering
+        // OnlyAssignedToMe=true luôn lọc theo assignedTo (dùng cho trang Staff — bất kể user có thêm role OPERATOR/MANAGER ở kho khác)
         var role = request.UserRole?.ToUpper() ?? "";
-        if (role == "STAFF" && request.UserId.HasValue)
+        if (request.OnlyAssignedToMe && request.UserId.HasValue)
+        {
+            query = query.Where(a => a.AssignedTo == request.UserId.Value);
+        }
+        else if (role == "STAFF" && request.UserId.HasValue)
         {
             // STAFF chỉ thấy phiên được giao
             query = query.Where(a => a.AssignedTo == request.UserId.Value);

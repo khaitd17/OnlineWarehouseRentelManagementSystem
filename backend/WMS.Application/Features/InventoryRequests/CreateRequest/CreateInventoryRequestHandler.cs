@@ -143,7 +143,7 @@ public class CreateInventoryRequestHandler
         var created = await _repo.CreateAsync(request, cancellationToken);
 
         // Tự động tạo WarehouseTask + UnitTasks phản chiếu luồng nghiệp vụ
-        var taskScheduledAt = cmd.ScheduledDate ?? created.CreatedAt ?? DateTime.UtcNow;
+        var taskScheduledAt = cmd.ScheduledDate ?? created.CreatedAt ?? DateTime.Now;
         await _taskRepo.CreateWorkflowTaskAsync(
             cmd.Type.ToUpper(),
             created.InvReqId,

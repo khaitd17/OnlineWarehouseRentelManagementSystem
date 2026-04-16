@@ -127,8 +127,6 @@ public class ConfirmInventoryRequestHandler
 
         // 5. Update request status to COMPLETED
         req.Status      = "COMPLETED";
-        req.ConfirmedBy = cmd.StaffId;
-        req.ConfirmedAt = DateTime.Now;
         req.UpdatedAt   = DateTime.Now;
         await _repo.UpdateAsync(req, cancellationToken);
 

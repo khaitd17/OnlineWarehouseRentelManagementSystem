@@ -26,9 +26,9 @@ public class AuthController : ControllerBase
 
     public AuthController(IMediator mediator, ApplicationDbContext db, IMemoryCache cache, IEmailService emailService)
     {
-        _mediator     = mediator;
-        _db           = db;
-        _cache        = cache;
+        _mediator = mediator;
+        _db = db;
+        _cache = cache;
         _emailService = emailService;
     }
 
@@ -51,9 +51,9 @@ public class AuthController : ControllerBase
         var cacheKey = $"otp:register:{req.Email.ToLower()}";
         _cache.Set(cacheKey, new OtpRegisterPayload
         {
-            Otp      = otp,
+            Otp = otp,
             FullName = req.FullName,
-            Phone    = req.Phone,
+            Phone = req.Phone,
             Password = req.Password,
             RoleName = req.RoleName ?? "USER"
         }, TimeSpan.FromMinutes(10));
@@ -156,7 +156,7 @@ public class AuthController : ControllerBase
             var activeRenterWarehouseIds = activeContracts.Select(c => c.WarehouseId).ToHashSet();
 
             // Lọc ra các membership RENTER nhưng không còn hợp đồng active
-            var filteredMemberships = memberships.Where(m => 
+            var filteredMemberships = memberships.Where(m =>
                 (m.Role?.Code ?? "").ToUpper() != "RENTER" || activeRenterWarehouseIds.Contains(m.WarehouseId)
             ).ToList();
 
@@ -193,12 +193,12 @@ public class AuthController : ControllerBase
 
                     return new WarehouseContextItem
                     {
-                        warehouseId   = best.WarehouseId,
+                        warehouseId = best.WarehouseId,
                         warehouseName = best.Warehouse?.Name ?? "",
-                        role          = best.Role?.Code ?? "",   // role cao nhất — dùng để hiển thị label
-                        roles         = allRoleCodes,             // tất cả role — dùng để kiểm tra quyền
-                        skills        = mergedSkills,             // skills gộp từ tất cả memberships
-                        isAllSkill    = mergedIsAllSkill,
+                        role = best.Role?.Code ?? "",   // role cao nhất — dùng để hiển thị label
+                        roles = allRoleCodes,             // tất cả role — dùng để kiểm tra quyền
+                        skills = mergedSkills,             // skills gộp từ tất cả memberships
+                        isAllSkill = mergedIsAllSkill,
                     };
                 }).ToList();
 
@@ -208,20 +208,20 @@ public class AuthController : ControllerBase
                 {
                     warehouseItems.Add(new WarehouseContextItem
                     {
-                        warehouseId   = contract.WarehouseId,
+                        warehouseId = contract.WarehouseId,
                         warehouseName = contract.Warehouse?.Name ?? "",
-                        role          = "RENTER",
-                        roles         = new List<string> { "RENTER" },
-                        skills        = new List<string>(),
-                        isAllSkill    = false
+                        role = "RENTER",
+                        roles = new List<string> { "RENTER" },
+                        skills = new List<string>(),
+                        isAllSkill = false
                     });
                 }
             }
 
             var context = new
             {
-                userId     = user.UserId,
-                name       = user.FullName,
+                userId = user.UserId,
+                name = user.FullName,
                 systemRole = user.Role?.RoleName?.ToLower() ?? "user",
                 warehouses = warehouseItems
             };
@@ -278,13 +278,13 @@ public class AuthController : ControllerBase
 
             user = new WMS.Domain.Entities.User
             {
-                Email        = req.Email,
-                FullName     = req.FullName ?? req.Email,
+                Email = req.Email,
+                FullName = req.FullName ?? req.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()), // random pass
-                RoleId       = userRole.RoleId,
-                Status       = "ACTIVE",
-                AvatarUrl    = req.AvatarUrl,
-                CreatedAt    = DateTime.UtcNow
+                RoleId = userRole.RoleId,
+                Status = "ACTIVE",
+                AvatarUrl = req.AvatarUrl,
+                CreatedAt = DateTime.UtcNow
             };
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
@@ -309,11 +309,11 @@ public class AuthController : ControllerBase
 
         return Ok(new
         {
-            userId   = user.UserId,
+            userId = user.UserId,
             fullName = user.FullName,
-            email    = user.Email,
-            role     = roleName,
-            token    = token,
+            email = user.Email,
+            role = roleName,
+            token = token,
             avatarUrl = user.AvatarUrl
         });
     }
@@ -331,9 +331,9 @@ public record RegisterVerifyOtpRequest(string Email, string Otp);
 // OTP payload stored in cache
 public class OtpRegisterPayload
 {
-    public string Otp      { get; set; } = "";
+    public string Otp { get; set; } = "";
     public string FullName { get; set; } = "";
-    public string? Phone   { get; set; }
+    public string? Phone { get; set; }
     public string Password { get; set; } = "";
     public string RoleName { get; set; } = "USER";
 }
@@ -348,4 +348,3 @@ public class WarehouseContextItem
     public List<string> skills { get; set; } = new();
     public bool isAllSkill { get; set; }
 }
-

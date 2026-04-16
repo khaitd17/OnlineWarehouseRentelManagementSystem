@@ -999,6 +999,27 @@ namespace WMS.Infrastructure.Persistence
 
             // Seed tài sản và tồn kho demo cho Renter
             SeedRenterInventory(context);
+
+            // ══════════════════════════════════════════════════
+            // 13. SUBSCRIPTION CHO OWNER — gói Premium đang active
+            // ══════════════════════════════════════════════════
+            var ownerSub = context.Subscriptions
+                .FirstOrDefault(s => s.UserId == ownerUser.UserId && s.Status == SubscriptionStatus.Active);
+            if (ownerSub == null)
+            {
+                var subStart = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                var subEnd   = subStart.AddMonths(12); // gia hạn sẵn 1 năm (Premium)
+                context.Subscriptions.Add(new Subscription
+                {
+                    UserId               = ownerUser.UserId,
+                    Plan                 = "Premium",
+                    Status               = SubscriptionStatus.Active,
+                    StartDate            = subStart,
+                    EndDate              = subEnd,
+                    TransactionReference = "SEED-OWNER-PREMIUM-2026",
+                });
+                context.SaveChanges();
+            }
         }
 
         // ──────────── Helper Methods ────────────

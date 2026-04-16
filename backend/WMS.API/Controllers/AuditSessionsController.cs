@@ -110,16 +110,43 @@ public class AuditSessionsController : ControllerBase
         int userId = GetCurrentUserId();
         query.UserId = userId;
 
-        // [PERMISSION FIX] Lấy warehouse role từ membership (không dùng JWT system role)
+        // Xác định UserRole để lọc danh sách theo quyền.
         if (query.WarehouseId.HasValue)
         {
+            // Có filter kho cụ thể → lấy role trong kho đó
             var membership = await _membershipRepo.GetCallerMembershipAsync(
                 userId, query.WarehouseId.Value, HttpContext.RequestAborted);
             query.UserRole = membership?.RoleCode ?? "";
         }
         else
         {
-            query.UserRole = "";
+            // Không filter kho → xác định effective role tổng hợp
+            // để STAFF chỉ thấy phiên được giao cho họ, OWNER thấy phiên của kho mình.
+            var isWarehouseOwner = await _db.Warehouses
+                .AnyAsync(w => w.OwnerId == userId, HttpContext.RequestAborted);
+
+            if (isWarehouseOwner)
+            {
+                query.UserRole = "OWNER";
+            }
+            else
+            {
+                var roleCodes = await _db.WarehouseMemberships
+                    .Include(m => m.Role)
+                    .Where(m => m.UserId == userId && m.IsActive)
+                    .Select(m => m.Role.Code)
+                    .Distinct()
+                    .ToListAsync(HttpContext.RequestAborted);
+
+                if (roleCodes.Any(r => r == "OPERATOR" || r == "MANAGER"))
+                    query.UserRole = "";        // OPERATOR/MANAGER thấy toàn bộ (có thể filter thêm bằng warehouseId)
+                else if (roleCodes.Any(r => r == "STAFF"))
+                    query.UserRole = "STAFF";   // STAFF chỉ thấy phiên được giao
+                else if (roleCodes.Any(r => r == "RENTER"))
+                    query.UserRole = "RENTER";  // RENTER chỉ thấy phiên mình tạo
+                else
+                    query.UserRole = "";
+            }
         }
 
         var result = await _mediator.Send(query);
@@ -345,10 +372,16 @@ public class AuditSessionsController : ControllerBase
         return int.Parse(sub ?? throw new UnauthorizedAccessException("Không xác định được người dùng."));
     }
 
-    // Chỉ OPERATOR của kho mới được thực hiện các thao tác quản trị phiên kiểm kê.
-    // OPERATOR là đại diện vận hành toàn quyền — OWNER không can thiệp vận hành kho.
+    // Chủ kho (OwnerId) hoặc Điều phối viên (OPERATOR) đều được thực hiện
+    // các thao tác quản trị phiên kiểm kê: duyệt, từ chối, đóng phiên.
     private async Task<bool> IsOwnerOrOperatorOfWarehouseAsync(int userId, int warehouseId)
-        => await _membershipRepo.HasRoleAsync(userId, warehouseId, "OPERATOR", HttpContext.RequestAborted);
+    {
+        bool isOperator = await _membershipRepo.HasRoleAsync(userId, warehouseId, "OPERATOR", HttpContext.RequestAborted);
+        if (isOperator) return true;
+
+        return await _db.Warehouses
+            .AnyAsync(w => w.WarehouseId == warehouseId && w.OwnerId == userId, HttpContext.RequestAborted);
+    }
 }
 
 // ---- Request DTOs ----

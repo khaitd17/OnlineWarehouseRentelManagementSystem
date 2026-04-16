@@ -21,6 +21,9 @@ const fmtD        = d => `${fmt2(d.getDate())}/${fmt2(d.getMonth() + 1)}`;
 const isoKey      = d => `${d.getFullYear()}-${fmt2(d.getMonth()+1)}-${fmt2(d.getDate())}`;
 const todayKey    = isoKey(new Date());
 const emptyShift  = () => ({ in1:"", out1:"", type:"", ot:0 });
+// Derive API origin from axiosClient (không hardcode port — an toàn khi đổi cổng/deploy)
+const API_ORIGIN = axiosClient.defaults.baseURL?.replace(/\/api.*$/, '') ?? '';
+const photoUrl = (path) => !path ? null : path.startsWith('http') ? path : `${API_ORIGIN}${path}`;
 
 const fmtTime = iso => {
   if (!iso) return null;
@@ -60,8 +63,6 @@ function AttendanceStrip({ slot }) {
 
 // ── AttendanceDetailModal: click vao strip nho de xem chi tiet
 function AttendanceDetailModal({ staffName, dateKey, slot, onClose }) {
-  const [showInPhoto,  setShowInPhoto]  = useState(false);
-  const [showOutPhoto, setShowOutPhoto] = useState(false);
   if (!slot) return null;
 
   const overlay = {
@@ -91,15 +92,9 @@ function AttendanceDetailModal({ staffName, dateKey, slot, onClose }) {
               <div style={{ width:8, height:8, borderRadius:"50%", background:"#16a34a" }} />
               <span style={{ fontWeight:700, fontSize:"0.82rem" }}>Giờ vào:</span>
               <span style={{ fontSize:"0.83rem" }}>{fmtDT(slot.checkInAt)}</span>
-              {slot.checkInPhoto && (
-                <span style={{ fontSize:"0.72rem", color:"#3b82f6", cursor:"pointer", textDecoration:"underline" }}
-                  onClick={() => setShowInPhoto(x => !x)}>
-                  {showInPhoto ? "Ẩn" : "Xem ảnh"}
-                </span>
-              )}
             </div>
-            {showInPhoto && slot.checkInPhoto && (
-              <img src={slot.checkInPhoto} alt="check-in" style={{ marginTop:6, maxWidth:"100%", borderRadius:6, maxHeight:160 }} />
+            {slot.checkInPhoto && (
+              <img src={photoUrl(slot.checkInPhoto)} alt="check-in" style={{ marginTop:6, maxWidth:"100%", borderRadius:6, maxHeight:180 }} />
             )}
           </div>
         ) : (
@@ -116,15 +111,9 @@ function AttendanceDetailModal({ staffName, dateKey, slot, onClose }) {
                 <span style={{ fontSize:"0.7rem", background:"#fef3c7", color:"#92400e",
                   borderRadius:4, padding:"1px 6px", fontWeight:700 }}>Về sớm</span>
               )}
-              {slot.checkOutPhoto && (
-                <span style={{ fontSize:"0.72rem", color:"#3b82f6", cursor:"pointer", textDecoration:"underline" }}
-                  onClick={() => setShowOutPhoto(x => !x)}>
-                  {showOutPhoto ? "Ẩn" : "Xem ảnh"}
-                </span>
-              )}
             </div>
-            {showOutPhoto && slot.checkOutPhoto && (
-              <img src={slot.checkOutPhoto} alt="check-out" style={{ marginTop:6, maxWidth:"100%", borderRadius:6, maxHeight:160 }} />
+            {slot.checkOutPhoto && (
+              <img src={photoUrl(slot.checkOutPhoto)} alt="check-out" style={{ marginTop:6, maxWidth:"100%", borderRadius:6, maxHeight:180 }} />
             )}
           </div>
         ) : (
@@ -141,7 +130,7 @@ function AttendanceDetailModal({ staffName, dateKey, slot, onClose }) {
 }
 
 // ── DayCell with preset popover + OT input + attendance strip
-function DayCell({ shift, slotData, onChange, presets }) {
+function DayCell({ shift, slotData, onChange, presets, isPast, isDirty }) {
   const [open,      setOpen]      = useState(false);
   const [showDetail, setDetail]   = useState(false);
   const ref = useRef(null);
@@ -163,9 +152,13 @@ function DayCell({ shift, slotData, onChange, presets }) {
 
   return (
     <td style={{ border:"1px solid #e2e8f0", verticalAlign:"top", minWidth:84,
-                 background: ts ? ts.bg : "#fff", padding:"2px 3px", position:"relative" }}>
-      {/* Main cell click opens popover */}
-      <div onClick={() => setOpen(o => !o)} style={{ cursor:"pointer", minHeight:28 }}>
+                 background: ts ? ts.bg : isPast ? "#f8fafc" : isDirty ? "#fffbeb" : "#fff",
+                 padding:"2px 3px", position:"relative",
+                 opacity: isPast ? 0.7 : 1,
+                 borderTop: isDirty && !isPast ? "2px solid #f59e0b" : undefined }}>
+      {/* Main cell click opens popover — disabled for past days */}
+      <div onClick={() => !isPast && setOpen(o => !o)}
+           style={{ cursor: isPast ? "default" : "pointer", minHeight:28 }}>
         {ts ? (
           <div style={{ textAlign:"center", fontWeight:700, fontSize:9, color:ts.color, padding:"4px 0" }}>
             {ts.label}
@@ -403,6 +396,7 @@ export default function ShiftSchedulingPage() {
   const [staffList,    setStaffList]    = useState([]);
   const [slotMap,      setSlotMap]      = useState({});   // { membershipId: { dateKey: slot } }
   const [shifts,       setShifts]       = useState({});   // edit state
+  const [origShifts,   setOrigShifts]   = useState({});   // snapshot from server for dirty check
   const [presets,      setPresets]      = useState([]);
   const [loading,      setLoading]      = useState(false);
   const [search,       setSearch]       = useState("");
@@ -464,6 +458,7 @@ export default function ShiftSchedulingPage() {
           });
         });
         setShifts(ns);
+        setOrigShifts(JSON.parse(JSON.stringify(ns))); // snapshot gốc để so sánh dirty
         setSlotMap(sm);
       })
       .catch(console.error)
@@ -472,9 +467,17 @@ export default function ShiftSchedulingPage() {
 
   useEffect(() => { if (warehouseId && days.length > 0) loadSchedule(warehouseId, days); }, [warehouseId, days]);
 
-  const getShift = (id, k) => shifts[id]?.[k] || emptyShift();
-  const setShift = (id, k, v) => setShifts(p => ({ ...p, [id]:{ ...p[id], [k]:v } }));
-  const reload   = () => loadSchedule(warehouseId, days);
+  const getShift     = (id, k) => shifts[id]?.[k] || emptyShift();
+  const setShift     = (id, k, v) => setShifts(p => ({ ...p, [id]:{ ...p[id], [k]:v } }));
+  const reload       = () => loadSchedule(warehouseId, days);
+  // So sánh shift hiện tại với snapshot gốc — true = chưa lưu
+  const isShiftDirty = (id, k) => {
+    const c = shifts[id]?.[k];
+    const o = origShifts[id]?.[k];
+    if (!c && !o) return false;
+    if (!o) return !!(c?.in1 || c?.out1 || c?.type);
+    return c.in1 !== o.in1 || c.out1 !== o.out1 || c.type !== o.type || (c.ot||0) !== (o.ot||0);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -483,7 +486,8 @@ export default function ShiftSchedulingPage() {
       const payload = [];
       staffList.forEach(s => {
         Object.entries(shifts[s.membershipId] || {}).forEach(([date, sh]) => {
-          if (!keys.has(date)) return;
+          // Bỏ qua ngày ngoài view, ngày đã qua (đã disable edit ở UI)
+          if (!keys.has(date) || date < todayKey) return;
           payload.push({
             membershipId: s.membershipId, shiftDate: date,
             timeIn1: sh.in1||null, timeOut1: sh.out1||null,
@@ -516,9 +520,9 @@ export default function ShiftSchedulingPage() {
   };
 
   const openGenModal = () => {
-    const today = new Date();
-    setGenFrom(isoKey(today));
-    setGenTo(isoKey(addDays(today, 6)));
+    const nextMon = addDays(new Date(), ((8 - new Date().getDay()) % 7) || 7);
+    setGenFrom(isoKey(nextMon));
+    setGenTo(isoKey(addDays(nextMon, 6)));
     setGenModal(true);
   };
 
@@ -661,11 +665,13 @@ export default function ShiftSchedulingPage() {
                       <span style={{ fontSize:8, padding:"1px 5px", borderRadius:8, fontWeight:700, background:roleCol.bg, color:roleCol.color }}>{s.roleCode}</span>
                     </td>
                     {days.map(d => (
-                      <DayCell
+                    <DayCell
                         key={d.key}
                         shift={getShift(s.membershipId, d.key)}
                         slotData={slotMap[s.membershipId]?.[d.key] || null}
                         presets={presets}
+                        isPast={d.key < todayKey}
+                        isDirty={isShiftDirty(s.membershipId, d.key)}
                         onChange={v => setShift(s.membershipId, d.key, v)}
                       />
                     ))}
@@ -686,10 +692,26 @@ export default function ShiftSchedulingPage() {
             <div style={{ fontSize:10, color:"#64748b", marginBottom:10 }}>Tạo lịch tự động cho nhân viên đã được gán loại ca.</div>
 
             <div style={{ display:"flex", gap:6, marginBottom:12 }}>
-              <button onClick={() => { const n=addDays(new Date(),((8-new Date().getDay())%7)||7); setGenFrom(isoKey(n)); setGenTo(isoKey(addDays(n,6))); }}
-                style={{ flex:1, padding:"6px", borderRadius:5, border:"1px solid #e2e8f0", fontSize:10, cursor:"pointer", background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Tuan sau</button>
-              <button onClick={() => { const n=addDays(new Date(),((8-new Date().getDay())%7)||7); setGenFrom(isoKey(n)); setGenTo(isoKey(addDays(n,27))); }}
-                style={{ flex:1, padding:"6px", borderRadius:5, border:"1px solid #e2e8f0", fontSize:10, cursor:"pointer", background:"#f1f5f9", color:"#334155", fontWeight:600 }}>Thang sau</button>
+              {(() => {
+                const nextMon  = addDays(new Date(), ((8 - new Date().getDay()) % 7) || 7);
+                const wkFrom   = isoKey(nextMon);
+                const wkTo     = isoKey(addDays(nextMon, 6));
+                const moTo     = isoKey(addDays(nextMon, 27));
+                const isWk     = genFrom === wkFrom && genTo === wkTo;
+                const isMo     = genFrom === wkFrom && genTo === moTo;
+                const activeStyle  = { flex:1, padding:"6px", borderRadius:5, border:"1px solid #3b5bdb",
+                  fontSize:10, cursor:"pointer", background:"#3b5bdb", color:"#fff", fontWeight:700 };
+                const normalStyle  = { flex:1, padding:"6px", borderRadius:5, border:"1px solid #e2e8f0",
+                  fontSize:10, cursor:"pointer", background:"#f1f5f9", color:"#334155", fontWeight:600 };
+                return (
+                  <>
+                    <button onClick={() => { setGenFrom(wkFrom); setGenTo(wkTo); }}
+                      style={isWk ? activeStyle : normalStyle}>Tuần sau</button>
+                    <button onClick={() => { setGenFrom(wkFrom); setGenTo(moTo); }}
+                      style={isMo ? activeStyle : normalStyle}>Tháng sau</button>
+                  </>
+                );
+              })()}
             </div>
 
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>

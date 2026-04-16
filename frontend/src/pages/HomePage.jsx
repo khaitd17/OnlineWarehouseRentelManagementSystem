@@ -747,6 +747,9 @@ const HomePage = () => {
   // Area dropdown
   const [selectedArea, setSelectedArea] = useState('');
 
+  // Warehouse type
+  const [warehouseType, setWarehouseType] = useState('');
+
   // Close province dropdown on outside click
   React.useEffect(() => {
     const handler = (e) => {
@@ -791,6 +794,7 @@ const HomePage = () => {
     const params = new URLSearchParams();
     if (provinceInput) params.set('province', provinceInput);
     if (selectedArea)  params.set('maxArea', selectedArea);
+    if (warehouseType) params.set('warehouseType', warehouseType);
     navigate(`/search?${params.toString()}`);
   };
 
@@ -892,7 +896,7 @@ const HomePage = () => {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
               Loại kho
             </label>
-            <select>
+            <select value={warehouseType} onChange={e => setWarehouseType(e.target.value)}>
               <option value="">Tất cả loại kho</option>
               {categories.map((c, i) => <option key={i} value={c.name}>{c.name}</option>)}
             </select>
@@ -931,7 +935,7 @@ const HomePage = () => {
           <FadeSection>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '18px' }}>
               {categories.map((cat, idx) => (
-                <div key={idx} className="cat-card" onClick={() => navigate('/search')}>
+                <div key={idx} className="cat-card" onClick={() => navigate(`/search?warehouseType=${encodeURIComponent(cat.name)}`)}>
                   <div className="cat-icon" style={{ background: cat.bg, boxShadow: `0 8px 20px ${cat.shadow}` }}>
                     {cat.icon}
                   </div>

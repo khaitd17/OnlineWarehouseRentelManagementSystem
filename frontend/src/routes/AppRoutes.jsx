@@ -39,7 +39,7 @@ import RoleBasedRoute from "./RoleBasedRoute";
 
 // Import New Pages for Requests
 import ConfirmMovement from "../pages/Requests/ConfirmMovement";
-import OutboundRequestsList from "../pages/Requests/OutboundRequestsList";
+// OutboundRequestsList removed (unused)
 import InboundRequestsManagement from "../pages/Requests/InboundRequestsManagement";
 import CreateOutboundRequest from "../pages/Requests/CreateOutboundRequest";
 import StaffDashboard from "../pages/Requests/StaffDashboard";
@@ -50,7 +50,9 @@ import RenterInboundList from "../pages/Requests/RenterInboundList";
 import RenterOutboundList from "../pages/Requests/RenterOutboundList";
 import RenterInventoryHistory from "../pages/Requests/RenterInventoryHistory";
 import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
-import StaffInventoryRequests from "../pages/Requests/StaffInventoryRequests";
+// StaffInventoryRequests (old) removed — replaced by StaffInventoryRequestsNew
+import StaffInventoryRequestsNew from "../pages/Requests/StaffInventoryRequestsNew";
+import ManagerInventoryRequests from "../pages/Requests/ManagerInventoryRequests";
 import PaymentHistory from "../pages/Requests/PaymentHistory";
 import CreateInventoryRequest from "../pages/Requests/CreateInventoryRequest";
 import RenterInventoryPage from "../pages/RenterInventoryPage";
@@ -149,6 +151,7 @@ function AppRoutes() {
             <Route path="/sign-contract/:contractId/extension/:extensionId" element={<ContractSigningWrapper userRole="RENTER" />} />
             <Route path="/settings" element={<ProfilePage />} />
             <Route path="/subscriptions" element={<SubscriptionPage />} />
+            <Route path="/subscription" element={<SubscriptionPage />} />
             <Route path="/create-warehouse" element={<CreateWarehouse />} />
             <Route path="/post-warehouse" element={<PostWarehousePage />} />
           </Route>
@@ -187,13 +190,25 @@ function AppRoutes() {
           </Route>
         </Route>
 
-        {/* ── MANAGER / OPERATOR: quản lý yêu cầu nhập/xuất + lịch sử (OWNER không phải vận hành) ── */}
+        {/* ── MANAGER / OPERATOR: quản lý yêu cầu nhập/xuất + lịch sử ── */}
         <Route element={<RoleBasedRoute allowedRoles={['MANAGER', 'OPERATOR']} />}>
           <Route element={<DashboardLayout />}>
-            <Route path="/staff-inventory-requests" element={<StaffInventoryRequests />} />
             <Route path="/inbound-requests" element={<InboundRequestsManagement />} />
-            <Route path="/outbound-requests" element={<StaffInventoryRequests defaultTab="OUTBOUND" />} />
             <Route path="/transaction-history" element={<TransactionHistory />} />
+          </Route>
+        </Route>
+
+        {/* ── MANAGER: Chỉ Duyệt / Từ chối phiếu nhập/xuất ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['MANAGER', 'OPERATOR']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/staff-inventory-requests" element={<ManagerInventoryRequests />} />
+          </Route>
+        </Route>
+
+        {/* ── STAFF: Xử lý phiếu (Verify + Confirm) ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['STAFF']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/staff-inventory-requests-staff" element={<StaffInventoryRequestsNew />} />
           </Route>
         </Route>
 
@@ -274,6 +289,16 @@ function AppRoutes() {
         </Route>
 
         <Route path="/login" element={<AuthPage />} />
+
+        {/* ── Catch-all 404 Not Found ── */}
+        <Route path="*" element={
+          <div style={{ textAlign: 'center', padding: '100px 20px', fontFamily: 'Inter, sans-serif' }}>
+            <h1 style={{ fontSize: '4rem', color: '#0ea5e9', margin: 0 }}>404</h1>
+            <h2 style={{ color: '#334155', fontWeight: 700 }}>Không tìm thấy trang</h2>
+            <p style={{ color: '#64748b', marginBottom: '24px' }}>Rất tiếc, trang bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
+            <a href="/" style={{ padding: '10px 24px', background: '#0ea5e9', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontWeight: 600 }}>Quay về Trang chủ</a>
+          </div>
+        } />
       </Routes>
     </BrowserRouter>
   );
