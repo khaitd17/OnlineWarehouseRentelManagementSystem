@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
+import contractExtensionService from "../services/contractExtensionService";
 import PaymentRetryButton from "../components/PaymentRetryButton";
 import ExpiryCountdown from "../components/ExpiryCountdown";
 
@@ -15,8 +16,10 @@ const ContractPayment = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const purpose = new URLSearchParams(location.search).get("purpose");
+  const extensionId = new URLSearchParams(location.search).get("extensionId");
   const isTerminationPayment = purpose === "termination";
-  const targetPaymentType = isTerminationPayment ? "PENALTY" : "DEPOSIT";
+  const isExtensionPayment = purpose === "extension";
+  const targetPaymentType = isTerminationPayment ? "PENALTY" : isExtensionPayment ? "EXTENSION" : "DEPOSIT";
 
   const [contract, setContract] = useState(null);
   const [payment, setPayment] = useState(null);
@@ -24,6 +27,7 @@ const ContractPayment = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState('PENDING');
+  const [extensionInfo, setExtensionInfo] = useState(null);
 
   // Load contract and create payment
   useEffect(() => {
@@ -32,6 +36,7 @@ const ContractPayment = () => {
         // Load contract
         const contractData = await rentalService.getContractById(id);
         setContract(contractData);
+        let extensionData = null;
 
         if (isTerminationPayment) {
           if (contractData.status === 'TERMINATED') {
@@ -51,12 +56,24 @@ const ContractPayment = () => {
             navigate(`/contracts/${id}`);
             return;
           }
-        } else {
+        } else if (!isExtensionPayment) {
           // Check if already paid for activation flow
           if (contractData.status === 'ACTIVE') {
             navigate(`/contracts/${id}`);
             return;
           }
+        }
+
+        if (isExtensionPayment) {
+          if (!extensionId) {
+            throw new Error('Thiếu thông tin gia hạn.');
+          }
+
+          extensionData = await contractExtensionService.getExtensionById(extensionId);
+          if (!extensionData || extensionData.originalContractId !== Number(id)) {
+            throw new Error('Yêu cầu gia hạn không hợp lệ.');
+          }
+          setExtensionInfo(extensionData);
         }
 
         // Get or create payment
@@ -77,9 +94,11 @@ const ContractPayment = () => {
             try {
               const normalizedPayment = await paymentService.createPayment({
                 contractId: parseInt(id, 10),
-                amountOverride: isTerminationPayment
-                  ? contractData.earlyTerminationFee
-                  : (contractData.depositAmount || contractData.monthlyPayment),
+                  amountOverride: isTerminationPayment
+                    ? contractData.earlyTerminationFee
+                    : isExtensionPayment
+                      ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
+                    : (contractData.depositAmount || contractData.monthlyPayment),
                 paymentType: targetPaymentType
               });
               if (normalizedPayment?.paymentId === currentPayment.paymentId) {
@@ -112,6 +131,8 @@ const ContractPayment = () => {
                   contractId: parseInt(id, 10),
                   amountOverride: isTerminationPayment
                     ? contractData.earlyTerminationFee
+                    : isExtensionPayment
+                      ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
                     : (contractData.depositAmount || contractData.monthlyPayment),
                   paymentType: targetPaymentType
                 });
@@ -124,6 +145,8 @@ const ContractPayment = () => {
             contractId: parseInt(id, 10),
             amountOverride: isTerminationPayment
               ? contractData.earlyTerminationFee
+              : isExtensionPayment
+                ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
               : (contractData.depositAmount || contractData.monthlyPayment),
             paymentType: targetPaymentType
           });
@@ -147,7 +170,7 @@ const ContractPayment = () => {
     };
 
     initPayment();
-  }, [id, navigate, isTerminationPayment, targetPaymentType]);
+  }, [id, navigate, isTerminationPayment, isExtensionPayment, extensionId, targetPaymentType]);
 
   // Poll payment status
   useEffect(() => {
@@ -215,7 +238,7 @@ const ContractPayment = () => {
       {/* Header */}
       <div style={{ marginBottom: "2rem", textAlign: "center" }}>
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.5rem" }}>
-          💳 {isTerminationPayment ? "Thanh toán phí kết thúc sớm" : "Thanh toán hợp đồng"}
+          💳 {isTerminationPayment ? "Thanh toán phí kết thúc sớm" : isExtensionPayment ? "Thanh toán gia hạn hợp đồng" : "Thanh toán hợp đồng"}
         </h1>
         <p style={{ color: "#64748b", fontSize: "0.95rem" }}>
           Hợp đồng {contract?.contractNumber}
@@ -322,6 +345,8 @@ const ContractPayment = () => {
                 ? 'Đặt cọc'
                 : payment?.paymentType === 'PENALTY'
                   ? 'Phí kết thúc sớm'
+                  : payment?.paymentType === 'EXTENSION'
+                    ? `Phí gia hạn (${extensionInfo?.durationMonths || 0} tháng)`
                   : 'Thanh toán hàng tháng'}
             </span>
           </div>

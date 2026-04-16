@@ -43,6 +43,15 @@ const contractExtensionService = {
   },
 
   /**
+   * Lấy danh sách gia hạn đã duyệt nhưng đang chờ ký (legacy)
+   * @returns {Promise}
+   */
+  getPendingSignatureExtensions: async () => {
+    const response = await axiosClient.get("/contract-extensions/pending-signature");
+    return response.data;
+  },
+
+  /**
    * Owner review extension request
    * @param {number} extensionId
    * @param {Object} data - {status: 'APPROVED'|'REJECTED', reason?, newMonthlyPayment?}
@@ -82,6 +91,18 @@ const contractExtensionService = {
    */
   cancelExtension: async (extensionId) => {
     const response = await axiosClient.post(`/contract-extensions/${extensionId}/cancel`);
+    return response.data;
+  },
+
+  /**
+   * Người thuê xác nhận/hủy báo giá gia hạn
+   * @param {number} extensionId
+   * @param {boolean} isAccepted
+   */
+  submitRenterDecision: async (extensionId, isAccepted) => {
+    const response = await axiosClient.post(`/contract-extensions/${extensionId}/renter-decision`, {
+      isAccepted
+    });
     return response.data;
   },
 
@@ -167,7 +188,17 @@ const contractExtensionService = {
       'APPROVED': {
         text: 'Đã duyệt',
         color: 'green',
-        description: 'Yêu cầu gia hạn đã được phê duyệt'
+        description: 'Chủ kho đã duyệt và chờ bạn xác nhận'
+      },
+      'PENDING_PAYMENT': {
+        text: 'Chờ thanh toán',
+        color: 'orange',
+        description: 'Đã xác nhận gia hạn, chờ hoàn tất thanh toán'
+      },
+      'COMPLETED': {
+        text: 'Hoàn tất',
+        color: 'green',
+        description: 'Gia hạn đã hoàn tất'
       },
       'REJECTED': {
         text: 'Từ chối',

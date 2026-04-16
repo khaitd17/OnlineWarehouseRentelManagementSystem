@@ -92,6 +92,7 @@ function buildMenu(systemRole, warehouses) {
   // ── HỢP ĐỒNG section (OWNER) ────────────────────────────────
   if (hasOwner) {
     items.push({ icon: "description",     label: "Quản lý hợp đồng",    path: "/owner-contracts",          section: "HỢP ĐỒNG" });
+    items.push({ icon: "event_repeat",    label: "Gia hạn hợp đồng",    path: "/contract-extensions" });
     items.push({ icon: "payments",        label: "Xác nhận thanh toán", path: "/pending-cash-payments",    badgeKey: "pendingPaymentCount" });
     items.push({ icon: "pending_actions", label: "Yêu cầu thuê kho",    path: "/pending-rental-requests" });
   }

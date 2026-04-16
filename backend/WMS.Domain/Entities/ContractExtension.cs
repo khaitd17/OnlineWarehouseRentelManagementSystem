@@ -49,7 +49,7 @@ public class ContractExtension
     }
 
     // Approve extension
-    public void Approve(int reviewedBy, int newContractId)
+    public void Approve(int reviewedBy, decimal approvedMonthlyPayment)
     {
         if (Status != ContractExtensionStatus.Pending)
             throw new InvalidOperationException($"Cannot approve extension with status {Status}");
@@ -57,7 +57,25 @@ public class ContractExtension
         Status = ContractExtensionStatus.Approved;
         ReviewedBy = reviewedBy;
         ReviewedAt = DateTime.UtcNow;
-        NewContractId = newContractId;
+        ProposedMonthlyPayment = approvedMonthlyPayment;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkPendingPayment()
+    {
+        if (Status != ContractExtensionStatus.Approved)
+            throw new InvalidOperationException($"Cannot mark pending payment for extension with status {Status}");
+
+        Status = ContractExtensionStatus.PendingPayment;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkCompleted()
+    {
+        if (Status != ContractExtensionStatus.PendingPayment)
+            throw new InvalidOperationException($"Cannot complete extension with status {Status}");
+
+        Status = ContractExtensionStatus.Completed;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -84,9 +102,20 @@ public class ContractExtension
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void DeclineOffer()
+    {
+        if (Status != ContractExtensionStatus.Approved)
+            throw new InvalidOperationException($"Cannot decline extension offer with status {Status}");
+
+        Status = ContractExtensionStatus.Cancelled;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     // Check status
     public bool IsPending => Status == ContractExtensionStatus.Pending;
     public bool IsApproved => Status == ContractExtensionStatus.Approved;
+    public bool IsPendingPayment => Status == ContractExtensionStatus.PendingPayment;
+    public bool IsCompleted => Status == ContractExtensionStatus.Completed;
     public bool IsRejected => Status == ContractExtensionStatus.Rejected;
     public bool IsCancelled => Status == ContractExtensionStatus.Cancelled;
 }

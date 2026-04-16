@@ -56,6 +56,9 @@ const OwnerExtensionPage = () => {
   const [actionLoading, setActionLoading] = useState(false);
 
   const [form] = Form.useForm();
+  const watchedNewMonthlyPayment = Form.useWatch('newMonthlyPayment', form);
+  const selectedDurationMonths = selectedExtension?.durationMonths || 0;
+  const extensionTotalAmount = (Number(watchedNewMonthlyPayment) || 0) * selectedDurationMonths;
 
   // Load data
   const loadData = useCallback(async (showRefreshIndicator = false) => {
@@ -130,7 +133,7 @@ const OwnerExtensionPage = () => {
     setSelectedExtension(extension);
     form.setFieldsValue({
       status: 'APPROVED',
-      newMonthlyPayment: extension.originalContract?.monthlyPayment,
+      newMonthlyPayment: extension.proposedMonthlyPayment ?? extension.originalContract?.monthlyPayment,
       notes: ''
     });
     setReviewModalVisible(true);
@@ -164,7 +167,11 @@ const OwnerExtensionPage = () => {
     if (!extension.originalContract) return null;
 
     const contract = extension.originalContract;
-    const summary = contractExtensionService.generateExtensionSummary(extension, contract);
+    const effectiveMonthlyPayment = extension.proposedMonthlyPayment ?? contract.monthlyPayment;
+    const summary = contractExtensionService.generateExtensionSummary(
+      extension,
+      { ...contract, monthlyPayment: effectiveMonthlyPayment }
+    );
 
     return (
       <Card
@@ -423,14 +430,21 @@ const OwnerExtensionPage = () => {
                       label="Giá thuê mới (VND/tháng)"
                       rules={[{ required: true, message: 'Vui lòng nhập giá thuê' }]}
                     >
-                      <InputNumber
-                        style={{ width: '100%' }}
-                        formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                        parser={value => value.replace(/\$\s?|(,*)/g, '')}
-                        size="large"
-                        min={0}
-                      />
+                        <InputNumber
+                          style={{ width: '100%' }}
+                          formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                          parser={value => (value || '').replace(/\$\s?|(,*)/g, '')}
+                          size="large"
+                          min={0}
+                        />
                     </Form.Item>
+
+                    <div style={{ marginTop: '-8px', marginBottom: '16px', color: '#475569' }}>
+                      Tổng tiền gia hạn ({contractExtensionService.formatDuration(selectedDurationMonths)}):
+                      <Text strong style={{ marginLeft: 8, color: '#0f172a' }}>
+                        {contractExtensionService.formatCurrency(extensionTotalAmount)}
+                      </Text>
+                    </div>
 
                     <Form.Item name="reviewNotes" label="Ghi chú (không bắt buộc)">
                       <TextArea
@@ -505,7 +519,7 @@ const OwnerExtensionPage = () => {
               <Descriptions.Item label="Chi phí gia hạn">
                 {contractExtensionService.formatCurrency(
                   contractExtensionService.calculateAdditionalCost(
-                    selectedExtension.originalContract.monthlyPayment,
+                    selectedExtension.proposedMonthlyPayment ?? selectedExtension.originalContract.monthlyPayment,
                     selectedExtension.durationMonths
                   )
                 )}

@@ -40,6 +40,7 @@ const RenterExtensionPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [activeTab, setActiveTab] = useState('contracts');
+  const [extensionActionLoading, setExtensionActionLoading] = useState(null);
 
   // Load data
   const loadData = useCallback(async (showRefreshIndicator = false) => {
@@ -95,6 +96,24 @@ const RenterExtensionPage = () => {
   const handleExtensionSuccess = useCallback(() => {
     loadData(true);
     message.success('Yêu cầu gia hạn đã được gửi thành công!');
+  }, [loadData]);
+
+  const handleRenterDecision = useCallback(async (extension, isAccepted) => {
+    try {
+      setExtensionActionLoading(extension.extensionId);
+      const result = await contractExtensionService.submitRenterDecision(extension.extensionId, isAccepted);
+      if (isAccepted) {
+        message.success('Đã xác nhận gia hạn. Đang chuyển đến thanh toán...');
+        window.location.href = result.redirectUrl;
+        return;
+      }
+      message.success('Đã hủy yêu cầu gia hạn.');
+      loadData(true);
+    } catch (error) {
+      message.error(error.response?.data?.message || 'Không thể xử lý yêu cầu');
+    } finally {
+      setExtensionActionLoading(null);
+    }
   }, [loadData]);
 
   // Get pending extensions count
@@ -257,6 +276,8 @@ const RenterExtensionPage = () => {
                               <Badge
                                 status={
                                   extension.status === 'APPROVED' ? 'success' :
+                                  extension.status === 'PENDING_PAYMENT' ? 'processing' :
+                                  extension.status === 'COMPLETED' ? 'success' :
                                   extension.status === 'REJECTED' ? 'error' :
                                   extension.status === 'CANCELLED' ? 'default' : 'processing'
                                 }
@@ -291,6 +312,36 @@ const RenterExtensionPage = () => {
                                     Ghi chú: {extension.reviewNotes}
                                   </Text>
                                 </div>
+                              )}
+                              {extension.proposedMonthlyPayment > 0 && (
+                                <div>
+                                  <Text type="secondary">Giá duyệt:</Text>
+                                  <Text style={{ float: 'right', fontWeight: 600 }}>
+                                    {contractExtensionService.formatCurrency(extension.proposedMonthlyPayment)}/tháng
+                                  </Text>
+                                </div>
+                              )}
+                              {(extension.status === 'APPROVED' || extension.status === 'PENDING_PAYMENT') && (
+                                <Space style={{ marginTop: 8 }} wrap>
+                                  <Button
+                                    type="primary"
+                                    size="small"
+                                    loading={extensionActionLoading === extension.extensionId}
+                                    onClick={() => handleRenterDecision(extension, true)}
+                                  >
+                                    {extension.status === 'APPROVED' ? 'Đồng ý & thanh toán' : 'Tiếp tục thanh toán'}
+                                  </Button>
+                                  {extension.status === 'APPROVED' && (
+                                    <Button
+                                      danger
+                                      size="small"
+                                      loading={extensionActionLoading === extension.extensionId}
+                                      onClick={() => handleRenterDecision(extension, false)}
+                                    >
+                                      Không đồng ý
+                                    </Button>
+                                  )}
+                                </Space>
                               )}
                             </Space>
                           </Card>

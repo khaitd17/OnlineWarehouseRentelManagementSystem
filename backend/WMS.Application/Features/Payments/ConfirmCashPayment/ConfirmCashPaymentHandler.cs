@@ -16,6 +16,7 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
     private readonly INotificationSender _notificationSender;
     private readonly IStaffMembershipRepository _membershipRepo;
     private readonly ILogger<ConfirmCashPaymentHandler> _logger;
+    private readonly IContractExtensionRepository _extensionRepo;
 
     public ConfirmCashPaymentHandler(
         IRentalPaymentRepository paymentRepo,
@@ -24,7 +25,8 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
         INotificationRepository notificationRepo,
         INotificationSender notificationSender,
         IStaffMembershipRepository membershipRepo,
-        ILogger<ConfirmCashPaymentHandler> logger)
+        ILogger<ConfirmCashPaymentHandler> logger,
+        IContractExtensionRepository extensionRepo)
     {
         _paymentRepo = paymentRepo;
         _contractRepo = contractRepo;
@@ -33,6 +35,7 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
         _notificationSender = notificationSender;
         _membershipRepo = membershipRepo;
         _logger = logger;
+        _extensionRepo = extensionRepo;
     }
 
     public async Task<ConfirmCashPaymentResult> Handle(ConfirmCashPaymentCommand request, CancellationToken cancellationToken)
@@ -84,7 +87,12 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
             payment.Status = PaymentStatus.Completed;
 
             // Update contract state by payment type
-            if (payment.PaymentType == PaymentType.Penalty &&
+            if (payment.PaymentType == PaymentType.Extension)
+            {
+                await ApplyExtensionAfterSuccessfulPaymentAsync(payment.ContractId);
+                contract = await _contractRepo.GetByIdAsync(contract.ContractId) ?? contract;
+            }
+            else if (payment.PaymentType == PaymentType.Penalty &&
                 contract.Status == RentalContractStatus.PendingTermination)
             {
                 await _contractRepo.FinalizeTerminationAfterPaymentAsync(contract.ContractId);
@@ -138,6 +146,8 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
                 Success = true,
                 Message = payment.PaymentType == PaymentType.Penalty
                     ? "Đã xác nhận thanh toán thành công. Hợp đồng đã được kết thúc sớm."
+                    : payment.PaymentType == PaymentType.Extension
+                        ? "Đã xác nhận thanh toán gia hạn. Hợp đồng đã được cập nhật thời hạn."
                     : "Đã xác nhận thanh toán thành công. Hợp đồng đã được kích hoạt và người thuê đã được cấp quyền quản lý kho.",
                 NewContractStatus = contract.Status
             };
@@ -174,6 +184,21 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
                 NewContractStatus = contract.Status
             };
         }
+    }
+
+    private async Task ApplyExtensionAfterSuccessfulPaymentAsync(int contractId)
+    {
+        var extension = await _extensionRepo.GetPendingByContractIdAsync(contractId);
+        if (extension == null || extension.Status != ContractExtensionStatus.PendingPayment)
+            return;
+
+        var currentContract = await _contractRepo.GetByIdAsync(contractId);
+        if (currentContract == null) return;
+        var approvedMonthlyPayment = extension.ProposedMonthlyPayment ?? currentContract.MonthlyPayment;
+
+        await _contractRepo.ApplyExtensionAsync(contractId, extension.DurationMonths, approvedMonthlyPayment);
+        extension.MarkCompleted();
+        await _extensionRepo.UpdateAsync(extension);
     }
 
     /// <summary>

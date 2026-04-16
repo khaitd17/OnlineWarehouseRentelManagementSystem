@@ -64,7 +64,13 @@ namespace WMS.Infrastructure.Repositories
 
         public async Task UpdateAsync(ContractExtension contractExtension)
         {
-            _context.ContractExtensions.Update(contractExtension);
+            var existing = await _context.ContractExtensions
+                .FirstOrDefaultAsync(e => e.ExtensionId == contractExtension.ExtensionId);
+
+            if (existing == null)
+                throw new InvalidOperationException($"Contract extension {contractExtension.ExtensionId} not found");
+
+            _context.Entry(existing).CurrentValues.SetValues(contractExtension);
             await _context.SaveChangesAsync();
         }
 
@@ -112,7 +118,11 @@ namespace WMS.Infrastructure.Repositories
         {
             return await _context.ContractExtensions
                 .Include(e => e.Requester)
-                .FirstOrDefaultAsync(e => e.OriginalContractId == contractId && e.Status == "PENDING");
+                .Where(e => e.OriginalContractId == contractId
+                            && (e.Status == ContractExtensionStatus.PendingPayment
+                                || e.Status == ContractExtensionStatus.Pending))
+                .OrderByDescending(e => e.RequestedAt)
+                .FirstOrDefaultAsync();
         }
 
         public async Task<IEnumerable<ContractExtension>> GetApprovedPendingSignatureByWarehouseIdsAsync(

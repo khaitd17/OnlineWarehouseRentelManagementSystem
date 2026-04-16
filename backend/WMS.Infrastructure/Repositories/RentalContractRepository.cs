@@ -388,6 +388,23 @@ public class RentalContractRepository : IRentalContractRepository
         await _context.SaveChangesAsync();
     }
 
+    public async SystemTask ApplyExtensionAsync(int contractId, int durationMonths, decimal approvedMonthlyPayment)
+    {
+        var dbContract = await _context.Contracts.FindAsync(contractId);
+        if (dbContract == null)
+            throw new InvalidOperationException($"Contract {contractId} not found");
+
+        var updatedEndDate = dbContract.EndDate.AddMonths(durationMonths);
+        var totalMonths = Math.Max(1, (updatedEndDate.Year - dbContract.StartDate.Year) * 12 + (updatedEndDate.Month - dbContract.StartDate.Month));
+
+        dbContract.EndDate = updatedEndDate;
+        dbContract.MonthlyPayment = approvedMonthlyPayment;
+        dbContract.TotalValue = approvedMonthlyPayment * totalMonths;
+        dbContract.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
+
     public async Task<bool> IsRenterByContractAsync(int renterId, int warehouseId, CancellationToken ct = default)
     {
         return await _context.Contracts

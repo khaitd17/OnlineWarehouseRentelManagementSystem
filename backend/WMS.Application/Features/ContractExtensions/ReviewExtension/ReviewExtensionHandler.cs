@@ -70,54 +70,42 @@ namespace WMS.Application.Features.ContractExtensions.ReviewExtension
 
                 if (request.Decision.ToUpper() == "APPROVE")
                 {
-                    // Approve và tạo new contract
                     var monthlyPayment = request.ApprovedMonthlyPayment ?? extension.ProposedMonthlyPayment ?? originalContract.MonthlyPayment;
 
-                    // Tạo new contract với start date = original end date
-                    var newContract = RentalContract.CreateFromRequest(
-                        request: new RentalRequest
-                        {
-                            RenterId = originalContract.RenterId,
-                            WarehouseId = originalContract.WarehouseId,
-                            StartDate = originalContract.EndDate.AddDays(1),
-                            DurationMonths = extension.DurationMonths,
-                            Status = "APPROVED" // Fake approved status for factory method
-                        },
-                        monthlyPayment: monthlyPayment,
-                        startDateOverride: originalContract.EndDate.AddDays(1),
-                        durationMonthsOverride: extension.DurationMonths);
-
-                    // Set parent contract reference
-                    // Note: Cần thêm SetParentContract() method vào RentalContract
-                    newContract.SetParentContract(originalContract.ContractId);
-
-                    var newContractId = await _contractRepository.AddAsync(newContract);
-
                     // Approve extension
-                    extension.Approve(request.ReviewerId, newContractId);
+                    extension.Approve(request.ReviewerId, monthlyPayment);
                     await _extensionRepository.UpdateAsync(extension);
 
                     // Gửi thông báo
                     var notification = new Notification
                     {
                         UserId = extension.RequesterId,
-                        Title = "Contract Extension Approved",
-                        Message = $"Your extension request has been approved! New contract {newContract.ContractNumber} created. Duration: {extension.DurationMonths} months, Monthly payment: {monthlyPayment:C}",
-                        Type = "contract_extension_approved",
+                        Title = "Yêu cầu gia hạn đã được duyệt",
+                        Message = $"Chủ kho đã duyệt gia hạn hợp đồng. Giá thuê gia hạn: {monthlyPayment:N0}đ/tháng trong {extension.DurationMonths} tháng. Vui lòng xác nhận để tiếp tục thanh toán.",
+                        Type = "EXTENSION_APPROVED",
+                        ReferenceId = extension.ExtensionId,
+                        ReferenceType = "CONTRACT_EXTENSION",
                         CreatedAt = DateTime.UtcNow
                     };
 
-                    await _notificationRepository.AddAsync(notification);
-                    await _notificationSender.SendToUserAsync(extension.RequesterId, notification);
+                    try
+                    {
+                        await _notificationRepository.AddAsync(notification);
+                        await _notificationSender.SendToUserAsync(extension.RequesterId, notification);
+                    }
+                    catch
+                    {
+                        // Keep approval successful even if notification persistence/realtime fails.
+                    }
 
                     return new ReviewExtensionResponse
                     {
                         Success = true,
-                        Message = "Extension request approved successfully",
+                        Message = "Đã duyệt yêu cầu gia hạn và gửi báo giá cho người thuê",
                         ExtensionId = request.ExtensionId,
                         Status = extension.Status,
-                        NewContractId = newContractId,
-                        NextSteps = $"New contract {newContract.ContractNumber} has been created and is ready for signing."
+                        NewContractId = null,
+                        NextSteps = "Chờ người thuê xác nhận gia hạn và thanh toán."
                     };
                 }
                 else if (request.Decision.ToUpper() == "REJECT")
@@ -140,22 +128,31 @@ namespace WMS.Application.Features.ContractExtensions.ReviewExtension
                     var notification = new Notification
                     {
                         UserId = extension.RequesterId,
-                        Title = "Contract Extension Rejected",
-                        Message = $"Your extension request has been rejected. Reason: {request.RejectionReason}",
-                        Type = "contract_extension_rejected",
+                        Title = "Yêu cầu gia hạn bị từ chối",
+                        Message = $"Chủ kho đã từ chối yêu cầu gia hạn. Lý do: {request.RejectionReason}",
+                        Type = "EXTENSION_REJECTED",
+                        ReferenceId = extension.ExtensionId,
+                        ReferenceType = "CONTRACT_EXTENSION",
                         CreatedAt = DateTime.UtcNow
                     };
 
-                    await _notificationRepository.AddAsync(notification);
-                    await _notificationSender.SendToUserAsync(extension.RequesterId, notification);
+                    try
+                    {
+                        await _notificationRepository.AddAsync(notification);
+                        await _notificationSender.SendToUserAsync(extension.RequesterId, notification);
+                    }
+                    catch
+                    {
+                        // Keep rejection successful even if notification persistence/realtime fails.
+                    }
 
                     return new ReviewExtensionResponse
                     {
                         Success = true,
-                        Message = "Extension request rejected successfully",
+                        Message = "Đã từ chối yêu cầu gia hạn",
                         ExtensionId = request.ExtensionId,
                         Status = extension.Status,
-                        NextSteps = "The requester has been notified of the rejection."
+                        NextSteps = "Người thuê đã được thông báo."
                     };
                 }
                 else

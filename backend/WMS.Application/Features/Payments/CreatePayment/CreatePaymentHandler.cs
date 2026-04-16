@@ -77,12 +77,36 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
         if (amount <= 0)
             throw new InvalidOperationException("Payment amount must be greater than 0. Please check contract pricing information.");
 
+        var isCashConfirmationRequest = request.PaymentMethod == "CASH"
+                                        && request.Status == "PENDING_CONFIRMATION";
+
         // Check if there's already a pending payment for this contract
         var existingPendingPayment = await _paymentRepo.GetPendingPaymentByContractAsync(
             request.ContractId,
             request.PaymentType);
 
-        if (existingPendingPayment != null)
+        if (isCashConfirmationRequest)
+        {
+            var existingCashConfirmation = (await _paymentRepo.GetByContractIdAsync(request.ContractId))
+                .FirstOrDefault(p =>
+                    p.PaymentType == request.PaymentType
+                    && p.PaymentMethod == "CASH"
+                    && p.Status == "PENDING_CONFIRMATION");
+
+            if (existingCashConfirmation != null)
+            {
+                return new CreatePaymentResult
+                {
+                    PaymentId = existingCashConfirmation.PaymentId,
+                    PaymentCode = existingCashConfirmation.PaymentCode,
+                    Amount = existingCashConfirmation.Amount,
+                    Status = existingCashConfirmation.Status,
+                    ExpiredAt = existingCashConfirmation.ExpiredAt
+                };
+            }
+        }
+
+        if (existingPendingPayment != null && !isCashConfirmationRequest)
         {
             // Recover from stale/invalid pending records (e.g., old amount = 0) by regenerating payment.
             if (existingPendingPayment.Amount <= 0)
