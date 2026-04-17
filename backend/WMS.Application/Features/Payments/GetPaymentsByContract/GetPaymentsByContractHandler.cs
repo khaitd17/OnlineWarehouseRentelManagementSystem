@@ -23,9 +23,9 @@ public class GetPaymentsByContractHandler : IRequestHandler<GetPaymentsByContrac
             PaymentType = p.PaymentType,
             Amount = p.Amount,
             Status = p.Status,
-            PaidAt = p.PaidAt,
-            ExpiredAt = p.ExpiredAt,
-            CreatedAt = p.CreatedAt
+            PaidAt = p.PaidAt.HasValue ? DateTime.SpecifyKind(p.PaidAt.Value, DateTimeKind.Utc) : null,
+            ExpiredAt = p.ExpiredAt.HasValue ? DateTime.SpecifyKind(p.ExpiredAt.Value, DateTimeKind.Utc) : null,
+            CreatedAt = DateTime.SpecifyKind(p.CreatedAt, DateTimeKind.Utc)
         }).ToList();
     }
 }

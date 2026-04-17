@@ -41,7 +41,11 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
         foreach (var contract in contracts)
         {
             var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, cancellationToken);
-            var renter = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
+            var renter    = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
+
+            // Lấy diện tích ĐÃ THUÊ của renter (từ RentalRequest), không phải diện tích kho
+            var contractedArea = await _contractRepo.GetContractedAreaAsync(
+                contract.RenterId, contract.WarehouseId, cancellationToken);
 
             result.Add(new RentalContractDto
             {
@@ -64,7 +68,8 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
                 ContractFileUrl = contract.ContractFileUrl,
                 SignedFileUrl = contract.SignedFileUrl,
                 SignedAt = contract.SignedAt,
-                CreatedAt = contract.CreatedAt
+                CreatedAt = contract.CreatedAt,
+                RequestedArea = contractedArea, // ← diện tích thực renter đã thuê (100 m²)
             });
         }
 

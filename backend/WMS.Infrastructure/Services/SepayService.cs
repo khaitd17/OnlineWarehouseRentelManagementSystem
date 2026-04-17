@@ -130,6 +130,9 @@ public class SepayService : ISepayService
                 {
                     contract.Status = RentalContractStatus.Active;
                     contract.UpdatedAt = DateTime.UtcNow;
+
+                    // Grant RENTER membership in the warehouse so the renter can use warehouse features
+                    await EnsureRenterMembershipAsync(contract.RenterId, contract.WarehouseId);
                 }
                 else if (contract != null && payment.PaymentType == PaymentType.Extension)
                 {
@@ -252,30 +255,53 @@ public class SepayService : ISepayService
                         UpdatedAt = DateTime.UtcNow
                     };
                     _db.Warehouses.Add(newWarehouse);
-                    await _db.SaveChangesAsync();
+                    await _db.SaveChangesAsync(); // Flush để lấy WarehouseId mới
 
-                    var ownerWhRole = _db.WarehouseRoles.FirstOrDefault(r => r.Code == "OWNER");
-                    if (ownerWhRole != null)
+                    existingWarehouses = new List<Warehouse> { newWarehouse };
+                }
+                else
+                {
+                    // Unlock các kho bị khoá
+                    foreach (var w in existingWarehouses)
                     {
-                        var membership = new WarehouseMembership
+                        if (w.Status == "LOCKED") w.Status = "APPROVED";
+                    }
+                }
+
+                // Đảm bảo membership OWNER cho tất cả kho của user (idempotent)
+                var ownerWhRole = await _db.WarehouseRoles.FirstOrDefaultAsync(r => r.Code == "OWNER");
+                if (ownerWhRole != null)
+                {
+                    foreach (var wh in existingWarehouses)
+                    {
+                        var alreadyMember = _db.WarehouseMemberships.Any(m =>
+                            m.UserId == subscription.UserId &&
+                            m.WarehouseId == wh.WarehouseId &&
+                            m.WarehouseRoleId == ownerWhRole.Id);
+
+                        if (!alreadyMember)
                         {
-                            UserId = subscription.UserId,
-                            WarehouseId = newWarehouse.WarehouseId,
-                            WarehouseRoleId = ownerWhRole.Id,
-                            IsActive = true,
-                            IsAllSkill = true,
-                            IsAllZone = true,
-                            CreatedAt = DateTime.UtcNow
-                        };
-                        _db.WarehouseMemberships.Add(membership);
+                            _db.WarehouseMemberships.Add(new WarehouseMembership
+                            {
+                                UserId = subscription.UserId,
+                                WarehouseId = wh.WarehouseId,
+                                WarehouseRoleId = ownerWhRole.Id,
+                                IsActive = true,
+                                IsAllSkill = true,
+                                IsAllZone = true,
+                                CreatedAt = DateTime.UtcNow
+                            });
+                            _logger.LogInformation("Granted OWNER membership to user {UserId} for warehouse {WarehouseId}", subscription.UserId, wh.WarehouseId);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("OWNER membership already exists for user {UserId} warehouse {WarehouseId} - skipped", subscription.UserId, wh.WarehouseId);
+                        }
                     }
                 }
                 else
                 {
-                    foreach (var w in existingWarehouses)
-                    {
-                        if (w.Status == "LOCKED") w.Status = "APPROVED"; // Unlock
-                    }
+                    _logger.LogWarning("OWNER warehouse role not found in database - cannot grant membership");
                 }
 
                 await _db.SaveChangesAsync();
@@ -433,7 +459,11 @@ public class SepayService : ISepayService
         if (ipAddress == "127.0.0.1" || ipAddress == "::1")
             return true;
 
-        return _whitelistIps.Contains(ipAddress);
+        // Allow all IPs when running behind ngrok (development mode)
+        // Ngrok changes the source IP, so whitelist doesn't work with ngrok
+        // TODO: Remove this in production and use strict whitelist
+        _logger.LogInformation("SePay webhook IP check: {IpAddress} (allowing all for dev/ngrok)", ipAddress);
+        return true;
     }
 
     private static (string Type, string Code)? ExtractIdentifierCode(string? content)
@@ -447,6 +477,38 @@ public class SepayService : ISepayService
         if (subMatch.Success) return ("SUB", subMatch.Value.ToUpper());
 
         return null;
+    }
+
+    /// <summary>
+    /// Ensures the renter has a RENTER membership in the warehouse after contract activation.
+    /// Idempotent: does nothing if membership already exists.
+    /// </summary>
+    private async Task EnsureRenterMembershipAsync(int renterId, int warehouseId)
+    {
+        const int RenterRoleId = 5; // warehouse_roles: RENTER
+
+        var alreadyExists = await _db.WarehouseMemberships
+            .AnyAsync(m => m.UserId == renterId
+                        && m.WarehouseId == warehouseId
+                        && m.WarehouseRoleId == RenterRoleId);
+
+        if (!alreadyExists)
+        {
+            _db.WarehouseMemberships.Add(new WarehouseMembership
+            {
+                UserId = renterId,
+                WarehouseId = warehouseId,
+                WarehouseRoleId = RenterRoleId,
+                IsActive = true,
+                IsAllSkill = true,
+                IsAllZone = true,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            _logger.LogInformation(
+                "RENTER membership granted to user {UserId} for warehouse {WarehouseId}",
+                renterId, warehouseId);
+        }
     }
 
     // Response models for SePay API

@@ -60,7 +60,8 @@ public class RentalPaymentRepository : IRentalPaymentRepository
         return await _db.RentalPayments
             .FirstOrDefaultAsync(p => p.ContractId == contractId
                                       && p.PaymentType == paymentType
-                                      && p.Status == "PENDING");
+                                      && p.Status == "PENDING"
+                                      && (p.ExpiredAt == null || p.ExpiredAt > DateTime.UtcNow)); // Exclude expired
     }
 
     public async Task<int> AddAsync(RentalPayment payment)
@@ -74,6 +75,16 @@ public class RentalPaymentRepository : IRentalPaymentRepository
     {
         _db.RentalPayments.Update(payment);
         await _db.SaveChangesAsync();
+    }
+
+    public async Task UpdatePaymentCodeAsync(int paymentId, string paymentCode)
+    {
+        // Use a targeted SQL UPDATE to avoid EF tracking conflicts and ensure immediate persistence
+        await _db.Database.ExecuteSqlRawAsync(
+            "UPDATE rental_payments SET payment_code = {0}, updated_at = {1} WHERE payment_id = {2}",
+            paymentCode,
+            DateTime.UtcNow,
+            paymentId);
     }
 
     public async Task SaveChangesAsync()

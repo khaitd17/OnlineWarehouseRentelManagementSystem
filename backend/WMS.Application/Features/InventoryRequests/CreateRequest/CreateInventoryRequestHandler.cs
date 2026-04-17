@@ -39,19 +39,22 @@ public class CreateInventoryRequestHandler
     private readonly IWarehouseRepository _warehouseRepo;
     private readonly IRenterAssetRepository _assetRepo;
     private readonly ITaskRepository _taskRepo;
+    private readonly IRentalContractRepository _contractRepo;
 
     public CreateInventoryRequestHandler(
         IInventoryRequestRepository repo,
         IWarehouseInventoryRepository invRepo,
         IWarehouseRepository warehouseRepo,
         IRenterAssetRepository assetRepo,
-        ITaskRepository taskRepo)
+        ITaskRepository taskRepo,
+        IRentalContractRepository contractRepo)
     {
         _repo          = repo;
         _invRepo       = invRepo;
         _warehouseRepo = warehouseRepo;
         _assetRepo     = assetRepo;
         _taskRepo      = taskRepo;
+        _contractRepo  = contractRepo;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -65,6 +68,58 @@ public class CreateInventoryRequestHandler
             var timeStr = warehouse.Is24HoursAccess ? "24/7" : $"{warehouse.OpenTime} - {warehouse.CloseTime}";
             throw new InvalidOperationException(
                 $"Kho hiện đang đóng cửa. Thời gian hoạt động: {timeStr}. Vui lòng thực hiện yêu cầu trong giờ làm việc.");
+        }
+
+        // ── Dual-Constraint Validation cho INBOUND ─────────────────────────────────
+        if (cmd.Type.ToUpper() == "INBOUND")
+        {
+            const int    UnitsPerM2     = 10;       // Hệ số ước lượng số đơn vị / m²
+            const decimal KgPerM2Limit  = 500m;    // Tải trọng sàn tiêu chuẩn kho (kg/m²)
+
+            var contractedArea = await _contractRepo.GetContractedAreaAsync(
+                cmd.RenterId, cmd.WarehouseId, cancellationToken);
+
+            if (contractedArea > 0)
+            {
+                // ── Tầng 1: Hard block — Trọng lượng (giới hạn vật lý sàn kho) ──────
+                // Chỉ áp dụng khi item CÓ weightPerUnit. Hàng siêu nhẹ (bút, hộp giấy...)
+                // không có weight sẽ bỏ qua và để Manager quyết định khi duyệt.
+                decimal totalWeightKg = 0;
+                bool    hasWeightData = false;
+
+                foreach (var item in cmd.Items)
+                {
+                    decimal? wPerUnit = item.Weight; // weight đã được resolve từ asset (nếu có)
+
+                    // Nếu có assetId, thử lấy weight từ catalogue
+                    if ((wPerUnit == null || wPerUnit <= 0) && item.AssetId.HasValue && item.AssetId.Value > 0)
+                    {
+                        var assetForWeight = await _assetRepo.GetByIdAsync(item.AssetId.Value, cancellationToken);
+                        wPerUnit = assetForWeight?.WeightPerUnit;
+                    }
+
+                    if (wPerUnit.HasValue && wPerUnit.Value > 0)
+                    {
+                        hasWeightData = true;
+                        totalWeightKg += wPerUnit.Value * item.Quantity;
+                    }
+                }
+
+                if (hasWeightData)
+                {
+                    decimal maxWeightKg = (decimal)contractedArea * KgPerM2Limit;
+                    if (totalWeightKg > maxWeightKg)
+                        throw new InvalidOperationException(
+                            $"Tổng trọng lượng lô hàng ({totalWeightKg:N0} kg) vượt quá tải trọng sàn kho cho phép. " +
+                            $"Diện tích hợp đồng: {contractedArea:N0} m² × {KgPerM2Limit:N0} kg/m² = tối đa {maxWeightKg:N0} kg. " +
+                            $"Vui lòng chia thành nhiều lô nhỏ hơn hoặc liên hệ quản lý kho.");
+                }
+
+                // ── Tầng 2: Soft check — Số lượng đơn vị (chỉ thông báo, không chặn) ──
+                // Nếu tổng vượt ước lượng diện tích nhưng hàng nhẹ/nhỏ → Manager tự phán quyết
+                // Logic này được thực hiện ở frontend (soft warning màu vàng)
+                // Backend không chặn để Manager approval flow hoạt động bình thường
+            }
         }
 
         // Resolve asset info & build InventoryItems
@@ -86,7 +141,8 @@ public class CreateInventoryRequestHandler
                     throw new UnauthorizedAccessException($"Asset #{assetId.Value} không thuộc về bạn.");
 
                 itemName = asset.AssetName;
-                unit     = asset.Unit;
+                // Ưu tiên đơn vị user chọn trong form; chỉ dùng đơn vị từ catalogue làm fallback
+                unit     = !string.IsNullOrWhiteSpace(item.Unit) ? item.Unit : (asset.Unit ?? "cái");
                 weight   = asset.WeightPerUnit.HasValue ? asset.WeightPerUnit * item.Quantity : item.Weight;
             }
 

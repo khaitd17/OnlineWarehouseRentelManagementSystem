@@ -91,7 +91,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         // Update contract domain
         contract.SetContractFileUrl(signedFileUrl);
         contract.Sign(signedFileUrl);  // SIGNED
-        contract.MarkPendingPayment(5/60);  // SIGNED → PENDING_PAYMENT (5 minutes expiry for testing)
+        contract.MarkPendingPayment(5.0/60.0);  // SIGNED → PENDING_PAYMENT (5 minutes expiry for testing)
         await _contractRepo.UpdateAsync(contract);
 
         // Update Equipments to IN_USE

@@ -25,11 +25,11 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-/* ── Approve Modal ─────────────────────────────────────────────── */
+/* ── Approve Modal (gọn ─ capacity info đã có bên Detail) ─────────── */
 const ApproveModal = ({ req, onClose, onApprove, loading }) => {
   const [notes, setNotes] = useState('');
   if (!req) return null;
-  const accent = req.type === 'INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
+  const accent    = req.type === 'INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
   const typeLabel = req.type === 'INBOUND' ? 'nhập kho' : 'xuất kho';
 
   return (
@@ -41,6 +41,10 @@ const ApproveModal = ({ req, onClose, onApprove, loading }) => {
             <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Duyệt yêu cầu {typeLabel}</h2>
             <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>#{req.invReqId} · {req.warehouseName}</p>
           </div>
+        </div>
+
+        <div style={{ background:'#f0fdf4', borderRadius:10, padding:'10px 14px', marginBottom:16, fontSize:'0.82rem', color:'#166534', fontWeight:600 }}>
+          ℹ️ Xác nhận duyệt yêu cầu. Để xem chi tiết sức chứa hợp đồng, hãy xem chi tiết phiếu trước.
         </div>
 
         {/* Items summary */}
@@ -136,13 +140,34 @@ const RejectModal = ({ req, onClose, onReject, loading }) => {
   );
 };
 
-/* ── Detail Modal ──────────────────────────────────────────────── */
+/* ── Detail Modal ─────────────────────────────────────────────── */
 const DetailModal = ({ req, onClose }) => {
+  const [capacity, setCapacity]       = useState(null);
+  const [loadingCap, setLoadingCap]   = useState(false);
+
+  useEffect(() => {
+    if (!req || req.type !== 'INBOUND') { setCapacity(null); return; }
+    setLoadingCap(true);
+    axiosClient.get('/rental-contracts/renter-capacity', {
+      params: { renterId: req.renterId, warehouseId: req.warehouseId }
+    })
+      .then(r => setCapacity(r.data))
+      .catch(() => setCapacity(null))
+      .finally(() => setLoadingCap(false));
+  }, [req?.invReqId]);
+
   if (!req) return null;
   const accent = req.type === 'INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
+
+  const reqTotal   = (req.items || []).reduce((s, i) => s + (i.quantity || 0), 0);
+  const afterStock = capacity ? capacity.currentStock + reqTotal : null;
+  const afterPct   = capacity?.maxQty > 0 ? Math.round(afterStock / capacity.maxQty * 100) : null;
+  const capColor   = afterPct >= 100 ? '#dc2626' : afterPct >= 80 ? '#d97706' : '#16a34a';
+
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
-      <div style={{ background:'#fff', borderRadius:20, padding:0, width:'100%', maxWidth:560, maxHeight:'88vh', overflowY:'auto', boxShadow:'0 24px 60px rgba(0,0,0,0.15)' }} onClick={e=>e.stopPropagation()}>
+      <div style={{ background:'#fff', borderRadius:20, padding:0, width:'100%', maxWidth:580, maxHeight:'92vh', overflowY:'auto', boxShadow:'0 24px 60px rgba(0,0,0,0.15)' }} onClick={e=>e.stopPropagation()}>
+        {/* Header sticky */}
         <div style={{ padding:'22px 26px 18px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', position:'sticky', top:0, background:'#fff', zIndex:10 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontWeight:800, color:accent, fontSize:'1rem' }}>{req.type==='INBOUND'?'Nhập kho':'Xuất kho'} · #{req.invReqId}</span>
@@ -150,18 +175,76 @@ const DetailModal = ({ req, onClose }) => {
           </div>
           <button onClick={onClose} style={{ background:'#f1f5f9', border:'none', cursor:'pointer', padding:6, borderRadius:8, fontSize:'1.1rem' }}>×</button>
         </div>
+
         <div style={{ padding:'18px 26px' }}>
+          {/* Thông tin cơ bản */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px 16px', marginBottom:16, fontSize:'0.83rem' }}>
             <div><span style={{ color:'#94a3b8', fontWeight:600 }}>Người thuê:</span> <span style={{ color:'#1e293b', fontWeight:600 }}>{req.renterName || '—'}</span></div>
             <div><span style={{ color:'#94a3b8', fontWeight:600 }}>Kho:</span> <span style={{ color:'#1e293b' }}>{req.warehouseName || '—'}</span></div>
             <div><span style={{ color:'#94a3b8', fontWeight:600 }}>Ngày tạo:</span> <span style={{ color:'#1e293b' }}>{fmtDate(req.createdAt)}</span></div>
             {req.scheduledDate && <div><span style={{ color:'#94a3b8', fontWeight:600 }}>Ngày dự kiến:</span> <span style={{ color:'#1e293b' }}>{fmtDate(req.scheduledDate)}</span></div>}
           </div>
+
           {req.notes && (
             <div style={{ background:'#f8fafc', borderRadius:10, padding:'10px 14px', marginBottom:14, fontSize:'0.83rem', color:'#475569' }}>
               📝 {req.notes}
             </div>
           )}
+
+          {/* ── Sức chứa hợp đồng (chỉ INBOUND) ── */}
+          {req.type === 'INBOUND' && (
+            <div style={{ background:'#f8fafc', borderRadius:12, padding:'14px 16px', marginBottom:16, border:'1px solid #e2e8f0' }}>
+              <p style={{ margin:'0 0 10px', fontSize:'0.69rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+                📋 Sức chứa hợp đồng của người thuê này
+              </p>
+              {loadingCap ? (
+                <p style={{ margin:0, fontSize:'0.82rem', color:'#94a3b8' }}>Đang tải thông tin hợp đồng...</p>
+              ) : capacity && capacity.hasContract ? (
+                <>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 16px', fontSize:'0.82rem', marginBottom:12 }}>
+                    <div><span style={{ color:'#94a3b8' }}>Diện tích HĐ: </span><span style={{ fontWeight:700, color:'#1e293b' }}>{capacity.contractedAreaM2?.toLocaleString('vi-VN')} m²</span></div>
+                    <div><span style={{ color:'#94a3b8' }}>Tải trọng tối đa: </span><span style={{ fontWeight:700, color:'#7c3aed' }}>{capacity.maxWeightKg?.toLocaleString('vi-VN')} kg</span></div>
+                    <div><span style={{ color:'#94a3b8' }}>Đang lưu kho: </span><span style={{ fontWeight:700, color:'#c2410c' }}>{capacity.currentStock?.toLocaleString('vi-VN')} đơn vị</span></div>
+                    <div><span style={{ color:'#94a3b8' }}>Giới hạn tối đa: </span><span style={{ fontWeight:700, color:'#1d4ed8' }}>{capacity.maxQty?.toLocaleString('vi-VN')} đơn vị</span></div>
+                    <div>
+                      <span style={{ color:'#94a3b8' }}>Còn có thể nhập: </span>
+                      <span style={{ fontWeight:700, color: capacity.remainingQty === 0 ? '#dc2626' : '#15803d' }}>
+                        {capacity.remainingQty?.toLocaleString('vi-VN')} đơn vị
+                      </span>
+                    </div>
+                    <div><span style={{ color:'#94a3b8' }}>Yêu cầu này: </span><span style={{ fontWeight:700, color:accent }}>+{reqTotal.toLocaleString('vi-VN')} đơn vị</span></div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:'0.7rem', color:'#94a3b8', marginBottom:4 }}>
+                      <span>Hiện tại: {capacity.usagePercent}%</span>
+                      <span style={{ color: capColor, fontWeight:700 }}>Nếu duyệt: {afterPct !== null ? afterPct + '%' : '—'}</span>
+                    </div>
+                    <div style={{ background:'#e2e8f0', borderRadius:999, height:8, overflow:'hidden', position:'relative' }}>
+                      <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${Math.min(capacity.usagePercent, 100)}%`, background:'#93c5fd', borderRadius:999 }}/>
+                      {afterPct !== null && <div style={{ position:'absolute', left:0, top:0, height:'100%', width:`${Math.min(afterPct, 100)}%`, background: capColor, borderRadius:999, opacity:0.7 }}/>}
+                    </div>
+                  </div>
+
+                  {afterPct > 100 && (
+                    <div style={{ marginTop:8, padding:'8px 12px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, fontSize:'0.78rem', color:'#dc2626', fontWeight:600 }}>
+                      ⚠️ Nếu duyệt, người thuê sẽ vượt giới hạn ước tính ({afterPct}%). Hàng nhỏ/nhẹ vẫn có thể OK.
+                    </div>
+                  )}
+                  {afterPct > 80 && afterPct <= 100 && (
+                    <div style={{ marginTop:8, padding:'8px 12px', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, fontSize:'0.78rem', color:'#b45309', fontWeight:600 }}>
+                      ⚠️ Gần đầy sức chứa ước tính ({afterPct}%). Xem xét kỹ trước khi duyệt.
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p style={{ margin:0, fontSize:'0.82rem', color:'#ef4444', fontWeight:600 }}>⚠️ Không tìm thấy hợp đồng hiệu lực của người thuê này trong kho này.</p>
+              )}
+            </div>
+          )}
+
+          {/* Danh sách hàng hóa */}
           <p style={{ margin:'0 0 10px', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
             Danh sách hàng hóa ({(req.items||[]).length} mặt hàng)
           </p>

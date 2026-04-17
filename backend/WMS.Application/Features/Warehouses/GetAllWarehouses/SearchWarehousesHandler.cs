@@ -130,6 +130,8 @@ public class SearchWarehousesHandler
                     OperatingHours  = w.OperatingHours,
                     AverageRating   = rStats.count > 0 ? Math.Round(rStats.avg, 1) : null,
                     RatingCount     = rStats.count,
+                    Lat             = w.Lat,
+                    Lng             = w.Lng,
                 };
             })
             .ToList();

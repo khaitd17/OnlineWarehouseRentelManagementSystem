@@ -45,7 +45,14 @@ const MyRentalRequests = () => {
     setError(null);
     try {
       const data = await rentalService.getMyRentalRequests();
-      setRequests(data);
+      // Yêu cầu logic: Nếu hợp đồng đã sang trạng thái ACTIVE (Đang hiệu lực) 
+      // hoặc các trạng thái kết thúc (CLOSED, TERMINATED, EXPIRED) thì KHÔNG hiển thị ở trang Yêu cầu thuê nữa,
+      // vì chúng đã chính thức thuộc về mục "Hợp đồng của tôi"
+      const filteredRequests = data.filter(req => {
+        const cStatus = req.contractStatus;
+        return !['ACTIVE', 'CLOSED', 'TERMINATED', 'EXPIRED'].includes(cStatus);
+      });
+      setRequests(filteredRequests);
     } catch (err) {
       setError(err.response?.data?.message || "Không thể tải danh sách yêu cầu thuê");
     } finally {

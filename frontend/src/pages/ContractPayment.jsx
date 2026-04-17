@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
 import contractExtensionService from "../services/contractExtensionService";
+import authService from "../services/authService";
 import PaymentRetryButton from "../components/PaymentRetryButton";
 import ExpiryCountdown from "../components/ExpiryCountdown";
 
@@ -28,149 +29,145 @@ const ContractPayment = () => {
   const [error, setError] = useState(null);
   const [paymentStatus, setPaymentStatus] = useState('PENDING');
   const [extensionInfo, setExtensionInfo] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Load contract and create payment
-  useEffect(() => {
-    const initPayment = async () => {
-      try {
-        // Load contract
-        const contractData = await rentalService.getContractById(id);
-        setContract(contractData);
-        let extensionData = null;
+  // Guard against React StrictMode double-invoke (prevents duplicate createPayment calls)
+  const isInitializingRef = useRef(false);
 
-        if (isTerminationPayment) {
-          if (contractData.status === 'TERMINATED') {
-            navigate(`/contracts/${id}`);
-            return;
-          }
+  // Extracted as useCallback so it can be called both on mount AND by the user (e.g. Tạo QR mới button)
+  const initPayment = useCallback(async () => {
+    // Prevent concurrent duplicate calls (React StrictMode runs effects twice in dev)
+    if (isInitializingRef.current) return;
+    isInitializingRef.current = true;
+    setError(null);
+    setLoading(true);
+    setPayment(null);
+    setQrInfo(null);
+    setPaymentStatus('PENDING');
+    try {
+      const contractData = await rentalService.getContractById(id);
+      setContract(contractData);
+      let extensionData = null;
 
-          if (contractData.status !== 'PENDING_TERMINATION') {
-            throw new Error('Hợp đồng không ở trạng thái chờ kết thúc sớm để thanh toán phí.');
-          }
-
-          if (!contractData.ownerApprovedTermination || !contractData.renterApprovedTermination) {
-            throw new Error('Hai bên chưa xác nhận kết thúc sớm, chưa thể thanh toán phí.');
-          }
-
-          if (Number(contractData.earlyTerminationFee || 0) <= 0) {
-            navigate(`/contracts/${id}`);
-            return;
-          }
-        } else if (!isExtensionPayment) {
-          // Check if already paid for activation flow
-          if (contractData.status === 'ACTIVE') {
-            navigate(`/contracts/${id}`);
-            return;
-          }
+      if (isTerminationPayment) {
+        if (contractData.status === 'TERMINATED') {
+          navigate(`/contracts/${id}`);
+          return;
         }
-
-        if (isExtensionPayment) {
-          if (!extensionId) {
-            throw new Error('Thiếu thông tin gia hạn.');
-          }
-
-          extensionData = await contractExtensionService.getExtensionById(extensionId);
-          if (!extensionData || extensionData.originalContractId !== Number(id)) {
-            throw new Error('Yêu cầu gia hạn không hợp lệ.');
-          }
-          setExtensionInfo(extensionData);
+        if (contractData.status !== 'PENDING_TERMINATION') {
+          throw new Error('Hợp đồng không ở trạng thái chờ kết thúc sớm để thanh toán phí.');
         }
+        if (!contractData.ownerApprovedTermination || !contractData.renterApprovedTermination) {
+          throw new Error('Hai bên chưa xác nhận kết thúc sớm, chưa thể thanh toán phí.');
+        }
+        if (Number(contractData.earlyTerminationFee || 0) <= 0) {
+          navigate(`/contracts/${id}`);
+          return;
+        }
+      } else if (!isExtensionPayment) {
+        if (contractData.status === 'ACTIVE') {
+          navigate(`/contracts/${id}`);
+          return;
+        }
+      }
 
-        // Get or create payment
-        const existingPayments = await paymentService.getPaymentsByContract(id);
-        let currentPayment;
-        const relevantPayments = Array.isArray(existingPayments)
-          ? existingPayments.filter((p) => p.paymentType === targetPaymentType)
-          : [];
+      if (isExtensionPayment) {
+        if (!extensionId) throw new Error('Thiếu thông tin gia hạn.');
+        extensionData = await contractExtensionService.getExtensionById(extensionId);
+        if (!extensionData || extensionData.originalContractId !== Number(id)) {
+          throw new Error('Yêu cầu gia hạn không hợp lệ.');
+        }
+        setExtensionInfo(extensionData);
+      }
 
-        if (relevantPayments.length > 0) {
-          // Use existing pending payment
-          currentPayment = relevantPayments.find(p => 
-            (p.status === 'PENDING' || p.status === 'RETRY_PENDING') && Number(p.amount) > 0
-          );
+      const amountOverride = isTerminationPayment
+        ? contractData.earlyTerminationFee
+        : isExtensionPayment
+          ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
+          : (contractData.depositAmount || contractData.monthlyPayment);
 
-          // Ensure current pending payment follows latest expiry policy (24h).
-          if (currentPayment?.status === 'PENDING') {
-            try {
-              const normalizedPayment = await paymentService.createPayment({
-                contractId: parseInt(id, 10),
-                  amountOverride: isTerminationPayment
-                    ? contractData.earlyTerminationFee
-                    : isExtensionPayment
-                      ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
-                    : (contractData.depositAmount || contractData.monthlyPayment),
-                paymentType: targetPaymentType
-              });
-              if (normalizedPayment?.paymentId === currentPayment.paymentId) {
-                currentPayment = { ...currentPayment, ...normalizedPayment };
-              }
-            } catch (normalizeErr) {
-              console.warn('Failed to normalize payment expiry policy:', normalizeErr);
-            }
-          }
-          
-          if (!currentPayment) {
-            // Check for failed/expired payments that can be retried
-            const failedPayment = relevantPayments.find(p => 
-              (p.status === 'FAILED' || p.status === 'EXPIRED') && Number(p.amount) > 0
-            );
-            
-            if (failedPayment) {
-              // Show the failed payment with retry option
-              currentPayment = failedPayment;
-            } else {
-              const completedPayment = relevantPayments
-                .filter(p => p.status === 'COMPLETED')
-                .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+      // Helper: check if a payment is still valid (PENDING and not expired)
+      // IMPORTANT: expiredAt from API is UTC, must parse as UTC to avoid timezone shift
+      const isStillValid = (p) => {
+        if (p.status !== 'PENDING' && p.status !== 'RETRY_PENDING') return false;
+        if (!p.expiredAt) return true;
+        const expiryStr = typeof p.expiredAt === 'string' && !p.expiredAt.endsWith('Z') && !p.expiredAt.includes('+')
+          ? p.expiredAt + 'Z'
+          : p.expiredAt;
+        return new Date(expiryStr) > new Date();
+      };
 
-              if (completedPayment) {
-                currentPayment = completedPayment;
-              } else {
-                // No reusable payment found, create new one
-                currentPayment = await paymentService.createPayment({
-                  contractId: parseInt(id, 10),
-                  amountOverride: isTerminationPayment
-                    ? contractData.earlyTerminationFee
-                    : isExtensionPayment
-                      ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
-                    : (contractData.depositAmount || contractData.monthlyPayment),
-                  paymentType: targetPaymentType
-                });
-              }
-            }
-          }
+      const existingPayments = await paymentService.getPaymentsByContract(id);
+      console.log('[initPayment] existingPayments:', existingPayments);
+
+      const relevantPayments = Array.isArray(existingPayments)
+        ? existingPayments.filter((p) => p.paymentType === targetPaymentType)
+        : [];
+
+      let currentPayment;
+
+      // 1. Completed payment
+      const completedPayment = relevantPayments
+        .filter(p => p.status === 'COMPLETED')
+        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+
+      if (completedPayment) {
+        currentPayment = completedPayment;
+      } else {
+        // 2. Still-valid PENDING payment
+        const validPending = relevantPayments.find(p => isStillValid(p) && Number(p.amount) > 0);
+        if (validPending) {
+          currentPayment = validPending;
+          console.log('[initPayment] Reusing valid pending:', currentPayment);
         } else {
-          // Create new payment
+          // 3. Create a fresh payment (expired/failed/missing)
+          console.log('[initPayment] Creating new payment, amountOverride:', amountOverride);
           currentPayment = await paymentService.createPayment({
             contractId: parseInt(id, 10),
-            amountOverride: isTerminationPayment
-              ? contractData.earlyTerminationFee
-              : isExtensionPayment
-                ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
-              : (contractData.depositAmount || contractData.monthlyPayment),
+            amountOverride,
             paymentType: targetPaymentType
           });
+          console.log('[initPayment] Created payment:', currentPayment);
         }
-
-        setPayment(currentPayment);
-
-        // Get QR info only if payment is pending/retry-pending
-        if (currentPayment.status === 'PENDING' || currentPayment.status === 'RETRY_PENDING') {
-          const qr = await paymentService.getPaymentQrInfo(currentPayment.paymentId);
-          setQrInfo(qr);
-        }
-
-        setPaymentStatus(currentPayment.status);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error initializing payment:", err);
-        setError(err.response?.data?.message || "Không thể tải thông tin thanh toán");
-        setLoading(false);
       }
-    };
 
-    initPayment();
+      setPayment(currentPayment);
+
+      if (currentPayment.status === 'PENDING' || currentPayment.status === 'RETRY_PENDING') {
+        console.log('[initPayment] Fetching QR for paymentId:', currentPayment.paymentId);
+        const qr = await paymentService.getPaymentQrInfo(currentPayment.paymentId);
+        console.log('[initPayment] QR info:', qr);
+        setQrInfo(qr);
+      }
+
+      setPaymentStatus(currentPayment.status);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error initializing payment:", err);
+      // Log detailed error info for debugging
+      const errMsg = err.response?.data?.message
+        || err.response?.data?.detail
+        || err.response?.data?.title
+        || (err.response?.data && JSON.stringify(err.response.data))
+        || err.message
+        || "Không thể tải thông tin thanh toán";
+      console.error("Error details:", {
+        status: err.response?.status,
+        data: err.response?.data,
+        message: errMsg
+      });
+      setError(`[${err.response?.status || 'ERR'}] ${errMsg}`);
+      setLoading(false);
+    } finally {
+      // Always release the guard so manual re-trigger (Tạo QR mới) can work
+      isInitializingRef.current = false;
+    }
   }, [id, navigate, isTerminationPayment, isExtensionPayment, extensionId, targetPaymentType]);
+
+  // Load on mount
+  useEffect(() => {
+    initPayment();
+  }, [initPayment]);
 
   // Poll payment status
   useEffect(() => {
@@ -184,6 +181,15 @@ const ContractPayment = () => {
 
         if (status.status === 'COMPLETED') {
           clearInterval(pollInterval);
+
+          // Refresh warehouse context so sidebar shows RENTER features immediately
+          try {
+            await authService.refreshWarehouseContext();
+            window.dispatchEvent(new Event('authChange'));
+          } catch (refreshErr) {
+            console.warn('Failed to refresh warehouse context:', refreshErr);
+          }
+
           // Redirect to success page after 2 seconds
           setTimeout(() => {
             navigate(`/payment-result?success=true&contractId=${id}&purpose=${isTerminationPayment ? 'termination' : 'contract'}`);
@@ -253,40 +259,53 @@ const ContractPayment = () => {
           color: "#dc2626", marginBottom: "2rem"
         }}>
           <div style={{ fontWeight: 700, marginBottom: "1rem" }}>
-            ❌ {paymentStatus === 'FAILED' ? 'Thanh toán thất bại' : 'Thanh toán đã hết hạn'}
+            ❌ {paymentStatus === 'FAILED' ? 'Thanh toán thất bại' : 'Mã QR đã hết hạn'}
           </div>
-          <div style={{ marginBottom: "1rem" }}>
+          <div style={{ marginBottom: "1rem", color: "#7f1d1d" }}>
             {paymentStatus === 'FAILED' 
               ? 'Không nhận được xác nhận từ ngân hàng. Vui lòng thử lại.'
-              : 'Thời gian thanh toán đã hết. Vui lòng tạo thanh toán mới.'}
+              : 'Thời gian thanh toán đã hết (10 phút). Bấm nút bên dưới để tạo mã QR mới.'}
           </div>
           
-          {/* Retry Button */}
-          <PaymentRetryButton
-            paymentId={payment?.paymentId}
-            onRetrySuccess={async (result) => {
-              // Reload payment info after retry
-              try {
-                const updatedStatus = await paymentService.getPaymentStatus(payment.paymentId);
-                setPayment(prev => prev ? { ...prev, ...updatedStatus } : prev);
-                setPaymentStatus(updatedStatus.status);
-                
-                // Get new QR code
-                if (updatedStatus.status === 'PENDING' || updatedStatus.status === 'RETRY_PENDING') {
-                  const qr = await paymentService.getPaymentQrInfo(payment.paymentId);
-                  setQrInfo(qr);
-                } else {
-                  setQrInfo(null);
+          {paymentStatus === 'EXPIRED' ? (
+            // For expired payments: re-run initPayment to create a new QR
+            <button
+              onClick={initPayment}
+              disabled={loading}
+              style={{
+                padding: "0.6rem 1.5rem", borderRadius: "8px", border: "none",
+                backgroundColor: "#dc2626", color: "#fff",
+                fontWeight: 600, cursor: loading ? "not-allowed" : "pointer",
+                fontSize: "0.95rem", opacity: loading ? 0.7 : 1
+              }}
+            >
+              {loading ? '⏳ Đang tạo...' : '🔄 Tạo mã QR mới'}
+            </button>
+          ) : (
+            /* Retry Button for FAILED */
+            <PaymentRetryButton
+              paymentId={payment?.paymentId}
+              onRetrySuccess={async (result) => {
+                try {
+                  const updatedStatus = await paymentService.getPaymentStatus(payment.paymentId);
+                  setPayment(prev => prev ? { ...prev, ...updatedStatus } : prev);
+                  setPaymentStatus(updatedStatus.status);
+                  if (updatedStatus.status === 'PENDING' || updatedStatus.status === 'RETRY_PENDING') {
+                    const qr = await paymentService.getPaymentQrInfo(payment.paymentId);
+                    setQrInfo(qr);
+                  } else {
+                    setQrInfo(null);
+                  }
+                } catch (err) {
+                  console.error('Failed to reload payment:', err);
                 }
-              } catch (err) {
-                console.error('Failed to reload payment:', err);
-              }
-            }}
-            onRetryError={(error) => {
-              alert(error);
-            }}
-            className="mt-2"
-          />
+              }}
+              onRetryError={(error) => {
+                alert(error);
+              }}
+              className="mt-2"
+            />
+          )}
         </div>
       )}
 
@@ -307,12 +326,12 @@ const ContractPayment = () => {
       {/* Countdown - Only show if payment is pending */}
       {(paymentStatus === 'PENDING' || paymentStatus === 'RETRY_PENDING') && payment?.expiredAt && (
         <ExpiryCountdown
+          key={payment.paymentId}
           expiryDate={payment.expiredAt}
           onExpired={() => {
             setPaymentStatus('EXPIRED');
-            alert('Thanh toán đã hết hạn. Vui lòng tạo thanh toán mới.');
           }}
-          warningThresholdMinutes={720}
+          warningThresholdMinutes={15}
           className="mb-4"
         />
       )}

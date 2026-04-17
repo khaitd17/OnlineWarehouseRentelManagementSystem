@@ -10,28 +10,32 @@ const ALLOWED_EXT = /\.(pdf|jpg|jpeg|png|xls|xlsx|doc|docx)$/i;
 const ALLOWED_MIME = ['application/pdf','image/jpeg','image/png','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 const fmtBytes = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}KB` : `${(n/1048576).toFixed(1)}MB`;
 const fileIcon = name => { const e = name.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(e)) return '🖼️'; if(e==='pdf') return '📄'; if(['xls','xlsx'].includes(e)) return '📊'; return '📎'; };
-const newRow = () => ({ id: Date.now()+Math.random(), assetId: null, itemName: '', unit: '', qty: 1, note: '', isNew: false, availableQty: null, search: '', showDrop: false });
+const newRow = () => ({ id: Date.now()+Math.random(), assetId: null, itemName: '', unit: 'cái', qty: 1, note: '', isNew: false, availableQty: null, search: '', showDrop: false });
 const inp = (extra={}) => ({ padding:'9px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', fontSize:'0.87rem', outline:'none', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s', boxSizing:'border-box', width:'100%', ...extra });
 const UNITS = ['cái','chiếc','thùng','hộp','kg','tấn','lít','mét','m²','m³','cuộn','bao','pallet','chai','gói','bẹ'];
+const UNITS_PER_M2 = 10;   // Hệ số: 10 đơn vị / m² khả dụng
+const KG_PER_M2_WARN = 300; // Ngưỡng cảnh báo tải trọng (kg/m²)
 
 function UnitCombobox({ value, onChange, accent }) {
   const [show, setShow] = useState(false);
   const [draft, setDraft] = useState(value||'');
+  const [isTyping, setIsTyping] = useState(false);
   const ref = useRef(null);
-  const opts = UNITS.filter(u=>u.toLowerCase().includes(draft.toLowerCase()));
-  useEffect(()=>setDraft(value??''),[value]);
+  // Hiện toàn bộ khi mở bằng click; chỉ lọc khi user đang gõ
+  const opts = isTyping ? UNITS.filter(u=>u.toLowerCase().includes(draft.toLowerCase())) : UNITS;
+  useEffect(()=>{ setDraft(value??''); },[value]);
   useEffect(()=>{
-    const fn=e=>{ if(ref.current&&!ref.current.contains(e.target)){ setShow(false); onChange(draft); } };
+    const fn=e=>{ if(ref.current&&!ref.current.contains(e.target)){ setShow(false); setIsTyping(false); onChange(draft); } };
     document.addEventListener('mousedown',fn);
     return ()=>document.removeEventListener('mousedown',fn);
   },[draft]);
   return (
     <div ref={ref} style={{ position:'relative' }}>
       <input value={draft}
-        onChange={e=>{ setDraft(e.target.value); setShow(true); }}
-        onFocus={()=>setShow(true)}
+        onChange={e=>{ setDraft(e.target.value); setIsTyping(true); setShow(true); }}
+        onFocus={()=>{ setIsTyping(false); setShow(true); }}
         onBlur={()=>{ onChange(draft); }}
-        onKeyDown={e=>{ if(e.key==='Escape') setShow(false); }}
+        onKeyDown={e=>{ if(e.key==='Escape'){ setShow(false); setIsTyping(false); } }}
         placeholder=""
         style={{ ...inp(), borderColor:show?accent:'#e2e8f0', paddingRight:28 }}/>
       <span style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize:'0.8rem', pointerEvents:'none' }}>&#9660;</span>
@@ -40,10 +44,11 @@ function UnitCombobox({ value, onChange, accent }) {
           {opts.length===0
             ? <div style={{ padding:'8px 12px', fontSize:'0.82rem', color:'#94a3b8' }}>Nhập tùy chỉnh</div>
             : opts.map(u=>(
-              <div key={u} onMouseDown={()=>{ onChange(u); setDraft(u); setShow(false); }}
-                style={{ padding:'8px 14px', cursor:'pointer', fontSize:'0.85rem', fontWeight:600, color:'#1e293b' }}
+              <div key={u} onMouseDown={()=>{ onChange(u); setDraft(u); setIsTyping(false); setShow(false); }}
+                style={{ padding:'8px 14px', cursor:'pointer', fontSize:'0.85rem', fontWeight:600, color:'#1e293b',
+                  background: u===draft ? `${accent}15` : '#fff' }}
                 onMouseEnter={e=>e.currentTarget.style.background='#f1f5f9'}
-                onMouseLeave={e=>e.currentTarget.style.background='#fff'}>{u}</div>
+                onMouseLeave={e=>e.currentTarget.style.background= u===draft ? `${accent}15` : '#fff'}>{u}</div>
             ))}
         </div>
       )}
@@ -52,10 +57,23 @@ function UnitCombobox({ value, onChange, accent }) {
 }
 
 /* ── Searchable row (INBOUND only) ─────────────────────────────────────── */
-function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, onEnter, canRemove }) {
+function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, onEnter, canRemove, maxQty, contractedArea }) {
   const ref = useRef(null);
+  const KG_PER_M2 = 500; // tải trọng sàn kho tiêu chuẩn kg/m²
   const filtered = (item.search ? list.filter(a=>(a.assetName||'').toLowerCase().includes(item.search.toLowerCase())) : list).slice(0,20);
+
+  // OUTBOUND: vượt tồn kho (hard block)
   const isOver = type==='OUTBOUND' && item.availableQty!==null && Number(item.qty)>item.availableQty;
+
+  // INBOUND tầng 2 — soft warning số lượng (vàng, không chặn)
+  const isOverCapacity = type==='INBOUND' && maxQty !== null && Number(item.qty) > maxQty;
+
+  // INBOUND tầng 1 — hard warning trọng lượng (đỏ, chặn ở backend)
+  const itemWeight = item.weightPerUnit && Number(item.weightPerUnit) > 0
+    ? Number(item.weightPerUnit) * Number(item.qty || 1)
+    : null;
+  const maxWeightKg = contractedArea > 0 ? contractedArea * KG_PER_M2 : null;
+  const isOverWeight = itemWeight !== null && maxWeightKg !== null && itemWeight > maxWeightKg;
 
   useEffect(()=>{
     const fn = e => { if(ref.current && !ref.current.contains(e.target)) onUpdate({ showDrop:false }); };
@@ -69,7 +87,7 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
       <td style={{ padding:'6px 8px', minWidth:220 }}>
         <div ref={ref} style={{ position:'relative' }}>
           <input value={item.search||item.itemName}
-            onChange={e=>{ const v=e.target.value; onUpdate({ search:v, itemName:v, assetId:null, isNew:false, showDrop:true }); }}
+            onChange={e=>{ const v=e.target.value; onUpdate({ search:v, itemName:v, assetId:null, isNew:false, showDrop:true, weightPerUnit:null }); }}
             onFocus={()=>onUpdate({ showDrop:true })}
             onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEnter(); } }}
             placeholder="Tìm hoặc gõ tên hàng..."
@@ -82,15 +100,24 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
               : filtered.length===0 && !item.search ? <div style={{ padding:12, color:'#94a3b8', fontSize:'0.83rem', textAlign:'center' }}>Gõ để tìm kiếm</div>
               : <>
                 {filtered.map(a=>(
-                  <div key={a.assetId} onMouseDown={()=>onUpdate({ assetId:a.assetId, itemName:a.assetName, unit:a.unit||'cái', search:a.assetName, availableQty:a.quantity??null, isNew:false, showDrop:false })}
+                  <div key={a.assetId} onMouseDown={()=>onUpdate({
+                      assetId: a.assetId, itemName: a.assetName,
+                      unit: a.unit||'cái', search: a.assetName,
+                      availableQty: a.quantity??null, isNew: false,
+                      showDrop: false,
+                      weightPerUnit: a.weightPerUnit || null  // ← pass cân nặng đơn vị
+                    })}
                     style={{ padding:'9px 14px', cursor:'pointer', fontSize:'0.85rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
                     <span style={{ fontWeight:600, color:'#1e293b' }}>{a.assetName}</span>
-                    <span style={{ fontSize:'0.75rem', color:'#94a3b8' }}>{a.unit}</span>
+                    <span style={{ fontSize:'0.75rem', color:'#94a3b8', display:'flex', flexDirection:'column', alignItems:'flex-end', gap:1 }}>
+                      <span>{a.unit}</span>
+                      {a.weightPerUnit && <span style={{ color:'#cbd5e1' }}>{a.weightPerUnit} kg/cái</span>}
+                    </span>
                   </div>
                 ))}
                 {item.search && !filtered.find(a=>a.assetName.toLowerCase()===item.search.toLowerCase()) && (
-                  <div onMouseDown={()=>onUpdate({ assetId:null, itemName:item.search, isNew:true, showDrop:false, unit:'cái' })}
+                  <div onMouseDown={()=>onUpdate({ assetId:null, itemName:item.search, isNew:true, showDrop:false, unit:'cái', weightPerUnit:null })}
                     style={{ padding:'9px 14px', cursor:'pointer', fontSize:'0.85rem', color:accent, fontWeight:700, borderTop:'1px solid #f1f5f9' }}
                     onMouseEnter={e=>e.currentTarget.style.background=`${accent}10`} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
                     ➕ Tạo mới: "{item.search}"
@@ -104,11 +131,34 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
       <td style={{ padding:'6px 8px', width:100 }}>
         <UnitCombobox value={item.unit} onChange={v=>onUpdate({ unit:v })} accent={accent}/>
       </td>
-      <td style={{ padding:'6px 8px', width:100 }}>
+      <td style={{ padding:'6px 8px', width:110 }}>
         <input type="number" min={1}
           value={item.qty} onChange={e=>onUpdate({ qty:e.target.value })}
           onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEnter(); }}}
-          style={{ ...inp(), borderColor: isOver?'#fca5a5':'#e2e8f0', color: isOver?'#dc2626':'#1e293b', fontWeight:700 }} />
+          style={{ ...inp(),
+            borderColor: isOver ? '#fca5a5' : isOverWeight ? '#fca5a5' : isOverCapacity ? '#fde68a' : '#e2e8f0',
+            color: isOver ? '#dc2626' : isOverWeight ? '#dc2626' : isOverCapacity ? '#b45309' : '#1e293b',
+            fontWeight:700 }} />
+        {/* Tầng 1 — Hard: trọng lượng vượt (đỏ, backend sẽ block) */}
+        {isOverWeight && (
+          <div style={{ fontSize:'0.68rem', color:'#dc2626', marginTop:3, fontWeight:600, lineHeight:1.3 }}>
+            🚫 Tải trọng vượt giới hạn sàn kho<br/>
+            ({itemWeight?.toLocaleString('vi-VN')} kg / tối đa {maxWeightKg?.toLocaleString('vi-VN')} kg)
+          </div>
+        )}
+        {/* Tầng 2 — Soft: số lượng vượt ước tính (vàng, vẫn submit được) */}
+        {!isOverWeight && isOverCapacity && (
+          <div style={{ fontSize:'0.68rem', color:'#b45309', marginTop:3, fontWeight:600, lineHeight:1.3 }}>
+            ⚠️ Vượt ước tính ({maxQty?.toLocaleString('vi-VN')} đơn vị)<br/>
+            <span style={{ fontWeight:400, color:'#78716c' }}>Hàng nhẹ/nhỏ: Manager sẽ xem xét</span>
+          </div>
+        )}
+        {/* Hiển thị cân nặng ước tính nếu có */}
+        {!isOverWeight && !isOverCapacity && itemWeight !== null && itemWeight > 0 && (
+          <div style={{ fontSize:'0.67rem', color:'#94a3b8', marginTop:2 }}>
+            ~{itemWeight >= 1000 ? `${(itemWeight/1000).toFixed(1)} tấn` : `${itemWeight.toLocaleString('vi-VN')} kg`}
+          </div>
+        )}
       </td>
       <td style={{ padding:'6px 8px', minWidth:160 }}>
         <input value={item.note||''} onChange={e=>onUpdate({ note:e.target.value })}
@@ -335,6 +385,10 @@ export default function CreateInventoryRequest() {
   const [hasDraft, setHasDraft] = useState(false);
   const DRAFT_KEY = 'inv_req_draft';
 
+  // Warehouse detail for capacity validation
+  const [selectedWarehouseDetail, setSelectedWarehouseDetail] = useState(null);
+  const [loadingWHDetail, setLoadingWHDetail] = useState(false);
+
   useEffect(()=>{
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
@@ -370,14 +424,23 @@ export default function CreateInventoryRequest() {
   const accent = type==='INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
   const selectedWH = warehouses.find(w=>w.warehouseId===warehouseId);
 
-  // Load warehouses
+  // Load warehouses — trích luôn requestedArea từ contract response
   useEffect(()=>{
     axiosClient.get('/rental-contracts/my-contracts')
       .then(res=>{
         const contracts = Array.isArray(res.data)?res.data:[];
         const seen=new Set();
         const whs = contracts.filter(c=>c.status==='ACTIVE'||c.status==='EXPIRED').reduce((acc,c)=>{
-          if(c.warehouseId&&!seen.has(c.warehouseId)){ seen.add(c.warehouseId); acc.push({ warehouseId:c.warehouseId, name:c.warehouseName||`Kho #${c.warehouseId}`, status:c.status, contractNumber:c.contractNumber }); }
+          if(c.warehouseId&&!seen.has(c.warehouseId)){
+            seen.add(c.warehouseId);
+            acc.push({
+              warehouseId: c.warehouseId,
+              name: c.warehouseName||`Kho #${c.warehouseId}`,
+              status: c.status,
+              contractNumber: c.contractNumber,
+              requestedArea: c.requestedArea || 0,  // ← diện tích hợp đồng của renter
+            });
+          }
           return acc;
         },[]);
         setWarehouses(whs);
@@ -386,6 +449,29 @@ export default function CreateInventoryRequest() {
       .catch(()=>setWarehouses([]))
       .finally(()=>setLoadingWH(false));
   },[]);
+
+  // Tính maxQty từ diện tích hợp đồng của renter (KHÔNG dùng availableArea của kho)
+  const selectedWHData = warehouses.find(w=>w.warehouseId===warehouseId);
+  const contractedArea = selectedWHData?.requestedArea ?? 0;
+  const maxQty = contractedArea > 0 ? Math.floor(contractedArea * UNITS_PER_M2) : null;
+
+  // Tồn kho hiện tại của renter trong kho này (COMPLETED inbound)
+  const [currentStock, setCurrentStock] = useState(0);
+  const [loadingStock, setLoadingStock] = useState(false);
+  useEffect(()=>{
+    if(!warehouseId || type!=='INBOUND'){ setCurrentStock(0); return; }
+    setLoadingStock(true);
+    axiosClient.get(`/renter-assets/my-inventory?warehouseId=${warehouseId}`)
+      .then(res=>{
+        const rows = Array.isArray(res.data) ? res.data : [];
+        setCurrentStock(rows.reduce((sum, r) => sum + (r.quantity || 0), 0));
+      })
+      .catch(()=>setCurrentStock(0))
+      .finally(()=>setLoadingStock(false));
+  },[warehouseId, type]);
+
+  // Số đơn vị còn có thể nhập = giới hạn hợp đồng − tồn kho hiện tại
+  const remainingQty = maxQty !== null ? Math.max(0, maxQty - currentStock) : null;
 
   // Load assets for INBOUND
   useEffect(()=>{
@@ -483,6 +569,9 @@ export default function CreateInventoryRequest() {
       if(!it.itemName.trim()){setError('Vui lòng nhập tên hàng hóa.');return;}
       if(!it.qty||Number(it.qty)<1){setError('Số lượng phải >= 1.');return;}
     }
+    // Lưu ý: Số lượng vượt ước tính diện tích (soft warning) KHÔNG bị chặn ở đây.
+    // Backend sẽ chặn nếu TỔNG TRỌNG LƯỢNG vượt tải trọng sàn kho (500 kg/m²).
+    // Hàng nhẹ (bút, hộp giấy...) sẽ qua được và Manager approval sẽ là gate cuối cùng.
     setSubmitting(true);
     try {
       let docUrls=uploadedUrls;
@@ -577,14 +666,85 @@ export default function CreateInventoryRequest() {
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1e293b' }}>{wh.name}</div>
                     {wh.contractNumber&&<div style={{ fontSize:'0.77rem', color:'#64748b', marginTop:2 }}>HĐ: {wh.contractNumber}</div>}
+                    {/* Capacity badges — chỉ hiện khi kho này được chọn và là INBOUND */}
+                    {warehouseId===wh.warehouseId && type==='INBOUND' && (
+                      <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
+                        {wh.requestedArea > 0 ? (
+                          loadingStock ? (
+                            <span style={{ fontSize:'0.7rem', color:'#94a3b8' }}>Đang tính tồn kho...</span>
+                          ) : (
+                          <>
+                            {/* Còn có thể nhập (ước tính đơn vị) */}
+                            <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700,
+                              background: remainingQty === 0 ? '#fef2f2' : '#f0fdf4',
+                              border: `1px solid ${remainingQty === 0 ? '#fecaca' : '#bbf7d0'}`,
+                              color: remainingQty === 0 ? '#dc2626' : '#15803d' }}>
+                              {remainingQty === 0 ? '🚫' : '📦'} Còn ước tính: {(remainingQty ?? 0).toLocaleString('vi-VN')} đơn vị
+                            </span>
+                            {/* Tải trọng sàn kho (hard limit vật lý) */}
+                            <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#faf5ff', border:'1px solid #e9d5ff', color:'#7c3aed' }}>
+                              ⚖️ Tải trọng: {(wh.requestedArea * 500).toLocaleString('vi-VN')} kg tối đa
+                            </span>
+                            {/* Đã có trong kho */}
+                            {currentStock > 0 && (
+                              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#fff7ed', border:'1px solid #fed7aa', color:'#c2410c' }}>
+                                🏠 Đang lưu kho: {currentStock.toLocaleString('vi-VN')} đơn vị
+                              </span>
+                            )}
+                            {/* Diện tích hợp đồng */}
+                            <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8' }}>
+                              📋 HĐ: {wh.requestedArea.toLocaleString('vi-VN')} m² / ~{maxQty?.toLocaleString('vi-VN')} đơn vị ước tính
+                            </span>
+                          </>
+                          )
+                        ) : (
+                          <span style={{ fontSize:'0.7rem', color:'#94a3b8' }}>Đang tải thông tin hợp đồng...</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Preview tồn kho — chỉ OUTBOUND, kho đang chọn */}
+                    {warehouseId===wh.warehouseId && type==='OUTBOUND' && (
+                      <div style={{ marginTop:8 }}>
+                        {loadingInv ? (
+                          <span style={{ fontSize:'0.72rem', color:'#94a3b8' }}>⏳ Đang tải tồn kho...</span>
+                        ) : inventory.length === 0 ? (
+                          <span style={{ fontSize:'0.72rem', color:'#dc2626', fontWeight:600 }}>📭 Kho này hiện không có hàng hóa nào</span>
+                        ) : (
+                          <div>
+                            {/* Tổng quan */}
+                            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:6 }}>
+                              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#fff8e1', border:'1px solid #fde68a', color:'#d97706' }}>
+                                📦 {inventory.length} mặt hàng · {inventory.reduce((s,i)=>s+(i.quantity||0),0).toLocaleString('vi-VN')} đơn vị
+                              </span>
+                            </div>
+                            {/* Chip từng mặt hàng (max 5, còn lại badge +N) */}
+                            <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                              {inventory.slice(0,5).map(item=>(
+                                <span key={item.assetId} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 10px', borderRadius:20, fontSize:'0.7rem', fontWeight:600, background:'#fafafa', border:'1px solid #e2e8f0', color:'#374151' }}>
+                                  {item.assetName||item.itemName}
+                                  <span style={{ color:accent, fontWeight:700 }}>×{(item.quantity||0).toLocaleString('vi-VN')}</span>
+                                  {item.unit && <span style={{ color:'#94a3b8' }}>{item.unit}</span>}
+                                </span>
+                              ))}
+                              {inventory.length > 5 && (
+                                <span style={{ display:'inline-flex', alignItems:'center', padding:'2px 10px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:`${accent}15`, border:`1px solid ${accent}40`, color:accent }}>
+                                  +{inventory.length-5} mặt hàng khác
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {wh.status==='ACTIVE' ? (
-                    <span className="badge-active" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:'#f0fdf4', color:'#16a34a', border:'1px solid #bbf7d0' }}>
+                    <span className="badge-active" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:'#f0fdf4', color:'#16a34a', border:'1px solid #bbf7d0', flexShrink:0 }}>
                       <span className="pulse-dot" style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', flexShrink:0 }}/>
                       Đang hiệu lực
                     </span>
                   ) : (
-                    <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:'#fef3c7', color:'#d97706', border:'1px solid #fde68a' }}>
+                    <span style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:20, fontSize:'0.72rem', fontWeight:700, background:'#fef3c7', color:'#d97706', border:'1px solid #fde68a', flexShrink:0 }}>
                       <span style={{ width:7, height:7, borderRadius:'50%', background:'#f59e0b', flexShrink:0 }}/>
                       Đã hết hạn
                     </span>
@@ -646,6 +806,8 @@ export default function CreateInventoryRequest() {
                             onRemove={()=>removeRow(item.id)}
                             onEnter={addRow}
                             canRemove={items.length>1}
+                            maxQty={remainingQty}
+                            contractedArea={contractedArea}
                           />
                         ))}
                       </tbody>
