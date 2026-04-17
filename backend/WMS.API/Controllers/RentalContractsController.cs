@@ -500,6 +500,58 @@ public class RentalContractsController : ControllerBase
             return StatusCode(500, new { message = "An error occurred", error = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Manager/Operator tra cứu thông tin sức chứa hợp đồng của 1 renter trong kho.
+    /// Trả về: diện tích hợp đồng, tổng tồn kho hiện tại, còn có thể nhập.
+    /// </summary>
+    [HttpGet("renter-capacity")]
+    public async Task<IActionResult> GetRenterCapacity(
+        [FromQuery] int renterId,
+        [FromQuery] int warehouseId,
+        CancellationToken ct)
+    {
+        const int    UnitsPerM2  = 10;
+        const double KgPerM2     = 500.0;
+
+        // Lấy diện tích hợp đồng
+        double contractedArea = await _contractRepo.GetContractedAreaAsync(renterId, warehouseId, ct);
+
+        // Lấy tên & email renter
+        var renter = await _db.Users
+            .Where(u => u.UserId == renterId)
+            .Select(u => new { u.FullName, u.Email })
+            .FirstOrDefaultAsync(ct);
+
+        // Lấy tồn kho hiện tại (join qua RenterAsset vì RenterInventory không có RenterId trực tiếp)
+        var inventoryRows = await _db.RenterInventories
+            .Join(_db.RenterAssets,
+                ri => ri.AssetId,
+                ra => ra.AssetId,
+                (ri, ra) => new { ri, ra })
+            .Where(x => x.ra.RenterId == renterId && x.ri.WarehouseId == warehouseId)
+            .ToListAsync(ct);
+        int currentStock = inventoryRows.Sum(x => x.ri.Quantity);
+
+        int maxQty       = contractedArea > 0 ? (int)Math.Floor(contractedArea * UnitsPerM2) : 0;
+        int remainingQty = Math.Max(0, maxQty - currentStock);
+        double maxWeightKg = contractedArea * KgPerM2;
+
+        return Ok(new
+        {
+            renterId,
+            renterName        = renter?.FullName ?? "—",
+            renterEmail       = renter?.Email    ?? "—",
+            warehouseId,
+            contractedAreaM2  = contractedArea,
+            maxQty,
+            currentStock,
+            remainingQty,
+            usagePercent      = maxQty > 0 ? Math.Round((double)currentStock / maxQty * 100, 1) : 0,
+            maxWeightKg,
+            hasContract       = contractedArea > 0,
+        });
+    }
 }
 
 public class VerifyOtpRequest

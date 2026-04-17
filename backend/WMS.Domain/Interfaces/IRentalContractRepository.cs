@@ -36,4 +36,10 @@ public interface IRentalContractRepository
     Task ApplyExtensionAsync(int contractId, int durationMonths, decimal approvedMonthlyPayment);
 
     Task<bool> IsRenterByContractAsync(int renterId, int warehouseId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lấy diện tích đã thuê (RequestedArea) của renter cho một kho cụ thể.
+    /// Dùng để giới hạn sức chứa khi nhập kho.
+    /// </summary>
+    Task<double> GetContractedAreaAsync(int renterId, int warehouseId, CancellationToken ct = default);
 }

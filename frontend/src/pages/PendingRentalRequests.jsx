@@ -7,6 +7,7 @@ const statusColors = {
   PENDING: { bg: "#fef3c7", color: "#d97706", label: "Chờ duyệt" },
   APPROVED: { bg: "#dcfce7", color: "#16a34a", label: "Đã duyệt" },
   REJECTED: { bg: "#fee2e2", color: "#dc2626", label: "Từ chối" },
+  EXPIRED: { bg: "#fef3c7", color: "#b45309", label: "Hết hạn" },
 };
 
 const formatCurrency = (amount) => {
@@ -35,34 +36,51 @@ const generateDefaultTerms = (req) => {
 6. Hai bên có thể thỏa thuận gia hạn hợp đồng trước khi hết hạn ít nhất 30 ngày.`;
 };
 
-// Reusable section component for the contract modal
-const ContractSection = ({ title, children }) => (
-  <div style={{ marginBottom: "1.2rem" }}>
-    <h3 style={{
-      fontSize: "0.95rem", fontWeight: 700, color: "#0f172a",
-      marginBottom: "0.8rem", paddingBottom: "0.5rem",
-      borderBottom: "1px solid #f1f5f9",
+// Icon helper
+const Icon = ({ name, size = 16, color = "currentColor" }) => (
+  <span className="material-symbols-outlined" style={{ fontSize: size, color, verticalAlign: "middle", lineHeight: 1 }}>{name}</span>
+);
+
+// Reusable section card for the contract modal
+const ContractSection = ({ title, icon, accent = "#3b82f6", children }) => (
+  <div style={{
+    marginBottom: "1rem",
+    borderRadius: "14px",
+    border: "1px solid #e8edf3",
+    overflow: "hidden",
+    boxShadow: "0 1px 4px rgba(0,0,0,0.04)"
+  }}>
+    <div style={{
+      display: "flex", alignItems: "center", gap: "0.6rem",
+      padding: "0.7rem 1rem",
+      background: `linear-gradient(135deg, ${accent}14 0%, ${accent}08 100%)`,
+      borderBottom: `2px solid ${accent}22`,
     }}>
-      {title}
-    </h3>
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem 1.5rem" }}>
+      {icon && <Icon name={icon} size={17} color={accent} />}
+      <span style={{ fontSize: "0.88rem", fontWeight: 700, color: accent, letterSpacing: "0.01em" }}>{title}</span>
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.7rem", padding: "0.9rem 1rem", backgroundColor: "#fff" }}>
       {children}
     </div>
   </div>
 );
 
 // Read-only info field
-const ReadOnlyField = ({ label, value }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-    <span style={{ fontSize: "0.78rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+const ReadOnlyField = ({ label, value, fullWidth }) => (
+  <div style={{ display: "flex", flexDirection: "column", gap: "3px", ...(fullWidth ? { gridColumn: "1 / -1" } : {}) }}>
+    <span style={{ fontSize: "0.73rem", color: "#8898aa", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
       {label}
     </span>
     <span style={{
-      fontSize: "0.9rem", color: "#0f172a", fontWeight: 500,
-      padding: "0.5rem 0.7rem", backgroundColor: "#f8fafc",
-      borderRadius: "8px", border: "1px solid #f1f5f9",
+      fontSize: "0.88rem", color: "#1e293b", fontWeight: 500,
+      padding: "0.45rem 0.75rem",
+      backgroundColor: "#f7f9fc",
+      borderRadius: "8px",
+      border: "1px solid #e8edf3",
+      minHeight: "34px",
+      display: "flex", alignItems: "center",
     }}>
-      {value || "---"}
+      {value || <span style={{ color: "#c0c9d4" }}>---</span>}
     </span>
   </div>
 );
@@ -170,7 +188,6 @@ const PendingRentalRequests = () => {
   };
 
   const handleApprove = async () => {
-    // Validation
     if (!contractForm.monthlyPayment || parseFloat(contractForm.monthlyPayment) <= 0) {
       alert("Vui lòng nhập giá thuê hàng tháng hợp lệ");
       return;
@@ -182,6 +199,18 @@ const PendingRentalRequests = () => {
     if (!contractForm.durationMonths || parseInt(contractForm.durationMonths) < 1 || parseInt(contractForm.durationMonths) > 120) {
       alert("Vui lòng nhập thời hạn hợp đồng từ 1-120 tháng");
       return;
+    }
+    
+    // Validate Tiền đặt cọc
+    const deposit = parseFloat(contractForm.depositAmount);
+    const totalContractValue = calculateTotalValue(contractForm.monthlyPayment, contractForm.durationMonths);
+    if (contractForm.depositAmount !== "" && (isNaN(deposit) || deposit < 0)) {
+        alert("Tiền đặt cọc không được nhỏ hơn 0.");
+        return;
+    }
+    if (deposit > totalContractValue) {
+        alert("Tiền đặt cọc không được vượt quá tổng giá trị hợp đồng.");
+        return;
     }
     
     setActionLoading(true);
@@ -334,39 +363,63 @@ const PendingRentalRequests = () => {
     // Original form view
     return (
       <>
-        <div style={{ marginBottom: "1.2rem" }}>
-          <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.3rem" }}>
-            Hợp đồng thuê kho hàng
-          </h2>
-          <p style={{ color: "#64748b", fontSize: "0.85rem", margin: 0 }}>
-            Xem xét và chỉnh sửa nội dung hợp đồng trước khi ký và gửi đến người thuê
+        {/* ── Modal Header ── */}
+        <div style={{
+          margin: "-2rem -2rem 1.2rem -2rem",
+          padding: "1.5rem 2rem 1.2rem",
+          background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0c4a8f 100%)",
+          borderRadius: "20px 20px 0 0",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          {/* Decorative circles */}
+          <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.04)" }} />
+          <div style={{ position: "absolute", top: 10, right: 40, width: 60, height: 60, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.35rem" }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(59,130,246,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="description" size={20} color="#93c5fd" />
+            </div>
+            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.01em" }}>
+              Hợp đồng thuê kho hàng
+            </h2>
+          </div>
+          <p style={{ margin: 0, color: "rgba(148,163,184,0.9)", fontSize: "0.82rem", paddingLeft: "3rem" }}>
+            Xem xét và chỉnh sửa trước khi ký và gửi đến người thuê
           </p>
+          {/* Close button */}
+          <button onClick={closeModal} style={{
+            position: "absolute", top: 14, right: 16,
+            background: "rgba(255,255,255,0.1)", border: "none",
+            borderRadius: 8, width: 30, height: 30, cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8",
+            fontSize: 18, lineHeight: 1,
+          }}>×</button>
         </div>
 
-        {/* Bên cho thuê (Bên A) */}
-        <ContractSection title="Bên cho thuê (Bên A)">
-          <ReadOnlyField label="Họ và tên" value={req.ownerName} />
-          <ReadOnlyField label="Email" value={req.ownerEmail} />
-          <ReadOnlyField label="Số điện thoại" value={req.ownerPhone} />
-        </ContractSection>
+        {/* ── Two-party info side by side ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.8rem", marginBottom: "0.8rem" }}>
+          <ContractSection title="Bên A — Cho thuê" icon="business" accent="#2563eb">
+            <ReadOnlyField label="Họ và tên" value={req.ownerName} />
+            <ReadOnlyField label="Email" value={req.ownerEmail} />
+            <ReadOnlyField label="Số điện thoại" value={req.ownerPhone} fullWidth />
+          </ContractSection>
+          <ContractSection title="Bên B — Người thuê" icon="person" accent="#7c3aed">
+            <ReadOnlyField label="Họ và tên" value={req.renterName} />
+            <ReadOnlyField label="Email" value={req.renterEmail} />
+          </ContractSection>
+        </div>
 
-        {/* Bên thuê (Bên B) */}
-        <ContractSection title="Bên thuê (Bên B)">
-          <ReadOnlyField label="Họ và tên" value={req.renterName} />
-          <ReadOnlyField label="Email" value={req.renterEmail} />
-        </ContractSection>
-
-        {/* Thông tin kho hàng */}
-        <ContractSection title="Thông tin kho hàng">
+        {/* ── Warehouse info ── */}
+        <ContractSection title="Thông tin kho hàng" icon="warehouse" accent="#0891b2">
           <ReadOnlyField label="Tên kho" value={req.warehouseName} />
-          <ReadOnlyField label="Địa chỉ" value={req.warehouseAddress} />
           <ReadOnlyField label="Diện tích thuê" value={`${req.requestedArea} m²`} />
+          <ReadOnlyField label="Địa chỉ" value={req.warehouseAddress} fullWidth />
         </ContractSection>
 
-        {/* Thời hạn hợp đồng */}
-        <ContractSection title="Thời hạn hợp đồng">
+        {/* ── Contract duration ── */}
+        <ContractSection title="Thời hạn hợp đồng" icon="calendar_month" accent="#059669">
           <div style={groupStyle}>
-            <label style={modalLabelStyle}>Ngày bắt đầu *</label>
+            <label style={{ ...modalLabelStyle, fontSize: "0.73rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Ngày bắt đầu *</label>
             <input
               type="date"
               value={contractForm.startDate}
@@ -375,7 +428,7 @@ const PendingRentalRequests = () => {
             />
           </div>
           <div style={groupStyle}>
-            <label style={modalLabelStyle}>Thời hạn (tháng) *</label>
+            <label style={{ ...modalLabelStyle, fontSize: "0.73rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Thời hạn (tháng) *</label>
             <input
               type="number"
               min="1"
@@ -385,32 +438,27 @@ const PendingRentalRequests = () => {
               style={modalInputStyle}
             />
           </div>
-          <ReadOnlyField label="Ngày kết thúc (tự động)" value={endDate} />
+          <ReadOnlyField label="Ngày kết thúc (tự động)" value={endDate} fullWidth />
         </ContractSection>
 
-        {/* Giá thuê và thanh toán */}
-        <ContractSection title="Giá thuê và thanh toán">
-          <ReadOnlyField 
-            label="Giá/m² (VNĐ)" 
-            value={formatCurrency(contractForm.pricePerM2)} 
+        {/* ── Pricing ── */}
+        <ContractSection title="Giá thuê và thanh toán" icon="payments" accent="#d97706">
+          <ReadOnlyField label="Giá/m² (VNĐ)" value={formatCurrency(contractForm.pricePerM2)} />
+          <ReadOnlyField label="Diện tích thuê" value={`${req.requestedArea} m²`} />
+          <ReadOnlyField
+            label={`Giá thuê/tháng (${req.requestedArea}m² × ${formatCurrency(contractForm.pricePerM2)})`}
+            value={formatCurrency(contractForm.monthlyPayment)}
+            fullWidth
           />
-          <ReadOnlyField 
-            label="Diện tích thuê" 
-            value={`${req.requestedArea} m²`} 
-          />
-          <div style={{ gridColumn: "1 / -1" }}>
-            <ReadOnlyField 
-              label={`Tổng giá thuê/tháng (${req.requestedArea} m² × ${formatCurrency(contractForm.pricePerM2)})`}
-              value={formatCurrency(contractForm.monthlyPayment)} 
-            />
-          </div>
           <div style={groupStyle}>
-            <label style={modalLabelStyle}>Tiền đặt cọc (VNĐ)</label>
+            <label style={{ ...modalLabelStyle, fontSize: "0.73rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Tiền đặt cọc (VNĐ)</label>
             <input
-              type="number"
-              min="0"
-              value={contractForm.depositAmount}
-              onChange={(e) => handleFormChange("depositAmount", e.target.value)}
+              type="text"
+              value={contractForm.depositAmount ? new Intl.NumberFormat('vi-VN').format(contractForm.depositAmount) : ""}
+              onChange={(e) => {
+                const rawValue = e.target.value.replace(/\D/g, "");
+                handleFormChange("depositAmount", rawValue);
+              }}
               placeholder="Không bắt buộc"
               style={modalInputStyle}
             />
@@ -418,70 +466,86 @@ const PendingRentalRequests = () => {
           <ReadOnlyField label="Tổng giá trị hợp đồng" value={totalValue > 0 ? formatCurrency(totalValue) : "---"} />
         </ContractSection>
 
-        {/* Điều khoản hợp đồng */}
-        <div style={{ marginBottom: "1.2rem" }}>
-          <h3 style={{
-            fontSize: "0.95rem", fontWeight: 700, color: "#0f172a",
-            marginBottom: "0.8rem", paddingBottom: "0.5rem",
-            borderBottom: "1px solid #f1f5f9",
+        {/* ── Terms ── */}
+        <div style={{
+          marginBottom: "0.8rem",
+          borderRadius: "14px",
+          border: "1px solid #e8edf3",
+          overflow: "hidden",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.04)"
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0.6rem",
+            padding: "0.7rem 1rem",
+            background: "linear-gradient(135deg, #64748b14 0%, #64748b08 100%)",
+            borderBottom: "2px solid #64748b22",
           }}>
-            Điều khoản hợp đồng
-          </h3>
-          <div style={groupStyle}>
+            <Icon name="gavel" size={17} color="#64748b" />
+            <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#64748b" }}>Điều khoản hợp đồng</span>
+          </div>
+          <div style={{ padding: "0.9rem 1rem", backgroundColor: "#fff" }}>
             <textarea
-              rows="8"
+              rows="6"
               value={contractForm.terms}
               onChange={(e) => handleFormChange("terms", e.target.value)}
               placeholder="Nhập các điều khoản hợp đồng..."
-              style={{ ...modalInputStyle, resize: "vertical", lineHeight: 1.6 }}
+              style={{ ...modalInputStyle, width: "100%", resize: "vertical", lineHeight: 1.65, fontFamily: "inherit", boxSizing: "border-box" }}
             />
           </div>
         </div>
 
-        {/* Tài liệu đính kèm */}
-        <div style={{ marginBottom: "1.2rem" }}>
-          <h3 style={{
-            fontSize: "0.95rem", fontWeight: 700, color: "#0f172a",
-            marginBottom: "0.8rem", paddingBottom: "0.5rem",
-            borderBottom: "1px solid #f1f5f9",
+        {/* ── Attachment ── */}
+        <div style={{
+          marginBottom: "1rem",
+          borderRadius: "14px",
+          border: "1px solid #e8edf3",
+          overflow: "hidden",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0.6rem",
+            padding: "0.7rem 1rem",
+            background: "linear-gradient(135deg, #06b6d414 0%, #06b6d408 100%)",
+            borderBottom: "2px solid #06b6d422",
           }}>
-            Tài liệu đính kèm (tùy chọn)
-          </h3>
-          <label style={{
-            display: "flex", alignItems: "center", gap: "0.8rem",
-            padding: "0.8rem", borderRadius: "10px",
-            border: "2px dashed #cbd5e1", cursor: "pointer",
-            backgroundColor: contractImageFile ? "#f0f9ff" : "#f8fafc",
-          }}>
-            <input
-              type="file"
-              accept=".jpg,.jpeg,.png,.pdf"
-              onChange={handleImageSelect}
-              style={{ display: "none" }}
-            />
-            <span style={{ fontSize: "1.2rem" }}>📎</span>
-            <span style={{ fontSize: "0.88rem", color: "#64748b" }}>
-              {contractImageFile ? contractImageFile.name : "Chọn file (JPG, PNG, PDF — tối đa 5MB)"}
-            </span>
-          </label>
-          {contractImagePreview && (
-            <img
-              src={contractImagePreview}
-              alt="preview"
-              style={{ marginTop: "0.5rem", maxHeight: "120px", borderRadius: "8px", objectFit: "contain", border: "1px solid #e2e8f0" }}
-            />
-          )}
+            <Icon name="attach_file" size={17} color="#0891b2" />
+            <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0891b2" }}>Tài liệu đính kèm <span style={{ fontWeight: 400, color: "#94a3b8" }}>(tùy chọn)</span></span>
+          </div>
+          <div style={{ padding: "0.9rem 1rem", backgroundColor: "#fff" }}>
+            <label style={{
+              display: "flex", alignItems: "center", gap: "0.8rem",
+              padding: "0.75rem 1rem", borderRadius: "10px",
+              border: `2px dashed ${contractImageFile ? "#0891b2" : "#cbd5e1"}`,
+              cursor: "pointer",
+              backgroundColor: contractImageFile ? "#f0f9ff" : "#f8fafc",
+              transition: "all 0.2s",
+            }}>
+              <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={handleImageSelect} style={{ display: "none" }} />
+              <Icon name="upload_file" size={20} color={contractImageFile ? "#0891b2" : "#94a3b8"} />
+              <span style={{ fontSize: "0.85rem", color: contractImageFile ? "#0891b2" : "#94a3b8", fontWeight: 500 }}>
+                {contractImageFile ? contractImageFile.name : "Chọn file đính kèm (JPG, PNG, PDF — tối đa 5MB)"}
+              </span>
+            </label>
+            {contractImagePreview && (
+              <img src={contractImagePreview} alt="preview" style={{ marginTop: "0.6rem", maxHeight: "100px", borderRadius: "8px", objectFit: "contain", border: "1px solid #e2e8f0" }} />
+            )}
+          </div>
         </div>
 
-        {/* Action buttons */}
-        <div style={{ display: "flex", gap: "0.8rem", justifyContent: "flex-end", marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid #f1f5f9" }}>
+        {/* ── Footer Buttons ── */}
+        <div style={{
+          display: "flex", gap: "0.75rem", justifyContent: "flex-end",
+          marginTop: "1rem", paddingTop: "1rem",
+          borderTop: "1px solid #f1f5f9"
+        }}>
           <button
             onClick={closeModal}
             disabled={actionLoading}
             style={{
-              padding: "0.7rem 1.5rem", borderRadius: "10px",
-              border: "1px solid #e2e8f0", backgroundColor: "#fff",
-              color: "#64748b", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem",
+              display: "flex", alignItems: "center", gap: "0.4rem",
+              padding: "0.65rem 1.4rem", borderRadius: "10px",
+              border: "1.5px solid #e2e8f0", backgroundColor: "#fff",
+              color: "#64748b", fontWeight: 600, cursor: "pointer", fontSize: "0.88rem",
+              transition: "all 0.15s",
             }}
           >
             Hủy
@@ -490,13 +554,16 @@ const PendingRentalRequests = () => {
             onClick={handleApprove}
             disabled={actionLoading}
             style={{
-              padding: "0.7rem 1.5rem", borderRadius: "10px", border: "none",
-              backgroundColor: actionLoading ? "#94a3b8" : "#2563eb",
-              color: "#fff", fontWeight: 600,
-              cursor: actionLoading ? "not-allowed" : "pointer", fontSize: "0.9rem",
+              display: "flex", alignItems: "center", gap: "0.5rem",
+              padding: "0.65rem 1.6rem", borderRadius: "10px", border: "none",
+              background: actionLoading ? "#94a3b8" : "linear-gradient(135deg, #2563eb, #1d4ed8)",
+              color: "#fff", fontWeight: 700,
+              cursor: actionLoading ? "not-allowed" : "pointer", fontSize: "0.88rem",
+              boxShadow: actionLoading ? "none" : "0 4px 14px rgba(37,99,235,0.35)",
+              transition: "all 0.15s",
             }}
           >
-            {actionLoading ? "Đang tạo..." : "Tiếp tục → Ký hợp đồng"}
+            {actionLoading ? "Đang tạo..." : (<><Icon name="draw" size={16} color="#fff" />Tiếp tục — Ký hợp đồng</>)}
           </button>
         </div>
       </>
@@ -505,30 +572,51 @@ const PendingRentalRequests = () => {
 
   const renderRejectModal = () => (
     <>
-      <h2 style={{ fontSize: "1.3rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.5rem" }}>
-        Từ chối yêu cầu #{actionModal.request.requestId}
-      </h2>
-      <p style={{ color: "#64748b", fontSize: "0.88rem", marginBottom: "1.5rem" }}>
-        Nhập lý do từ chối yêu cầu thuê
-      </p>
+      {/* Reject header */}
+      <div style={{
+        margin: "-2rem -2rem 1.5rem -2rem",
+        padding: "1.4rem 2rem 1.2rem",
+        background: "linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)",
+        borderRadius: "20px 20px 0 0",
+        position: "relative",
+      }}>
+        <button onClick={closeModal} style={{
+          position: "absolute", top: 14, right: 16,
+          background: "rgba(255,255,255,0.1)", border: "none",
+          borderRadius: 8, width: 30, height: 30, cursor: "pointer",
+          color: "rgba(255,255,255,0.7)", fontSize: 18, lineHeight: 1,
+        }}>×</button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.7rem" }}>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon name="cancel" size={20} color="#fca5a5" />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#fff" }}>
+              Từ chối yêu cầu #{actionModal.request.requestId}
+            </h2>
+            <p style={{ margin: 0, color: "rgba(252,165,165,0.85)", fontSize: "0.8rem" }}>Nhập lý do để người thuê được biết</p>
+          </div>
+        </div>
+      </div>
+
       <div style={groupStyle}>
-        <label style={modalLabelStyle}>Lý do từ chối *</label>
+        <label style={{ ...modalLabelStyle, fontSize: "0.78rem", textTransform: "uppercase", letterSpacing: "0.05em", color: "#64748b" }}>Lý do từ chối *</label>
         <textarea
-          rows="4"
+          rows="5"
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
-          placeholder="Nhập lý do từ chối"
-          style={{ ...modalInputStyle, resize: "vertical" }}
+          placeholder="Vui lòng nêu rõ lý do để người thuê hiểu..."
+          style={{ ...modalInputStyle, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }}
         />
       </div>
-      <div style={{ display: "flex", gap: "0.8rem", marginTop: "1.5rem", justifyContent: "flex-end" }}>
+      <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem", justifyContent: "flex-end" }}>
         <button
           onClick={closeModal}
           disabled={actionLoading}
           style={{
-            padding: "0.6rem 1.2rem", borderRadius: "10px",
-            border: "1px solid #e2e8f0", backgroundColor: "#fff",
-            color: "#64748b", fontWeight: 600, cursor: "pointer",
+            padding: "0.65rem 1.3rem", borderRadius: "10px",
+            border: "1.5px solid #e2e8f0", backgroundColor: "#fff",
+            color: "#64748b", fontWeight: 600, cursor: "pointer", fontSize: "0.88rem",
           }}
         >
           Hủy
@@ -537,13 +625,15 @@ const PendingRentalRequests = () => {
           onClick={handleReject}
           disabled={actionLoading}
           style={{
-            padding: "0.6rem 1.2rem", borderRadius: "10px", border: "none",
-            backgroundColor: actionLoading ? "#94a3b8" : "#dc2626",
-            color: "#fff", fontWeight: 600,
-            cursor: actionLoading ? "not-allowed" : "pointer",
+            display: "flex", alignItems: "center", gap: "0.4rem",
+            padding: "0.65rem 1.4rem", borderRadius: "10px", border: "none",
+            background: actionLoading ? "#94a3b8" : "linear-gradient(135deg, #dc2626, #b91c1c)",
+            color: "#fff", fontWeight: 700,
+            cursor: actionLoading ? "not-allowed" : "pointer", fontSize: "0.88rem",
+            boxShadow: actionLoading ? "none" : "0 4px 14px rgba(220,38,38,0.35)",
           }}
         >
-          {actionLoading ? "Đang xử lý..." : "Xác nhận từ chối"}
+          {actionLoading ? "Đang xử lý..." : (<><Icon name="block" size={15} color="#fff" />Xác nhận từ chối</>)}
         </button>
       </div>
     </>
@@ -724,22 +814,36 @@ const PendingRentalRequests = () => {
         <div
           style={{
             position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: "rgba(15,23,42,0.6)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
             display: "flex", justifyContent: "center", alignItems: "center",
             zIndex: 2000,
+            padding: "1rem",
           }}
           onClick={closeModal}
         >
           <div
             style={{
-              backgroundColor: "#fff", borderRadius: "20px", padding: "2rem",
-              width: "90%",
-              maxWidth: actionModal.type === "approve" ? "800px" : "500px",
-              maxHeight: "85vh", overflowY: "auto",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+              backgroundColor: "#f8fafc",
+              borderRadius: "20px",
+              padding: "2rem",
+              width: "100%",
+              maxWidth: actionModal.type === "approve" ? "820px" : "480px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 32px 80px rgba(15,23,42,0.3), 0 0 0 1px rgba(255,255,255,0.08)",
+              animation: "modalSlideIn 0.22s cubic-bezier(0.34,1.56,0.64,1)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
+            <style>{`
+              @keyframes modalSlideIn {
+                from { opacity: 0; transform: scale(0.94) translateY(12px); }
+                to   { opacity: 1; transform: scale(1) translateY(0); }
+              }
+              .contract-section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+            `}</style>
             {actionModal.type === "approve" ? renderApproveModal() : renderRejectModal()}
           </div>
         </div>

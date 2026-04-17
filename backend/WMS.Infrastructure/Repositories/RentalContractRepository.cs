@@ -415,6 +415,20 @@ public class RentalContractRepository : IRentalContractRepository
                 ct);
     }
 
+    public async Task<double> GetContractedAreaAsync(int renterId, int warehouseId, CancellationToken ct = default)
+    {
+        // Tìm hợp đồng ACTIVE của renter với kho này, rồi lấy RequestedArea từ RentalRequest
+        var contract = await _context.Contracts
+            .Include(c => c.Request)   // Contract.Request → RentalRequest
+            .Where(c => c.RenterId == renterId &&
+                        c.WarehouseId == warehouseId &&
+                        (c.Status == "ACTIVE" || c.Status == "EXPIRED"))
+            .OrderByDescending(c => c.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        return contract?.Request?.RequestedArea ?? 0;
+    }
+
     private DomainRentalContract MapToDomain(DbContract dbContract)
     {
         // Using reflection to bypass private constructor

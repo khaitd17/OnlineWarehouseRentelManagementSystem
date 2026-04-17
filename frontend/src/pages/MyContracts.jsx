@@ -49,12 +49,22 @@ const MyContracts = () => {
     const fetchContracts = async () => {
       try {
         if (isOwner) {
-          // Owner: Lấy tất cả contracts của warehouses họ sở hữu
-          const response = await rentalService.getContractsForOwner();
-          console.log('Owner contracts:', response);
-          setContracts(response);
+          // Owner: Lấy tất cả contracts của warehouses họ sở hữu, và cả những kho họ đi thuê
+          const [ownerRes, renterRes] = await Promise.all([
+            rentalService.getContractsForOwner(),
+            rentalService.getMyContracts()
+          ]);
+          console.log('Owner contracts:', ownerRes, 'Renter contracts:', renterRes);
+          // Gộp chung và loại bỏ trùng lặp (trường hợp hiếm khi tự thuê kho của mình)
+          const merged = [...ownerRes, ...renterRes];
+          const uniqueContracts = Array.from(new Map(merged.map(c => [c.contractId, c])).values());
+          
+          // Sắp xếp lại theo thời gian tạo mới nhất
+          uniqueContracts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          
+          setContracts(uniqueContracts);
         } else {
-          // Renter/User: Lấy contracts của họ thuê (bất kỳ user nào cũng có thể là người thuê)
+          // Renter/User: Lấy contracts của họ thuê
           const response = await rentalService.getMyContracts();
           console.log('Renter contracts:', response);
           setContracts(response);

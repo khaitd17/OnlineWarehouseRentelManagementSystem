@@ -49,4 +49,6 @@ public class ApprovedWarehouseDto
     public string?   OperatingHours  { get; set; }
     public double?   AverageRating   { get; set; }  // Rating mới
     public int       RatingCount     { get; set; }  // Rating mới
+    public double?   Lat             { get; set; }  // Tọa độ Latitude
+    public double?   Lng             { get; set; }  // Tọa độ Longitude
 }

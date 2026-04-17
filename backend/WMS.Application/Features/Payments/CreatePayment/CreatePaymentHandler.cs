@@ -8,7 +8,7 @@ namespace WMS.Application.Features.Payments.CreatePayment;
 
 public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, CreatePaymentResult>
 {
-    private const int PaymentExpiryHours = 24;
+    private const double PaymentExpiryHours = 10.0 / 60.0; // 10 minutes
 
     private readonly IRentalPaymentRepository _paymentRepo;
     private readonly IRentalContractRepository _contractRepo;
@@ -120,8 +120,7 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
                 var maxAllowedExpiry = DateTime.UtcNow.AddHours(PaymentExpiryHours);
                 if (!existingPendingPayment.ExpiredAt.HasValue || existingPendingPayment.ExpiredAt.Value > maxAllowedExpiry)
                 {
-                    var expiredAtProp = existingPendingPayment.GetType().GetProperty("ExpiredAt");
-                    expiredAtProp?.SetValue(existingPendingPayment, maxAllowedExpiry);
+                    existingPendingPayment.UpdateExpiry(maxAllowedExpiry);
                     await _paymentRepo.UpdateAsync(existingPendingPayment);
                 }
 
@@ -132,12 +131,14 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
                     PaymentCode = existingPendingPayment.PaymentCode,
                     Amount = existingPendingPayment.Amount,
                     Status = existingPendingPayment.Status,
-                    ExpiredAt = existingPendingPayment.ExpiredAt
+                    ExpiredAt = existingPendingPayment.ExpiredAt.HasValue
+                        ? DateTime.SpecifyKind(existingPendingPayment.ExpiredAt.Value, DateTimeKind.Utc)
+                        : null
                 };
             }
         }
 
-        // Create new payment
+        // Create new payment using a transaction to ensure PaymentCode is finalized atomically
         var payment = RentalPayment.Create(
             contractId: request.ContractId,
             amount: amount,
@@ -154,11 +155,12 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             payment.Status = request.Status;
         }
 
+        // Persist payment and immediately finalize its code in one round-trip
         var paymentId = await _paymentRepo.AddAsync(payment);
 
-        // Set payment code after getting the ID
+        // Set final payment code (WMS + 6-digit padded ID) and persist
         payment.SetPaymentCode($"WMS{paymentId:D6}");
-        await _paymentRepo.UpdateAsync(payment);
+        await _paymentRepo.UpdatePaymentCodeAsync(paymentId, payment.PaymentCode);
 
         // If cash payment, send notification to warehouse owner
         if (request.PaymentMethod == "CASH" && request.Status == "PENDING_CONFIRMATION")
@@ -172,7 +174,9 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             PaymentCode = payment.PaymentCode,
             Amount = payment.Amount,
             Status = payment.Status,
-            ExpiredAt = payment.ExpiredAt
+            ExpiredAt = payment.ExpiredAt.HasValue
+                ? DateTime.SpecifyKind(payment.ExpiredAt.Value, DateTimeKind.Utc)
+                : null
         };
     }
 

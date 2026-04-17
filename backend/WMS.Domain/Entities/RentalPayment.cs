@@ -33,10 +33,11 @@ public class RentalPayment
         int contractId,
         decimal amount,
         string paymentType,
-        int expiryHours = 48)
+        double expiryHours = 48)
     {
-        // Generate temporary payment code until we have PaymentId
-        var tempCode = $"WMS{DateTime.UtcNow:yyyyMMddHHmmssfff}";
+        // Use GUID-based temp code — guaranteed unique even with concurrent requests
+        // Will be replaced with WMS{paymentId:D6} after DB insert
+        var tempCode = $"TMP{Guid.NewGuid():N}".Substring(0, 20);
 
         var payment = new RentalPayment
         {
@@ -56,6 +57,13 @@ public class RentalPayment
     public void SetPaymentCode()
     {
         PaymentCode = $"WMS{PaymentId:D6}";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    // Update expiry time safely
+    public void UpdateExpiry(DateTime maxAllowedExpiry)
+    {
+        ExpiredAt = maxAllowedExpiry;
         UpdatedAt = DateTime.UtcNow;
     }
 

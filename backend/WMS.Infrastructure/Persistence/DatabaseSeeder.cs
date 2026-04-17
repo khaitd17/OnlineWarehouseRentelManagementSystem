@@ -1092,9 +1092,9 @@ namespace WMS.Infrastructure.Persistence
 
         private static WarehouseMembership EnsureMembership(ApplicationDbContext ctx, int userId, int warehouseId, int roleId, bool allSkill, bool allZone)
         {
-            // Kiểm tra theo cả roleId — 1 user có thể có nhiều role khác nhau trong cùng 1 kho
+            // Đã có Unique Index trên (UserId, WarehouseId) nên 1 user chỉ có 1 membership trong 1 kho
             var m = ctx.WarehouseMemberships
-                .FirstOrDefault(x => x.UserId == userId && x.WarehouseId == warehouseId && x.WarehouseRoleId == roleId);
+                .FirstOrDefault(x => x.UserId == userId && x.WarehouseId == warehouseId);
             if (m == null)
             {
                 m = new WarehouseMembership

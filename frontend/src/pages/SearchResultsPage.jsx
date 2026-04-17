@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import WarehouseMap from '../components/WarehouseMap';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { searchWarehouses } from '../services/warehouseService';
 import favoritesService from '../services/favoritesService';
@@ -83,6 +84,7 @@ const FilterSection = ({ icon, title, children }) => (
   </div>
 );
 
+
 /* ── Main Component ─────────────────────────────────────── */
 export default function SearchResultsPage() {
   const navigate = useNavigate();
@@ -129,6 +131,7 @@ export default function SearchResultsPage() {
   const [minRating,     setMinRating]     = useState(null);   // rating
   const [sortBy,        setSortBy]        = useState('newest');
   const [page,          setPage]          = useState(1);
+  const [viewMode,      setViewMode]      = useState('list'); // 'list' or 'map'
 
   const areaActive  = areaRange[0]  !== AREA_MIN  || areaRange[1]  !== AREA_MAX;
   const priceActive = priceRange[0] !== PRICE_MIN || priceRange[1] !== PRICE_MAX;
@@ -506,23 +509,60 @@ export default function SearchResultsPage() {
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: '0.88rem', color: '#64748b' }}>Sắp xếp:</span>
-              <select
-                value={sortBy}
-                onChange={e => { setSortBy(e.target.value); setPage(1); }}
-                style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', color: '#1e293b' }}
-              >
-                <option value='newest'>Mới nhất</option>
-                <option value='price_asc'>Giá: Thấp → Cao</option>
-                <option value='price_desc'>Giá: Cao → Thấp</option>
-                <option value='area_asc'>Diện tích: Nhỏ → Lớn</option>
-                <option value='area_desc'>Diện tích: Lớn → Nhỏ</option>
-              </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {/* Sắp xếp */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: '0.88rem', color: '#64748b' }}>Sắp xếp:</span>
+                <select
+                  value={sortBy}
+                  onChange={e => { setSortBy(e.target.value); setPage(1); }}
+                  style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', color: '#1e293b' }}
+                >
+                  <option value='newest'>Mới nhất</option>
+                  <option value='price_asc'>Giá: Thấp → Cao</option>
+                  <option value='price_desc'>Giá: Cao → Thấp</option>
+                  <option value='area_asc'>Diện tích: Nhỏ → Lớn</option>
+                  <option value='area_desc'>Diện tích: Lớn → Nhỏ</option>
+                </select>
+              </div>
+
+              {/* View Toggle */}
+              <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 8, padding: 4 }}>
+                <button
+                  onClick={() => setViewMode('list')}
+                  onMouseEnter={e => { if (viewMode !== 'list') e.currentTarget.style.background = '#e2e8f0'; }}
+                  onMouseLeave={e => { if (viewMode !== 'list') e.currentTarget.style.background = 'transparent'; }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 32,
+                    borderRadius: 6, border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                    background: viewMode === 'list' ? '#fff' : 'transparent',
+                    boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    color: viewMode === 'list' ? '#0095c7' : '#64748b',
+                  }}
+                  title="Danh sách"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>format_list_bulleted</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('map')}
+                  onMouseEnter={e => { if (viewMode !== 'map') e.currentTarget.style.background = '#e2e8f0'; }}
+                  onMouseLeave={e => { if (viewMode !== 'map') e.currentTarget.style.background = 'transparent'; }}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 32,
+                    borderRadius: 6, border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                    background: viewMode === 'map' ? '#fff' : 'transparent',
+                    boxShadow: viewMode === 'map' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    color: viewMode === 'map' ? '#0095c7' : '#64748b',
+                  }}
+                  title="Bản đồ"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>map</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Cards */}
+          {/* Cards / Map */}
           {loading ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 20 }}>
               {Array.from({ length: 6 }).map((_, i) => (
@@ -551,6 +591,8 @@ export default function SearchResultsPage() {
                 Xóa bộ lọc
               </button>
             </div>
+          ) : viewMode === 'map' ? (
+            <WarehouseMap warehouses={results} />
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: 20 }}>
               {results.map(w => (

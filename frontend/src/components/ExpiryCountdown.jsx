@@ -18,7 +18,11 @@ const ExpiryCountdown = ({
 
     const calculateTimeLeft = () => {
       const now = new Date();
-      const expiry = new Date(expiryDate);
+      // Ensure the expiryDate is treated as UTC (append 'Z' if no timezone info)
+      const expiryStr = typeof expiryDate === 'string' && !expiryDate.endsWith('Z') && !expiryDate.includes('+')
+        ? expiryDate + 'Z'
+        : expiryDate;
+      const expiry = new Date(expiryStr);
       const diff = expiry - now;
 
       if (diff <= 0) {
