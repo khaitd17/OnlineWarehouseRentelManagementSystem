@@ -196,7 +196,7 @@ const MyRatingsPage = () => {
       {/* Toast */}
       {msg && (
         <div style={{ padding: '12px 20px', borderRadius: '10px', marginBottom: '1rem', fontSize: '0.9rem', fontWeight: 600, backgroundColor: msg.type === 'success' ? '#f0fdf4' : '#fef2f2', color: msg.type === 'success' ? '#16a34a' : '#dc2626', border: `1px solid ${msg.type === 'success' ? '#bbf7d0' : '#fecaca'}` }}>
-          {msg.type === 'success' ? '✅' : '❌'} {msg.text}
+          {msg.text}
         </div>
       )}
 
@@ -214,7 +214,7 @@ const MyRatingsPage = () => {
                 <div style={{ padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '1rem', marginBottom: '2px' }}>
-                      🏢 {contract.warehouseName || `Kho #${contract.warehouseId}`}
+                      {contract.warehouseName || `Kho #${contract.warehouseId}`}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
                       Hợp đồng: {contract.contractNumber} &nbsp;·&nbsp;
@@ -321,7 +321,7 @@ const MyRatingsPage = () => {
       {/* ── Danh sách đánh giá đã tạo ── */}
       {ratings.length === 0 && unratedContracts.length === 0 ? (
         <div style={{ padding: '3rem', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '12px' }}>📝</div>
+          <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '12px', display: 'block' }}>rate_review</span>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#64748b', marginBottom: '8px' }}>Chưa có đánh giá nào</h3>
           <p style={{ fontSize: '0.85rem', color: '#94a3b8', margin: 0 }}>Bạn có thể đánh giá kho khi xem chi tiết kho mà bạn đang hoặc đã thuê</p>
         </div>
@@ -338,7 +338,7 @@ const MyRatingsPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                   <div>
                     <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      🏢 {r.warehouseName || `Kho #${r.warehouseId}`}
+                      {r.warehouseName || `Kho #${r.warehouseId}`}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
                       {r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN', { year: 'numeric', month: 'long', day: 'numeric' }) : ''}
@@ -406,7 +406,7 @@ const MyRatingsPage = () => {
                     )}
                     {r.isHidden && (
                       <div style={{ padding: '6px 12px', backgroundColor: '#fef2f2', borderRadius: '6px', display: 'inline-block', fontSize: '0.75rem', fontWeight: 600, color: '#dc2626', marginBottom: '8px' }}>
-                        👁 Đánh giá này đã bị ẩn
+                        Đánh giá này đã bị ẩn
                       </div>
                     )}
                     <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>

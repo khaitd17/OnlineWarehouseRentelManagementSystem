@@ -43,7 +43,8 @@ public class CreateInventoryRequestHandlerTests
         Mock<IWarehouseInventoryRepository>  invRepoMock,
         Mock<IWarehouseRepository>           warehouseMock,
         Mock<IRenterAssetRepository>         assetMock,
-        Mock<ITaskRepository>                taskMock)
+        Mock<ITaskRepository>                taskMock,
+        Mock<IRentalContractRepository>      contractMock)
     BuildHandler()
     {
         var repo         = new Mock<IInventoryRequestRepository>();
@@ -51,12 +52,13 @@ public class CreateInventoryRequestHandlerTests
         var warehouseRepo= new Mock<IWarehouseRepository>();
         var assetRepo    = new Mock<IRenterAssetRepository>();
         var taskRepo     = new Mock<ITaskRepository>();
+        var contractRepo = new Mock<IRentalContractRepository>();
 
         var handler = new CreateInventoryRequestHandler(
             repo.Object, invRepo.Object, warehouseRepo.Object,
-            assetRepo.Object, taskRepo.Object);
+            assetRepo.Object, taskRepo.Object, contractRepo.Object);
 
-        return (handler, repo, invRepo, warehouseRepo, assetRepo, taskRepo);
+        return (handler, repo, invRepo, warehouseRepo, assetRepo, taskRepo, contractRepo);
     }
 
     /// <summary>Return an InventoryRequest stub for _repo.CreateAsync to return.</summary>
@@ -75,7 +77,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC001_Inbound_ValidWarehouse_ValidItem_WithNotes_ReturnsDto()
     {
         // Arrange
-        var (handler, repo, _, warehouseMock, _, taskMock) = BuildHandler();
+        var (handler, repo, _, warehouseMock, _, taskMock, _) = BuildHandler();
 
         var wh = OpenWarehouse();
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
@@ -126,7 +128,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC002_Inbound_QuantityLowerBoundary1_ReturnsDto()
     {
         // Arrange
-        var (handler, repo, _, warehouseMock, _, taskMock) = BuildHandler();
+        var (handler, repo, _, warehouseMock, _, taskMock, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());
@@ -164,7 +166,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC003_Inbound_NullNotes_ReturnsDto()
     {
         // Arrange
-        var (handler, repo, _, warehouseMock, _, taskMock) = BuildHandler();
+        var (handler, repo, _, warehouseMock, _, taskMock, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());
@@ -202,7 +204,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC004_Inbound_EmptyItemName_ThrowsArgumentException()
     {
         // Arrange
-        var (handler, _, _, warehouseMock, _, _) = BuildHandler();
+        var (handler, _, _, warehouseMock, _, _, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());
@@ -231,7 +233,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC005_Inbound_NullItemName_ThrowsArgumentException()
     {
         // Arrange
-        var (handler, _, _, warehouseMock, _, _) = BuildHandler();
+        var (handler, _, _, warehouseMock, _, _, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());
@@ -254,7 +256,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC006_Inbound_QuantityZero_ThrowsException()
     {
         // Arrange
-        var (handler, repo, _, warehouseMock, _, taskMock) = BuildHandler();
+        var (handler, repo, _, warehouseMock, _, taskMock, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());
@@ -296,7 +298,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC007_Outbound_ValidAsset_SufficientStock_ReturnsDto()
     {
         // Arrange
-        var (handler, repo, _, warehouseMock, assetMock, taskMock) = BuildHandler();
+        var (handler, repo, _, warehouseMock, assetMock, taskMock, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());
@@ -351,7 +353,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC008_Outbound_InsufficientStock_ThrowsInvalidOperationException()
     {
         // Arrange
-        var (handler, _, _, warehouseMock, assetMock, _) = BuildHandler();
+        var (handler, _, _, warehouseMock, assetMock, _, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());
@@ -389,7 +391,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC009_Outbound_AssetNotFound_ThrowsKeyNotFoundException()
     {
         // Arrange
-        var (handler, _, _, warehouseMock, assetMock, _) = BuildHandler();
+        var (handler, _, _, warehouseMock, assetMock, _, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());
@@ -418,7 +420,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC010_WarehouseNotFound_ThrowsKeyNotFoundException()
     {
         // Arrange
-        var (handler, _, _, warehouseMock, _, _) = BuildHandler();
+        var (handler, _, _, warehouseMock, _, _, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(9999, It.IsAny<CancellationToken>()))
                      .ReturnsAsync((Warehouse?)null);
@@ -443,7 +445,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC011_WarehouseClosed_ThrowsInvalidOperationException()
     {
         // Arrange
-        var (handler, _, _, warehouseMock, _, _) = BuildHandler();
+        var (handler, _, _, warehouseMock, _, _, _) = BuildHandler();
 
         // Use a closed warehouse: OpenTime/CloseTime set so IsCurrentlyAccessible() = false
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
@@ -469,7 +471,7 @@ public class CreateInventoryRequestHandlerTests
     public async Task UTC012_InvalidType_Transfer_ThrowsArgumentException()
     {
         // Arrange
-        var (handler, repo, _, warehouseMock, _, taskMock) = BuildHandler();
+        var (handler, repo, _, warehouseMock, _, taskMock, _) = BuildHandler();
 
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());

@@ -45,6 +45,8 @@ public partial class Contract
 
     public string? OwnerSignatureBase64 { get; set; }
 
+    public string? RenterSignatureBase64 { get; set; }
+
     public DateTime? TerminatedAt { get; set; }
 
     public string? TerminationReason { get; set; }

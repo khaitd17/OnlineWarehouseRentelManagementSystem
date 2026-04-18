@@ -47,13 +47,37 @@ public class GeminiService : IGeminiService
         }
 
         // Prompt yêu cầu Gemini trả về JSON có cấu trúc
+        // Khi có nhiều ảnh, yêu cầu AI phân tích từng ảnh rồi tổng hợp để tránh trùng lặp
+        var imageCount = imageBytes.Count;
+        var multiImageInstructions = imageCount > 1
+            ? $"""
+
+            QUAN TRỌNG — BẠN ĐANG NHẬN {imageCount} ẢNH:
+            Các ảnh này có thể chụp CÙNG MỘT CĂN PHÒNG hoặc các phòng KHÁC NHAU trong cùng một ngôi nhà.
+            
+            Quy trình phân tích BẮT BUỘC — hãy thực hiện theo đúng thứ tự:
+            
+            BƯỚC 1 — Phân tích từng ảnh riêng biệt:
+            Với mỗi ảnh (Ảnh 1, Ảnh 2, ..., Ảnh {imageCount}), hãy liệt kê riêng tất cả đồ vật bạn thấy.
+            
+            BƯỚC 2 — Kiểm tra trùng lặp:
+            So sánh danh sách đồ vật giữa các ảnh. Nếu cùng một đồ vật xuất hiện trong nhiều ảnh
+            (ví dụ: cùng 1 chiếc sofa được chụp từ 2 góc khác nhau), thì CHỈ ĐẾM 1 LẦN.
+            Dấu hiệu nhận biết trùng lặp: cùng vị trí, cùng màu sắc, cùng kiểu dáng, cùng loại phòng.
+            
+            BƯỚC 3 — Tổng hợp kết quả cuối cùng:
+            Gộp danh sách đồ vật KHÔNG trùng lặp từ tất cả ảnh vào kết quả JSON duy nhất.
+            Nếu 2 ảnh chụp 2 phòng khác nhau (ví dụ: phòng khách và phòng ngủ), đồ vật ở 2 phòng phải được CỘNG DỒN.
+            Nếu 2 ảnh chụp cùng 1 phòng từ góc khác nhau, KHÔNG đếm đồ vật 2 lần.
+
+            """
+            : "";
+
         parts.Add(new
         {
-            text = """
+            text = $$"""
             Bạn là chuyên gia phân tích đồ vật trong ảnh cho hệ thống cho thuê kho hàng tại Việt Nam.
-            
-            Hãy phân tích TẤT CẢ đồ vật bạn nhìn thấy trong các ảnh được cung cấp.
-            
+            {{multiImageInstructions}}
             Trả về KẾT QUẢ ĐÚNG THEO JSON SCHEMA sau (không thêm markdown, không thêm text ngoài JSON):
             {
               "items": [
@@ -80,6 +104,14 @@ public class GeminiService : IGeminiService
             - Thùng các-tông lớn (60x40x40cm): ~0.10 m³
             - TV 55 inch: ~0.15 m³
             - Xe máy: ~1.50 m³
+            - Gối ngủ: ~0.02 m³
+            - Chăn/mền: ~0.10 m³
+            - Tranh treo tường: ~0.05 m³
+            - Ghế văn phòng: ~0.20 m³
+            - Kệ sách: ~0.10 m³
+            - Đèn bàn / đèn ngủ: ~0.02 m³
+            - Máy tính xách tay: ~0.01 m³
+            - Tivi: ~0.15 m³
             
             Nếu không nhận dạng được đồ vật hoặc ảnh quá mờ, hãy trả về items rỗng và confidence thấp.
             """
@@ -93,7 +125,8 @@ public class GeminiService : IGeminiService
             },
             generationConfig = new
             {
-                temperature = 0.1   // Thấp để output nhất quán hơn
+                temperature = 0.1,   // Thấp để output nhất quán hơn
+                maxOutputTokens = imageCount > 2 ? 4096 : 2048  // Tăng token khi nhiều ảnh
             }
         };
 

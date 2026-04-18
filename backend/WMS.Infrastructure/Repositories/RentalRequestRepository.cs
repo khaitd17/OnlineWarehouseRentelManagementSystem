@@ -122,6 +122,9 @@ public class RentalRequestRepository : IRentalRequestRepository
         dbRequest.ReviewedAt = request.ReviewedAt;
         dbRequest.RejectionReason = request.RejectionReason;
         dbRequest.ContractImageUrl = request.ContractImageUrl;
+        dbRequest.CancellationReason = request.CancellationReason;
+        dbRequest.CancelledAt = request.CancelledAt;
+        dbRequest.CancelledBy = request.CancelledBy;
         dbRequest.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();

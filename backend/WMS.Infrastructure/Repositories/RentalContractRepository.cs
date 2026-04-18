@@ -115,6 +115,7 @@ public class RentalContractRepository : IRentalContractRepository
         dbContract.OwnerSignedFileUrl = contract.OwnerSignedFileUrl;
         dbContract.OwnerSignedAt = contract.OwnerSignedAt;
         dbContract.OwnerSignatureBase64 = contract.OwnerSignatureBase64;
+        dbContract.RenterSignatureBase64 = contract.RenterSignatureBase64;
         
         // Termination/Close approval fields
         dbContract.TerminationRequestedBy = contract.TerminationRequestedBy;
@@ -455,6 +456,7 @@ public class RentalContractRepository : IRentalContractRepository
         var ownerSignedFileUrlProp = typeof(DomainRentalContract).GetProperty("OwnerSignedFileUrl");
         var ownerSignedAtProp = typeof(DomainRentalContract).GetProperty("OwnerSignedAt");
         var ownerSignatureBase64Prop = typeof(DomainRentalContract).GetProperty("OwnerSignatureBase64");
+        var renterSignatureBase64Prop = typeof(DomainRentalContract).GetProperty("RenterSignatureBase64");
         var createdAtProp = typeof(DomainRentalContract).GetProperty("CreatedAt");
         var updatedAtProp = typeof(DomainRentalContract).GetProperty("UpdatedAt");
         
@@ -485,6 +487,7 @@ public class RentalContractRepository : IRentalContractRepository
         ownerSignedFileUrlProp?.SetValue(domainContract, dbContract.OwnerSignedFileUrl);
         ownerSignedAtProp?.SetValue(domainContract, dbContract.OwnerSignedAt);
         ownerSignatureBase64Prop?.SetValue(domainContract, dbContract.OwnerSignatureBase64);
+        renterSignatureBase64Prop?.SetValue(domainContract, dbContract.RenterSignatureBase64);
         createdAtProp?.SetValue(domainContract, dbContract.CreatedAt ?? DateTime.UtcNow);
         updatedAtProp?.SetValue(domainContract, dbContract.UpdatedAt);
         

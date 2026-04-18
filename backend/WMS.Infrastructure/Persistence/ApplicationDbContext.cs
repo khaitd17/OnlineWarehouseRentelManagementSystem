@@ -188,6 +188,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.OwnerSignedFileUrl).HasMaxLength(500).HasColumnName("owner_signed_file_url");
             entity.Property(e => e.OwnerSignedAt).HasColumnName("owner_signed_at");
             entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
+            entity.Property(e => e.RenterSignatureBase64).HasColumnName("renter_signature_base64");
             entity.Property(e => e.TerminationRequestedBy).HasMaxLength(20).HasColumnName("termination_requested_by");
             entity.Property(e => e.TerminationRequestedAt).HasColumnName("termination_requested_at");
             entity.Property(e => e.RenterApprovedTermination).HasDefaultValue(false).HasColumnName("renter_approved_termination");
@@ -261,6 +262,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.OwnerSignedFileUrl).HasMaxLength(500).HasColumnName("owner_signed_file_url");
             entity.Property(e => e.OwnerSignedAt).HasColumnName("owner_signed_at");
             entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
+            entity.Property(e => e.RenterSignatureBase64).HasColumnName("renter_signature_base64");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.Property(e => e.ParentContractId).HasColumnName("parent_contract_id");
@@ -578,10 +580,13 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ReviewedAt).HasColumnName("reviewed_at");
             entity.Property(e => e.ReviewedBy).HasColumnName("reviewed_by");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
-            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
             entity.Property(e => e.ContractImageUrl).HasMaxLength(500).HasColumnName("contract_image_url");
+            entity.Property(e => e.CancellationReason).HasColumnName("cancellation_reason");
+            entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
+            entity.Property(e => e.CancelledBy).HasMaxLength(20).HasColumnName("cancelled_by");
             entity.HasOne(d => d.Renter).WithMany(p => p.RentalRequestRenters).HasForeignKey(d => d.RenterId).HasConstraintName("FK_rental_requests_renter");
             entity.HasOne(d => d.ReviewedByNavigation).WithMany(p => p.RentalRequestReviewedByNavigations).HasForeignKey(d => d.ReviewedBy).HasConstraintName("FK_rental_requests_reviewer");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.RentalRequests).HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_rental_requests_warehouse");
