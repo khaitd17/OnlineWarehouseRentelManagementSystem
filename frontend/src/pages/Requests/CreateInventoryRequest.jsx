@@ -612,10 +612,9 @@ export default function CreateInventoryRequest() {
         </div>
       )}
 
-      {/* Header */}
       <div style={{ marginBottom:28 }}>
         <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>
-          {step===1 ? 'Tạo yêu cầu nhập / xuất kho' : `${type==='INBOUND'?'📥 Nhập kho':'📤 Xuất kho'} — ${selectedWH?.name||''}`}
+          {step===1 ? 'Tạo yêu cầu nhập / xuất kho' : `${type==='INBOUND'?'Nhập kho':'Xuất kho'} — ${selectedWH?.name||''}`}
         </h1>
         <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>
           {step===1 ? 'Chọn loại yêu cầu và kho hàng để tiếp tục.' : 'Thêm hàng hóa, chứng từ và ghi chú cho yêu cầu.'}
@@ -644,12 +643,11 @@ export default function CreateInventoryRequest() {
           <div style={{ marginBottom:28 }}>
             <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>Loại yêu cầu</p>
             <div style={{ display:'flex', gap:12 }}>
-              {[{v:'INBOUND',icon:'📥',label:'Nhập kho',desc:'Nhập hàng hóa vào kho lưu trữ',color:INBOUND_COLOR,bg:'#e0f7fa'},
-                {v:'OUTBOUND',icon:'📤',label:'Xuất kho',desc:'Lấy hàng ra khỏi kho',color:OUTBOUND_COLOR,bg:'#fff8e1'}].map(({v,icon,label,desc,color,bg})=>(
-                <button key={v} onClick={()=>setType(v)} style={{ flex:1, padding:'18px 20px', borderRadius:14, cursor:'pointer', textAlign:'left', border:`2px solid ${type===v?color:'#e2e8f0'}`, background:type===v?bg:'#fafbff', transition:'all 0.2s', boxShadow:type===v?`0 4px 16px ${color}30`:'none' }}>
-                  <div style={{ fontSize:'1.6rem', marginBottom:6 }}>{icon}</div>
-                  <div style={{ fontWeight:800, fontSize:'1rem', color:type===v?color:'#1e293b' }}>{label}</div>
-                  <div style={{ fontSize:'0.78rem', color:'#64748b', marginTop:3 }}>{desc}</div>
+              {[{v:'INBOUND',label:'NHẬP KHO',desc:'Nhập hàng hóa vào kho lưu trữ',color:INBOUND_COLOR,bg:'#e0f7fa'},
+                {v:'OUTBOUND',label:'XUẤT KHO',desc:'Lấy hàng ra khỏi kho',color:OUTBOUND_COLOR,bg:'#fff8e1'}].map(({v,label,desc,color,bg})=>(
+                <button key={v} onClick={()=>setType(v)} style={{ flex:1, padding:'24px 20px', borderRadius:14, cursor:'pointer', textAlign:'left', border:`2px solid ${type===v?color:'#e2e8f0'}`, background:type===v?bg:'#fafbff', transition:'all 0.2s', boxShadow:type===v?`0 4px 16px ${color}30`:'none' }}>
+                  <div style={{ fontWeight:900, fontSize:'1.4rem', color:type===v?color:'#1e293b', letterSpacing:'0.02em', marginBottom:6 }}>{label}</div>
+                  <div style={{ fontSize:'0.85rem', color:'#64748b', marginTop:3 }}>{desc}</div>
                 </button>
               ))}
             </div>
@@ -679,21 +677,21 @@ export default function CreateInventoryRequest() {
                               background: remainingQty === 0 ? '#fef2f2' : '#f0fdf4',
                               border: `1px solid ${remainingQty === 0 ? '#fecaca' : '#bbf7d0'}`,
                               color: remainingQty === 0 ? '#dc2626' : '#15803d' }}>
-                              {remainingQty === 0 ? '🚫' : '📦'} Còn ước tính: {(remainingQty ?? 0).toLocaleString('vi-VN')} đơn vị
+                              Còn ước tính: {(remainingQty ?? 0).toLocaleString('vi-VN')} đơn vị
                             </span>
                             {/* Tải trọng sàn kho (hard limit vật lý) */}
                             <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#faf5ff', border:'1px solid #e9d5ff', color:'#7c3aed' }}>
-                              ⚖️ Tải trọng: {(wh.requestedArea * 500).toLocaleString('vi-VN')} kg tối đa
+                              Tải trọng: {(wh.requestedArea * 500).toLocaleString('vi-VN')} kg tối đa
                             </span>
                             {/* Đã có trong kho */}
                             {currentStock > 0 && (
                               <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#fff7ed', border:'1px solid #fed7aa', color:'#c2410c' }}>
-                                🏠 Đang lưu kho: {currentStock.toLocaleString('vi-VN')} đơn vị
+                                Đang lưu kho: {currentStock.toLocaleString('vi-VN')} đơn vị
                               </span>
                             )}
                             {/* Diện tích hợp đồng */}
                             <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8' }}>
-                              📋 HĐ: {wh.requestedArea.toLocaleString('vi-VN')} m² / ~{maxQty?.toLocaleString('vi-VN')} đơn vị ước tính
+                              HĐ: {wh.requestedArea.toLocaleString('vi-VN')} m² / ~{maxQty?.toLocaleString('vi-VN')} đơn vị ước tính
                             </span>
                           </>
                           )
@@ -715,7 +713,7 @@ export default function CreateInventoryRequest() {
                             {/* Tổng quan */}
                             <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:6 }}>
                               <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#fff8e1', border:'1px solid #fde68a', color:'#d97706' }}>
-                                📦 {inventory.length} mặt hàng · {inventory.reduce((s,i)=>s+(i.quantity||0),0).toLocaleString('vi-VN')} đơn vị
+                                {inventory.length} mặt hàng · {inventory.reduce((s,i)=>s+(i.quantity||0),0).toLocaleString('vi-VN')} đơn vị
                               </span>
                             </div>
                             {/* Chip từng mặt hàng (max 5, còn lại badge +N) */}
@@ -768,11 +766,10 @@ export default function CreateInventoryRequest() {
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
           {/* Type info bar */}
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 18px', borderRadius:12, background: type==='INBOUND'?'#e0f7fa':'#fff8e1', border:`1.5px solid ${accent}30` }}>
-            <span style={{ fontSize:'1.1rem' }}>{type==='INBOUND'?'📥':'📤'}</span>
-            <span style={{ fontWeight:700, fontSize:'0.9rem', color: accent }}>{type==='INBOUND'?'Nhập kho':'Xuất kho'}</span>
+            <span style={{ fontWeight:900, fontSize:'0.9rem', color: accent }}>{type==='INBOUND'?'NHẬP KHO':'XUẤT KHO'}</span>
             <span style={{ fontSize:'0.82rem', color:'#94a3b8', marginLeft:4 }}>—</span>
             <span style={{ fontSize:'0.82rem', color:'#64748b' }}>Kho: <strong style={{color:'#1e293b'}}>{selectedWH?.name}</strong></span>
-            <span style={{ marginLeft:'auto', fontSize:'0.78rem', color:'#94a3b8', fontStyle:'italic' }}>Muốn đổi loại? ← Quay lại bước 1</span>
+            <span style={{ marginLeft:'auto', fontSize:'0.78rem', color:'#accent', fontStyle:'italic', cursor:'pointer' }} onClick={()=>{ setStep(1); setError(''); }}>Làm lại (Quay về bước 1)</span>
           </div>
 
           {/* Items card */}
@@ -787,7 +784,7 @@ export default function CreateInventoryRequest() {
                 />
               : <>
                   <div style={{ padding:'16px 22px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:10 }}>
-                    <span style={{ fontWeight:800, fontSize:'0.97rem', color:'#0f172a' }}>📋 Danh sách hàng hóa</span>
+                    <span style={{ fontWeight:800, fontSize:'0.97rem', color:'#0f172a' }}>Danh sách hàng hóa</span>
                   </div>
                   <div>
                     <table style={{ width:'100%', borderCollapse:'collapse' }}>
@@ -830,7 +827,7 @@ export default function CreateInventoryRequest() {
             <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:22, paddingBottom:18, borderBottom:'1px solid #f1f5f9' }}>
               <div style={{ flex:'0 0 auto' }}>
                 <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 8px' }}>
-                  {type==='INBOUND'?'📅 Ngày dự kiến nhập kho':'📅 Ngày dự kiến xuất kho'}
+                  {type==='INBOUND'?'Ngày dự kiến nhập kho':'Ngày dự kiến xuất kho'}
                 </p>
                 <input type="date" value={scheduledDate} min={new Date().toISOString().split('T')[0]}
                   onChange={e=>setScheduledDate(e.target.value)}
@@ -851,7 +848,7 @@ export default function CreateInventoryRequest() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:28 }}>
               <DocUpload docFiles={docFiles} setDocFiles={setDocFiles} uploadedUrls={uploadedUrls} accent={accent} />
               <div>
-                <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>📝 Ghi chú yêu cầu</p>
+                <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>Ghi chú yêu cầu</p>
                 <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={6}
                   placeholder={type==='INBOUND'?'Hướng dẫn nhập kho, số xe giao hàng, điều kiện bảo quản...':'Hướng dẫn xuất kho, đơn vị nhận hàng, mức độ khẩn cấp...'}
                   style={{ ...inp(), minHeight:130, resize:'vertical' }}
@@ -882,7 +879,7 @@ export default function CreateInventoryRequest() {
                 style={{ padding:'11px 18px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#f8fafc', color:'#475569', fontWeight:600, fontSize:'0.88rem', cursor:'pointer', display:'flex', alignItems:'center', gap:6, transition:'all 0.15s' }}
                 onMouseEnter={e=>{ e.currentTarget.style.background='#f1f5f9'; e.currentTarget.style.borderColor='#cbd5e1'; }}
                 onMouseLeave={e=>{ e.currentTarget.style.background='#f8fafc'; e.currentTarget.style.borderColor='#e2e8f0'; }}>
-                💾 Lưu nháp
+                Lưu nháp
               </button>
               <button onClick={handleSubmit} disabled={submitting||uploadingDocs}
                 style={{ padding:'12px 28px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.95rem', cursor: submitting?'wait':'pointer', color:'#fff', background:`linear-gradient(135deg,${accent},${accent}bb)`, boxShadow:`0 4px 16px ${accent}40`, opacity:submitting?0.75:1, transition:'all 0.2s', display:'flex', alignItems:'center', gap:8 }}>

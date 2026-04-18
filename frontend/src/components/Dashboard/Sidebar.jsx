@@ -154,7 +154,7 @@ function buildMenu(systemRole, warehouses) {
       label: "Kho yêu thích",
       path: "/my-favorites",
       badgeKey: "favoritesCount",
-      section: "TÌM KIẼM",
+      section: "TÌM KIẾM",
     });
   }
 
@@ -624,7 +624,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     currentWarehouses,
   );
   const accentColor = "#00d2ff";
-  const activeBg = "rgba(0,185,255,.1)";
+
 
   useEffect(() => {
     const handler = () => setFavoritesCount(favoritesService.count());

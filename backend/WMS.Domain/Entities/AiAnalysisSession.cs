@@ -1,0 +1,36 @@
+using System;
+using System.Collections.Generic;
+
+namespace WMS.Domain.Entities;
+
+/// <summary>
+/// Lưu lịch sử mỗi lần người dùng phân tích ảnh đồ vật bằng AI.
+/// </summary>
+public class AiAnalysisSession
+{
+    public int SessionId { get; set; }
+
+    public int UserId { get; set; }
+
+    public DateTime AnalyzedAt { get; set; }
+
+    /// <summary>JSON array của URL ảnh người dùng upload.</summary>
+    public string? ImageUrls { get; set; }
+
+    /// <summary>Raw JSON response từ Gemini API.</summary>
+    public string? ResultJson { get; set; }
+
+    /// <summary>Tổng thể tích ước tính cần thiết (m³).</summary>
+    public double? EstimatedVolumeM3 { get; set; }
+
+    /// <summary>Loại kho gợi ý (vd: "Kho thường", "Kho lạnh / mát").</summary>
+    public string? SuggestedType { get; set; }
+
+    /// <summary>Ghi chú đặc biệt từ AI (vd: "Có bật lửa - không để kho dễ cháy").</summary>
+    public string? SpecialNotes { get; set; }
+
+    /// <summary>Độ tự tin của AI (0.0 – 1.0).</summary>
+    public double? Confidence { get; set; }
+
+    public virtual User User { get; set; } = null!;
+}

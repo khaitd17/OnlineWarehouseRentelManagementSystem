@@ -310,60 +310,60 @@ const AboutUsPage = () => {
           <div>
             <SectionHeading en="The Meaning of Logo" vi="Ý nghĩa Logo" />
 
-            {/* Cube */}
+            {/* Silhouette */}
             <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: '1.2rem' }}>
               <div style={{
                 flexShrink: 0, width: 36, height: 36, borderRadius: 10,
                 background: 'linear-gradient(135deg,#00c8f0,#0052d4)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#fff' }}>warehouse</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#fff' }}>factory</span>
               </div>
               <p style={{ margin: 0, fontSize: '0.93rem', color: '#475569', lineHeight: 1.75 }}>
-                <strong style={{ color: '#0c4a6e' }}>Khối kho 3D</strong> ở trung tâm logo biểu trưng cho hệ thống
-                kho bãi vật lý — nơi hàng hóa được lưu trữ, quản lý có hệ thống
-                với những kệ hàng ngăn nắp và lưới phân vùng rõ ràng.
+                <strong style={{ color: '#0c4a6e' }}>Biểu tượng mái răng cưa (Sawtooth)</strong> mang đặc trưng của
+                kiến trúc công nghiệp hiện đại, thể hiện cốt lõi về một hệ thống
+                quản lý kho logistics chuyên nghiệp, quy mô và bài bản.
               </p>
             </div>
 
-            {/* Ring */}
+            {/* Squircle Base */}
             <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: '1.2rem' }}>
               <div style={{
                 flexShrink: 0, width: 36, height: 36, borderRadius: 10,
                 background: 'linear-gradient(135deg,#3a7bd5,#00d2ff)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#fff' }}>sync</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#fff' }}>dataset</span>
               </div>
               <p style={{ margin: 0, fontSize: '0.93rem', color: '#475569', lineHeight: 1.75 }}>
-                <strong style={{ color: '#0c4a6e' }}>Vòng conic gradient xoay</strong> bao quanh tượng trưng cho
-                sự <strong style={{ color: '#0ea5e9' }}>kết nối liên tục</strong> — dòng chảy không ngừng của
-                logistics: từ nhập kho, lưu trữ, đến xuất hàng đến tay khách.
+                <strong style={{ color: '#0c4a6e' }}>Nền tảng App-Icon xanh dương</strong> tượng trưng cho thế mạnh
+                <strong style={{ color: '#0ea5e9' }}> nền tảng số hóa (SaaS)</strong> vững chắc. Cổng kho mở rộng
+                biểu thị tính sẵn sàng, minh bạch và khả năng kết nối không giới hạn.
               </p>
             </div>
 
-            {/* Glassmorphism & glow */}
+            {/* Typography & Line-Art */}
             <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: '1.5rem' }}>
               <div style={{
                 flexShrink: 0, width: 36, height: 36, borderRadius: 10,
                 background: 'linear-gradient(135deg,#0ea5e9,#0052d4)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#fff' }}>memory</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#fff' }}>design_services</span>
               </div>
               <p style={{ margin: 0, fontSize: '0.93rem', color: '#475569', lineHeight: 1.75 }}>
-                <strong style={{ color: '#0c4a6e' }}>Hiệu ứng glassmorphism & ánh neon</strong> thể hiện nền tảng
-                <strong style={{ color: '#0ea5e9' }}> công nghệ hiện đại</strong> — minh bạch, đáng tin cậy,
-                chiếu sáng con đường logistics của doanh nghiệp.
+                <strong style={{ color: '#0c4a6e' }}>Phong cách định tuyến phẳng (Minimalist)</strong> lược bỏ chi tiết thừa thãi,
+                tập trung tuyệt đối vào <strong style={{ color: '#0ea5e9' }}>tính hiệu quả</strong> —
+                đây chính là triết lý vận hành chuỗi cung ứng của OWRMS: Nhanh chóng & Chính xác.
               </p>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
               {[
-                'Kho bãi thông minh',
-                'Kết nối không gián đoạn',
-                'Công nghệ hiện đại',
-                'Minh bạch & Tin cậy',
+                'Kiến trúc Logistics',
+                'Nền tảng Số (SaaS)',
+                'Tối giản & Hiệu quả',
+                'Minh bạch & Kết nối',
               ].map(tag => (
                 <span key={tag} style={{
                   padding: '6px 16px', borderRadius: 999,

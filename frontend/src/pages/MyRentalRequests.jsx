@@ -135,10 +135,10 @@ const MyRentalRequests = () => {
 
                 {/* Info row */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "1.2rem", color: "#475569", fontSize: "0.88rem", marginBottom: "0.8rem" }}>
-                  <span>📍 {req.warehouseAddress}</span>
-                  <span>📐 {req.requestedArea} m²</span>
-                  <span>📅 Bắt đầu: {formatDate(req.startDate)}</span>
-                  <span>⏱ {req.durationMonths} tháng</span>
+                  <span>{req.warehouseAddress}</span>
+                  <span>{req.requestedArea} m²</span>
+                  <span>Bắt đầu: {formatDate(req.startDate)}</span>
+                  <span>{req.durationMonths} tháng</span>
                 </div>
 
                 {req.notes && (
@@ -155,7 +155,7 @@ const MyRentalRequests = () => {
                     borderRadius: "10px", padding: "0.8rem 1rem",
                     display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.6rem" }}>
                     <div style={{ color: "#15803d", fontSize: "0.9rem", fontWeight: 600 }}>
-                      ✅ Chủ kho đã gửi đề xuất! Hợp đồng đã được tạo — chờ bạn ký.
+                      Chủ kho đã gửi đề xuất! Hợp đồng đã được tạo — chờ bạn ký.
                     </div>
                     <button
                       onClick={(e) => { 
@@ -179,7 +179,7 @@ const MyRentalRequests = () => {
                   <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca",
                     borderRadius: "10px", padding: "0.8rem 1rem" }}>
                     <div style={{ color: "#b91c1c", fontSize: "0.9rem", fontWeight: 600, marginBottom: "0.3rem" }}>
-                      ❌ Yêu cầu bị từ chối
+                      Yêu cầu bị từ chối
                     </div>
                     {req.rejectionReason && (
                       <div style={{ color: "#dc2626", fontSize: "0.85rem" }}>
@@ -194,7 +194,7 @@ const MyRentalRequests = () => {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.6rem" }}
                     onClick={(e) => e.stopPropagation()}>
                     <span style={{ color: "#92400e", fontSize: "0.85rem" }}>
-                      ⏳ Đang chờ chủ kho xem xét...
+                      Đang chờ chủ kho xem xét...
                     </span>
                     <div onClick={(e) => e.stopPropagation()}>
                       <CancelRequestButton 
@@ -215,7 +215,7 @@ const MyRentalRequests = () => {
                     style={{ padding: "0.5rem 1.1rem", borderRadius: "8px", border: "none",
                       backgroundColor: "#0095c7", color: "#fff",
                       fontWeight: 600, cursor: "pointer", fontSize: "0.88rem" }}>
-                    📤 Gửi đến chủ kho
+                    Gửi đến chủ kho
                   </button>
                 )}
               </div>

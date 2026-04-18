@@ -415,7 +415,7 @@ const ContractPaymentSelection = () => {
                   Đã thanh toán tiền mặt tại kho
                 </div>
                 <div style={{ fontSize: "0.85rem", color: "#16a34a", marginTop: "0.5rem", fontWeight: 600 }}>
-                  💰 Tiền mặt • Cần xác nhận từ chủ kho
+                  Tiền mặt • Cần xác nhận từ chủ kho
                 </div>
               </div>
               <span className="material-symbols-outlined" style={{ fontSize: "24px", color: "#16a34a" }}>

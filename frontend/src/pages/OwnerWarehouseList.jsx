@@ -289,7 +289,7 @@ const OwnerWarehouseList = () => {
               }}>
                 <div>
                   <div style={{ fontSize: "0.75rem", fontWeight: 700, color: w.pricePerM2 ? "#166534" : "#94a3b8", marginBottom: 3, textTransform: "uppercase" }}>
-                    💰 Giá thuê / m² / tháng
+                    Giá thuê / m² / tháng
                   </div>
                   {w.pricePerM2 ? (
                     <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#15803d" }}>
