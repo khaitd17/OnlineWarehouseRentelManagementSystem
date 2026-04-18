@@ -640,166 +640,250 @@ const PendingRentalRequests = () => {
   );
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto" }}>
-      <div style={{ marginBottom: "2rem" }}>
-        <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a" }}>
+    <div style={{ padding: "0 2rem 3rem", maxWidth: 1200, margin: "0 auto", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+      <style>{`
+        @keyframes cardIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .ow-card { transition: all 0.25s cubic-bezier(.4,0,.2,1); }
+        .ow-card:hover { transform: translateY(-3px); box-shadow: 0 16px 48px rgba(0,0,0,0.1), 0 2px 8px rgba(0,0,0,0.06) !important; }
+        .ow-btn { transition: all 0.18s ease; }
+        .ow-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+        .ow-btn:active { transform: translateY(0); }
+        .ow-tab { position: relative; transition: all 0.2s; }
+        .ow-tab::after { content:''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; border-radius: 3px 3px 0 0; background: transparent; transition: background 0.2s; }
+        .ow-tab.active::after { background: #0ea5e9; }
+      `}</style>
+
+      {/* ── Hero Header ── */}
+      <div style={{
+        margin: "0 -2rem 32px -2rem",
+        padding: "36px 40px 32px",
+        background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%)",
+        borderRadius: "0 0 24px 24px",
+        position: "relative", overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, borderRadius: "50%", background: "rgba(14,165,233,0.08)" }} />
+        <div style={{ position: "absolute", bottom: -20, right: 80, width: 100, height: 100, borderRadius: "50%", background: "rgba(14,165,233,0.05)" }} />
+        <div style={{ position: "absolute", top: 10, right: 140, width: 60, height: 60, borderRadius: "50%", background: "rgba(255,255,255,0.03)" }} />
+
+        <h1 style={{
+          fontSize: "1.85rem", fontWeight: 800, color: "#fff", margin: "0 0 8px",
+          letterSpacing: "-0.02em", position: "relative",
+        }}>
           Yêu cầu thuê kho
         </h1>
-        <p style={{ color: "#64748b", marginTop: "0.3rem" }}>
+        <p style={{ color: "rgba(148,163,184,0.9)", margin: 0, fontSize: "0.92rem", position: "relative" }}>
           Xem xét và gửi hợp đồng hoặc từ chối các yêu cầu thuê kho
         </p>
+        {!loading && requests.length > 0 && (
+          <div style={{ display: "flex", gap: 24, marginTop: 20, position: "relative" }}>
+            <div style={{
+              padding: "10px 20px", borderRadius: 12,
+              background: "rgba(255,255,255,0.08)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.1)",
+            }}>
+              <div style={{ fontSize: "1.4rem", fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>{requests.length}</div>
+              <div style={{ fontSize: "0.72rem", fontWeight: 600, color: "rgba(148,163,184,0.8)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                {activeTab === "PENDING" ? "Chờ duyệt" : "Đã duyệt"}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
-      <div style={{ marginBottom: "2rem", display: "flex", gap: "1rem", borderBottom: "2px solid #f1f5f9" }}>
-        <button
-          onClick={() => setActiveTab("PENDING")}
-          style={{
-            padding: "0.75rem 1.5rem",
-            fontSize: "0.95rem",
-            fontWeight: 600,
-            border: "none",
-            background: "none",
-            color: activeTab === "PENDING" ? "#0095c7" : "#64748b",
-            borderBottom: activeTab === "PENDING" ? "3px solid #0095c7" : "none",
-            marginBottom: activeTab === "PENDING" ? "-2px" : "0",
-            cursor: "pointer",
-            transition: "all 0.2s"
-          }}
-        >
-          Chờ duyệt
-        </button>
-        <button
-          onClick={() => setActiveTab("APPROVED")}
-          style={{
-            padding: "0.75rem 1.5rem",
-            fontSize: "0.95rem",
-            fontWeight: 600,
-            border: "none",
-            background: "none",
-            color: activeTab === "APPROVED" ? "#0095c7" : "#64748b",
-            borderBottom: activeTab === "APPROVED" ? "3px solid #0095c7" : "none",
-            marginBottom: activeTab === "APPROVED" ? "-2px" : "0",
-            cursor: "pointer",
-            transition: "all 0.2s"
-          }}
-        >
-          Đã duyệt
-        </button>
+      <div style={{ marginBottom: 28, display: "flex", gap: 0, borderBottom: "2px solid #f1f5f9" }}>
+        {["PENDING", "APPROVED"].map(tab => (
+          <button
+            key={tab}
+            className={`ow-tab ${activeTab === tab ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: "12px 28px",
+              fontSize: "0.92rem",
+              fontWeight: activeTab === tab ? 700 : 500,
+              border: "none", background: "none",
+              color: activeTab === tab ? "#0ea5e9" : "#64748b",
+              cursor: "pointer", marginBottom: "-2px",
+            }}
+          >
+            {tab === "PENDING" ? "Chờ duyệt" : "Đã duyệt"}
+          </button>
+        ))}
       </div>
 
+      {/* Error */}
       {error && (
         <div style={{
-          color: "#dc2626", padding: "12px 16px", marginBottom: "1.5rem",
-          backgroundColor: "#fef2f2", borderRadius: "12px", border: "1px solid #fecaca",
+          padding: "16px 20px", marginBottom: 24,
+          background: "linear-gradient(135deg, #fef2f2, #fff1f2)",
+          borderRadius: 14, border: "1px solid #fecaca",
+          fontSize: "0.9rem", fontWeight: 600, color: "#991b1b",
         }}>
           {error}
         </div>
       )}
 
-      {loading && <p style={{ color: "#64748b" }}>Đang tải...</p>}
-
-      {!loading && requests.length === 0 && !error && (
-        <div style={{ textAlign: "center", padding: "3rem", color: "#94a3b8" }}>
-          <p style={{ fontSize: "1.1rem" }}>Không có yêu cầu thuê nào chờ duyệt.</p>
+      {/* Loading */}
+      {loading && (
+        <div style={{ textAlign: "center", padding: "5rem 2rem" }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: "50%",
+            border: "4px solid #e2e8f0", borderTopColor: "#0ea5e9",
+            animation: "spin 0.8s linear infinite",
+            margin: "0 auto 16px",
+          }} />
+          <p style={{ fontWeight: 600, color: "#64748b", fontSize: "0.95rem" }}>Đang tải dữ liệu...</p>
         </div>
       )}
 
+      {/* Empty */}
+      {!loading && requests.length === 0 && !error && (
+        <div style={{
+          textAlign: "center", padding: "5rem 2rem",
+          background: "#fff", borderRadius: 20,
+          border: "2px dashed #e2e8f0",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
+        }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: "50%",
+            background: "linear-gradient(135deg, #f0f9ff, #e0f2fe)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 20px", fontSize: "1.5rem", fontWeight: 900, color: "#64748b",
+          }}>—</div>
+          <p style={{ fontSize: "1.05rem", fontWeight: 700, color: "#334155", margin: "0 0 6px" }}>
+            {activeTab === "PENDING" ? "Không có yêu cầu nào đang chờ duyệt" : "Chưa có yêu cầu nào đã duyệt"}
+          </p>
+          <p style={{ fontSize: "0.88rem", color: "#94a3b8", margin: 0 }}>
+            Các yêu cầu mới từ người thuê sẽ xuất hiện tại đây
+          </p>
+        </div>
+      )}
+
+      {/* ── Cards ── */}
       {!loading && requests.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          {requests.map((req) => {
-            const status = statusColors[req.status] || {
-              bg: "#f1f5f9", color: "#64748b", label: req.status,
-            };
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          {requests.map((req, idx) => {
+            const status = statusColors[req.status] || { bg: "#f1f5f9", color: "#64748b", label: req.status };
+            const accentColor = req.status === "PENDING" ? "#f59e0b" : req.status === "APPROVED" ? "#22c55e" : "#94a3b8";
             return (
               <div
                 key={req.requestId}
+                className="ow-card"
                 style={{
-                  backgroundColor: "#fff", borderRadius: "16px",
-                  padding: "1.5rem 2rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-                  border: "1px solid #f1f5f9",
+                  background: "#fff", borderRadius: 18,
+                  overflow: "hidden",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03)",
+                  border: "1px solid #eef1f6",
+                  animation: `cardIn 0.4s ease ${idx * 0.06}s both`,
                 }}
               >
+                {/* Top accent bar */}
                 <div style={{
-                  display: "flex", justifyContent: "space-between",
-                  alignItems: "flex-start", flexWrap: "wrap", gap: "1rem",
-                }}>
-                  <div style={{ flex: 1, minWidth: "250px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", marginBottom: "0.5rem" }}>
-                      <span style={{ fontWeight: 700, fontSize: "1.05rem", color: "#0f172a" }}>
-                        #{req.requestId} - {req.warehouseName}
-                      </span>
-                      <span style={{
-                        padding: "4px 12px", borderRadius: "20px",
-                        backgroundColor: status.bg, color: status.color,
-                        fontSize: "0.8rem", fontWeight: 600,
+                  height: 4,
+                  background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88, transparent)`,
+                }} />
+
+                <div style={{ padding: "22px 28px 24px" }}>
+                  {/* Header row */}
+                  <div style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+                    gap: 16, marginBottom: 18,
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
+                        <span style={{
+                          fontSize: "0.72rem", fontWeight: 800,
+                          color: accentColor, letterSpacing: "0.08em", textTransform: "uppercase",
+                        }}>
+                          YC-{req.requestId}
+                        </span>
+                        <span style={{
+                          padding: "4px 14px", borderRadius: 20,
+                          backgroundColor: status.bg, color: status.color,
+                          fontSize: "0.75rem", fontWeight: 700,
+                          border: `1.5px solid ${accentColor}30`,
+                        }}>
+                          {status.label}
+                        </span>
+                      </div>
+                      <h3 style={{
+                        fontSize: "1.18rem", fontWeight: 800, color: "#0f172a",
+                        margin: 0, letterSpacing: "-0.01em",
                       }}>
-                        {status.label}
-                      </span>
+                        {req.warehouseName}
+                      </h3>
                     </div>
 
-                    <div style={{
-                      display: "grid", gridTemplateColumns: "1fr 1fr",
-                      gap: "0.5rem 2rem", color: "#475569", fontSize: "0.9rem", marginTop: "0.8rem",
-                    }}>
-                      <div>
-                        <span style={{ color: "#94a3b8" }}>Người thuê: </span>
-                        {req.renterName} ({req.renterEmail})
+                    {/* Actions (top-right for PENDING) */}
+                    {req.status === "PENDING" && (
+                      <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
+                        <button
+                          className="ow-btn"
+                          onClick={() => openApproveModal(req)}
+                          style={{
+                            padding: "10px 24px", borderRadius: 10, border: "none",
+                            background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                            color: "#fff", fontWeight: 700, cursor: "pointer",
+                            fontSize: "0.88rem",
+                            boxShadow: "0 4px 14px rgba(37,99,235,0.3)",
+                          }}
+                        >
+                          Gửi hợp đồng
+                        </button>
+                        <button
+                          className="ow-btn"
+                          onClick={() => openRejectModal(req)}
+                          style={{
+                            padding: "10px 24px", borderRadius: 10,
+                            border: "1.5px solid #fca5a5",
+                            background: "#fff", color: "#dc2626",
+                            fontWeight: 700, cursor: "pointer",
+                            fontSize: "0.88rem",
+                          }}
+                        >
+                          Từ chối
+                        </button>
                       </div>
-                      <div>
-                        <span style={{ color: "#94a3b8" }}>Địa chỉ: </span>
-                        {req.warehouseAddress}
-                      </div>
-                      <div>
-                        <span style={{ color: "#94a3b8" }}>Diện tích: </span>
-                        {req.requestedArea} m²
-                      </div>
-                      <div>
-                        <span style={{ color: "#94a3b8" }}>Thời hạn: </span>
-                        {req.durationMonths} tháng
-                      </div>
-                      <div>
-                        <span style={{ color: "#94a3b8" }}>Ngày bắt đầu: </span>
-                        {formatDate(req.startDate)}
-                      </div>
-                      <div>
-                        <span style={{ color: "#94a3b8" }}>Ngày gửi: </span>
-                        {formatDate(req.createdAt)}
-                      </div>
-                    </div>
-
-                    {req.notes && (
-                      <p style={{
-                        color: "#64748b", fontSize: "0.88rem",
-                        marginTop: "0.6rem", fontStyle: "italic",
-                      }}>
-                        Ghi chú: {req.notes}
-                      </p>
                     )}
                   </div>
 
-                  {req.status === "PENDING" && (
-                    <div style={{ display: "flex", gap: "0.8rem", alignSelf: "center" }}>
-                      <button
-                        onClick={() => openApproveModal(req)}
-                        style={{
-                          padding: "0.6rem 1.2rem", borderRadius: "10px", border: "none",
-                          backgroundColor: "#2563eb", color: "#fff",
-                          fontWeight: 600, cursor: "pointer", fontSize: "0.88rem",
-                        }}
-                      >
-                        Gửi hợp đồng
-                      </button>
-                      <button
-                        onClick={() => openRejectModal(req)}
-                        style={{
-                          padding: "0.6rem 1.2rem", borderRadius: "10px", border: "none",
-                          backgroundColor: "#dc2626", color: "#fff",
-                          fontWeight: 600, cursor: "pointer", fontSize: "0.88rem",
-                        }}
-                      >
-                        Từ chối
-                      </button>
+                  {/* Info chips */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: req.notes ? 16 : 0 }}>
+                    {[
+                      { label: "Người thuê", value: `${req.renterName} (${req.renterEmail})`, wide: true },
+                      { label: "Địa chỉ", value: req.warehouseAddress, wide: true },
+                      { label: "Diện tích", value: `${req.requestedArea} m²` },
+                      { label: "Thời hạn", value: `${req.durationMonths} tháng` },
+                      { label: "Ngày bắt đầu", value: formatDate(req.startDate) },
+                      { label: "Ngày gửi", value: formatDate(req.createdAt) },
+                    ].map(item => (
+                      <div key={item.label} style={{
+                        padding: "8px 14px", borderRadius: 10,
+                        background: "#f8fafc", border: "1px solid #f1f5f9",
+                        display: "flex", flexDirection: "column", gap: 2,
+                        minWidth: 120, flex: item.wide ? "1 1 100%" : "0 0 auto",
+                      }}>
+                        <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                          {item.label}
+                        </span>
+                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: "#334155" }}>
+                          {item.value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Notes */}
+                  {req.notes && (
+                    <div style={{
+                      padding: "12px 16px",
+                      background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
+                      borderRadius: 10, borderLeft: "4px solid #f59e0b",
+                      fontSize: "0.85rem", color: "#92400e", lineHeight: 1.6,
+                    }}>
+                      <span style={{ fontWeight: 700 }}>Ghi chú: </span>{req.notes}
                     </div>
                   )}
                 </div>

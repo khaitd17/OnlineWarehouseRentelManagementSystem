@@ -1,211 +1,164 @@
 import React from 'react';
-import {
-  Card,
-  Button,
-  Tag,
-  Typography,
-  Space,
-  Row,
-  Col,
-  Tooltip,
-  Alert
-} from 'antd';
-import {
-  CalendarOutlined,
-  DollarOutlined,
-  WarningOutlined,
-  ClockCircleOutlined,
-  HomeOutlined
-} from '@ant-design/icons';
 import contractExtensionService from '../../services/contractExtensionService';
-
-const { Title, Text } = Typography;
 
 const ContractCard = ({
   contract,
   onRequestExtension,
   showExtensionButton = true
 }) => {
-  // Check extension eligibility
   const eligibility = contractExtensionService.checkExtensionEligibility(contract);
 
-  // Calculate days until end
   const endDate = new Date(contract.endDate);
   const today = new Date();
   const daysUntilEnd = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  // Get status color and text
-  const getStatusDisplay = (status) => {
-    const statusMap = {
-      'ACTIVE': { color: 'success', text: 'Đang hoạt động' },
-      'PENDING_OWNER_SIGNATURE': { color: 'warning', text: 'Chờ chủ kho ký' },
-      'PENDING_RENTER_SIGNATURE': { color: 'warning', text: 'Chờ người thuê ký' },
-      'PENDING_PAYMENT': { color: 'processing', text: 'Chờ thanh toán' },
-      'PAYMENT_FAILED': { color: 'error', text: 'Thanh toán thất bại' },
-      'DRAFT': { color: 'default', text: 'Nháp' },
-      'SIGNED': { color: 'processing', text: 'Đã ký' },
-      'COMPLETED': { color: 'success', text: 'Đã hoàn thành' },
-      'CLOSED': { color: 'success', text: 'Đã đóng' },
-      'OVERDUE': { color: 'error', text: 'Quá hạn' },
-      'TERMINATED': { color: 'error', text: 'Đã chấm dứt' },
-      'PENDING_TERMINATION': { color: 'warning', text: 'Chờ chấm dứt' },
-      'PENDING_CLOSE': { color: 'warning', text: 'Chờ đóng' },
-      'CANCELLED': { color: 'default', text: 'Đã hủy' },
-      'CANCELLED_BY_USER': { color: 'default', text: 'Người dùng hủy' },
-      'CANCELLED_BY_OWNER': { color: 'default', text: 'Chủ kho hủy' },
-      'CANCELLED_NO_PAYMENT': { color: 'default', text: 'Hủy - Không thanh toán' },
-      'EXPIRED_SIGNATURE': { color: 'error', text: 'Hết hạn ký' },
-      'EXPIRED_PAYMENT': { color: 'error', text: 'Hết hạn thanh toán' },
-      'EXPIRED': { color: 'error', text: 'Hết hạn' }
-    };
-    return statusMap[status] || { color: 'default', text: status };
+  const statusMap = {
+    'ACTIVE': { bg: 'linear-gradient(135deg, #dcfce7, #bbf7d0)', color: '#16a34a', text: 'Đang hoạt động', accent: '#22c55e' },
+    'PENDING_OWNER_SIGNATURE': { bg: '#fef3c7', color: '#d97706', text: 'Chờ chủ kho ký', accent: '#f59e0b' },
+    'PENDING_RENTER_SIGNATURE': { bg: '#fef3c7', color: '#d97706', text: 'Chờ người thuê ký', accent: '#f59e0b' },
+    'PENDING_PAYMENT': { bg: '#fef3c7', color: '#f59e0b', text: 'Chờ thanh toán', accent: '#f59e0b' },
+    'SIGNED': { bg: '#dbeafe', color: '#2563eb', text: 'Đã ký', accent: '#3b82f6' },
+    'COMPLETED': { bg: '#e0e7ff', color: '#6366f1', text: 'Đã hoàn thành', accent: '#6366f1' },
+    'CLOSED': { bg: '#f1f5f9', color: '#64748b', text: 'Đã đóng', accent: '#94a3b8' },
+    'TERMINATED': { bg: '#fee2e2', color: '#dc2626', text: 'Đã chấm dứt', accent: '#ef4444' },
+    'CANCELLED': { bg: '#fee2e2', color: '#dc2626', text: 'Đã hủy', accent: '#ef4444' },
+    'CANCELLED_BY_USER': { bg: '#fee2e2', color: '#dc2626', text: 'Người dùng hủy', accent: '#ef4444' },
+    'EXPIRED': { bg: '#fef3c7', color: '#d97706', text: 'Hết hạn', accent: '#f59e0b' },
+    'OVERDUE': { bg: '#fee2e2', color: '#dc2626', text: 'Quá hạn', accent: '#ef4444' },
   };
 
-  const statusDisplay = getStatusDisplay(contract.status);
+  const status = statusMap[contract.status] || { bg: '#f1f5f9', color: '#64748b', text: contract.status, accent: '#94a3b8' };
+  const isActive = contract.status === 'ACTIVE';
+  const isCancelled = ['CANCELLED', 'CANCELLED_BY_USER', 'TERMINATED'].includes(contract.status);
 
-  // Get urgency alert for expiring contracts
-  const getExpiryAlert = () => {
-    if (contract.status !== 'ACTIVE') return null;
-
-    if (daysUntilEnd <= 7 && daysUntilEnd > 0) {
-      return (
-        <Alert
-          message={`Hợp đồng sắp hết hạn trong ${daysUntilEnd} ngày`}
-          type="warning"
-          icon={<WarningOutlined />}
-          size="small"
-          style={{ marginBottom: 12 }}
-          showIcon
-        />
-      );
-    } else if (daysUntilEnd <= 0) {
-      return (
-        <Alert
-          message="Hợp đồng đã hết hạn"
-          type="error"
-          icon={<WarningOutlined />}
-          size="small"
-          style={{ marginBottom: 12 }}
-          showIcon
-        />
-      );
-    }
-    return null;
-  };
-
-  const handleExtensionClick = () => {
+  const handleExtensionClick = (e) => {
+    e.stopPropagation();
     if (eligibility.eligible && onRequestExtension) {
       onRequestExtension(contract);
     }
   };
 
   return (
-    <Card
-      hoverable
-      style={{ height: '100%' }}
-      styles={{ body: { padding: '20px' } }}
-      actions={
-        showExtensionButton && contract.status === 'ACTIVE'
-          ? [
-              eligibility.eligible ? (
-                <Button
-                  type="primary"
-                  icon={<ClockCircleOutlined />}
-                  onClick={handleExtensionClick}
-                  size="small"
-                >
-                  Yêu cầu gia hạn
-                </Button>
-              ) : (
-                <Tooltip title={eligibility.reason}>
-                  <Button disabled size="small" icon={<ClockCircleOutlined />}>
-                    Không thể gia hạn
-                  </Button>
-                </Tooltip>
-              )
-            ]
-          : undefined
-      }
+    <div
+      style={{
+        background: '#fff', borderRadius: 16, overflow: 'hidden',
+        border: '1px solid #eef1f6',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+        transition: 'all 0.25s cubic-bezier(.4,0,.2,1)',
+        height: '100%', display: 'flex', flexDirection: 'column',
+        opacity: isCancelled ? 0.7 : 1,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.1)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.04)'; e.currentTarget.style.transform = 'translateY(0)'; }}
     >
-      {getExpiryAlert()}
+      {/* Accent bar */}
+      <div style={{
+        height: 4,
+        background: `linear-gradient(90deg, ${status.accent}, ${status.accent}88)`,
+      }} />
 
-      {/* Contract Header */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-          <Title level={5} style={{ margin: 0, color: '#0f172a' }}>
+      <div style={{ padding: '1.2rem 1.4rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+          <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a', letterSpacing: '-0.01em' }}>
             {contract.contractNumber}
-          </Title>
-          <Tag color={statusDisplay.color} style={{ fontSize: '12px' }}>
-            {statusDisplay.text}
-          </Tag>
+          </span>
+          <span style={{
+            padding: '3px 10px', borderRadius: 16,
+            background: status.bg, color: status.color,
+            fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap',
+          }}>
+            {status.text}
+          </span>
         </div>
 
+        {/* Warehouse name */}
         {contract.warehouseName && (
-          <Text type="secondary">
-            <HomeOutlined /> {contract.warehouseName}
-          </Text>
+          <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: 12 }}>
+            {contract.warehouseName}
+          </div>
+        )}
+
+        {/* Expiry alert */}
+        {isActive && daysUntilEnd <= 7 && daysUntilEnd > 0 && (
+          <div style={{
+            padding: '6px 12px', borderRadius: 8, marginBottom: 10,
+            background: '#fef3c7', border: '1px solid #fde68a',
+            fontSize: '0.78rem', color: '#92400e', fontWeight: 600,
+          }}>
+            Sắp hết hạn trong {daysUntilEnd} ngày
+          </div>
+        )}
+
+        {/* Info */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+          {[
+            { label: 'Ngày bắt đầu', value: contractExtensionService.formatDate(contract.startDate) },
+            { label: 'Ngày kết thúc', value: contractExtensionService.formatDate(contract.endDate), warn: daysUntilEnd <= 7 },
+            { label: 'Tiền thuê/tháng', value: contractExtensionService.formatCurrency(contract.monthlyPayment), bold: true },
+          ].map((item, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>{item.label}</span>
+              <span style={{
+                fontSize: '0.85rem', fontWeight: item.bold ? 700 : 600,
+                color: item.warn ? '#dc2626' : '#0f172a',
+              }}>
+                {item.value}
+              </span>
+            </div>
+          ))}
+
+          {isActive && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>Thời gian còn lại</span>
+              <span style={{
+                fontSize: '0.85rem', fontWeight: 700,
+                color: daysUntilEnd <= 7 ? '#dc2626' : daysUntilEnd <= 30 ? '#f59e0b' : '#16a34a',
+              }}>
+                {daysUntilEnd > 0 ? `${daysUntilEnd} ngày` : 'Đã hết hạn'}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Extension notice */}
+        {!eligibility.eligible && isActive && (
+          <div style={{
+            marginTop: 10, padding: '6px 12px', borderRadius: 8,
+            background: '#fef3c7', border: '1px solid #fde68a',
+            fontSize: '0.76rem', color: '#92400e', lineHeight: 1.4,
+          }}>
+            {eligibility.reason}
+          </div>
+        )}
+
+        {/* Extension button */}
+        {showExtensionButton && isActive && (
+          <div style={{ marginTop: 12, borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+            <button
+              onClick={handleExtensionClick}
+              disabled={!eligibility.eligible}
+              style={{
+                width: '100%', padding: '8px 16px', borderRadius: 10,
+                border: eligibility.eligible ? 'none' : '1.5px solid #e2e8f0',
+                background: eligibility.eligible
+                  ? 'linear-gradient(135deg, #0ea5e9, #0284c7)'
+                  : '#f8fafc',
+                color: eligibility.eligible ? '#fff' : '#94a3b8',
+                fontWeight: 700, fontSize: '0.82rem',
+                cursor: eligibility.eligible ? 'pointer' : 'not-allowed',
+                transition: 'all 0.15s',
+                boxShadow: eligibility.eligible ? '0 2px 10px rgba(14,165,233,0.3)' : 'none',
+              }}
+              onMouseEnter={e => { if (eligibility.eligible) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(14,165,233,0.4)'; }}}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = eligibility.eligible ? '0 2px 10px rgba(14,165,233,0.3)' : 'none'; }}
+            >
+              {eligibility.eligible ? 'Yêu cầu gia hạn' : 'Không thể gia hạn'}
+            </button>
+          </div>
         )}
       </div>
-
-      {/* Contract Details */}
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
-          <Space direction="vertical" size="small" style={{ width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Text type="secondary">
-                <CalendarOutlined /> Ngày bắt đầu:
-              </Text>
-              <Text strong>
-                {contractExtensionService.formatDate(contract.startDate)}
-              </Text>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Text type="secondary">
-                <CalendarOutlined /> Ngày kết thúc:
-              </Text>
-              <Text strong style={{ color: daysUntilEnd <= 7 ? '#ff4d4f' : undefined }}>
-                {contractExtensionService.formatDate(contract.endDate)}
-              </Text>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Text type="secondary">
-                <DollarOutlined /> Tiền thuê/tháng:
-              </Text>
-              <Text strong style={{ color: '#0f172a', fontSize: '14px' }}>
-                {contractExtensionService.formatCurrency(contract.monthlyPayment)}
-              </Text>
-            </div>
-
-            {contract.status === 'ACTIVE' && (
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <Text type="secondary">Thời gian còn lại:</Text>
-                <Text
-                  strong
-                  style={{
-                    color: daysUntilEnd <= 7 ? '#ff4d4f' : daysUntilEnd <= 30 ? '#fa8c16' : '#52c41a'
-                  }}
-                >
-                  {daysUntilEnd > 0 ? `${daysUntilEnd} ngày` : 'Đã hết hạn'}
-                </Text>
-              </div>
-            )}
-          </Space>
-        </Col>
-      </Row>
-
-      {/* Extension eligibility info */}
-      {!eligibility.eligible && contract.status === 'ACTIVE' && (
-        <Alert
-          message={eligibility.reason}
-          type="warning"
-          size="small"
-          style={{ marginTop: 12 }}
-          showIcon={false}
-        />
-      )}
-    </Card>
+    </div>
   );
 };
 

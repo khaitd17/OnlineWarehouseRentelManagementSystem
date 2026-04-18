@@ -18,6 +18,7 @@ const WarehouseDetailsPage = () => {
   const [lightbox, setLightbox] = useState({ open: false, index: 0 });
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState(null);
+  const [showRentalSuccessPopup, setShowRentalSuccessPopup] = useState(false);
   const [ratingsData, setRatingsData] = useState(null);
   const [replyText, setReplyText] = useState({});
   const [replyLoading, setReplyLoading] = useState(false);
@@ -202,8 +203,9 @@ const WarehouseDetailsPage = () => {
         durationMonths: duration,
         notes: formData.notes.trim() || null,
       });
-      setSubmitMsg({ type: 'success', text: 'Yêu cầu thuê kho đã được gửi! Chủ kho sẽ xem xét và phản hồi sớm.' });
       setFormData({ requestedArea: '', startDate: '', durationMonths: '', notes: '' });
+      setSubmitMsg(null);
+      setShowRentalSuccessPopup(true);
     } catch (err) {
       const msg = err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
       setSubmitMsg({ type: 'error', text: msg });
@@ -559,6 +561,88 @@ const WarehouseDetailsPage = () => {
                 </div>
               )}
             </section>
+
+            {/* ── Rental Request Success Popup ── */}
+            {showRentalSuccessPopup && (
+              <div style={{
+                position: 'fixed', inset: 0, zIndex: 9999,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(4px)',
+                animation: 'fadeIn 0.25s ease',
+              }}>
+                <div style={{
+                  background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)',
+                  borderRadius: 24, padding: '2.5rem 2.5rem 2rem',
+                  maxWidth: 440, width: '90%', textAlign: 'center',
+                  boxShadow: '0 25px 60px rgba(0,0,0,0.2)',
+                  border: '1px solid rgba(14,165,233,0.15)',
+                  position: 'relative',
+                }}>
+                  <button
+                    onClick={() => setShowRentalSuccessPopup(false)}
+                    style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#64748b' }}
+                  >
+                    ✕
+                  </button>
+
+                  <div style={{
+                    width: 72, height: 72, borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 1.2rem',
+                    boxShadow: '0 8px 24px rgba(34,197,94,0.4)',
+                  }}>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+
+                  <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem' }}>
+                    Gửi yêu cầu thành công!
+                  </h3>
+                  <p style={{ color: '#64748b', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.8rem' }}>
+                    Yêu cầu thuê kho đã được gửi đến chủ kho. Chủ kho sẽ xem xét và phản hồi sớm nhất.
+                  </p>
+
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    <button
+                      onClick={() => setShowRentalSuccessPopup(false)}
+                      style={{
+                        flex: 1, padding: '12px 20px',
+                        borderRadius: 12,
+                        border: '1.5px solid #e2e8f0',
+                        background: '#fff', color: '#475569',
+                        fontWeight: 700, fontSize: '0.9rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.18s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#fff'; }}
+                    >
+                      Quay lại trang kho
+                    </button>
+                    <button
+                      onClick={() => navigate('/my-rental-requests')}
+                      style={{
+                        flex: 1, padding: '12px 20px',
+                        borderRadius: 12, border: 'none',
+                        background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                        color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 16px rgba(14,165,233,0.3)',
+                        transition: 'all 0.18s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(14,165,233,0.5)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(14,165,233,0.3)'; }}
+                    >
+                      Yêu cầu thuê kho
+                    </button>
+                  </div>
+                </div>
+                <style>{`@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }`}</style>
+              </div>
+            )}
 
           </div>
 

@@ -298,30 +298,50 @@ public class RentalContractsController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// Get contract signing history
-    /// </summary>
     [HttpGet("{id}/signing-history")]
     public async Task<IActionResult> GetSigningHistory(int id)
     {
         try
         {
             var userId = GetUserId();
-            var contract = await _contractRepo.GetByIdAsync(id);
+
+            // Read from contracts table (what RentalContractRepository writes to)
+            var contract = await _db.Contracts
+                .Include(c => c.Warehouse)
+                .Include(c => c.Renter)
+                .FirstOrDefaultAsync(c => c.ContractId == id);
 
             if (contract == null)
                 return NotFound(new { message = "Contract not found" });
 
+            // Get owner name from warehouse
+            var ownerName = contract.Warehouse != null
+                ? await _db.Users
+                    .Where(u => u.UserId == contract.Warehouse.OwnerId)
+                    .Select(u => u.FullName)
+                    .FirstOrDefaultAsync() ?? "Chủ kho"
+                : "Chủ kho";
+            var ownerId = contract.Warehouse?.OwnerId ?? 0;
+
+            var renterName = contract.Renter?.FullName ?? "Người thuê";
+            var renterId = contract.RenterId;
+
             // Build signing history from contract data
             var history = new List<object>();
 
-            // Contract created
+            // Helper to ensure DateTime is marked as UTC for correct JSON serialization
+            DateTime? ToUtc(DateTime? dt) => dt.HasValue
+                ? DateTime.SpecifyKind(dt.Value, DateTimeKind.Utc)
+                : null;
+
+            // Contract created — attribute to the owner who initiated it
             history.Add(new
             {
                 action = "Tạo hợp đồng",
-                timestamp = contract.CreatedAt,
+                timestamp = ToUtc(contract.CreatedAt),
                 completed = true,
-                userName = "Hệ thống"
+                userName = ownerName,
+                eventUserId = ownerId
             });
 
             // Owner signed
@@ -330,9 +350,10 @@ public class RentalContractsController : ControllerBase
                 history.Add(new
                 {
                     action = "Chủ kho ký hợp đồng",
-                    timestamp = contract.OwnerSignedAt,
+                    timestamp = ToUtc(contract.OwnerSignedAt),
                     completed = true,
-                    userName = "Chủ kho",
+                    userName = ownerName,
+                    eventUserId = ownerId,
                     signatureUrl = contract.OwnerSignatureBase64 != null
                         ? $"data:image/png;base64,{contract.OwnerSignatureBase64}"
                         : null
@@ -345,20 +366,28 @@ public class RentalContractsController : ControllerBase
                 history.Add(new
                 {
                     action = "Người thuê ký hợp đồng",
-                    timestamp = contract.SignedAt,
+                    timestamp = ToUtc(contract.SignedAt),
                     completed = true,
-                    userName = "Người thuê",
-                    signatureUrl = contract.SignedFileUrl
+                    userName = renterName,
+                    eventUserId = renterId,
+                    signatureUrl = contract.RenterSignatureBase64 != null
+                        ? $"data:image/png;base64,{contract.RenterSignatureBase64}"
+                        : null
                 });
             }
 
-            return Ok(history);
+            return Ok(new
+            {
+                currentUserId = userId,
+                events = history
+            });
         }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "An error occurred", error = ex.Message });
         }
     }
+
 
     /// <summary>
     /// Get contract audit logs (status changes, actions)

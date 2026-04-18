@@ -24,6 +24,7 @@ public class RentalContract
     public string? OwnerSignedFileUrl { get; private set; }
     public DateTime? OwnerSignedAt { get; private set; }
     public string? OwnerSignatureBase64 { get; private set; }
+    public string? RenterSignatureBase64 { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
 
@@ -124,12 +125,13 @@ public class RentalContract
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Sign(string signedFileUrl)
+    public void Sign(string signedFileUrl, string renterSignatureBase64)
     {
         if (Status != "PENDING_RENTER_SIGNATURE")
             throw new InvalidOperationException($"Cannot sign contract with status {Status}");
 
         SignedFileUrl = signedFileUrl;
+        RenterSignatureBase64 = renterSignatureBase64;
         SignedAt = DateTime.UtcNow;
         Status = "ACTIVE";
         UpdatedAt = DateTime.UtcNow;

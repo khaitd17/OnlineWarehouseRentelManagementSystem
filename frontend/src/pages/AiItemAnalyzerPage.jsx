@@ -303,6 +303,49 @@ export default function AiItemAnalyzerPage() {
     });
   };
 
+  const handleVolumeChange = (idx, newVolume) => {
+    let vol = newVolume === "" ? "" : parseFloat(newVolume);
+    if (vol !== "" && (isNaN(vol) || vol < 0)) vol = 0;
+    
+    setResult(prev => {
+      if (!prev) return prev;
+      const newItems = [...prev.items];
+      newItems[idx] = { ...newItems[idx], estimatedVolumeM3: vol };
+      const newTotal = newItems.reduce((acc, curr) => {
+        const q = curr.quantity === "" ? 0 : curr.quantity;
+        const v = curr.estimatedVolumeM3 === "" ? 0 : curr.estimatedVolumeM3;
+        return acc + (q * v);
+      }, 0);
+      return { ...prev, items: newItems, totalVolumeM3: newTotal.toFixed(2) };
+    });
+  };
+
+  const handleAddItem = () => {
+    setResult(prev => {
+      if (!prev) return prev;
+      const newItems = [...prev.items, { name: "", quantity: 1, estimatedVolumeM3: 0.05, isManual: true }];
+      const newTotal = newItems.reduce((acc, curr) => {
+        const q = curr.quantity === "" ? 0 : curr.quantity;
+        const v = curr.estimatedVolumeM3 === "" ? 0 : curr.estimatedVolumeM3;
+        return acc + (q * v);
+      }, 0);
+      return { ...prev, items: newItems, totalVolumeM3: newTotal.toFixed(2) };
+    });
+  };
+
+  const handleRemoveItem = (idx) => {
+    setResult(prev => {
+      if (!prev) return prev;
+      const newItems = prev.items.filter((_, i) => i !== idx);
+      const newTotal = newItems.reduce((acc, curr) => {
+        const q = curr.quantity === "" ? 0 : curr.quantity;
+        const v = curr.estimatedVolumeM3 === "" ? 0 : curr.estimatedVolumeM3;
+        return acc + (q * v);
+      }, 0);
+      return { ...prev, items: newItems, totalVolumeM3: newTotal.toFixed(2) };
+    });
+  };
+
   const goToWarehouse = (wh) => {
     navigate(`/warehouse/${wh.warehouseId}`, {
       state: {
@@ -380,6 +423,7 @@ export default function AiItemAnalyzerPage() {
                     <th style={styles.th}>Số lượng</th>
                     <th style={styles.th}>Thể tích (m³/cái)</th>
                     <th style={styles.th}>Tổng (m³)</th>
+                    <th style={{ ...styles.th, width: 40 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -412,9 +456,43 @@ export default function AiItemAnalyzerPage() {
                           }}
                         />
                       </td>
-                      <td style={styles.td}>{item.estimatedVolumeM3}</td>
+                      <td style={styles.td}>
+                        {item.isManual ? (
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.estimatedVolumeM3}
+                            onChange={(e) => handleVolumeChange(i, e.target.value)}
+                            style={{
+                              width: 70, padding: "6px 8px", borderRadius: 6,
+                              border: "1px solid rgba(148,163,184,0.3)",
+                              background: "rgba(15,23,42,0.4)", color: "#fff",
+                              outline: "none", fontFamily: "inherit"
+                            }}
+                          />
+                        ) : (
+                          item.estimatedVolumeM3
+                        )}
+                      </td>
                       <td style={{ ...styles.td, fontWeight: 700, color: "#a78bfa" }}>
-                        {(item.estimatedVolumeM3 * (item.quantity === "" ? 0 : item.quantity)).toFixed(2)}
+                        {((item.estimatedVolumeM3 === "" ? 0 : item.estimatedVolumeM3) * (item.quantity === "" ? 0 : item.quantity)).toFixed(2)}
+                      </td>
+                      <td style={{ ...styles.td, textAlign: "center" }}>
+                        <button
+                          onClick={() => handleRemoveItem(i)}
+                          title="Xóa đồ vật"
+                          style={{
+                            background: "none", border: "none", cursor: "pointer",
+                            color: "#ef4444", fontSize: 18, padding: "2px 6px",
+                            borderRadius: 6, transition: "all 0.2s",
+                            opacity: 0.6,
+                          }}
+                          onMouseEnter={e => e.target.style.opacity = 1}
+                          onMouseLeave={e => e.target.style.opacity = 0.6}
+                        >
+                          ✕
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -425,9 +503,30 @@ export default function AiItemAnalyzerPage() {
                     </td>
                     <td style={styles.td}></td>
                     <td style={{ ...styles.td, fontWeight: 800, fontSize: 17, color: "#818cf8" }}>{result.totalVolumeM3} m³</td>
+                    <td style={styles.td}></td>
                   </tr>
                 </tbody>
               </table>
+
+              {/* Add item button */}
+              <button
+                onClick={handleAddItem}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  margin: "16px 0 0", padding: "10px 20px",
+                  background: "rgba(99,102,241,0.1)",
+                  border: "1px dashed rgba(99,102,241,0.4)",
+                  borderRadius: 10, color: "#818cf8",
+                  fontSize: 14, fontWeight: 600, cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  fontFamily: "inherit",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.2)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.6)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.1)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"; }}
+              >
+                <span style={{ fontSize: 18, lineHeight: 1 }}>+</span>
+                Thêm đồ vật thủ công
+              </button>
 
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(148,163,184,0.1)" }}>
                 <div style={{ flex: 1, minWidth: 200 }}>

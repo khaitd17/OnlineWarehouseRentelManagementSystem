@@ -62,8 +62,9 @@ export default function FavoritesPage() {
               width: 40, height: 40, borderRadius: 12,
               background: 'linear-gradient(135deg,#fda4af,#fb7185)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1.2rem',
-            }}>❤️</span>
+            }}>
+              <span className="material-symbols-outlined" style={{ color: '#fff', fontSize: '1.2rem' }}>favorite</span>
+            </span>
             Kho yêu thích
           </h1>
           <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: '0.9rem' }}>
@@ -83,7 +84,7 @@ export default function FavoritesPage() {
             onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
             onMouseLeave={e => e.currentTarget.style.background = '#fff'}
           >
-            🗑️ Xóa tất cả
+            Xóa tất cả
           </button>
         )}
       </div>
@@ -154,7 +155,9 @@ export default function FavoritesPage() {
             }}
             onClick={e => e.stopPropagation()}
           >
-            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>💔</div>
+            <div style={{ marginBottom: 12 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '2.5rem', color: '#ef4444' }}>heart_broken</span>
+            </div>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
               Bỏ khỏi yêu thích?
             </h3>
@@ -228,7 +231,7 @@ function FavoriteCard({ w, onRemove }) {
           onMouseEnter={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.transform = 'scale(1.1)'; }}
           onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.transform = 'scale(1)'; }}
         >
-          ❤️
+          <span className="material-symbols-outlined" style={{ color: '#ef4444', fontSize: '1.1rem' }}>favorite</span>
         </button>
         {/* 24/7 badge */}
         {w.is24HoursAccess && (
@@ -237,7 +240,7 @@ function FavoriteCard({ w, onRemove }) {
             background: 'rgba(16,185,129,0.9)', backdropFilter: 'blur(4px)',
             color: '#fff', padding: '3px 8px', borderRadius: 20,
             fontSize: '0.68rem', fontWeight: 700,
-          }}>⏰ 24/7</div>
+          }}>24/7</div>
         )}
         {/* Saved date */}
         <div style={{
@@ -245,7 +248,7 @@ function FavoriteCard({ w, onRemove }) {
           background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
           color: '#fff', padding: '2px 8px', borderRadius: 20,
           fontSize: '0.68rem',
-        }}>📅 Lưu {savedDate}</div>
+        }}>Lưu {savedDate}</div>
       </div>
 
       {/* Info */}
@@ -260,7 +263,7 @@ function FavoriteCard({ w, onRemove }) {
         <p style={{
           margin: '0 0 8px', color: '#64748b', fontSize: '0.78rem',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>📍 {w.address}</p>
+        }}>{w.address}</p>
 
         <div style={{ marginBottom: 8 }}>
           <StarRow rating={w.averageRating} count={w.ratingCount} />

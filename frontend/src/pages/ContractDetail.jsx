@@ -43,48 +43,69 @@ const formatCurrency = (amount) => {
 };
 
 const InfoRow = ({ label, value }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-    <span style={{ fontSize: "0.8rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+  <div style={{
+    padding: "10px 14px", borderRadius: 10,
+    background: "#f8fafc", border: "1px solid #f1f5f9",
+    display: "flex", flexDirection: "column", gap: 3,
+  }}>
+    <span style={{ fontSize: "0.68rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
       {label}
     </span>
-    <span style={{ fontSize: "0.95rem", color: "#0f172a", fontWeight: 500 }}>{value}</span>
+    <span style={{ fontSize: "0.92rem", color: "#0f172a", fontWeight: 600 }}>{value || "—"}</span>
   </div>
 );
 
-const Section = ({ title, children, action }) => (
-  <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem" }}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem",
-      paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9" }}>
-      <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
-        {title}
-      </h2>
-      {action}
-    </div>
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "1.2rem" }}>
-      {children}
-    </div>
-  </div>
-);
-
-const CollapsibleSection = ({ title, isOpen, onToggle, children }) => (
-  <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem" }}>
-    <div
-      onClick={onToggle}
-      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-      <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0 }}>
-        {title}
-      </h2>
-      <span className="material-symbols-outlined" style={{ color: "#64748b", fontSize: "20px" }}>
-        {isOpen ? "expand_less" : "expand_more"}
-      </span>
-    </div>
-    {isOpen && (
-      <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #f1f5f9" }}>
+const Section = ({ title, children, action, accent = "#0ea5e9" }) => (
+  <div style={{
+    backgroundColor: "#fff", borderRadius: 18, overflow: "hidden",
+    boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02)",
+    border: "1px solid #eef1f6", marginBottom: "1rem",
+  }}>
+    <div style={{ height: 3, background: `linear-gradient(90deg, ${accent}, ${accent}44, transparent)` }} />
+    <div style={{ padding: "20px 24px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h2 style={{ fontSize: "0.82rem", fontWeight: 800, color: accent, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {title}
+        </h2>
+        {action}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
         {children}
       </div>
-    )}
+    </div>
+  </div>
+);
+
+const CollapsibleSection = ({ title, isOpen, onToggle, children, accent = "#64748b" }) => (
+  <div style={{
+    backgroundColor: "#fff", borderRadius: 18, overflow: "hidden",
+    boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02)",
+    border: "1px solid #eef1f6", marginBottom: "1rem",
+  }}>
+    <div style={{ height: 3, background: `linear-gradient(90deg, ${accent}, ${accent}44, transparent)` }} />
+    <div style={{ padding: "20px 24px" }}>
+      <div
+        onClick={onToggle}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer", userSelect: "none" }}>
+        <h2 style={{ fontSize: "0.82rem", fontWeight: 800, color: accent, margin: 0, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {title}
+        </h2>
+        <span style={{
+          width: 28, height: 28, borderRadius: 8,
+          background: isOpen ? `${accent}12` : "#f8fafc",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "0.85rem", fontWeight: 800, color: accent,
+          transition: "all 0.2s", transform: isOpen ? "rotate(180deg)" : "rotate(0)",
+        }}>
+          ▾
+        </span>
+      </div>
+      {isOpen && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #f1f5f9" }}>
+          {children}
+        </div>
+      )}
+    </div>
   </div>
 );
 
@@ -234,11 +255,20 @@ const ContractDetail = () => {
   }, [id, refreshKey]);
 
   // Fetch signing history
+  const [signingCurrentUserId, setSigningCurrentUserId] = useState(null);
   useEffect(() => {
     if (contract?.contractId) {
       setLoadingHistory(true);
       rentalService.getContractSigningHistory(contract.contractId)
-        .then(setSigningHistory)
+        .then((data) => {
+          // New shape: { currentUserId, events } OR old shape: array
+          if (data && data.events) {
+            setSigningHistory(data.events);
+            setSigningCurrentUserId(data.currentUserId);
+          } else {
+            setSigningHistory(Array.isArray(data) ? data : []);
+          }
+        })
         .catch(() => setSigningHistory([]))
         .finally(() => setLoadingHistory(false));
     }
@@ -336,12 +366,17 @@ const ContractDetail = () => {
   const canRenterPay = contract?.isCurrentUserRenter &&
     (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED");
 
-  if (loading) return <div style={{ padding: "2rem", color: "#64748b" }}>Đang tải...</div>;
+  if (loading) return (
+    <div style={{ padding: "5rem 2rem", textAlign: "center" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ width: 48, height: 48, borderRadius: "50%", border: "4px solid #e2e8f0", borderTopColor: "#0ea5e9", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+      <p style={{ fontWeight: 600, color: "#64748b", fontSize: "0.95rem" }}>Đang tải hợp đồng...</p>
+    </div>
+  );
 
   if (error) return (
-    <div style={{ padding: "2rem" }}>
-      <div style={{ color: "#dc2626", padding: "12px 16px", backgroundColor: "#fef2f2",
-        borderRadius: "12px", border: "1px solid #fecaca", marginBottom: "1rem" }}>
+    <div style={{ padding: "2rem", maxWidth: 900, margin: "0 auto" }}>
+      <div style={{ padding: "16px 20px", background: "linear-gradient(135deg, #fef2f2, #fff1f2)", borderRadius: 14, border: "1px solid #fecaca", fontSize: "0.9rem", fontWeight: 600, color: "#991b1b", marginBottom: 16 }}>
         {error}
       </div>
       <button onClick={() => navigate(-1)} style={backBtnStyle}>← Quay lại</button>
@@ -353,110 +388,167 @@ const ContractDetail = () => {
   const status = statusConfig[contract.status] || { bg: "#f1f5f9", color: "#64748b", label: contract.status };
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "2rem", flexWrap: "wrap" }}>
-        <button onClick={() => navigate(-1)} style={backBtnStyle}>← Quay lại</button>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: "1.6rem", fontWeight: 800, color: "#0f172a" }}>
-              Hợp đồng {contract.contractNumber}
+    <div style={{ padding: "0 2rem 3rem", maxWidth: 940, margin: "0 auto", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+      <style>{`
+        @keyframes cardFadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+        .cd-btn { transition: all 0.18s ease; }
+        .cd-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
+      `}</style>
+
+      {/* ── Hero Header ── */}
+      <div style={{
+        margin: "0 -2rem 28px -2rem",
+        padding: "32px 40px 28px",
+        background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%)",
+        borderRadius: "0 0 24px 24px",
+        position: "relative", overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, borderRadius: "50%", background: "rgba(14,165,233,0.08)" }} />
+        <div style={{ position: "absolute", bottom: -20, right: 80, width: 100, height: 100, borderRadius: "50%", background: "rgba(14,165,233,0.05)" }} />
+
+        {/* Back + Download row */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, position: "relative" }}>
+          <button
+            onClick={() => navigate(-1)}
+            className="cd-btn"
+            style={{
+              padding: "8px 18px", borderRadius: 10,
+              background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)",
+              color: "rgba(255,255,255,0.85)", fontWeight: 600, cursor: "pointer", fontSize: "0.85rem",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            ← Quay lại
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="cd-btn"
+            style={{
+              padding: "8px 20px", borderRadius: 10,
+              background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)",
+              color: "rgba(255,255,255,0.85)", fontWeight: 600,
+              cursor: downloadingPdf ? "not-allowed" : "pointer", fontSize: "0.85rem",
+              backdropFilter: "blur(8px)", opacity: downloadingPdf ? 0.5 : 1,
+            }}
+          >
+            {downloadingPdf ? "Đang tải..." : "Tải PDF"}
+          </button>
+        </div>
+
+        {/* Contract title row */}
+        <div style={{ position: "relative" }}>
+          <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "rgba(14,165,233,0.8)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
+            HỢP ĐỒNG
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <h1 style={{ fontSize: "1.65rem", fontWeight: 800, color: "#fff", margin: 0, letterSpacing: "-0.02em" }}>
+              {contract.contractNumber}
             </h1>
             <span style={{
-              padding: "4px 14px", borderRadius: "20px",
-              backgroundColor: status.bg, color: status.color,
-              fontSize: "0.85rem", fontWeight: 600,
+              padding: "5px 16px", borderRadius: 20,
+              backgroundColor: `${status.color}22`, color: status.color === "#64748b" ? "#cbd5e1" : status.color,
+              fontSize: "0.78rem", fontWeight: 700,
+              border: `1.5px solid ${status.color}30`,
             }}>
               {status.label}
             </span>
           </div>
-          <p style={{ color: "#64748b", fontSize: "0.88rem", marginTop: "0.2rem" }}>
+          <p style={{ color: "rgba(148,163,184,0.8)", margin: "8px 0 0", fontSize: "0.85rem" }}>
             Tạo ngày {formatDate(contract.createdAt)}
           </p>
         </div>
-        {/* Download PDF Button */}
-        <button
-          onClick={handleDownloadPdf}
-          disabled={downloadingPdf}
-          style={{
-            padding: "0.6rem 1.2rem",
-            borderRadius: "10px",
-            border: "1px solid #e2e8f0",
-            backgroundColor: "#fff",
-            color: "#0095c7",
-            fontWeight: 600,
-            cursor: downloadingPdf ? "not-allowed" : "pointer",
-            fontSize: "0.88rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            opacity: downloadingPdf ? 0.6 : 1,
-          }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>download</span>
-          {downloadingPdf ? "Đang tải..." : "Tải PDF"}
-        </button>
+
+        {/* Quick stats in header */}
+        <div style={{ display: "flex", gap: 16, marginTop: 20, position: "relative", flexWrap: "wrap" }}>
+          {[
+            { label: "Kho", value: contract.warehouseName },
+            { label: "Giá/tháng", value: formatCurrency(contract.monthlyPayment) },
+            { label: "Thời hạn", value: `${formatDate(contract.startDate)} — ${formatDate(contract.endDate)}` },
+          ].map(stat => (
+            <div key={stat.label} style={{
+              padding: "10px 18px", borderRadius: 12,
+              background: "rgba(255,255,255,0.07)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              flex: "1 1 0", minWidth: 140,
+            }}>
+              <div style={{ fontSize: "0.65rem", fontWeight: 700, color: "rgba(148,163,184,0.7)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>{stat.label}</div>
+              <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#fff" }}>{stat.value}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Bên cho thuê (Bên A) */}
-      {contract.ownerName && (
-        <Section title="Bên cho thuê (Bên A)">
-          <InfoRow label="Họ tên" value={contract.ownerName} />
+      {/* ── Two-party info ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, animation: "cardFadeIn 0.4s ease 0.1s both" }}>
+        {contract.ownerName && (
+          <Section title="Bên cho thuê — Bên A" accent="#2563eb">
+            <InfoRow label="Họ tên" value={contract.ownerName} />
+          </Section>
+        )}
+        <Section title="Bên thuê — Bên B" accent="#7c3aed">
+          <InfoRow label="Họ tên" value={contract.renterName} />
+          <InfoRow label="Email" value={contract.renterEmail} />
         </Section>
-      )}
+      </div>
 
       {/* Thông tin kho */}
-      <Section title="Thông tin kho">
-        <InfoRow label="Tên kho" value={contract.warehouseName} />
-        <InfoRow label="Địa chỉ" value={contract.warehouseAddress} />
-      </Section>
-
-      {/* Bên thuê (Bên B) */}
-      <Section title="Bên thuê (Bên B)">
-        <InfoRow label="Họ tên" value={contract.renterName} />
-        <InfoRow label="Email" value={contract.renterEmail} />
-      </Section>
+      <div style={{ animation: "cardFadeIn 0.4s ease 0.15s both" }}>
+        <Section title="Thông tin kho" accent="#0891b2">
+          <InfoRow label="Tên kho" value={contract.warehouseName} />
+          <InfoRow label="Địa chỉ" value={contract.warehouseAddress} />
+        </Section>
+      </div>
 
       {/* Thời hạn hợp đồng */}
-      <Section title="Thời hạn hợp đồng">
-        <InfoRow label="Ngày bắt đầu" value={formatDate(contract.startDate)} />
-        <InfoRow label="Ngày kết thúc" value={formatDate(contract.endDate)} />
-        {contract.status === "ACTIVE" && daysUntilExpiry > 0 && daysUntilExpiry <= 30 && (
-          <div style={{ gridColumn: "1 / -1" }}>
-            <div style={{
-              padding: "8px 12px",
-              backgroundColor: "#fef3c7",
-              borderRadius: "8px",
-              color: "#92400e",
-              fontSize: "0.85rem",
-              fontWeight: 500,
-            }}>
-              ⏰ Còn {daysUntilExpiry} ngày nữa hết hạn hợp đồng
+      <div style={{ animation: "cardFadeIn 0.4s ease 0.2s both" }}>
+        <Section title="Thời hạn hợp đồng" accent="#059669">
+          <InfoRow label="Ngày bắt đầu" value={formatDate(contract.startDate)} />
+          <InfoRow label="Ngày kết thúc" value={formatDate(contract.endDate)} />
+          {contract.status === "ACTIVE" && daysUntilExpiry > 0 && daysUntilExpiry <= 30 && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <div style={{
+                padding: "10px 16px",
+                background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
+                borderRadius: 10, borderLeft: "4px solid #f59e0b",
+                color: "#92400e", fontSize: "0.85rem", fontWeight: 600,
+              }}>
+                Còn {daysUntilExpiry} ngày nữa hết hạn hợp đồng
+              </div>
             </div>
-          </div>
-        )}
-      </Section>
+          )}
+        </Section>
+      </div>
 
       {/* Thông tin tài chính */}
-      <Section title="Thông tin tài chính">
-        <InfoRow label="Giá thuê/tháng" value={formatCurrency(contract.monthlyPayment)} />
-        <InfoRow label="Tổng giá trị hợp đồng" value={formatCurrency(contract.totalValue)} />
-        {contract.depositAmount != null && (
-          <InfoRow label="Tiền đặt cọc" value={formatCurrency(contract.depositAmount)} />
-        )}
-      </Section>
+      <div style={{ animation: "cardFadeIn 0.4s ease 0.25s both" }}>
+        <Section title="Thông tin tài chính" accent="#d97706">
+          <InfoRow label="Giá thuê/tháng" value={formatCurrency(contract.monthlyPayment)} />
+          <InfoRow label="Tổng giá trị hợp đồng" value={formatCurrency(contract.totalValue)} />
+          {contract.depositAmount != null && (
+            <InfoRow label="Tiền đặt cọc" value={formatCurrency(contract.depositAmount)} />
+          )}
+        </Section>
+      </div>
 
       {/* Điều khoản */}
       {contract.terms && (
-        <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem" }}>
-          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
-            paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9" }}>
-            Điều khoản hợp đồng
-          </h2>
-          <p style={{ color: "#475569", fontSize: "0.9rem", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-            {contract.terms}
-          </p>
+        <div style={{
+          backgroundColor: "#fff", borderRadius: 18, overflow: "hidden",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02)",
+          border: "1px solid #eef1f6", marginBottom: "1rem",
+          animation: "cardFadeIn 0.4s ease 0.3s both",
+        }}>
+          <div style={{ height: 3, background: "linear-gradient(90deg, #64748b, #64748b44, transparent)" }} />
+          <div style={{ padding: "20px 24px" }}>
+            <h2 style={{ fontSize: "0.82rem", fontWeight: 800, color: "#64748b", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              Điều khoản hợp đồng
+            </h2>
+            <p style={{ color: "#475569", fontSize: "0.9rem", lineHeight: 1.8, whiteSpace: "pre-wrap", margin: 0 }}>
+              {contract.terms}
+            </p>
+          </div>
         </div>
       )}
 
@@ -542,7 +634,7 @@ const ContractDetail = () => {
         isOpen={showSigningHistory}
         onToggle={() => setShowSigningHistory(!showSigningHistory)}
       >
-        <SigningHistoryTimeline history={signingHistory} loading={loadingHistory} />
+        <SigningHistoryTimeline history={signingHistory} loading={loadingHistory} currentUserId={signingCurrentUserId} />
       </CollapsibleSection>
 
       {/* Audit Log Section */}

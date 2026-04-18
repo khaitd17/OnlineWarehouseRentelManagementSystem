@@ -102,12 +102,14 @@ const RenterInventoryPage = () => {
       {/* ── Stat Cards ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:24 }}>
         {[
-          { emoji:'📦', label:'Loại hàng hóa',   val:totalTypes,                color:'#0ea5e9' },
-          { emoji:'🔢', label:'Tổng số lượng',    val:totalQty.toLocaleString('vi-VN'), color:'#22c55e' },
-          { emoji:'⚠️', label:'Hết hàng',          val:outOfStock,               color:'#ef4444' },
-        ].map(({emoji,label,val,color})=>(
+          { icon:'inventory_2', label:'Loại hàng hóa',   val:totalTypes,                color:'#0ea5e9' },
+          { icon:'tag', label:'Tổng số lượng',    val:totalQty.toLocaleString('vi-VN'), color:'#22c55e' },
+          { icon:'warning', label:'Hết hàng',          val:outOfStock,               color:'#ef4444' },
+        ].map(({icon,label,val,color})=>(
           <div key={label} style={{ ...card, padding:'18px 22px', display:'flex', alignItems:'center', gap:14 }}>
-            <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.3rem', flexShrink:0 }}>{emoji}</div>
+            <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color: color }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '1.3rem' }}>{icon}</span>
+            </div>
             <div>
               <p style={{ margin:0, fontSize:'0.75rem', color:'#64748b', fontWeight:500 }}>{label}</p>
               <p style={{ margin:0, fontSize:'1.75rem', fontWeight:900, color:'#0f172a', lineHeight:1.1 }}>{val}</p>
@@ -123,13 +125,13 @@ const RenterInventoryPage = () => {
           <button
             onClick={() => { setActiveWh(''); setSearch(''); }}
             style={{ padding:'6px 16px', borderRadius:20, border:`1.5px solid ${activeWh===''?ACCENT:'#e2e8f0'}`, background:activeWh===''?ACCENT:'#fff', color:activeWh===''?'#fff':'#64748b', fontWeight:600, fontSize:'0.8rem', cursor:'pointer', transition:'all 0.15s' }}>
-            🏭 Tất cả kho ({rows.length})
+            Tất cả kho ({rows.length})
           </button>
           {warehouses.map(w => (
             <button key={w.id}
               onClick={() => { setActiveWh(w.id); setSearch(''); }}
               style={{ padding:'6px 16px', borderRadius:20, border:`1.5px solid ${String(activeWh)===String(w.id)?ACCENT:'#e2e8f0'}`, background:String(activeWh)===String(w.id)?ACCENT:'#fff', color:String(activeWh)===String(w.id)?'#fff':'#64748b', fontWeight:600, fontSize:'0.8rem', cursor:'pointer', transition:'all 0.15s' }}>
-              🏪 {w.name}
+              {w.name}
             </button>
           ))}
         </div>
@@ -137,11 +139,11 @@ const RenterInventoryPage = () => {
         {/* Search + refresh */}
         <div style={{ display:'flex', gap:10, alignItems:'center' }}>
           <div style={{ position:'relative' }}>
-            <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}>🔍</span>
+            <span className="material-symbols-outlined" style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8', fontSize: '1.1rem' }}>search</span>
             <input
               value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Tìm tên hàng hóa..."
-              style={{ padding:'8px 12px 8px 32px', borderRadius:10, border:'1.5px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', width:220, transition:'border-color 0.2s' }}
+              style={{ padding:'8px 12px 8px 36px', borderRadius:10, border:'1.5px solid #e2e8f0', outline:'none', fontSize:'0.875rem', fontFamily:'Inter,sans-serif', width:220, transition:'border-color 0.2s' }}
               onFocus={e=>e.target.style.borderColor=ACCENT} onBlur={e=>e.target.style.borderColor='#e2e8f0'}
             />
           </div>
@@ -149,7 +151,7 @@ const RenterInventoryPage = () => {
             style={{ padding:'8px 14px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', color:'#64748b', fontSize:'0.83rem', fontWeight:600, display:'flex', alignItems:'center', gap:5, transition:'all 0.15s' }}
             onMouseEnter={e=>{e.currentTarget.style.background='#f1f5f9';e.currentTarget.style.borderColor='#cbd5e1';}}
             onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.borderColor='#e2e8f0';}}>
-            🔄 Làm mới
+            Làm mới
           </button>
         </div>
       </div>
@@ -158,12 +160,14 @@ const RenterInventoryPage = () => {
       <div style={card}>
         {loading ? (
           <div style={{ padding:64, textAlign:'center', color:'#94a3b8' }}>
-            <div style={{ fontSize:'2rem', marginBottom:10, animation:'spin 1.2s linear infinite', display:'inline-block' }}>⏳</div>
+            <div style={{ fontSize:'2rem', marginBottom:10, animation:'spin 1.2s linear infinite', display:'inline-block' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 'inherit' }}>autorenew</span>
+            </div>
             <div style={{ fontWeight:500 }}>Đang tải dữ liệu...</div>
           </div>
         ) : error ? (
           <div style={{ padding:64, textAlign:'center' }}>
-            <div style={{ fontSize:'2.5rem', marginBottom:10 }}>⚠️</div>
+            <span className="material-symbols-outlined" style={{ fontSize:'2.5rem', marginBottom:10, color: '#dc2626' }}>warning</span>
             <p style={{ fontWeight:600, color:'#dc2626', margin:'0 0 12px' }}>{error}</p>
             <button onClick={fetchInventory}
               style={{ padding:'9px 22px', borderRadius:10, border:'none', background:'#dc2626', color:'#fff', fontWeight:700, cursor:'pointer', fontSize:'0.875rem' }}>
@@ -172,7 +176,7 @@ const RenterInventoryPage = () => {
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ padding:72, textAlign:'center' }}>
-            <div style={{ fontSize:'3rem', marginBottom:12 }}>📦</div>
+            <div style={{ marginBottom:12 }}><span className="material-symbols-outlined" style={{ fontSize:'3rem', color: '#cbd5e1' }}>inventory_2</span></div>
             <p style={{ fontWeight:700, color:'#0f172a', margin:'0 0 6px', fontSize:'1rem' }}>Chưa có hàng hoá nào</p>
             <p style={{ color:'#94a3b8', fontSize:'0.87rem', margin:0 }}>
               Tạo yêu cầu nhập kho và đợi Staff xác nhận để theo dõi tồn kho tại đây.
@@ -211,7 +215,6 @@ const RenterInventoryPage = () => {
                     {/* Kho */}
                     <td style={{ padding:'13px 16px' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-                        <span style={{ fontSize:'1rem' }}>🏪</span>
                         <span style={{ fontSize:'0.85rem', color:'#334155', fontWeight:500 }}>{row.warehouseName || '—'}</span>
                       </div>
                     </td>
@@ -236,7 +239,7 @@ const RenterInventoryPage = () => {
               </span>
               {outOfStock > 0 && (
                 <span style={{ fontSize:'0.75rem', color:'#dc2626', fontWeight:600 }}>
-                  ⚠ {outOfStock} loại hết hàng
+                  Có {outOfStock} loại hết hàng
                 </span>
               )}
             </div>

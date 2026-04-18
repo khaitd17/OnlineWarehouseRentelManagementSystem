@@ -17,6 +17,7 @@ public class ConfirmCashPaymentHandlerTests
     private readonly Mock<INotificationRepository> _mockNotificationRepository;
     private readonly Mock<INotificationSender> _mockNotificationSender;
     private readonly Mock<IStaffMembershipRepository> _mockMembershipRepository;
+    private readonly Mock<IContractExtensionRepository> _mockExtensionRepository;
     private readonly Mock<ILogger<ConfirmCashPaymentHandler>> _mockLogger;
     private readonly ConfirmCashPaymentHandler _handler;
 
@@ -28,6 +29,7 @@ public class ConfirmCashPaymentHandlerTests
         _mockNotificationRepository = new Mock<INotificationRepository>();
         _mockNotificationSender = new Mock<INotificationSender>();
         _mockMembershipRepository = new Mock<IStaffMembershipRepository>();
+        _mockExtensionRepository = new Mock<IContractExtensionRepository>();
         _mockLogger = new Mock<ILogger<ConfirmCashPaymentHandler>>();
 
         _handler = new ConfirmCashPaymentHandler(
@@ -37,7 +39,8 @@ public class ConfirmCashPaymentHandlerTests
             _mockNotificationRepository.Object,
             _mockNotificationSender.Object,
             _mockMembershipRepository.Object,
-            _mockLogger.Object
+            _mockLogger.Object,
+            _mockExtensionRepository.Object
         );
     }
 
@@ -492,7 +495,7 @@ public class ConfirmCashPaymentHandlerTests
         Assert.NotNull(result);
         Assert.True(result.Success);
         Assert.NotEmpty(result.Message);
-        Assert.NotEmpty(result.NewContractStatus);
+        Assert.False(string.IsNullOrEmpty(result.NewContractStatus));
     }
 
     [Fact]

@@ -25,6 +25,7 @@ const ContractPaymentSelection = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [cashPaymentSuccess, setCashPaymentSuccess] = useState(false);
   const [extensionInfo, setExtensionInfo] = useState(null);
+  const [hoveredMethod, setHoveredMethod] = useState(null);
 
   useEffect(() => {
     const loadContract = async () => {
@@ -42,15 +43,12 @@ const ContractPaymentSelection = () => {
             navigate(`/contracts/${id}`);
             return;
           }
-
           if (contractData.status !== "PENDING_TERMINATION") {
             throw new Error("Hợp đồng không ở trạng thái chờ kết thúc sớm để thanh toán phí.");
           }
-
           if (!contractData.ownerApprovedTermination || !contractData.renterApprovedTermination) {
             throw new Error("Hai bên chưa xác nhận kết thúc sớm, chưa thể thanh toán phí.");
           }
-
           if (Number(contractData.earlyTerminationFee || 0) <= 0) {
             navigate(`/contracts/${id}`);
             return;
@@ -61,23 +59,20 @@ const ContractPaymentSelection = () => {
           if (!extensionId) {
             throw new Error("Thiếu thông tin yêu cầu gia hạn.");
           }
-
           const ext = await contractExtensionService.getExtensionById(extensionId);
           if (!ext || ext.originalContractId !== Number(id)) {
             throw new Error("Yêu cầu gia hạn không hợp lệ.");
           }
-
           if (ext.status !== "APPROVED" && ext.status !== "PENDING_PAYMENT") {
             throw new Error("Yêu cầu gia hạn không còn ở trạng thái có thể thanh toán.");
           }
-
           setExtensionInfo(ext);
         }
 
         setLoading(false);
       } catch (err) {
         console.error("Error loading contract:", err);
-        setError(err.response?.data?.message || "Không thể tải thông tin hợp đồng");
+        setError(err.response?.data?.message || err.message || "Không thể tải thông tin hợp đồng");
         setLoading(false);
       }
     };
@@ -124,27 +119,35 @@ const ContractPaymentSelection = () => {
 
   if (loading) {
     return (
-      <div style={{ padding: "2rem", textAlign: "center" }}>
-        <div style={{ color: "#64748b" }}>Đang tải thông tin...</div>
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: 40, height: 40, border: "3px solid #e2e8f0", borderTopColor: "#0ea5e9",
+            borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px",
+          }} />
+          <div style={{ color: "#64748b", fontSize: "0.95rem" }}>Đang tải thông tin thanh toán...</div>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
+      <div style={{ padding: "3rem 2rem", maxWidth: 560, margin: "0 auto" }}>
         <div style={{
-          color: "#dc2626", padding: "1rem 1.5rem", backgroundColor: "#fef2f2",
-          borderRadius: "12px", border: "1px solid #fecaca", marginBottom: "1rem"
+          color: "#991b1b", padding: "1.2rem 1.5rem", backgroundColor: "#fef2f2",
+          borderRadius: 14, border: "1px solid #fecaca", marginBottom: "1.5rem",
+          fontSize: "0.95rem", lineHeight: 1.6,
         }}>
           {error}
         </div>
         <button
           onClick={() => navigate(`/contracts/${id}`)}
           style={{
-            padding: "0.75rem 1.5rem", borderRadius: "10px",
-            backgroundColor: "#0095c7", color: "#fff",
-            border: "none", fontWeight: 600, cursor: "pointer"
+            padding: "10px 24px", borderRadius: 10,
+            background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
+            color: "#fff", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem",
           }}
         >
           Quay lại hợp đồng
@@ -159,83 +162,110 @@ const ContractPaymentSelection = () => {
       ? ((extensionInfo?.proposedMonthlyPayment || 0) * (extensionInfo?.durationMonths || 0))
       : (contract?.depositAmount || contract?.monthlyPayment || 0);
 
+  const paymentLabel = isTerminationPayment
+    ? "Phí kết thúc sớm"
+    : isExtensionPayment
+      ? `Phí gia hạn ${extensionInfo?.durationMonths || 0} tháng`
+      : (contract?.depositAmount ? "Tiền đặt cọc" : "Thanh toán tháng đầu");
+
   return (
-    <div style={{ padding: "2rem", maxWidth: "700px", margin: "0 auto" }}>
+    <div style={{
+      padding: "2rem", maxWidth: 640, margin: "0 auto",
+      fontFamily: "'Inter','Segoe UI',sans-serif",
+    }}>
+      <style>{`
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+
+      {/* ── Cash Payment Success ── */}
       {cashPaymentSuccess && (
         <div style={{
-          backgroundColor: "#dcfce7",
-          borderRadius: "12px",
-          padding: "2rem",
-          marginBottom: "2rem",
-          border: "1px solid #86efac",
-          textAlign: "center"
+          animation: "fadeUp 0.4s ease both",
+          background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+          borderRadius: 20, padding: "2.5rem 2rem", textAlign: "center",
+          border: "1px solid #bbf7d0",
+          boxShadow: "0 8px 32px rgba(34,197,94,0.12)",
         }}>
-          <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>✅</div>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#166534", marginBottom: "1rem" }}>
-            Đã ghi nhận thanh toán tiền mặt!
+          <div style={{
+            width: 64, height: 64, borderRadius: "50%",
+            background: "linear-gradient(135deg, #22c55e, #16a34a)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 1.2rem",
+            boxShadow: "0 6px 20px rgba(34,197,94,0.35)",
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <h2 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#14532d", margin: "0 0 0.6rem" }}>
+            Đã ghi nhận thanh toán!
           </h2>
-          <p style={{ fontSize: "1rem", color: "#15803d", marginBottom: "1.5rem", lineHeight: 1.6 }}>
-            Yêu cầu xác nhận đã được gửi đến chủ kho. Bạn sẽ nhận được thông báo sau khi chủ kho xác nhận.
+          <p style={{ color: "#166534", fontSize: "0.92rem", lineHeight: 1.7, margin: "0 0 1.8rem" }}>
+            Yêu cầu xác nhận đã được gửi đến chủ kho.<br/>
+            Bạn sẽ nhận thông báo sau khi chủ kho xác nhận.
           </p>
           <button
             onClick={() => navigate(`/contracts/${id}`)}
             style={{
-              padding: "0.75rem 2rem",
-              borderRadius: "10px",
-              backgroundColor: "#16a34a",
-              color: "#fff",
-              border: "none",
-              fontWeight: 600,
-              cursor: "pointer",
-              fontSize: "1rem"
+              padding: "12px 32px", borderRadius: 12,
+              background: "linear-gradient(135deg, #22c55e, #16a34a)",
+              color: "#fff", border: "none", fontWeight: 700, cursor: "pointer",
+              fontSize: "0.95rem", boxShadow: "0 4px 16px rgba(34,197,94,0.3)",
+              transition: "all 0.18s",
             }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 24px rgba(34,197,94,0.45)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(34,197,94,0.3)"; }}
           >
             Quay về hợp đồng
           </button>
         </div>
       )}
 
+      {/* ── Cash Confirm Modal ── */}
       {showConfirmModal && (
         <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 1000
+          position: "fixed", inset: 0, zIndex: 9999,
+          backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          animation: "fadeUp 0.2s ease",
         }}>
           <div style={{
-            backgroundColor: "#fff",
-            borderRadius: "16px",
-            padding: "2rem",
-            maxWidth: "500px",
-            width: "90%",
-            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
+            background: "#fff", borderRadius: 20, padding: "2rem 2rem 1.5rem",
+            maxWidth: 440, width: "90%", textAlign: "center",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.2)",
           }}>
-            <div style={{ fontSize: "2.5rem", textAlign: "center", marginBottom: "1rem" }}>💵</div>
-            <h3 style={{ fontSize: "1.3rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem", textAlign: "center" }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: "50%",
+              background: "linear-gradient(135deg, #f59e0b, #d97706)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 1.2rem",
+              boxShadow: "0 6px 20px rgba(245,158,11,0.35)",
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#0f172a", margin: "0 0 0.6rem" }}>
               Xác nhận thanh toán tiền mặt
             </h3>
-            <p style={{ fontSize: "1rem", color: "#64748b", marginBottom: "1.5rem", lineHeight: 1.6, textAlign: "center" }}>
-              Bạn đã thanh toán tiền mặt tại kho? Chủ kho sẽ nhận được thông báo để xác nhận.
+            <p style={{ color: "#64748b", fontSize: "0.9rem", lineHeight: 1.6, margin: "0 0 1.5rem" }}>
+              Bạn đã thanh toán <strong style={{ color: "#0f172a" }}>{formatCurrency(paymentAmount)}</strong> tiền mặt tại kho?
+              Chủ kho sẽ được thông báo để xác nhận.
             </p>
-            <div style={{ display: "flex", gap: "1rem" }}>
+            <div style={{ display: "flex", gap: 12 }}>
               <button
                 onClick={() => setShowConfirmModal(false)}
                 style={{
-                  flex: 1,
-                  padding: "0.75rem",
-                  borderRadius: "10px",
-                  border: "1px solid #e2e8f0",
-                  backgroundColor: "#fff",
-                  color: "#64748b",
-                  fontWeight: 600,
-                  cursor: "pointer"
+                  flex: 1, padding: "11px 20px", borderRadius: 12,
+                  border: "1.5px solid #e2e8f0", background: "#fff",
+                  color: "#475569", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer",
+                  transition: "all 0.15s",
                 }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#94a3b8"; e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "#fff"; }}
               >
                 Hủy
               </button>
@@ -243,14 +273,12 @@ const ContractPaymentSelection = () => {
                 onClick={confirmCashPayment}
                 disabled={confirmingCash}
                 style={{
-                  flex: 1,
-                  padding: "0.75rem",
-                  borderRadius: "10px",
-                  backgroundColor: confirmingCash ? "#94a3b8" : "#16a34a",
-                  color: "#fff",
-                  border: "none",
-                  fontWeight: 600,
-                  cursor: confirmingCash ? "not-allowed" : "pointer"
+                  flex: 1, padding: "11px 20px", borderRadius: 12, border: "none",
+                  background: confirmingCash ? "#94a3b8" : "linear-gradient(135deg, #22c55e, #16a34a)",
+                  color: "#fff", fontWeight: 700, fontSize: "0.9rem",
+                  cursor: confirmingCash ? "not-allowed" : "pointer",
+                  boxShadow: "0 4px 16px rgba(34,197,94,0.3)",
+                  transition: "all 0.15s",
                 }}
               >
                 {confirmingCash ? "Đang xử lý..." : "Xác nhận"}
@@ -260,186 +288,234 @@ const ContractPaymentSelection = () => {
         </div>
       )}
 
-      <div style={{ marginBottom: "2rem" }}>
+      {/* ── Header ── */}
+      <div style={{ animation: "fadeUp 0.3s ease both" }}>
         <button
           onClick={() => navigate(`/contracts/${id}`)}
           style={{
-            padding: "0.5rem 1rem",
-            borderRadius: "8px",
-            border: "1px solid #e2e8f0",
-            backgroundColor: "#fff",
-            color: "#64748b",
-            fontWeight: 600,
-            cursor: "pointer",
-            marginBottom: "1rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem"
+            padding: "8px 16px", borderRadius: 10,
+            border: "1.5px solid #e2e8f0", background: "#fff",
+            color: "#475569", fontWeight: 600, cursor: "pointer",
+            fontSize: "0.88rem", marginBottom: "1.5rem",
+            transition: "all 0.15s",
           }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "#94a3b8"; e.currentTarget.style.background = "#f8fafc"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "#fff"; }}
         >
           ← Quay lại
         </button>
 
-        <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.5rem" }}>
-          💳 Chọn phương thức thanh toán
+        <h1 style={{
+          fontSize: "1.6rem", fontWeight: 800, color: "#0f172a",
+          margin: "0 0 4px", letterSpacing: "-0.02em",
+        }}>
+          Thanh toán hợp đồng
         </h1>
-        <p style={{ color: "#64748b", fontSize: "0.95rem" }}>
-          Hợp đồng {contract?.contractNumber}
+        <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0 0 1.5rem" }}>
+          {contract?.contractNumber}
         </p>
       </div>
 
       {!cashPaymentSuccess && (
         <>
+          {/* ── Payment Amount Card ── */}
           <div style={{
-            backgroundColor: "#f8fafc",
-            borderRadius: "12px",
-            padding: "1.5rem",
-            marginBottom: "2rem",
-            border: "1px solid #e2e8f0"
+            animation: "fadeUp 0.35s ease both",
+            background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%)",
+            borderRadius: 18, padding: "1.8rem 2rem",
+            marginBottom: "1.8rem", position: "relative", overflow: "hidden",
           }}>
-            <div style={{ fontSize: "0.9rem", color: "#64748b", marginBottom: "0.5rem" }}>
-              Số tiền cần thanh toán
-            </div>
-            <div style={{ fontSize: "2rem", fontWeight: 700, color: "#0f172a" }}>
-              {formatCurrency(paymentAmount)}
-            </div>
-            <div style={{ fontSize: "0.85rem", color: "#64748b", marginTop: "0.5rem" }}>
-              {isTerminationPayment
-                ? "Phí kết thúc sớm"
-                : isExtensionPayment
-                  ? `Phí gia hạn ${extensionInfo?.durationMonths || 0} tháng`
-                  : (contract?.depositAmount ? "Tiền đặt cọc" : "Thanh toán tháng đầu")}
+            {/* Decorative circles */}
+            <div style={{ position: "absolute", top: -30, right: -30, width: 120, height: 120, borderRadius: "50%", background: "rgba(14,165,233,0.1)" }} />
+            <div style={{ position: "absolute", bottom: -15, right: 60, width: 70, height: 70, borderRadius: "50%", background: "rgba(14,165,233,0.06)" }} />
+
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.55)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                Số tiền cần thanh toán
+              </div>
+              <div style={{
+                fontSize: "2.2rem", fontWeight: 800, color: "#fff",
+                letterSpacing: "-0.02em", marginBottom: 6,
+              }}>
+                {formatCurrency(paymentAmount)}
+              </div>
+              <div style={{
+                display: "inline-block",
+                padding: "4px 12px", borderRadius: 20,
+                background: "rgba(14,165,233,0.2)", color: "#7dd3fc",
+                fontSize: "0.8rem", fontWeight: 600,
+              }}>
+                {paymentLabel}
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* ── Payment Methods ── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, animation: "fadeUp 0.4s ease both" }}>
+            {/* Online Payment */}
             <button
               onClick={handleOnlinePayment}
+              onMouseEnter={() => setHoveredMethod("online")}
+              onMouseLeave={() => setHoveredMethod(null)}
               style={{
-                padding: "1.5rem",
-                borderRadius: "12px",
-                border: "2px solid #0095c7",
-                backgroundColor: "#fff",
-                cursor: "pointer",
-                transition: "all 0.2s",
-                textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#f0f9ff";
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 149, 199, 0.2)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#fff";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
+                padding: "1.4rem 1.6rem", borderRadius: 16,
+                border: hoveredMethod === "online" ? "2px solid #0ea5e9" : "2px solid #e2e8f0",
+                background: hoveredMethod === "online" ? "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)" : "#fff",
+                cursor: "pointer", textAlign: "left",
+                display: "flex", alignItems: "center", gap: "1.2rem",
+                transition: "all 0.25s cubic-bezier(.4,0,.2,1)",
+                transform: hoveredMethod === "online" ? "translateY(-2px)" : "translateY(0)",
+                boxShadow: hoveredMethod === "online"
+                  ? "0 8px 28px rgba(14,165,233,0.15)"
+                  : "0 2px 8px rgba(0,0,0,0.04)",
               }}
             >
+              {/* Number indicator */}
               <div style={{
-                width: "60px",
-                height: "60px",
-                borderRadius: "12px",
-                backgroundColor: "#e0f2fe",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "2rem"
+                width: 48, height: 48, borderRadius: 14,
+                background: hoveredMethod === "online"
+                  ? "linear-gradient(135deg, #0ea5e9, #0284c7)"
+                  : "linear-gradient(135deg, #e0f2fe, #bae6fd)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 800, fontSize: "1.1rem",
+                color: hoveredMethod === "online" ? "#fff" : "#0284c7",
+                transition: "all 0.25s",
+                flexShrink: 0,
               }}>
-                📱
+                1
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.3rem" }}>
+                <div style={{
+                  fontSize: "1.05rem", fontWeight: 700, color: "#0f172a",
+                  marginBottom: 4,
+                }}>
                   Thanh toán trực tuyến
                 </div>
-                <div style={{ fontSize: "0.9rem", color: "#64748b" }}>
+                <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: 1.5 }}>
                   Quét mã QR hoặc chuyển khoản ngân hàng
                 </div>
-                <div style={{ fontSize: "0.85rem", color: "#0095c7", marginTop: "0.5rem", fontWeight: 600 }}>
-                  ⚡ Nhanh chóng • Tự động xác nhận
+                <div style={{
+                  marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap",
+                }}>
+                  <span style={{
+                    padding: "3px 10px", borderRadius: 6,
+                    background: "#f0f9ff", color: "#0369a1",
+                    fontSize: "0.75rem", fontWeight: 600,
+                  }}>
+                    Nhanh chóng
+                  </span>
+                  <span style={{
+                    padding: "3px 10px", borderRadius: 6,
+                    background: "#f0f9ff", color: "#0369a1",
+                    fontSize: "0.75rem", fontWeight: 600,
+                  }}>
+                    Tự động xác nhận
+                  </span>
                 </div>
               </div>
-              <span className="material-symbols-outlined" style={{ fontSize: "24px", color: "#0095c7" }}>
-                arrow_forward
-              </span>
+              <div style={{
+                color: hoveredMethod === "online" ? "#0284c7" : "#cbd5e1",
+                fontSize: "1.2rem", fontWeight: 700,
+                transition: "all 0.25s",
+                transform: hoveredMethod === "online" ? "translateX(3px)" : "translateX(0)",
+              }}>
+                →
+              </div>
             </button>
 
+            {/* Cash Payment */}
             <button
               onClick={handleCashPayment}
               disabled={confirmingCash}
+              onMouseEnter={() => !confirmingCash && setHoveredMethod("cash")}
+              onMouseLeave={() => setHoveredMethod(null)}
               style={{
-                padding: "1.5rem",
-                borderRadius: "12px",
-                border: "2px solid #16a34a",
-                backgroundColor: "#fff",
+                padding: "1.4rem 1.6rem", borderRadius: 16,
+                border: hoveredMethod === "cash" ? "2px solid #22c55e" : "2px solid #e2e8f0",
+                background: hoveredMethod === "cash" ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)" : "#fff",
                 cursor: confirmingCash ? "not-allowed" : "pointer",
                 opacity: confirmingCash ? 0.6 : 1,
-                transition: "all 0.2s",
                 textAlign: "left",
-                display: "flex",
-                alignItems: "center",
-                gap: "1rem"
-              }}
-              onMouseEnter={(e) => {
-                if (!confirmingCash) {
-                  e.currentTarget.style.backgroundColor = "#f0fdf4";
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(22, 163, 74, 0.2)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#fff";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
+                display: "flex", alignItems: "center", gap: "1.2rem",
+                transition: "all 0.25s cubic-bezier(.4,0,.2,1)",
+                transform: hoveredMethod === "cash" ? "translateY(-2px)" : "translateY(0)",
+                boxShadow: hoveredMethod === "cash"
+                  ? "0 8px 28px rgba(34,197,94,0.15)"
+                  : "0 2px 8px rgba(0,0,0,0.04)",
               }}
             >
               <div style={{
-                width: "60px",
-                height: "60px",
-                borderRadius: "12px",
-                backgroundColor: "#dcfce7",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "2rem"
+                width: 48, height: 48, borderRadius: 14,
+                background: hoveredMethod === "cash"
+                  ? "linear-gradient(135deg, #22c55e, #16a34a)"
+                  : "linear-gradient(135deg, #dcfce7, #bbf7d0)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 800, fontSize: "1.1rem",
+                color: hoveredMethod === "cash" ? "#fff" : "#16a34a",
+                transition: "all 0.25s",
+                flexShrink: 0,
               }}>
-                💵
+                2
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", marginBottom: "0.3rem" }}>
+                <div style={{
+                  fontSize: "1.05rem", fontWeight: 700, color: "#0f172a",
+                  marginBottom: 4,
+                }}>
                   {confirmingCash ? "Đang xác nhận..." : "Thanh toán trực tiếp"}
                 </div>
-                <div style={{ fontSize: "0.9rem", color: "#64748b" }}>
+                <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: 1.5 }}>
                   Đã thanh toán tiền mặt tại kho
                 </div>
-                <div style={{ fontSize: "0.85rem", color: "#16a34a", marginTop: "0.5rem", fontWeight: 600 }}>
-                  Tiền mặt • Cần xác nhận từ chủ kho
+                <div style={{
+                  marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap",
+                }}>
+                  <span style={{
+                    padding: "3px 10px", borderRadius: 6,
+                    background: "#f0fdf4", color: "#15803d",
+                    fontSize: "0.75rem", fontWeight: 600,
+                  }}>
+                    Tiền mặt
+                  </span>
+                  <span style={{
+                    padding: "3px 10px", borderRadius: 6,
+                    background: "#f0fdf4", color: "#15803d",
+                    fontSize: "0.75rem", fontWeight: 600,
+                  }}>
+                    Cần xác nhận từ chủ kho
+                  </span>
                 </div>
               </div>
-              <span className="material-symbols-outlined" style={{ fontSize: "24px", color: "#16a34a" }}>
-                check_circle
-              </span>
+              <div style={{
+                color: hoveredMethod === "cash" ? "#16a34a" : "#cbd5e1",
+                fontSize: "1.2rem", fontWeight: 700,
+                transition: "all 0.25s",
+                transform: hoveredMethod === "cash" ? "translateX(3px)" : "translateX(0)",
+              }}>
+                →
+              </div>
             </button>
           </div>
 
+          {/* ── Notes ── */}
           <div style={{
-            marginTop: "2rem",
-            padding: "1rem 1.5rem",
-            backgroundColor: "#fef3c7",
-            borderRadius: "10px",
-            border: "1px solid #fde047",
-            color: "#854d0e",
-            fontSize: "0.9rem",
-            lineHeight: 1.6
+            marginTop: "1.8rem", padding: "1.2rem 1.4rem",
+            background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+            borderRadius: 14, border: "1px solid #fde68a",
+            animation: "fadeUp 0.45s ease both",
           }}>
-            <strong>📌 Lưu ý:</strong>
-            <ul style={{ marginTop: "0.5rem", marginBottom: 0, paddingLeft: "1.5rem" }}>
-              <li>Vui lòng thanh toán đúng số tiền hiển thị trên màn hình.</li>
+            <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#92400e", marginBottom: 8 }}>
+              Lưu ý quan trọng
+            </div>
+            <ul style={{
+              margin: 0, paddingLeft: "1.3rem",
+              fontSize: "0.84rem", color: "#78350f",
+              lineHeight: 1.8,
+            }}>
+              <li>Thanh toán đúng số tiền hiển thị trên màn hình.</li>
               <li>Nội dung chuyển khoản phải chính xác theo mã thanh toán.</li>
-              <li>Thanh toán online sẽ được hệ thống xác nhận tự động sau khi nhận giao dịch.</li>
-              <li>Thanh toán tiền mặt cần chủ kho xác nhận trước khi hệ thống ghi nhận hoàn tất.</li>
+              <li>Thanh toán trực tuyến sẽ được hệ thống xác nhận tự động.</li>
+              <li>Thanh toán tiền mặt cần chủ kho xác nhận trước khi ghi nhận hoàn tất.</li>
             </ul>
           </div>
         </>
