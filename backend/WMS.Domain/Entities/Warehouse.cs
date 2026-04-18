@@ -30,6 +30,9 @@ public partial class Warehouse
 
     public double AvailableArea { get; set; }
 
+    /// <summary>Thể tích còn trống (m³) – dùng cho AI gợi ý kho theo đồ vật.</summary>
+    public double? AvailableVolume { get; set; }
+
     [Column("PricePerM2", TypeName = "decimal(18,2)")]
     public decimal? PricePerM2 { get; set; }
 

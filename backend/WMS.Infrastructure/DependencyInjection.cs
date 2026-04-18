@@ -29,6 +29,16 @@ public static class DependencyInjection
         services.AddScoped<ISepayService, SepayService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
 
+        // ── AI Analysis Feature ─────────────────────────────────────
+        services.AddScoped<IAiAnalysisSessionRepository, AiAnalysisSessionRepository>();
+        services.AddScoped<IGeminiService, GeminiService>();
+
+        // HttpClient cho Gemini API (timeout 60 giây vì xử lý ảnh lâu)
+        services.AddHttpClient("Gemini", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
+
         return services;
     }
 }

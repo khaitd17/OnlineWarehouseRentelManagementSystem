@@ -65,9 +65,8 @@ const Skeleton = () => (
   </div>
 );
 
-const EmptyState = ({ icon, msg }) => (
+const EmptyState = ({ msg }) => (
   <div style={{ padding: '40px 24px', textAlign: 'center', color: '#94a3b8' }}>
-    <div style={{ fontSize: '2rem', marginBottom: 8 }}>{icon}</div>
     <p style={{ margin: 0, fontSize: '0.875rem' }}>{msg}</p>
   </div>
 );
@@ -327,14 +326,14 @@ const RenterDashboard = () => {
           <div className="rd-chart-header">
             <div>
               <div className="rd-chart-title">
-                <span style={{ fontSize: 18 }}>📦</span> Tồn kho theo mặt hàng
+                Tồn kho theo mặt hàng
               </div>
               <div className="rd-chart-subtitle">Top hàng hóa đang lưu tại kho</div>
             </div>
           </div>
           <div className="rd-chart-body" style={{ height: 230 }}>
             {isChartsLoading ? <Skeleton /> : inventoryBarData.length === 0 ? (
-              <EmptyState icon="📦" msg="Chưa có hàng hóa nào trong kho" />
+              <EmptyState msg="Chưa có hàng hóa nào trong kho" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={inventoryBarData} margin={{ top: 4, right: 16, left: -10, bottom: 0 }}>
@@ -358,7 +357,7 @@ const RenterDashboard = () => {
           <div className="rd-chart-header">
             <div>
               <div className="rd-chart-title">
-                <span style={{ fontSize: 18 }}>🎯</span> Trạng thái yêu cầu
+                Trạng thái yêu cầu
               </div>
               <div className="rd-chart-subtitle">Tổng {totalRequests} yêu cầu nhập/xuất</div>
             </div>
@@ -366,7 +365,7 @@ const RenterDashboard = () => {
           </div>
           <div className="rd-chart-body" style={{ height: 230 }}>
             {isChartsLoading ? <Skeleton /> : statusPieData.length === 0 ? (
-              <EmptyState icon="🎯" msg="Chưa có yêu cầu nào" />
+              <EmptyState msg="Chưa có yêu cầu nào" />
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -408,7 +407,7 @@ const RenterDashboard = () => {
           <div className="rd-chart-header">
             <div>
               <div className="rd-chart-title">
-                <span style={{ fontSize: 18 }}>📈</span> Hoạt động nhập/xuất kho
+                Hoạt động nhập/xuất kho
               </div>
               <div className="rd-chart-subtitle">Số lượng yêu cầu theo tháng trong 6 tháng gần nhất</div>
             </div>

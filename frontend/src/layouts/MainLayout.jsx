@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import favoritesService from '../services/favoritesService';
 import OWRMSLogo from '../components/OWRMSLogo';
@@ -667,9 +667,10 @@ const MainLayout = () => {
         </div>
 
         {/* Nav links */}
-        <Link to="/" className={`drawer-nav-link${isActive('/') ? ' active' : ''}`}>🏠 Trang chủ</Link>
-        <Link to="/search" className={`drawer-nav-link${isActive('/search') ? ' active' : ''}`}>🔍 Tìm kiếm kho</Link>
-        <Link to="/about" className={`drawer-nav-link${isActive('/about') ? ' active' : ''}`}>ℹ️ Về chúng tôi</Link>
+        <Link to="/" className={`drawer-nav-link${isActive('/') ? ' active' : ''}`}>Trang chủ</Link>
+        <Link to="/search" className={`drawer-nav-link${isActive('/search') ? ' active' : ''}`}>Tìm kiếm kho</Link>
+        <Link to="/ai-analyzer" className={`drawer-nav-link${isActive('/ai-analyzer') ? ' active' : ''}`}>AI Phân Tích Đồ Vật</Link>
+        <Link to="/about" className={`drawer-nav-link${isActive('/about') ? ' active' : ''}`}>Về chúng tôi</Link>
 
         <div className="drawer-divider" />
 
@@ -711,6 +712,7 @@ const MainLayout = () => {
           <div className="nav-links">
             <Link to="/" className={`nav-link${isActive('/') ? ' active' : ''}`}>Trang chủ</Link>
             <Link to="/search" className={`nav-link${isActive('/search') ? ' active' : ''}`}>Tìm kiếm kho</Link>
+            <Link to="/ai-analyzer" className={`nav-link nav-ai-link${isActive('/ai-analyzer') ? ' active' : ''}`}>AI Phân Tích Đồ Vật</Link>
             <Link to="/about" className={`nav-link${isActive('/about') ? ' active' : ''}`}>Về chúng tôi</Link>
           </div>
         </div>
@@ -827,6 +829,7 @@ const MainLayout = () => {
             <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <li><Link to="/" className="footer-link">Trang chủ</Link></li>
               <li><Link to="/search" className="footer-link">Tìm kiếm kho</Link></li>
+              <li><Link to="/ai-analyzer" className="footer-link">AI Phân Tích Đồ Vật</Link></li>
               <li><Link to="/about" className="footer-link">Về chúng tôi</Link></li>
             </ul>
           </div>
@@ -834,9 +837,9 @@ const MainLayout = () => {
           <div>
             <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '1.25rem', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Hỗ trợ</h4>
             <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <li><a href="#" className="footer-link">Trung tâm hỗ trợ</a></li>
-              <li><a href="#" className="footer-link">Điều khoản dịch vụ</a></li>
-              <li><a href="#" className="footer-link">Chính sách bảo mật</a></li>
+              <li><span className="footer-link" style={{cursor:'pointer'}}>Trung tâm hỗ trợ</span></li>
+              <li><span className="footer-link" style={{cursor:'pointer'}}>Điều khoản dịch vụ</span></li>
+              <li><span className="footer-link" style={{cursor:'pointer'}}>Chính sách bảo mật</span></li>
             </ul>
           </div>
 

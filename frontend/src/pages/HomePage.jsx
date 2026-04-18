@@ -995,7 +995,7 @@ const HomePage = () => {
                       {w.description && <p className="wh-desc">{w.description}</p>}
                       {w.pricePerM2 && (
                         <div className="wh-price-tag">
-                          💰 <strong>{Number(w.pricePerM2).toLocaleString('vi-VN')} đ</strong>/m²/tháng
+                          <strong>{Number(w.pricePerM2).toLocaleString('vi-VN')} đ</strong>/m²/tháng
                         </div>
                       )}
                       <div className="wh-footer">

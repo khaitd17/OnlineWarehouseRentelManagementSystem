@@ -742,15 +742,12 @@ const AuthPage = () => {
             </div>
           ) : (<>
 
-          {/* ── Logo + Brand ── */}
+          {/* ── Brand ── */}
           <div style={{ textAlign:'center', marginBottom:'28px' }}>
-            <div className="logo-badge">
-              <OWRMSLogo size={96} variant="auth" />
-            </div>
-            <h1 style={{ margin:'0 0 4px', fontSize:'1.5rem', fontWeight:800, color:'#f1f5f9', letterSpacing:'-0.02em' }}>
-              OWRMS
+            <h1 style={{ margin:'0 0 8px', fontSize:'1.6rem', fontWeight:800, background:'linear-gradient(135deg, #a5b4fc 0%, #818cf8 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', letterSpacing:'-0.01em', lineHeight: 1.3 }}>
+              Online Warehouse Rental Management System
             </h1>
-            <p style={{ margin:0, fontSize:'0.82rem', color:'rgba(148,163,184,0.75)', letterSpacing:'0.03em' }}>
+            <p style={{ margin:0, fontSize:'0.85rem', color:'rgba(148,163,184,0.75)', letterSpacing:'0.03em' }}>
               Hệ thống quản lí dịch vụ kho
             </p>
           </div>

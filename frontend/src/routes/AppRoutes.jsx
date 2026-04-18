@@ -59,6 +59,7 @@ import RenterInventoryPage from "../pages/RenterInventoryPage";
 import OwnerInventoryPage from "../pages/OwnerInventoryPage";
 import StaffInventoryPage from "../pages/StaffInventoryPage";
 import SubscriptionPage from "../pages/SubscriptionPage";
+import AiItemAnalyzerPage from "../pages/AiItemAnalyzerPage";
 
 // Audit session pages
 import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
@@ -134,6 +135,7 @@ function AppRoutes() {
           <Route path="/about" element={<AboutUsPage />} />
           <Route path="/forgot-password" element={<ForgotPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/ai-analyzer" element={<AiItemAnalyzerPage />} />
         </Route>
 
         {/* ── DASHBOARD pages: NO public navbar ── */}
@@ -247,6 +249,7 @@ function AppRoutes() {
             <Route path="/renter-inventory" element={<RenterInventoryPage />} />
             <Route path="/my-ratings" element={<MyRatingsPage />} />
             <Route path="/my-favorites" element={<FavoritesPage />} />
+            <Route path="/ai-analyzer" element={<AiItemAnalyzerPage />} />
           </Route>
         </Route>
 

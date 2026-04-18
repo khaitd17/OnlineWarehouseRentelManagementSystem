@@ -95,12 +95,14 @@ export default function FavoritesPage() {
           textAlign: 'center', border: '2px dashed #e2e8f0',
           boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
         }}>
-          <div style={{ fontSize: '4rem', marginBottom: 16 }}>🏗️</div>
+          <div style={{ marginBottom: 16 }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '4rem', color: '#cbd5e1' }}>heart_broken</span>
+          </div>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#334155', marginBottom: 8 }}>
             Danh sách yêu thích trống
           </h3>
           <p style={{ color: '#94a3b8', maxWidth: 340, margin: '0 auto 24px', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            Hãy nhấn vào biểu tượng ❤️ trên các card kho để lưu vào đây và so sánh sau.
+            Hãy nhấn vào biểu tượng trái tim trên các card kho để lưu vào đây và so sánh sau.
           </p>
           <Link
             to="/search"
@@ -112,7 +114,7 @@ export default function FavoritesPage() {
               boxShadow: '0 4px 14px rgba(0,149,199,0.3)',
             }}
           >
-            🔍 Tìm kiếm kho
+            Tìm kiếm kho
           </Link>
         </div>
       )}
@@ -272,7 +274,7 @@ function FavoriteCard({ w, onRemove }) {
             fontSize: '0.8rem', fontWeight: 700,
             padding: '4px 10px', borderRadius: 20, marginBottom: 10,
           }}>
-            💰 <strong style={{ color: '#065f46', fontSize: '0.9rem' }}>
+            <strong style={{ color: '#065f46', fontSize: '0.9rem' }}>
               {Number(w.pricePerM2).toLocaleString('vi-VN')} đ
             </strong>/m²/tháng
           </div>

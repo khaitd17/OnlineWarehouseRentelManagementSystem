@@ -129,7 +129,7 @@ export default function ReportsPage() {
 
           <div className="admin-card">
             <div className="admin-card-header">
-              <h3>💰 Tài chính & Doanh thu gói cước</h3>
+              <h3>Tài chính & Doanh thu gói cước</h3>
               <span style={{ fontSize: 12, color: "#9ca3af", fontWeight: 400 }}>Doanh thu trong kỳ</span>
             </div>
             <div className="admin-card-body">

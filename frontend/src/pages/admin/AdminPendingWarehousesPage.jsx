@@ -195,7 +195,7 @@ export default function AdminPendingWarehousesPage() {
                           fontSize: 12, fontWeight: 700, border: "1px solid #fde68a",
                           whiteSpace: "nowrap",
                         }}>
-                          💰 Thay đổi giá
+                          Thay đổi giá
                         </span>
                       ) : (
                         <span style={{
@@ -381,7 +381,7 @@ export default function AdminPendingWarehousesPage() {
                     }}>
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", color: wh.pricePerM2 ? "#065f46" : "#92400e" }}>
-                          💰 Giá thuê / m² / tháng
+                          Giá thuê / m² / tháng
                         </div>
                         {wh.pricePerM2 ? (
                           <div style={{ fontSize: 20, fontWeight: 900, color: "#065f46" }}>

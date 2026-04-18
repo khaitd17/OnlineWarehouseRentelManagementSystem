@@ -125,11 +125,11 @@ function TabPanel({ type }) {
         {/* Actions */}
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={exportCSV} style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", color: "#64748b" }}>
-            ⬇ Xuất CSV
+            Xuất CSV
           </button>
           <Link to={`/create-inventory?tab=${type === "INBOUND" ? "inbound" : "outbound"}`}
             style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 16px", borderRadius: 10, background: `linear-gradient(135deg,${accent},${accent}cc)`, color: "#fff", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none", boxShadow: `0 4px 14px ${accent}35` }}>
-            + Tạo yêu cầu mới
+            Tạo yêu cầu mới
           </Link>
         </div>
       </div>
@@ -137,17 +137,16 @@ function TabPanel({ type }) {
       {/* Search bar */}
       <div style={{ ...card, padding: "10px 14px", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <div style={{ position: "relative", flex: 1, minWidth: 220 }}>
-          <span style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", fontSize: "1rem" }}>🔍</span>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Tìm theo ID, mặt hàng, kho, ghi chú..."
-            style={{ width: "100%", padding: "9px 12px 9px 34px", borderRadius: 8, border: "1.5px solid #e2e8f0", outline: "none", fontSize: "0.875rem", boxSizing: "border-box", fontFamily: "Inter,sans-serif", transition: "border-color 0.2s" }}
+            style={{ width: "100%", padding: "9px 12px 9px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", outline: "none", fontSize: "0.875rem", boxSizing: "border-box", fontFamily: "Inter,sans-serif", transition: "border-color 0.2s" }}
             onFocus={e => e.target.style.borderColor = accent}
             onBlur={e => e.target.style.borderColor = "#e2e8f0"} />
         </div>
         {(search || statusFilter !== "ALL") && (
           <button onClick={() => { setSearch(""); setStatusFilter("ALL"); }}
             style={{ padding: "9px 12px", borderRadius: 8, border: "1.5px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>
-            ✕ Xóa lọc
+            Xóa bộ lọc
           </button>
         )}
       </div>
@@ -161,7 +160,6 @@ function TabPanel({ type }) {
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ padding: 60, textAlign: "center", color: "#94a3b8" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: 10 }}>{type === "INBOUND" ? "📥" : "📤"}</div>
             <div style={{ fontWeight: 600, marginBottom: 6, color: "#64748b" }}>Không tìm thấy yêu cầu nào</div>
             <div style={{ fontSize: "0.83rem" }}>Thử thay đổi từ khóa hoặc bộ lọc</div>
           </div>
@@ -221,10 +219,10 @@ function TabPanel({ type }) {
                       <td style={{ padding: "13px 14px", textAlign: "center" }}>
                         {row.status === "PENDING" && (
                           <button title="Hủy yêu cầu" onClick={() => setConf({ id: row.invReqId })}
-                            style={{ width: 30, height: 30, border: "1.5px solid #fecaca", background: "#fef2f2", borderRadius: 8, cursor: "pointer", color: "#dc2626", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.95rem", transition: "all 0.15s" }}
+                            style={{ padding: "4px 10px", width: "auto", height: "auto", border: "1.5px solid #fecaca", background: "#fef2f2", borderRadius: 6, cursor: "pointer", color: "#dc2626", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
                             onMouseEnter={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                             onMouseLeave={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                            🗑
+                            Hủy
                           </button>
                         )}
                       </td>
@@ -283,10 +281,10 @@ export default function RenterInventoryHistory() {
       {/* Tab switcher — pill style đồng bộ với CreateInventoryRequest */}
       <div style={{ display: "flex", gap: 8, padding: "12px 16px", borderRadius: 12, background: activeTab === "inbound" ? "#e0f7fa" : "#fff8e1", border: `1.5px solid ${accent}30`, marginBottom: 20, alignItems: "center" }}>
         <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#64748b" }}>Loại yêu cầu:</span>
-        {[{ v: "inbound", icon: "📥", label: "Nhập kho" }, { v: "outbound", icon: "📤", label: "Xuất kho" }].map(({ v, icon, label }) => (
+        {[{ v: "inbound", label: "Nhập kho" }, { v: "outbound", label: "Xuất kho" }].map(({ v, label }) => (
           <button key={v} onClick={() => setActiveTab(v)}
-            style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 16px", borderRadius: 8, border: `1.5px solid ${activeTab === v ? accent : "#e2e8f0"}`, background: activeTab === v ? accent : "#fff", color: activeTab === v ? "#fff" : "#64748b", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.18s" }}>
-            {icon} {label}
+            style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 18px", borderRadius: 8, border: `1.5px solid ${activeTab === v ? accent : "#e2e8f0"}`, background: activeTab === v ? accent : "#fff", color: activeTab === v ? "#fff" : "#64748b", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.18s" }}>
+            {label}
           </button>
         ))}
       </div>

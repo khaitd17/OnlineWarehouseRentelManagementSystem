@@ -101,6 +101,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<UnitTask> UnitTasks { get; set; }
 
+    public virtual DbSet<AiAnalysisSession> AiAnalysisSessions { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.ConfigureWarnings(warnings =>
@@ -848,6 +850,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ApprovedAt).HasColumnName("approved_at");
             entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
             entity.Property(e => e.AvailableArea).HasColumnName("available_area");
+            entity.Property(e => e.AvailableVolume).HasColumnName("available_volume").IsRequired(false);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.Lat).HasColumnName("lat");
@@ -869,6 +872,27 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PendingChangeNote).HasMaxLength(500).HasColumnName("pending_change_note");
             entity.HasOne(d => d.ApprovedByNavigation).WithMany(p => p.WarehouseApprovedByNavigations).HasForeignKey(d => d.ApprovedBy).HasConstraintName("FK_warehouses_approver");
             entity.HasOne(d => d.Owner).WithMany(p => p.WarehouseOwners).HasForeignKey(d => d.OwnerId).HasConstraintName("FK_warehouses_owner");
+        });
+
+        // ─── AI Analysis Sessions ────────────────────────────────────
+        modelBuilder.Entity<AiAnalysisSession>(entity =>
+        {
+            entity.HasKey(e => e.SessionId);
+            entity.ToTable("ai_analysis_sessions");
+            entity.Property(e => e.SessionId).HasColumnName("session_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.AnalyzedAt).HasDefaultValueSql("(getdate())").HasColumnName("analyzed_at");
+            entity.Property(e => e.ImageUrls).HasColumnName("image_urls").IsRequired(false);
+            entity.Property(e => e.ResultJson).HasColumnName("result_json").IsRequired(false);
+            entity.Property(e => e.EstimatedVolumeM3).HasColumnName("estimated_volume_m3").IsRequired(false);
+            entity.Property(e => e.SuggestedType).HasMaxLength(100).HasColumnName("suggested_type").IsRequired(false);
+            entity.Property(e => e.SpecialNotes).HasColumnName("special_notes").IsRequired(false);
+            entity.Property(e => e.Confidence).HasColumnName("confidence").IsRequired(false);
+            entity.HasOne(d => d.User)
+                  .WithMany()
+                  .HasForeignKey(d => d.UserId)
+                  .OnDelete(DeleteBehavior.NoAction)
+                  .HasConstraintName("FK_ai_analysis_sessions_users");
         });
 
         modelBuilder.Entity<WarehouseDocument>(entity =>

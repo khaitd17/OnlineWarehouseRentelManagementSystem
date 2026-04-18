@@ -147,7 +147,7 @@ export default function WarehouseDetailPage() {
                         padding: "4px 10px", borderRadius: 8,
                         border: "1px solid #a7f3d0"
                       }}>
-                        💰 {new Intl.NumberFormat("vi-VN").format(wh.pricePerM2)} ₫/m²
+                        {new Intl.NumberFormat("vi-VN").format(wh.pricePerM2)} ₫/m²
                       </span>
                     ) : <span style={{ color: "#9ca3af" }}>Chưa cập nhật</span>}
                   </div>

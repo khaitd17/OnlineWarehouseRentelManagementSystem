@@ -437,7 +437,7 @@ const EditWarehouse = () => {
                   ) : null;
                 })()}
                 <label style={labelStyle}>
-                  💰 Giá thuê/m² (VNĐ/tháng) <span style={{ color: "#ef4444" }}>*</span>
+                  Giá thuê/m² (VNĐ/tháng) <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <div style={{ position: "relative" }}>
                   <input

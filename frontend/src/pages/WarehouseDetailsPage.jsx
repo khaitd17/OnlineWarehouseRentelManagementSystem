@@ -4,7 +4,6 @@ import api from '../services/axiosClient';
 import rentalService from '../services/rentalService';
 import ratingService from '../services/ratingService';
 import authService from '../services/authService';
-
 const WarehouseDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -169,11 +168,7 @@ const WarehouseDetailsPage = () => {
     ownerAvatarUrl: warehouseData.ownerAvatarUrl ? `http://localhost:5276${warehouseData.ownerAvatarUrl}` : `https://i.pravatar.cc/150?u=${warehouseData.ownerId}`,
   } : null;
 
-  const similarWarehouses = [
-    { id: 2, title: "Kho Sài Gòn Logistics - KCN Vĩnh Lộc", location: "Bình Chánh, TP. HCM", price: "38M", area: "850", type: "KHO KHÔ", image: "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=600" },
-    { id: 3, title: "Kho Lạnh Công Nghệ Cao - Long An", location: "Cần Giuộc, Long An", price: "52M", area: "1000", type: "KHO LẠNH", image: "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=600" },
-    { id: 4, title: "Hệ Thống Kho Phân Phối Gò Vấp", location: "Phường 14, Gò Vấp, TP. HCM", price: "25M", area: "500", type: "KHO KHÔ", image: "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=600" }
-  ];
+
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -314,23 +309,21 @@ const WarehouseDetailsPage = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
               {[
-                { label: "TỔNG DIỆN TÍCH", value: `${warehouse.area} m²`, icon: "📐" },
-                { label: "LOẠI KHO", value: warehouseData?.warehouseType || "Khác", icon: "🏢" },
-                { label: "CÒN TRỐNG", value: `${warehouse.availableArea} m²`, icon: "📦" },
-                { label: "GIỜ HOẠT ĐỘNG", value: warehouse.operatingHours || 'Không rõ', icon: "🕐" },
-                { label: "TRẠNG THÁI", value: warehouse.status, icon: "✅" },
+                { label: "TỔNG DIỆN TÍCH", value: `${warehouse.area} m²` },
+                { label: "LOẠI KHO", value: warehouseData?.warehouseType || "Khác" },
+                { label: "CÒN TRỐNG", value: `${warehouse.availableArea} m²` },
+                { label: "GIỜ HOẠT ĐỘNG", value: warehouse.operatingHours || 'Không rõ' },
+                { label: "TRẠNG THÁI", value: warehouse.status },
                 {
                   label: "GIÁ THUÊ/M²/THÁNG",
                   value: warehouseData?.pricePerM2
                     ? `${Number(warehouseData.pricePerM2).toLocaleString('vi-VN')} ₫`
-                    : 'Liên hệ',
-                  icon: "💰"
+                    : 'Liên hệ'
                 }
               ].map((stat, i) => (
-                <div key={i} style={{ backgroundColor: '#f8fafc', padding: '1.2rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{stat.icon}</div>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', marginBottom: '4px' }}>{stat.label}</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#1e293b' }}>{stat.value}</div>
+                <div key={i} style={{ backgroundColor: '#fff', padding: '1.5rem 0.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0095c7', marginBottom: '8px', letterSpacing: '0.04em', lineHeight: 1.4 }}>{stat.label}</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a' }}>{stat.value}</div>
                 </div>
               ))}
             </div>
@@ -352,7 +345,9 @@ const WarehouseDetailsPage = () => {
 
             {/* ── Rating & Review Section ── */}
             <section style={{ marginTop: '0.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>⭐ Đánh giá & Nhận xét</h2>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#f59e0b', fontSize: '1.4rem' }}>★</span> Đánh giá & Nhận xét
+              </h2>
               {ratingsData && ratingsData.totalCount > 0 ? (
                 <>
                   {/* Summary Row */}
@@ -360,7 +355,7 @@ const WarehouseDetailsPage = () => {
                     <div style={{ textAlign: 'center', minWidth: '100px' }}>
                       <div style={{ fontSize: '2.8rem', fontWeight: 900, color: '#d97706', lineHeight: 1 }}>{ratingsData.averageStar}</div>
                       <div style={{ display: 'flex', gap: '2px', justifyContent: 'center', margin: '6px 0' }}>
-                        {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '1.1rem' }}>{s <= Math.round(ratingsData.averageStar) ? '⭐' : '☆'}</span>)}
+                        {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '1.5rem', color: s <= Math.round(ratingsData.averageStar) ? '#f59e0b' : '#e2e8f0' }}>★</span>)}
                       </div>
                       <div style={{ fontSize: '0.8rem', color: '#92400e', fontWeight: 600 }}>{ratingsData.totalCount} đánh giá</div>
                     </div>
@@ -396,7 +391,7 @@ const WarehouseDetailsPage = () => {
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: '1px' }}>
-                            {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '0.9rem' }}>{s <= r.star ? '⭐' : '☆'}</span>)}
+                            {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '1.2rem', color: s <= r.star ? '#f59e0b' : '#e2e8f0' }}>★</span>)}
                           </div>
                         </div>
                         {r.comment && <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: 1.6, margin: '0 0 8px 0' }}>{r.comment}</p>}
@@ -446,7 +441,7 @@ const WarehouseDetailsPage = () => {
               {isRenter && myContractForWarehouse && (
                 <div style={{ marginTop: '1.5rem', backgroundColor: '#fff', borderRadius: '16px', padding: '1.5rem', border: '1px solid #fde68a', boxShadow: '0 2px 12px rgba(245,158,11,0.08)' }}>
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#92400e', marginBottom: '1rem', paddingBottom: '0.8rem', borderBottom: '1px solid #fef3c7', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    <span style={{ color: '#f59e0b', fontSize: '1.2rem' }}>★</span>
                     Đánh giá của bạn
                   </h3>
 
@@ -461,7 +456,7 @@ const WarehouseDetailsPage = () => {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                         <span style={{ fontWeight: 700, color: '#92400e', fontSize: '0.9rem' }}>Đánh giá của bạn</span>
                         <div style={{ display: 'flex', gap: '2px' }}>
-                          {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '1rem' }}>{s <= existingMyRating.star ? '⭐' : '☆'}</span>)}
+                          {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '1.2rem', color: s <= existingMyRating.star ? '#f59e0b' : '#e2e8f0' }}>★</span>)}
                         </div>
                       </div>
                       {existingMyRating.comment && <p style={{ color: '#78716c', fontSize: '0.9rem', margin: '0 0 8px 0', lineHeight: 1.5 }}>{existingMyRating.comment}</p>}
@@ -536,7 +531,7 @@ const WarehouseDetailsPage = () => {
                           </>
                         ) : (
                           <>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                            <span style={{ color: '#fff', fontSize: '1.2rem' }}>★</span>
                             Gửi đánh giá
                           </>
                         )}
@@ -552,7 +547,7 @@ const WarehouseDetailsPage = () => {
                 <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', animation: 'fadeIn 0.25s ease' }}>
                   <div style={{ background: 'linear-gradient(135deg, #ffffff 0%, #fefce8 100%)', borderRadius: '24px', padding: '3rem 2.5rem', maxWidth: '420px', width: '90%', textAlign: 'center', boxShadow: '0 25px 60px rgba(0,0,0,0.2)', border: '1px solid rgba(253,230,138,0.6)', position: 'relative' }}>
                     <button onClick={() => setShowThankPopup(false)} style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#64748b' }}>✕</button>
-                    <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⭐⭐⭐⭐⭐</div>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem', color: '#f59e0b', letterSpacing: '4px' }}>★★★★★</div>
                     <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, #22c55e, #16a34a)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.2rem auto', boxShadow: '0 8px 24px rgba(34,197,94,0.4)' }}>
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </div>
@@ -703,42 +698,11 @@ const WarehouseDetailsPage = () => {
           </aside>
         </div>
 
-        {/* Similar Warehouses */}
-        <section style={{ marginTop: '4rem', paddingBottom: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.55rem', fontWeight: 800, color: '#1e293b' }}>Kho tương tự</h2>
-            <Link to="/search" style={{ color: '#0095c7', fontWeight: 700, fontSize: '0.9rem', textDecoration: 'none' }}>Xem tất cả ›</Link>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
-            {similarWarehouses.map((w) => (
-              <div key={w.id} style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #f1f5f9', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-                <div style={{ position: 'relative', height: '200px' }}>
-                  <img src={w.image} alt={w.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <div style={{ position: 'absolute', top: '12px', left: '12px' }}>
-                    <Badge color="#475569">{w.type}</Badge>
-                  </div>
-                </div>
-                <div style={{ padding: '20px' }}>
-                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', marginBottom: '8px', lineHeight: 1.4 }}>{w.title}</h3>
-                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '16px' }}>📍 {w.location}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
-                    <div>
-                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0095c7' }}>{w.price} VND</span>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>/tháng</span>
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>{w.area} m²</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
       </div>
 
       <footer style={{ backgroundColor: '#0f172a', padding: '3rem 1rem', textAlign: 'center', color: '#94a3b8' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#fff', marginBottom: '1rem', fontWeight: 800, fontSize: '1.2rem' }}>
-          🏢 OWRMS
+          OWRMS
         </div>
         <p style={{ fontSize: '0.8rem' }}>© 2026 Online Warehouse Rental Management System. All rights reserved.</p>
       </footer>

@@ -44,18 +44,12 @@ const getStoredRole = () => {
 };
 
 /* ─── sub-components ──────────────────────────────────────── */
-const StatCard = ({ icon, value, label, color }) => (
+const StatCard = ({ value, label }) => (
   <div style={{
     background: "#fff", borderRadius: 16, padding: "20px 22px",
     border: "1px solid #f1f5f9", boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
     display: "flex", alignItems: "center", gap: 16, flex: 1,
   }}>
-    <div style={{
-      width: 48, height: 48, borderRadius: 14,
-      background: `${color}18`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-    }}>
-      <span style={{ fontSize: 22 }}>{icon}</span>
-    </div>
     <div>
       <div style={{ fontSize: "1.65rem", fontWeight: 800, color: "#0f172a", lineHeight: 1 }}>{value}</div>
       <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: 4, fontWeight: 500 }}>{label}</div>
@@ -282,9 +276,9 @@ const ProfilePage = () => {
   const isOwner = effectiveRole === "OWNER";
 
   const tabs = [
-    { id: "profile", icon: "👤", label: "Thông tin cá nhân" },
-    ...(!isOwner ? [{ id: "bookings", icon: "🏭", label: "Kho bãi đã thuê" }] : []),
-    { id: "notifications", icon: "🔔", label: "Thông báo", badge: unreadCount },
+    { id: "profile", label: "Thông tin cá nhân" },
+    ...(!isOwner ? [{ id: "bookings", label: "Kho bãi đã thuê" }] : []),
+    { id: "notifications", label: "Thông báo", badge: unreadCount },
   ];
 
   /* ── input style ── */
@@ -376,7 +370,6 @@ const ProfilePage = () => {
                   fontSize: "0.88rem", borderLeft: `3px solid ${activeTab === tab.id ? "#0095c7" : "transparent"}`,
                   transition: "all .15s",
                 }}>
-                <span>{tab.icon}</span>
                 <span style={{ flex: 1 }}>{tab.label}</span>
                 {tab.badge > 0 && (
                   <span style={{ background: "#ef4444", color: "#fff", borderRadius: 20, fontSize: "0.65rem", fontWeight: 700, padding: "1px 7px", minWidth: 18, textAlign: "center" }}>{tab.badge}</span>
@@ -396,11 +389,6 @@ const ProfilePage = () => {
                 }}
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(239,68,68,0.45)"; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(239,68,68,0.35)"; }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                  <polyline points="16 17 21 12 16 7"/>
-                  <line x1="21" y1="12" x2="9" y2="12"/>
-                </svg>
                 Đăng xuất
               </button>
             </div>
@@ -409,13 +397,13 @@ const ProfilePage = () => {
           {/* Quick stats */}
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
             {[
-              { label: isOwner ? "Khách đang thuê" : "Đang thuê", value: activeContracts.length, color: "#10b981", icon: isOwner ? "🤝" : "🏭" },
-              { label: isOwner ? "Hợp đồng hoàn tất" : "Hoàn tất",  value: completedContracts.length, color: "#6366f1", icon: "✅" },
-              { label: "Đánh giá",  value: ratings.length, color: "#f59e0b", icon: "⭐" },
+              { label: isOwner ? "Khách đang thuê" : "Đang thuê", value: activeContracts.length, color: "#10b981" },
+              { label: isOwner ? "Hợp đồng hoàn tất" : "Hoàn tất",  value: completedContracts.length, color: "#6366f1" },
+              { label: "Đánh giá",  value: ratings.length, color: "#f59e0b" },
             ].map(s => (
               <div key={s.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", borderRadius: 10, background: "#f8fafc" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.82rem", color: "#475569" }}>
-                  <span>{s.icon}</span>{s.label}
+                  {s.label}
                 </div>
                 <span style={{ fontWeight: 800, fontSize: "1rem", color: s.color }}>{s.value}</span>
               </div>
@@ -435,7 +423,7 @@ const ProfilePage = () => {
               border: `1px solid ${toast.type === "success" ? "#bbf7d0" : "#fecaca"}`,
               display: "flex", alignItems: "center", gap: 8, animation: "fadeIn .2s ease",
             }}>
-              {toast.type === "success" ? "✅" : "❌"} {toast.msg}
+              {toast.msg}
             </div>
           )}
 
@@ -444,10 +432,10 @@ const ProfilePage = () => {
             <>
               {/* Stats row */}
               <div style={{ display: "flex", gap: 14 }}>
-                <StatCard icon="🏭" value={activeContracts.length} label="Kho đang thuê" color="#0ea5e9" />
-                <StatCard icon="📄" value={completedContracts.length} label="Hợp đồng hoàn tất" color="#6366f1" />
-                <StatCard icon="⭐" value={ratings.length} label="Đánh giá của bạn" color="#f59e0b" />
-                <StatCard icon="🔔" value={unreadCount} label="Thông báo chưa đọc" color="#ef4444" />
+                <StatCard value={activeContracts.length} label="Kho đang thuê" />
+                <StatCard value={completedContracts.length} label="Hợp đồng hoàn tất" />
+                <StatCard value={ratings.length} label="Đánh giá của bạn" />
+                <StatCard value={unreadCount} label="Thông báo chưa đọc" />
               </div>
 
               {/* Profile card */}
@@ -465,7 +453,7 @@ const ProfilePage = () => {
                       border: "none", borderRadius: 9, fontWeight: 700, fontSize: "0.82rem", cursor: "pointer",
                       boxShadow: "0 3px 10px rgba(0,149,199,.3)",
                     }}>
-                      ✏️ Sửa thông tin
+                      Sửa thông tin
                     </button>
                   )}
                 </div>
@@ -508,7 +496,6 @@ const ProfilePage = () => {
                           />
                           {profileTouched.fullName && profileErrors.fullName && (
                             <div style={{ marginTop: 4, fontSize: "0.74rem", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                               {profileErrors.fullName}
                             </div>
                           )}
@@ -532,7 +519,6 @@ const ProfilePage = () => {
                           />
                           {profileTouched.phone && profileErrors.phone && (
                             <div style={{ marginTop: 4, fontSize: "0.74rem", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                               {profileErrors.phone}
                             </div>
                           )}
@@ -549,7 +535,7 @@ const ProfilePage = () => {
                       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
                         <button type="button" onClick={() => { setIsEditing(false); setProfileErrors({}); setProfileTouched({}); }} style={{ padding: "9px 20px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 9, fontWeight: 600, fontSize: "0.85rem", cursor: "pointer", color: "#64748b" }}>Hủy</button>
                         <button type="submit" disabled={saveLoading} style={{ padding: "9px 22px", background: "linear-gradient(135deg,#0095c7,#0369a1)", color: "#fff", border: "none", borderRadius: 9, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,149,199,.3)" }}>
-                          {saveLoading ? "Đang lưu..." : "💾 Lưu thay đổi"}
+                          {saveLoading ? "Đang lưu..." : "Lưu thay đổi"}
                         </button>
                       </div>
                     </form>
@@ -613,7 +599,6 @@ const ProfilePage = () => {
                       </div>
                       {pwTouched[f.key] && pwErrors[f.key] && (
                         <div style={{ marginTop: 4, fontSize: "0.74rem", color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                           {pwErrors[f.key]}
                         </div>
                       )}
@@ -621,7 +606,7 @@ const ProfilePage = () => {
                   ))}
                   <div style={{ gridColumn: "1/-1", display: "flex", justifyContent: "flex-end" }}>
                     <button type="submit" disabled={pwLoading} style={{ padding: "9px 22px", background: "linear-gradient(135deg,#7c3aed,#6d28d9)", color: "#fff", border: "none", borderRadius: 9, fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", boxShadow: "0 4px 12px rgba(124,58,237,.3)" }}>
-                      {pwLoading ? "Đang xử lý..." : "🔐 Cập nhật mật khẩu"}
+                      {pwLoading ? "Đang xử lý..." : "Cập nhật mật khẩu"}
                     </button>
                   </div>
                 </form>
@@ -638,14 +623,13 @@ const ProfilePage = () => {
                   <div style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: 2 }}>{contracts.length} hợp đồng</div>
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <StatCard icon={isOwner ? "🤝" : "🏭"} value={activeContracts.length} label={isOwner ? "Đang thuê" : "Đang thuê"} color="#10b981" />
-                  <StatCard icon="✅" value={completedContracts.length} label="Hoàn tất" color="#6366f1" />
+                  <StatCard value={activeContracts.length} label={isOwner ? "Đang thuê" : "Đang thuê"} />
+                  <StatCard value={completedContracts.length} label="Hoàn tất" />
                 </div>
               </div>
 
               {contracts.length === 0 ? (
                 <div style={{ padding: "4rem 2rem", textAlign: "center", color: "#94a3b8" }}>
-                  <div style={{ fontSize: "3rem", marginBottom: 12 }}>{isOwner ? "🤝" : "📭"}</div>
                   <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{isOwner ? "Chưa có khách hàng nào thuê kho" : "Chưa có hợp đồng thuê nào"}</div>
                   <div style={{ fontSize: "0.82rem", marginTop: 6 }}>{isOwner ? "Hợp đồng sẽ hiện ở đây khi có khách thuê kho của bạn." : "Tìm và thuê kho ngay!"}</div>
                   {!isOwner && (
@@ -735,14 +719,13 @@ const ProfilePage = () => {
                 </div>
                 {unreadCount > 0 && (
                   <button onClick={handleMarkAllRead} style={{ padding: "7px 16px", background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: 8, color: "#0369a1", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer" }}>
-                    ✓ Đọc tất cả
+                    Đọc tất cả
                   </button>
                 )}
               </div>
 
               {notifications.length === 0 ? (
                 <div style={{ padding: "4rem 2rem", textAlign: "center", color: "#94a3b8" }}>
-                  <div style={{ fontSize: "3rem", marginBottom: 12 }}>🔕</div>
                   <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Không có thông báo nào</div>
                 </div>
               ) : (

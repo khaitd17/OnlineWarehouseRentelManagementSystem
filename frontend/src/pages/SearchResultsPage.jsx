@@ -3,6 +3,7 @@ import WarehouseMap from '../components/WarehouseMap';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { searchWarehouses } from '../services/warehouseService';
 import favoritesService from '../services/favoritesService';
+import WarehouseCard, { resolveImage, StarDisplay } from '../components/WarehouseCard';
 
 /* ── 63 tỉnh thành Việt Nam ─────────────────────────────── */
 const PROVINCES = [
@@ -21,11 +22,11 @@ const PROVINCES = [
 
 const WAREHOUSE_TYPES = [
   { value: '',           label: 'Tất cả loại kho' },
-  { value: 'lạnh',       label: '❄️ Kho lạnh / mát' },
-  { value: 'chung',      label: '📦 Kho chung' },
-  { value: 'tự quản',    label: '🔑 Kho tự quản' },
-  { value: 'xưởng',      label: '🏗️ Kho xưởng' },
-  { value: 'ngoại quan', label: '🚢 Kho ngoại quan' },
+  { value: 'lạnh',       label: 'Kho lạnh / mát' },
+  { value: 'chung',      label: 'Kho chung' },
+  { value: 'tự quản',    label: 'Kho tự quản' },
+  { value: 'xưởng',      label: 'Kho xưởng' },
+  { value: 'ngoại quan', label: 'Kho ngoại quan' },
 ];
 
 const AREA_MIN = 0;
@@ -34,39 +35,10 @@ const PRICE_MIN = 0;
 const PRICE_MAX = 500000;
 
 const RATING_OPTIONS = [
-  { label: '⭐ ≥ 3 sao', value: 3 },
-  { label: '⭐ ≥ 4 sao', value: 4 },
-  { label: '⭐ ≥ 4.5 sao', value: 4.5 },
+  { label: '≥ 3 sao', stars: 3, value: 3 },
+  { label: '≥ 4 sao', stars: 4, value: 4 },
+  { label: '≥ 4.5 sao', stars: 4.5, value: 4.5 },
 ];
-
-const resolveImage = (url) => {
-  if (!url) return 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800';
-  if (url.startsWith('http')) return url;
-  return `http://localhost:5276${url}`;
-};
-
-/* ── Stars display helper ───────────────────────────────── */
-const StarDisplay = ({ rating, count, size = 14 }) => {
-  if (!rating || rating === 0) return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-      {Array.from({ length: 5 }).map((_, i) => <span key={i} style={{ fontSize: size, color: '#d1d5db' }}>★</span>)}
-      <span style={{ fontSize: size - 2, color: '#94a3b8', marginLeft: 2 }}>Chưa có đánh giá</span>
-    </div>
-  );
-  const full  = Math.floor(rating);
-  const half  = rating - full >= 0.5;
-  const empty = 5 - full - (half ? 1 : 0);
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-      {Array.from({ length: full  }).map((_, i) => <span key={`f${i}`} style={{ fontSize: size, color: '#f59e0b' }}>★</span>)}
-      {half && <span style={{ fontSize: size, color: '#f59e0b' }}>½</span>}
-      {Array.from({ length: empty }).map((_, i) => <span key={`e${i}`} style={{ fontSize: size, color: '#d1d5db' }}>★</span>)}
-      <span style={{ fontSize: size - 2, color: '#64748b', marginLeft: 2 }}>
-        {rating.toFixed(1)} ({count})
-      </span>
-    </div>
-  );
-};
 
 
 /* ── Section header helper ───────────────────────────────── */
@@ -78,7 +50,7 @@ const FilterSection = ({ icon, title, children }) => (
       textTransform: 'uppercase', letterSpacing: '0.07em',
       marginBottom: 10,
     }}>
-      <span>{icon}</span>{title}
+      {title}
     </div>
     {children}
   </div>
@@ -240,8 +212,9 @@ export default function SearchResultsPage() {
   const divider = <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9', margin: '16px 0' }} />;
 
   return (
-    <div style={{
-      maxWidth: 1280, margin: '0 auto',
+    <div style={{ backgroundColor: '#f0f4f8', minHeight: '100vh', width: '100%' }}>
+      <div style={{
+        maxWidth: 1280, margin: '0 auto',
       padding: '1.5rem 1rem',
       fontFamily: "'Inter','Segoe UI',sans-serif",
     }}>
@@ -259,7 +232,7 @@ export default function SearchResultsPage() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           }}
         >
-          <span>🔍 Bộ lọc</span>
+          <span>Bộ lọc</span>
           {activeFilterCount > 0 && (
             <span style={{
               background: showMobileFilter ? '#fff' : '#0095c7', color: showMobileFilter ? '#0095c7' : '#fff',
@@ -281,7 +254,7 @@ export default function SearchResultsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
-                  🔍 Bộ lọc
+                  Bộ lọc
                 </h3>
                 {activeFilterCount > 0 && (
                   <span style={{
@@ -298,7 +271,7 @@ export default function SearchResultsPage() {
             </div>
 
             {/* 1. Địa điểm - Tỉnh/TP */}
-            <FilterSection icon="📍" title="Tỉnh / Thành phố">
+            <FilterSection icon="" title="Tỉnh / Thành phố">
               <div ref={provRef} style={{ position: 'relative' }}>
                 <input
                   type="text"
@@ -343,7 +316,7 @@ export default function SearchResultsPage() {
             </FilterSection>
 
             {/* 2. Quận/Huyện */}
-            <FilterSection icon="🗺️" title="Quận / Huyện">
+            <FilterSection icon="" title="Quận / Huyện">
               <input
                 type="text"
                 placeholder="VD: Quận 7, Hoàng Mai..."
@@ -356,7 +329,7 @@ export default function SearchResultsPage() {
             {divider}
 
             {/* 3. Loại kho */}
-            <FilterSection icon="🏭" title="Loại kho">
+            <FilterSection icon="" title="Loại kho">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
                 {WAREHOUSE_TYPES.map(t => (
                   <label key={t.value} style={{
@@ -381,7 +354,7 @@ export default function SearchResultsPage() {
             {divider}
 
             {/* 4. Diện tích trống cần thuê — Range Slider */}
-            <FilterSection icon="📐" title="Diện tích cần thuê (còn trống)">
+            <FilterSection icon="" title="Diện tích cần thuê (còn trống)">
               <RangeSlider
                 min={AREA_MIN}
                 max={AREA_MAX}
@@ -396,7 +369,7 @@ export default function SearchResultsPage() {
             {divider}
 
             {/* 5. Khoảng giá thuê — Range Slider */}
-            <FilterSection icon="💰" title="Giá thuê / m² / tháng">
+            <FilterSection icon="" title="Giá thuê / m² / tháng">
               <RangeSlider
                 min={PRICE_MIN}
                 max={PRICE_MAX}
@@ -415,7 +388,7 @@ export default function SearchResultsPage() {
             {divider}
 
             {/* 6. Kho 24/7 */}
-            <FilterSection icon="🕐" title="Giờ hoạt động">
+            <FilterSection icon="" title="Giờ hoạt động">
               <div
                 onClick={() => { setIs24Hours(!is24Hours); setPage(1); }}
                 style={{
@@ -452,7 +425,7 @@ export default function SearchResultsPage() {
             {divider}
 
             {/* 7. Đánh giá tối thiểu */}
-            <FilterSection icon="⭐" title="Đánh giá tối thiểu">
+            <FilterSection icon="" title="Đánh giá tối thiểu">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {RATING_OPTIONS.map(opt => (
                   <button
@@ -461,9 +434,24 @@ export default function SearchResultsPage() {
                     style={{
                       ...(minRating === opt.value ? chipActive : chipBase),
                       textAlign: 'left', padding: '8px 12px',
+                      display: 'flex', alignItems: 'center', gap: 6,
                     }}
                   >
-                    {opt.label}
+                    <span style={{ display: 'inline-flex', gap: 1 }}>
+                      {Array.from({ length: 5 }).map((_, i) => {
+                        const filled = i < Math.floor(opt.stars);
+                        const half = !filled && i < opt.stars;
+                        return (
+                          <span key={i} style={{
+                            fontSize: '0.85rem',
+                            color: filled || half ? '#f59e0b' : '#d1d5db',
+                          }}>
+                            {half ? '½' : '★'}
+                          </span>
+                        );
+                      })}
+                    </span>
+                    <span>{opt.label}</span>
                   </button>
                 ))}
               </div>
@@ -499,13 +487,13 @@ export default function SearchResultsPage() {
               {/* Active filter chips */}
               {activeFilterCount > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                  {provinceInput && <ActiveChip label={`📍 ${provinceInput}`} onRemove={() => { setProvinceInput(''); setPage(1); }} />}
-                  {districtInput && <ActiveChip label={`🗺️ ${districtInput}`} onRemove={() => { setDistrictInput(''); setPage(1); }} />}
-                  {warehouseType && <ActiveChip label={`🏭 ${WAREHOUSE_TYPES.find(t => t.value === warehouseType)?.label}`} onRemove={() => { setWarehouseType(''); setPage(1); }} />}
-                  {areaActive  && <ActiveChip label={`📐 ${areaRange[0].toLocaleString()}–${areaRange[1] >= AREA_MAX ? AREA_MAX.toLocaleString()+'+' : areaRange[1].toLocaleString()} m²`} onRemove={() => { setAreaRange([AREA_MIN, AREA_MAX]); setPage(1); }} />}
-                  {priceActive && <ActiveChip label={`💰 ${(priceRange[0]/1000).toFixed(0)}k–${priceRange[1] >= PRICE_MAX ? '500k+' : (priceRange[1]/1000).toFixed(0)+'k'} đ/m²`} onRemove={() => { setPriceRange([PRICE_MIN, PRICE_MAX]); setPage(1); }} />}
-                  {is24Hours && <ActiveChip label="🕐 24/7" onRemove={() => { setIs24Hours(false); setPage(1); }} />}
-                  {minRating != null && <ActiveChip label={`⭐ ≥ ${minRating} sao`} onRemove={() => { setMinRating(null); setPage(1); }} />}
+                  {provinceInput && <ActiveChip label={provinceInput} onRemove={() => { setProvinceInput(''); setPage(1); }} />}
+                  {districtInput && <ActiveChip label={districtInput} onRemove={() => { setDistrictInput(''); setPage(1); }} />}
+                  {warehouseType && <ActiveChip label={WAREHOUSE_TYPES.find(t => t.value === warehouseType)?.label} onRemove={() => { setWarehouseType(''); setPage(1); }} />}
+                  {areaActive  && <ActiveChip label={`${areaRange[0].toLocaleString()}–${areaRange[1] >= AREA_MAX ? AREA_MAX.toLocaleString()+'+' : areaRange[1].toLocaleString()} m²`} onRemove={() => { setAreaRange([AREA_MIN, AREA_MAX]); setPage(1); }} />}
+                  {priceActive && <ActiveChip label={`${(priceRange[0]/1000).toFixed(0)}k–${priceRange[1] >= PRICE_MAX ? '500k+' : (priceRange[1]/1000).toFixed(0)+'k'} đ/m²`} onRemove={() => { setPriceRange([PRICE_MIN, PRICE_MAX]); setPage(1); }} />}
+                  {is24Hours && <ActiveChip label="24/7" onRemove={() => { setIs24Hours(false); setPage(1); }} />}
+                  {minRating != null && <ActiveChip label={`≥ ${minRating} sao`} onRemove={() => { setMinRating(null); setPage(1); }} />}
                 </div>
               )}
             </div>
@@ -584,7 +572,7 @@ export default function SearchResultsPage() {
             </div>
           ) : results.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '5rem 0' }}>
-              <div style={{ fontSize: '3rem', marginBottom: 16 }}>🏗️</div>
+              <div style={{ fontSize: '3rem', marginBottom: 16 }}></div>
               <h3 style={{ color: '#334155', fontWeight: 700, marginBottom: 8 }}>Không tìm thấy kho phù hợp</h3>
               <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Thử điều chỉnh bộ lọc để xem thêm kết quả.</p>
               <button onClick={handleReset} style={{ marginTop: 16, padding: '10px 24px', borderRadius: 8, background: '#0095c7', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
@@ -670,6 +658,7 @@ export default function SearchResultsPage() {
           }
         }
       `}</style>
+      </div>
     </div>
   );
 }
@@ -826,146 +815,3 @@ function RangeSlider({ min, max, step, value, onChange, formatValue, color = '#0
     </div>
   );
 }
-
-/* ── Warehouse Card ─────────────────────────────────────── */
-function WarehouseCard({ w }) {
-  const [hovered, setHovered] = useState(false);
-  const [isFav,   setIsFav]   = useState(() => favoritesService.isFavorite(w.warehouseId));
-  const [favAnim, setFavAnim] = useState(false);
-
-  useEffect(() => {
-    const handler = () => setIsFav(favoritesService.isFavorite(w.warehouseId));
-    window.addEventListener('favoritesChanged', handler);
-    return () => window.removeEventListener('favoritesChanged', handler);
-  }, [w.warehouseId]);
-
-  const handleToggleFav = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const added = favoritesService.toggleFavorite(w);
-    setIsFav(added);
-    setFavAnim(true);
-    setTimeout(() => setFavAnim(false), 400);
-  };
-
-  return (
-    <Link
-      to={`/warehouse/${w.warehouseId}`}
-      style={{ textDecoration: 'none', color: 'inherit' }}
-    >
-      <div
-        style={{
-          background: '#fff', borderRadius: 16, overflow: 'hidden',
-          boxShadow: hovered ? '0 16px 32px rgba(0,149,199,0.12)' : '0 2px 12px rgba(0,0,0,0.05)',
-          border: '1px solid #f1f5f9',
-          display: 'flex', flexDirection: 'column',
-          transform: hovered ? 'translateY(-5px)' : 'translateY(0)',
-          transition: 'transform 0.2s, box-shadow 0.2s',
-          cursor: 'pointer',
-        }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
-        {/* Image */}
-        <div style={{ position: 'relative', height: 180, flexShrink: 0 }}>
-          <img
-            src={resolveImage(w.imageUrl)}
-            alt={w.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            onError={e => { e.target.src = 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800'; }}
-          />
-          {/* Heart / Favorite button */}
-          <button
-            onClick={handleToggleFav}
-            title={isFav ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
-            style={{
-              position: 'absolute', top: 10, right: 10,
-              width: 34, height: 34, borderRadius: '50%',
-              background: isFav ? 'rgba(251,113,133,0.95)' : 'rgba(255,255,255,0.90)',
-              border: isFav ? '2px solid #fb7185' : '1.5px solid rgba(255,255,255,0.6)',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '1rem',
-              boxShadow: isFav ? '0 3px 10px rgba(251,113,133,0.5)' : '0 2px 8px rgba(0,0,0,0.18)',
-              transform: favAnim ? 'scale(1.4)' : 'scale(1)',
-              transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), background 0.2s',
-              zIndex: 5,
-            }}
-          >
-            {isFav ? '❤️' : '🤍'}
-          </button>
-          {/* 24/7 badge */}
-          {w.is24HoursAccess && (
-            <div style={{
-              position: 'absolute', top: 10, left: 10,
-              background: 'rgba(16,185,129,0.9)', backdropFilter: 'blur(4px)',
-              color: '#fff', padding: '3px 8px', borderRadius: 20,
-              fontSize: '0.68rem', fontWeight: 700,
-            }}>
-              ⏰ 24/7
-            </div>
-          )}
-        </div>
-
-        {/* Info */}
-        <div style={{ padding: '14px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{
-            margin: '0 0 5px', fontSize: '0.95rem', fontWeight: 700,
-            color: '#0f172a', lineHeight: 1.4,
-            overflow: 'hidden', textOverflow: 'ellipsis',
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-          }}>{w.name}</h3>
-
-          <p style={{
-            margin: '0 0 6px', fontSize: '0.78rem', color: '#64748b',
-            overflow: 'hidden', textOverflow: 'ellipsis',
-            display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
-          }}>
-            <span style={{ flexShrink: 0 }}>📍</span> {w.address}
-          </p>
-
-          {/* Star rating — luôn hiện */}
-          <div style={{ marginBottom: 8 }}>
-            <StarDisplay rating={w.averageRating} count={w.ratingCount} />
-          </div>
-
-          {/* Price tag */}
-          {w.pricePerM2 && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              background: 'linear-gradient(135deg,#ecfdf5,#d1fae5)',
-              border: '1px solid #6ee7b7',
-              color: '#047857', fontSize: '0.8rem', fontWeight: 700,
-              padding: '4px 10px', borderRadius: 20, marginBottom: 10,
-            }}>
-              💰 <strong style={{ color: '#065f46', fontSize: '0.9rem' }}>
-                {Number(w.pricePerM2).toLocaleString('vi-VN')} đ
-              </strong>/m²/tháng
-            </div>
-          )}
-
-          {/* Area stats */}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            borderTop: '1px solid #f1f5f9', paddingTop: 10, marginTop: 'auto',
-          }}>
-            <div>
-              <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>Tổng DT</div>
-              <div style={{ fontWeight: 700, color: '#334155', fontSize: '0.92rem' }}>
-                {w.totalArea?.toLocaleString()} m²
-              </div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>Còn trống</div>
-              <div style={{ fontWeight: 800, color: '#0095c7', fontSize: '0.98rem' }}>
-                {w.availableArea?.toLocaleString()} m²
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-

@@ -125,6 +125,15 @@ builder.Services.AddScoped<ISubscriptionService, WMS.Infrastructure.Services.Sub
 builder.Services.AddSignalR();
 builder.Services.AddScoped<INotificationSender, WMS.API.Hubs.SignalRNotificationSender>();
 
+// ── AI Analysis Feature ──────────────────────────────────────────
+builder.Services.AddScoped<WMS.Domain.Interfaces.IAiAnalysisSessionRepository, WMS.Infrastructure.Repositories.AiAnalysisSessionRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IGeminiService, WMS.Infrastructure.Services.GeminiService>();
+// Named HttpClient cho Gemini (timeout 60s – xử lý ảnh có thể chậm)
+builder.Services.AddHttpClient("Gemini", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(60);
+});
+
 // Hangfire Configuration
 builder.Services.AddHangfire(config => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
