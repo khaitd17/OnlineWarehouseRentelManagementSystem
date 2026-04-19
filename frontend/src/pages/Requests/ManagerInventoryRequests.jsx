@@ -202,7 +202,7 @@ const DetailModal = ({ req, onClose }) => {
               ) : capacity && capacity.hasContract ? (
                 <>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'6px 16px', fontSize:'0.82rem', marginBottom:12 }}>
-                    <div><span style={{ color:'#94a3b8' }}>Diện tích HĐ: </span><span style={{ fontWeight:700, color:'#1e293b' }}>{capacity.contractedAreaM2?.toLocaleString('vi-VN')} m²</span></div>
+                    <div><span style={{ color:'#94a3b8' }}>Thể tích HĐ: </span><span style={{ fontWeight:700, color:'#1e293b' }}>{capacity.contractedAreaM3?.toLocaleString('vi-VN')} m³</span></div>
                     <div><span style={{ color:'#94a3b8' }}>Tải trọng tối đa: </span><span style={{ fontWeight:700, color:'#7c3aed' }}>{capacity.maxWeightKg?.toLocaleString('vi-VN')} kg</span></div>
                     <div><span style={{ color:'#94a3b8' }}>Đang lưu kho: </span><span style={{ fontWeight:700, color:'#c2410c' }}>{capacity.currentStock?.toLocaleString('vi-VN')} đơn vị</span></div>
                     <div><span style={{ color:'#94a3b8' }}>Giới hạn tối đa: </span><span style={{ fontWeight:700, color:'#1d4ed8' }}>{capacity.maxQty?.toLocaleString('vi-VN')} đơn vị</span></div>

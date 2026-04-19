@@ -59,8 +59,11 @@ public class SubscriptionService : ISubscriptionService
         switch (limitType)
         {
             case SubscriptionLimitType.WarehouseCount:
-                var warehouseCount = await _context.Warehouses.CountAsync(w => w.OwnerId == userId);
-                // Nếu User đang có 1 kho và giới hạn là 1, thì warehouseCount >= package.MaxWarehouses (1 >= 1) là TRUE -> Chặn.
+                var warehouseCount = await _context.Warehouses.CountAsync(w =>
+                    w.OwnerId == userId &&
+                    w.Status != null &&
+                    w.Status.ToUpper() != "DELETED" &&
+                    w.Status.ToUpper() != "DRAFT");
                 if (warehouseCount >= package.MaxWarehouses)
                 {
                     return (false, $"Bạn đã đạt giới hạn số lượng kho tối đa ({package.MaxWarehouses} kho) của gói {package.Name}.");
@@ -84,12 +87,15 @@ public class SubscriptionService : ISubscriptionService
 
             case SubscriptionLimitType.TotalArea:
                 var totalArea = await _context.Warehouses
-                    .Where(w => w.OwnerId == userId)
+                    .Where(w => w.OwnerId == userId &&
+                                w.Status != null &&
+                                w.Status.ToUpper() != "DELETED" &&
+                                w.Status.ToUpper() != "DRAFT")
                     .SumAsync(w => (decimal?)w.TotalArea) ?? 0;
                 
                 if (totalArea + currentCount > package.MaxTotalArea)
                 {
-                    return (false, $"Tổng diện tích vượt quá giới hạn cho phép ({package.MaxTotalArea} m2) của gói {package.Name}.");
+                    return (false, $"Tổng thể tích vượt quá giới hạn cho phép ({package.MaxTotalArea} m³) của gói {package.Name}.");
                 }
                 break;
 

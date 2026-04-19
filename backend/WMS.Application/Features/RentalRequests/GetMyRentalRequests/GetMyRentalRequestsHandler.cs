@@ -11,17 +11,20 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IUserRepository _userRepository;
     private readonly IRentalContractRepository _contractRepository;
+    private readonly IRentalAreaRepository _rentalAreaRepository;
 
     public GetMyRentalRequestsHandler(
         IRentalRequestRepository repository,
         IWarehouseRepository warehouseRepository,
         IUserRepository userRepository,
-        IRentalContractRepository contractRepository)
+        IRentalContractRepository contractRepository,
+        IRentalAreaRepository rentalAreaRepository)
     {
         _repository = repository;
         _warehouseRepository = warehouseRepository;
         _userRepository = userRepository;
         _contractRepository = contractRepository;
+        _rentalAreaRepository = rentalAreaRepository;
     }
 
     public async Task<IEnumerable<RentalRequestDto>> Handle(GetMyRentalRequestsQuery request, CancellationToken cancellationToken)
@@ -33,7 +36,7 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
         {
             var warehouse = await _warehouseRepository.GetByIdAsync(r.WarehouseId, cancellationToken);
             var renter = await _userRepository.GetByIdAsync(r.RenterId, cancellationToken);
-            
+
             // Get contract ID and status if request is approved
             int? contractId = null;
             string? contractStatus = null;
@@ -46,7 +49,17 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
                     contractStatus = contract.Status;
                 }
             }
-            
+
+            // Get rental area info if selected
+            string? rentalAreaName = null;
+            double? rentalAreaSize = null;
+            if (r.RentalAreaId.HasValue)
+            {
+                var area = await _rentalAreaRepository.GetByIdAsync(r.RentalAreaId.Value, cancellationToken);
+                rentalAreaName = area?.Name;
+                rentalAreaSize = area?.Size;
+            }
+
             result.Add(new RentalRequestDto
             {
                 RequestId = r.RequestId,
@@ -68,7 +81,10 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
                 RejectionReason = r.RejectionReason,
                 ContractImageUrl = r.ContractImageUrl,
                 ContractId = contractId,
-                ContractStatus = contractStatus
+                ContractStatus = contractStatus,
+                RentalAreaId = r.RentalAreaId,
+                RentalAreaName = rentalAreaName,
+                RentalAreaSize = rentalAreaSize,
             });
         }
         return result;

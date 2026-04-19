@@ -2,10 +2,10 @@ import React from "react";
 
 const StepIndicator = ({ step }) => {
   const steps = [
-    { title: "Thông tin", icon: "inventory_2" },
-    { title: "Hình ảnh", icon: "photo_library" },
-    { title: "Pháp lý", icon: "fact_check" },
-    { title: "Hoàn tất", icon: "verified" }
+    { title: "Thông tin", sub: "Thông tin kho" },
+    { title: "Hình ảnh", sub: "Tải ảnh lên" },
+    { title: "Pháp lý",  sub: "Hồ sơ" },
+    { title: "Hoàn tất", sub: "Xem lại" }
   ];
 
   return (
@@ -13,65 +13,80 @@ const StepIndicator = ({ step }) => {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: "50px",
-      padding: "0 20px"
+      marginBottom: "48px",
+      padding: "0 20px",
+      gap: 0
     }}>
       {steps.map((s, index) => {
         const active = step === index + 1;
-        const done = step > index + 1;
+        const done   = step >  index + 1;
         const isLast = index === steps.length - 1;
 
         return (
           <React.Fragment key={index}>
+            {/* Step circle + label */}
             <div style={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              position: "relative",
+              gap: "10px",
+              minWidth: 72,
               zIndex: 1
             }}>
-              <div
-                style={{
-                  width: "48px",
-                  height: "48px",
-                  borderRadius: "16px",
-                  backgroundColor: done ? "#10b981" : active ? "#00b2d6" : "#f1f5f9",
-                  color: done || active ? "#fff" : "#94a3b8",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginBottom: "12px",
-                  boxShadow: active ? "0 8px 16px rgba(0, 178, 214, 0.2)" : "none",
-                  transition: "all 0.3s ease",
-                  border: active ? "2px solid #00b2d6" : "2px solid transparent"
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "24px" }}>
-                  {done ? "check" : s.icon}
-                </span>
+              {/* Circle */}
+              <div style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "50%",
+                backgroundColor: done ? "#10b981" : active ? "#00b2d6" : "#e2e8f0",
+                color: done || active ? "#fff" : "#94a3b8",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: "0.95rem",
+                boxShadow: active
+                  ? "0 0 0 5px rgba(0,178,214,0.15)"
+                  : done
+                    ? "0 0 0 5px rgba(16,185,129,0.13)"
+                    : "none",
+                transition: "all 0.35s ease"
+              }}>
+                {done ? (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                ) : (
+                  <span>{index + 1}</span>
+                )}
               </div>
-              <span
-                style={{
-                  fontSize: "0.85rem",
-                  fontWeight: active ? 800 : 500,
-                  color: active ? "#1e293b" : "#64748b",
+
+              {/* Label */}
+              <div style={{ textAlign: "center" }}>
+                <div style={{
+                  fontSize: "0.78rem",
+                  fontWeight: active ? 800 : done ? 600 : 500,
+                  color: active ? "#00b2d6" : done ? "#10b981" : "#94a3b8",
+                  lineHeight: 1.3,
                   whiteSpace: "nowrap"
-                }}
-              >
-                {s.title}
-              </span>
+                }}>
+                  {s.title}
+                </div>
+              </div>
             </div>
 
+            {/* Connector line */}
             {!isLast && (
               <div style={{
                 flex: 1,
-                height: "3px",
-                backgroundColor: done ? "#10b981" : "#f1f5f9",
-                margin: "0 10px",
-                marginTop: "-25px",
-                maxWidth: "100px",
+                height: "2px",
+                maxWidth: "80px",
+                margin: "-22px 6px 0",
+                background: done
+                  ? "linear-gradient(90deg,#10b981,#10b981)"
+                  : "linear-gradient(90deg,#e2e8f0,#e2e8f0)",
                 borderRadius: "2px",
-                transition: "all 0.3s ease"
+                transition: "all 0.35s ease"
               }} />
             )}
           </React.Fragment>

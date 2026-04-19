@@ -24,6 +24,8 @@ public class CreateWarehouseCommand : IRequest<int>
     
     public double? Length { get; set; }
 
+    public double? Height { get; set; }
+
     public string? OperatingHours { get; set; }
 
     public bool Is24HoursAccess { get; set; }

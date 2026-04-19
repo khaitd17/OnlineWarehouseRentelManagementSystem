@@ -323,11 +323,37 @@ export default function AiItemAnalyzerPage() {
   const handleAddItem = () => {
     setResult(prev => {
       if (!prev) return prev;
-      const newItems = [...prev.items, { name: "", quantity: 1, estimatedVolumeM3: 0.05, isManual: true }];
+      const newItems = [...prev.items, {
+        name: "", quantity: 1,
+        widthM: 0.3, lengthM: 0.3, heightM: 0.3,
+        estimatedVolumeM3: 0.027, isManual: true
+      }];
       const newTotal = newItems.reduce((acc, curr) => {
-        const q = curr.quantity === "" ? 0 : curr.quantity;
-        const v = curr.estimatedVolumeM3 === "" ? 0 : curr.estimatedVolumeM3;
-        return acc + (q * v);
+        const q = curr.quantity === "" ? 0 : (curr.quantity || 0);
+        const v = curr.estimatedVolumeM3 === "" ? 0 : (curr.estimatedVolumeM3 || 0);
+        return acc + q * v;
+      }, 0);
+      return { ...prev, items: newItems, totalVolumeM3: newTotal.toFixed(2) };
+    });
+  };
+
+  const handleDimChange = (idx, field, newVal) => {
+    let v = newVal === "" ? "" : parseFloat(newVal);
+    if (v !== "" && (isNaN(v) || v < 0)) v = 0;
+    setResult(prev => {
+      if (!prev) return prev;
+      const newItems = [...prev.items];
+      const item = { ...newItems[idx], [field]: v };
+      // Auto-recalculate volume from W × L × H
+      const w = field === "widthM"  ? (v === "" ? 0 : v) : (item.widthM  || 0);
+      const l = field === "lengthM" ? (v === "" ? 0 : v) : (item.lengthM || 0);
+      const h = field === "heightM" ? (v === "" ? 0 : v) : (item.heightM || 0);
+      item.estimatedVolumeM3 = parseFloat((w * l * h).toFixed(4)) || 0;
+      newItems[idx] = item;
+      const newTotal = newItems.reduce((acc, curr) => {
+        const q = curr.quantity === "" ? 0 : (curr.quantity || 0);
+        const vol = curr.estimatedVolumeM3 === "" ? 0 : (curr.estimatedVolumeM3 || 0);
+        return acc + q * vol;
       }, 0);
       return { ...prev, items: newItems, totalVolumeM3: newTotal.toFixed(2) };
     });
@@ -416,91 +442,95 @@ export default function AiItemAnalyzerPage() {
                 Kết Quả Phân Tích AI
               </div>
 
-              <table style={styles.table}>
+              <table style={{ ...styles.table, fontSize: 13 }}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>Đồ vật</th>
-                    <th style={styles.th}>Số lượng</th>
-                    <th style={styles.th}>Thể tích (m³/cái)</th>
-                    <th style={styles.th}>Tổng (m³)</th>
+                    <th style={styles.th}>Dố Vật</th>
+                    <th style={styles.th}>Số Lượng</th>
+                    <th style={{ ...styles.th, color: "#60a5fa" }}>Rộng (m)</th>
+                    <th style={{ ...styles.th, color: "#34d399" }}>Dài (m)</th>
+                    <th style={{ ...styles.th, color: "#f59e0b" }}>Cao (m)</th>
+                    <th style={{ ...styles.th, color: "#a78bfa" }}>Thể tích/cái (m³)</th>
+                    <th style={{ ...styles.th, color: "#818cf8" }}>Tổng (m³)</th>
                     <th style={{ ...styles.th, width: 40 }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {result.items?.map((item, i) => (
                     <tr key={i}>
+                      {/* Tên đồ vật */}
                       <td style={styles.td}>
-                        <input
-                          type="text"
-                          value={item.name}
+                        <input type="text" value={item.name}
                           onChange={(e) => handleItemNameChange(i, e.target.value)}
-                          style={{
-                            width: "90%", minWidth: 120, padding: "6px 8px", borderRadius: 6,
+                          style={{ width: "100%", minWidth: 100, padding: "5px 7px", borderRadius: 6,
                             border: "1px solid rgba(148,163,184,0.3)",
-                            background: "transparent", color: "#fff",
-                            outline: "none", fontFamily: "inherit"
-                          }}
+                            background: "transparent", color: "#fff", outline: "none", fontFamily: "inherit" }}
                         />
                       </td>
+                      {/* Số lượng */}
                       <td style={styles.td}>
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.quantity}
+                        <input type="number" min="0" value={item.quantity}
                           onChange={(e) => handleQuantityChange(i, e.target.value)}
-                          style={{
-                            width: 60, padding: "6px 8px", borderRadius: 6,
+                          style={{ width: 52, padding: "5px 7px", borderRadius: 6,
                             border: "1px solid rgba(148,163,184,0.3)",
-                            background: "rgba(15,23,42,0.4)", color: "#fff",
-                            outline: "none", fontFamily: "inherit"
-                          }}
+                            background: "rgba(15,23,42,0.4)", color: "#fff", outline: "none", fontFamily: "inherit" }}
                         />
                       </td>
+                      {/* Chiều rộng */}
                       <td style={styles.td}>
-                        {item.isManual ? (
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.estimatedVolumeM3}
-                            onChange={(e) => handleVolumeChange(i, e.target.value)}
-                            style={{
-                              width: 70, padding: "6px 8px", borderRadius: 6,
-                              border: "1px solid rgba(148,163,184,0.3)",
-                              background: "rgba(15,23,42,0.4)", color: "#fff",
-                              outline: "none", fontFamily: "inherit"
-                            }}
-                          />
-                        ) : (
-                          item.estimatedVolumeM3
-                        )}
+                        <input type="number" min="0" step="0.01" value={item.widthM ?? ""}
+                          onChange={(e) => handleDimChange(i, "widthM", e.target.value)}
+                          style={{ width: 64, padding: "5px 7px", borderRadius: 6,
+                            border: "1px solid rgba(96,165,250,0.4)",
+                            background: "rgba(15,23,42,0.4)", color: "#93c5fd", outline: "none", fontFamily: "inherit" }}
+                        />
                       </td>
+                      {/* Chiều dài */}
+                      <td style={styles.td}>
+                        <input type="number" min="0" step="0.01" value={item.lengthM ?? ""}
+                          onChange={(e) => handleDimChange(i, "lengthM", e.target.value)}
+                          style={{ width: 64, padding: "5px 7px", borderRadius: 6,
+                            border: "1px solid rgba(52,211,153,0.4)",
+                            background: "rgba(15,23,42,0.4)", color: "#6ee7b7", outline: "none", fontFamily: "inherit" }}
+                        />
+                      </td>
+                      {/* Chiều cao */}
+                      <td style={styles.td}>
+                        <input type="number" min="0" step="0.01" value={item.heightM ?? ""}
+                          onChange={(e) => handleDimChange(i, "heightM", e.target.value)}
+                          style={{ width: 64, padding: "5px 7px", borderRadius: 6,
+                            border: "1px solid rgba(245,158,11,0.4)",
+                            background: "rgba(15,23,42,0.4)", color: "#fcd34d", outline: "none", fontFamily: "inherit" }}
+                        />
+                      </td>
+                      {/* Thể tích/cái (auto) */}
+                      <td style={{ ...styles.td, color: "#c4b5fd", fontWeight: 600 }}>
+                        {(item.estimatedVolumeM3 || 0).toFixed(3)}
+                      </td>
+                      {/* Tổng */}
                       <td style={{ ...styles.td, fontWeight: 700, color: "#a78bfa" }}>
-                        {((item.estimatedVolumeM3 === "" ? 0 : item.estimatedVolumeM3) * (item.quantity === "" ? 0 : item.quantity)).toFixed(2)}
+                        {((item.estimatedVolumeM3 || 0) * (item.quantity === "" ? 0 : (item.quantity || 0))).toFixed(2)}
                       </td>
+                      {/* Xóa */}
                       <td style={{ ...styles.td, textAlign: "center" }}>
-                        <button
-                          onClick={() => handleRemoveItem(i)}
-                          title="Xóa đồ vật"
-                          style={{
-                            background: "none", border: "none", cursor: "pointer",
+                        <button onClick={() => handleRemoveItem(i)} title="Xóa đồ vật"
+                          style={{ background: "none", border: "none", cursor: "pointer",
                             color: "#ef4444", fontSize: 18, padding: "2px 6px",
-                            borderRadius: 6, transition: "all 0.2s",
-                            opacity: 0.6,
-                          }}
+                            borderRadius: 6, opacity: 0.6 }}
                           onMouseEnter={e => e.target.style.opacity = 1}
                           onMouseLeave={e => e.target.style.opacity = 0.6}
-                        >
-                          ✕
-                        </button>
+                        >✕</button>
                       </td>
                     </tr>
                   ))}
                   <tr>
                     <td style={{ ...styles.td, fontWeight: 700, color: "#e2e8f0" }}>Tổng cộng</td>
                     <td style={{ ...styles.td, fontWeight: 700, color: "#e2e8f0" }}>
-                      {result.items?.reduce((acc, curr) => acc + (curr.quantity === "" ? 0 : curr.quantity), 0) || 0}
+                      {result.items?.reduce((acc, curr) => acc + (curr.quantity === "" ? 0 : (curr.quantity || 0)), 0) || 0}
                     </td>
+                    <td style={styles.td}></td>
+                    <td style={styles.td}></td>
+                    <td style={styles.td}></td>
                     <td style={styles.td}></td>
                     <td style={{ ...styles.td, fontWeight: 800, fontSize: 17, color: "#818cf8" }}>{result.totalVolumeM3} m³</td>
                     <td style={styles.td}></td>
@@ -569,10 +599,10 @@ export default function AiItemAnalyzerPage() {
                         <div style={styles.whAddress}>{wh.address}</div>
                         <div style={styles.whTags}>
                           {wh.warehouseType && <span style={styles.tag("purple")}>{wh.warehouseType}</span>}
-                          <span style={styles.tag("none")}>{wh.availableArea} m²</span>
+                          <span style={styles.tag("none")}>{wh.availableArea} m³</span>
                           {wh.availableVolume && <span style={styles.tag("green")}>{wh.availableVolume} m³ trống</span>}
                           {wh.is24HoursAccess && <span style={styles.tag("green")}>24/7</span>}
-                          {wh.pricePerM2 && <span style={styles.tag("none")}>{Number(wh.pricePerM2).toLocaleString("vi-VN")} ₫/m²</span>}
+                          {wh.pricePerM2 && <span style={styles.tag("none")}>{Number(wh.pricePerM2).toLocaleString("vi-VN")} ₫/m³</span>}
                         </div>
                         <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                           <div>

@@ -4,6 +4,134 @@ import api from '../services/axiosClient';
 import rentalService from '../services/rentalService';
 import ratingService from '../services/ratingService';
 import authService from '../services/authService';
+
+// ─── Floor Plan Blueprint ────────────────────────────────────────────────────
+const FloorPlanView = ({ areas, warehouseData }) => {
+  const [hovered, setHovered] = useState(null);
+
+  const whWidth  = warehouseData?.width  || 50;
+  const whLength = warehouseData?.length || 50;
+
+  const CANVAS_W = 560;
+  const CANVAS_H = Math.round(CANVAS_W * (whLength / whWidth));
+  const scaleX = CANVAS_W / whWidth;
+  const scaleY = CANVAS_H / whLength;
+
+  // Simple row-packing layout
+  let placed = [];
+  let cursorX = 0, cursorY = 0, rowMaxH = 0;
+  for (const a of areas) {
+    const pw = Math.max((a.width  || 10) * scaleX, 60);
+    const ph = Math.max((a.length || 10) * scaleY, 50);
+    if (cursorX + pw > CANVAS_W + 2) {
+      cursorY += rowMaxH;
+      cursorX = 0;
+      rowMaxH = 0;
+    }
+    placed.push({ ...a, px: cursorX, py: cursorY, pw, ph });
+    cursorX += pw;
+    if (ph > rowMaxH) rowMaxH = ph;
+  }
+
+  return (
+    <section>
+      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '0.5rem' }}>
+        Sơ đồ mặt bằng ô khu
+      </h2>
+      <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '1.2rem' }}>
+        Di chuột vào từng ô để xem chi tiết. Tỉ lệ dựa theo kích thước thực tế.
+      </p>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 16, height: 16, borderRadius: 4, background: '#bfdbfe', border: '1.5px solid #3b82f6' }} />
+          <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>Còn trống</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 16, height: 16, borderRadius: 4, background: '#fecaca', border: '1.5px solid #ef4444' }} />
+          <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>Đang được thuê</span>
+        </div>
+      </div>
+
+      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', maxWidth: '100%' }}>
+        {/* Top axis (Width) */}
+        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 6, letterSpacing: '0.03em' }}>
+          Ngang (W): {whWidth} m
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          {/* Left axis (Length) */}
+          <div style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginRight: 8, whiteSpace: 'nowrap' }}>
+            Dài (L): {whLength} m
+          </div>
+
+          {/* Blueprint canvas */}
+          <div style={{
+            position: 'relative',
+            width: CANVAS_W,
+            height: CANVAS_H,
+            maxWidth: '100%',
+            background: '#f0f7ff',
+            border: '2px solid #3b82f6',
+            borderRadius: 12,
+            overflow: 'hidden',
+            boxShadow: '0 4px 24px rgba(59,130,246,0.12)',
+            backgroundImage: 'linear-gradient(rgba(59,130,246,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.08) 1px, transparent 1px)',
+            backgroundSize: '20px 20px',
+          }}>
+            {placed.map((a) => {
+              const occupied = a.isOccupied;
+              const isHov = hovered === a.id;
+              return (
+                <div
+                  key={a.id}
+                  onMouseEnter={() => setHovered(a.id)}
+                  onMouseLeave={() => setHovered(null)}
+                  style={{
+                    position: 'absolute',
+                    left: a.px, top: a.py, width: a.pw, height: a.ph,
+                    background: occupied ? (isHov ? '#fca5a5' : '#fecaca') : (isHov ? '#93c5fd' : '#bfdbfe'),
+                    border: occupied ? '2px dashed #ef4444' : '2px dashed #3b82f6',
+                    boxSizing: 'border-box', borderRadius: 4,
+                    cursor: occupied ? 'not-allowed' : 'pointer',
+                    transition: 'background 0.18s',
+                    overflow: 'hidden', display: 'flex', flexDirection: 'column',
+                    justifyContent: 'flex-start', padding: '6px 8px',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, color: occupied ? '#991b1b' : '#1e3a8a', fontSize: '0.78rem', lineHeight: 1.2 }}>{a.name}</div>
+                  <div style={{ fontSize: '0.7rem', color: occupied ? '#b91c1c' : '#1d4ed8', marginTop: 2 }}>{a.size} m³</div>
+                  <div style={{ fontSize: '0.65rem', color: occupied ? '#dc2626' : '#2563eb', marginTop: 1 }}>{a.width}m × {a.length}m</div>
+                  {isHov && (
+                    <div style={{
+                      marginTop: 'auto', fontSize: '0.65rem', fontWeight: 700,
+                      color: occupied ? '#dc2626' : '#16a34a',
+                      background: occupied ? '#fee2e2' : '#dcfce7',
+                      borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start',
+                    }}>
+                      {occupied ? 'Đang thuê' : 'Còn trống'}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Gate */}
+        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ width: 0, height: 0, borderLeft: '10px solid transparent', borderRight: '10px solid transparent', borderBottom: '12px solid #f59e0b' }} />
+          <div style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.08em', padding: '8px 24px', borderRadius: 8, boxShadow: '0 4px 12px rgba(245,158,11,0.35)' }}>
+            CỔNG CHÍNH VÀO KHO
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 const WarehouseDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -13,6 +141,9 @@ const WarehouseDetailsPage = () => {
     durationMonths: '',
     notes: ''
   });
+  const [areas, setAreas] = useState([]);
+  const [selectedArea, setSelectedArea] = useState(null); // chosen rental area
+  const [showAreaModal, setShowAreaModal] = useState(false); // area selection modal
   const [warehouseData, setWarehouseData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState({ open: false, index: 0 });
@@ -53,6 +184,16 @@ const WarehouseDetailsPage = () => {
       }
     };
     fetchWarehouse();
+
+    // Fetch rental areas for this warehouse
+    const fetchAreas = async () => {
+      try {
+        const res = await api.get(`/RentalAreas/warehouse/${id}`);
+        setAreas(res.data || []);
+      } catch (err) { console.error('Failed to load areas:', err); }
+    };
+    fetchAreas();
+
     const fetchRatings = async () => {
       try {
         const data = await ratingService.getWarehouseRatings(id);
@@ -166,7 +307,7 @@ const WarehouseDetailsPage = () => {
       : FALLBACK_IMAGES,
     ownerName: warehouseData.ownerName || 'Chủ kho',
     ownerPhone: warehouseData.ownerPhone || null,
-    ownerAvatarUrl: warehouseData.ownerAvatarUrl ? `http://localhost:5276${warehouseData.ownerAvatarUrl}` : `https://i.pravatar.cc/150?u=${warehouseData.ownerId}`,
+    ownerAvatarUrl: warehouseData.ownerAvatarUrl ? `http://localhost:5276${warehouseData.ownerAvatarUrl}` : null,
   } : null;
 
 
@@ -176,34 +317,34 @@ const WarehouseDetailsPage = () => {
     setSubmitMsg(null);
   };
 
-  const handleSubmitRequest = async () => {
-    if (!isLoggedIn) {
-      navigate('/auth');
-      return;
-    }
-
-    const area = parseFloat(formData.requestedArea);
+  // Called after user decides whether to pick an area or not
+  const doSubmitRequest = async (areaOverride) => {
+    const chosenArea = areaOverride !== undefined ? areaOverride : selectedArea;
+    const area = parseFloat(formData.requestedArea);   // Luôn dùng thể tích người thuê nhập
     const duration = parseInt(formData.durationMonths);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const startDate = formData.startDate ? new Date(formData.startDate) : null;
 
-    if (!area || area <= 0) { setSubmitMsg({ type: 'error', text: 'Vui lòng nhập diện tích cần thuê.' }); return; }
-    if (warehouse && area > warehouse.availableArea) { setSubmitMsg({ type: 'error', text: `Diện tích vượt quá diện tích còn trống (${warehouse.availableArea} m²).` }); return; }
+    if (!area || area <= 0) { setSubmitMsg({ type: 'error', text: 'Vui lòng nhập thể tích cần thuê.' }); return; }
+    if (warehouse && area > warehouse.availableArea) { setSubmitMsg({ type: 'error', text: `Thể tích vượt quá thể tích còn trống (${warehouse.availableArea} m³).` }); return; }
     if (!formData.startDate) { setSubmitMsg({ type: 'error', text: 'Vui lòng chọn ngày bắt đầu.' }); return; }
     if (startDate < today) { setSubmitMsg({ type: 'error', text: 'Ngày bắt đầu phải từ hôm nay trở đi.' }); return; }
     if (!duration || duration < 1 || duration > 60) { setSubmitMsg({ type: 'error', text: 'Thời hạn thuê từ 1 đến 60 tháng.' }); return; }
 
+    setShowAreaModal(false);
     setSubmitting(true);
     try {
       await rentalService.createRentalRequest({
         warehouseId: warehouse.id,
         requestedArea: area,
+        rentalAreaId: chosenArea?.id || null,
         startDate: formData.startDate,
         durationMonths: duration,
         notes: formData.notes.trim() || null,
       });
       setFormData({ requestedArea: '', startDate: '', durationMonths: '', notes: '' });
+      setSelectedArea(null);
       setSubmitMsg(null);
       setShowRentalSuccessPopup(true);
     } catch (err) {
@@ -211,6 +352,26 @@ const WarehouseDetailsPage = () => {
       setSubmitMsg({ type: 'error', text: msg });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleSubmitRequest = () => {
+    if (!isLoggedIn) { navigate('/auth'); return; }
+    // Basic validation before modal
+    const duration = parseInt(formData.durationMonths);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const startDate = formData.startDate ? new Date(formData.startDate) : null;
+    if (!formData.startDate) { setSubmitMsg({ type: 'error', text: 'Vui lòng chọn ngày bắt đầu.' }); return; }
+    if (startDate < today) { setSubmitMsg({ type: 'error', text: 'Ngày bắt đầu phải từ hôm nay trở đi.' }); return; }
+    if (!duration || duration < 1 || duration > 60) { setSubmitMsg({ type: 'error', text: 'Thời hạn thuê từ 1 đến 60 tháng.' }); return; }
+
+    // If warehouse has available areas → show area selection modal
+    const availableAreas = areas.filter(a => !a.isOccupied);
+    if (availableAreas.length > 0) {
+      setShowAreaModal(true);
+    } else {
+      // No areas defined → direct submit with manual volume
+      doSubmitRequest(null);
     }
   };
 
@@ -259,50 +420,170 @@ const WarehouseDetailsPage = () => {
           </div>
         </div>
 
-        {/* Image Gallery */}
-        <div style={{ display: 'grid', gridTemplateColumns: warehouse.images.length > 1 ? '1.5fr 1fr' : '1fr', gap: '12px', marginBottom: '2rem' }}>
-          <div style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', height: '450px' }} onClick={() => openLightbox(0)}>
-            <img src={warehouse.images[0]} alt="Main" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          </div>
-          {warehouse.images.length > 1 && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '12px', height: '450px' }}>
-              {warehouse.images.slice(1, 4).map((img, idx) => (
-                <div key={idx} style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', minHeight: 0 }} onClick={() => openLightbox(idx + 1)}>
-                  <img src={img} alt={`Gallery ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-              ))}
-              {warehouse.images.length > 4 ? (
-                <div style={{ borderRadius: '12px', overflow: 'hidden', position: 'relative', cursor: 'pointer', minHeight: 0 }} onClick={() => openLightbox(4)}>
-                  <img src={warehouse.images[4]} alt="More" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1.1rem', fontWeight: 700 }}>
-                    +{warehouse.images.length - 4} ảnh
-                  </div>
-                </div>
-              ) : warehouse.images[4] ? (
-                <div style={{ borderRadius: '12px', overflow: 'hidden', cursor: 'zoom-in', minHeight: 0 }} onClick={() => openLightbox(4)}>
-                  <img src={warehouse.images[4]} alt="Gallery 4" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                </div>
-              ) : null}
-            </div>
-          )}
-        </div>
 
-        {/* Lightbox Modal */}
+        {/* Image Gallery — Airbnb-style: 1 main + 2×2 grid */}
+        {(() => {
+          const imgs = warehouse.images;
+          return (
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: imgs.length > 1 ? '1.6fr 1fr' : '1fr',
+                gap: '8px',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                maxHeight: '480px',
+              }}>
+                {/* Main image */}
+                <div
+                  style={{ cursor: 'zoom-in', overflow: 'hidden', minHeight: 0 }}
+                  onClick={() => openLightbox(0)}
+                >
+                  <img src={imgs[0]} alt="Main"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.3s' }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  />
+                </div>
+
+                {/* Right 2×2 grid */}
+                {imgs.length > 1 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '8px' }}>
+                    {[1, 2, 3, 4].map((idx) => {
+                      const img = imgs[idx];
+                      const isLast = idx === 4;
+                      const hasMore = imgs.length > 5;
+                      if (!img) return null;
+                      return (
+                        <div
+                          key={idx}
+                          style={{ position: 'relative', overflow: 'hidden', cursor: 'zoom-in', minHeight: 0 }}
+                          onClick={() => openLightbox(idx)}
+                        >
+                          <img src={img} alt={`Gallery ${idx}`}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.3s' }}
+                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.06)'}
+                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                          />
+                          {isLast && hasMore && (
+                            <div style={{
+                              position: 'absolute', inset: 0,
+                              background: 'rgba(0,0,0,0.52)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              color: '#fff', fontSize: '1.3rem', fontWeight: 800,
+                              letterSpacing: '0.02em',
+                            }}>
+                              +{imgs.length - 4} ảnh
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Lightbox Modal — with thumbnail strip */}
         {lightbox.open && (
-          <div onClick={closeLightbox} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <button onClick={closeLightbox} style={{ position: 'absolute', top: '20px', right: '24px', background: 'none', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
-            {warehouse.images.length > 1 && (
-              <button onClick={prevImage} style={{ position: 'absolute', left: '16px', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer', borderRadius: '50%', width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-            )}
-            <img src={warehouse.images[lightbox.index]} alt={`Ảnh ${lightbox.index + 1}`} onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', maxWidth: '90vw', objectFit: 'contain', borderRadius: '8px' }} />
-            {warehouse.images.length > 1 && (
-              <button onClick={nextImage} style={{ position: 'absolute', right: '16px', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', fontSize: '2rem', cursor: 'pointer', borderRadius: '50%', width: '52px', height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-            )}
-            <div style={{ position: 'absolute', bottom: '24px', color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>
+          <div
+            onClick={closeLightbox}
+            style={{
+              position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.93)',
+              zIndex: 9999, display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            {/* Close */}
+            <button
+              onClick={closeLightbox}
+              style={{
+                position: 'absolute', top: '18px', right: '22px',
+                background: 'rgba(255,255,255,0.12)', border: 'none',
+                color: '#fff', fontSize: '1.5rem', cursor: 'pointer',
+                borderRadius: '50%', width: 44, height: 44,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                lineHeight: 1,
+              }}
+            >✕</button>
+
+            {/* Counter */}
+            <div style={{ position: 'absolute', top: 22, left: '50%', transform: 'translateX(-50%)', color: 'rgba(255,255,255,0.75)', fontSize: '0.9rem', fontWeight: 600 }}>
               {lightbox.index + 1} / {warehouse.images.length}
             </div>
+
+            {/* Prev */}
+            {warehouse.images.length > 1 && (
+              <button
+                onClick={prevImage}
+                style={{
+                  position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'rgba(255,255,255,0.15)', border: 'none',
+                  color: '#fff', fontSize: '2rem', cursor: 'pointer',
+                  borderRadius: '50%', width: 52, height: 52,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backdropFilter: 'blur(4px)',
+                }}
+              >‹</button>
+            )}
+
+            {/* Main lightbox image */}
+            <img
+              src={warehouse.images[lightbox.index]}
+              alt={`Ảnh ${lightbox.index + 1}`}
+              onClick={e => e.stopPropagation()}
+              style={{ maxHeight: '72vh', maxWidth: '88vw', objectFit: 'contain', borderRadius: '10px', boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}
+            />
+
+            {/* Next */}
+            {warehouse.images.length > 1 && (
+              <button
+                onClick={nextImage}
+                style={{
+                  position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'rgba(255,255,255,0.15)', border: 'none',
+                  color: '#fff', fontSize: '2rem', cursor: 'pointer',
+                  borderRadius: '50%', width: 52, height: 52,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backdropFilter: 'blur(4px)',
+                }}
+              >›</button>
+            )}
+
+            {/* Thumbnail strip */}
+            {warehouse.images.length > 1 && (
+              <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                  display: 'flex', gap: '8px',
+                  marginTop: '18px',
+                  maxWidth: '88vw', overflowX: 'auto',
+                  padding: '4px 2px',
+                  scrollbarWidth: 'thin',
+                }}
+              >
+                {warehouse.images.map((img, i) => (
+                  <div
+                    key={i}
+                    onClick={() => setLightbox(lb => ({ ...lb, index: i }))}
+                    style={{
+                      width: 72, height: 54, flexShrink: 0,
+                      borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+                      border: lightbox.index === i ? '2.5px solid #fff' : '2.5px solid transparent',
+                      opacity: lightbox.index === i ? 1 : 0.55,
+                      transition: 'opacity 0.2s, border 0.2s',
+                    }}
+                  >
+                    <img src={img} alt={`Thumb ${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
+
 
         {/* Main Grid: Content + Sidebar */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '2rem' }}>
@@ -311,13 +592,13 @@ const WarehouseDetailsPage = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
               {[
-                { label: "TỔNG DIỆN TÍCH", value: `${warehouse.area} m²` },
+                { label: "TỔNG THỂ TÍCH", value: `${warehouse.area} m³` },
                 { label: "LOẠI KHO", value: warehouseData?.warehouseType || "Khác" },
-                { label: "CÒN TRỐNG", value: `${warehouse.availableArea} m²` },
+                { label: "CÒN TRỐNG", value: `${warehouse.availableArea} m³` },
                 { label: "GIỜ HOẠT ĐỘNG", value: warehouse.operatingHours || 'Không rõ' },
                 { label: "TRẠNG THÁI", value: warehouse.status },
                 {
-                  label: "GIÁ THUÊ/M²/THÁNG",
+                  label: "GIÁ THUÊ/M³/THÁNG",
                   value: warehouseData?.pricePerM2
                     ? `${Number(warehouseData.pricePerM2).toLocaleString('vi-VN')} ₫`
                     : 'Liên hệ'
@@ -335,12 +616,47 @@ const WarehouseDetailsPage = () => {
               <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{warehouse.description}</p>
             </section>
 
+            {/* ── Rental Areas Floor Plan ── */}
+            {areas.length > 0 && (
+              <FloorPlanView areas={areas} warehouseData={warehouseData} />
+            )}
             {warehouse.lat && warehouse.lng && (
               <section>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1.2rem' }}>Vị trí trên bản đồ</h2>
-                <div style={{ width: '100%', height: '300px', borderRadius: '16px', overflow: 'hidden' }}>
-                  <iframe title="map" width="100%" height="300" style={{ border: 0 }}
-                    src={`https://maps.google.com/maps?q=${warehouse.lat},${warehouse.lng}&z=15&output=embed`}></iframe>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '1.2rem' }}>Xem trên bản đồ</h2>
+                <div style={{ position: 'relative', width: '100%', borderRadius: '16px', overflow: 'hidden' }}>
+                  {/* Open in Maps button */}
+                  <a
+                    href={`https://www.google.com/maps?q=${warehouse.lat},${warehouse.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                      position: 'absolute', top: 12, left: 12, zIndex: 10,
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      background: '#fff', color: '#1a73e8',
+                      fontWeight: 700, fontSize: '0.88rem',
+                      padding: '8px 14px', borderRadius: 10,
+                      boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
+                      textDecoration: 'none',
+                      border: '1px solid #e8eaed',
+                      transition: 'box-shadow 0.2s, background 0.2s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#f1f3f4'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.22)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.18)'; }}
+                  >
+                    Open in Maps
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/>
+                      <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                  </a>
+                  <iframe
+                    title="map"
+                    width="100%" height="320"
+                    style={{ border: 0, display: 'block' }}
+                    src={`https://maps.google.com/maps?q=${warehouse.lat},${warehouse.lng}&z=15&output=embed`}
+                  />
                 </div>
               </section>
             )}
@@ -562,6 +878,154 @@ const WarehouseDetailsPage = () => {
               )}
             </section>
 
+            {/* ── Area Selection Modal ── */}
+            {showAreaModal && (() => {
+              const enteredVol = parseFloat(formData.requestedArea) || 0;
+              // Sort: available first (best-fit), then occupied at bottom
+              const sortedAreas = [...areas].sort((a, b) => {
+                if (a.isOccupied && !b.isOccupied) return 1;
+                if (!a.isOccupied && b.isOccupied) return -1;
+                const aFits = a.size >= enteredVol;
+                const bFits = b.size >= enteredVol;
+                if (aFits && !bFits) return -1;
+                if (!aFits && bFits) return 1;
+                return Math.abs(a.size - enteredVol) - Math.abs(b.size - enteredVol);
+              });
+              const availableCount = areas.filter(a => !a.isOccupied).length;
+              return (
+                <div style={{
+                  position: 'fixed', inset: 0, zIndex: 9999,
+                  backgroundColor: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  animation: 'fadeIn 0.2s ease',
+                }}>
+                  <div style={{
+                    background: '#fff', borderRadius: 20, padding: '2rem',
+                    maxWidth: 500, width: '92%',
+                    boxShadow: '0 24px 60px rgba(0,0,0,0.2)',
+                    maxHeight: '85vh', overflowY: 'auto',
+                  }}>
+                    {/* Header */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.2rem' }}>
+                      <div>
+                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Chọn ô khu thuê</h3>
+                        <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                          Bạn cần thuê <strong>{enteredVol} m³</strong> — Chọn ô khu còn trống hoặc bỏ qua để chủ kho sắp xếp.
+                        </p>
+                      </div>
+                      <button onClick={() => setShowAreaModal(false)} style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#64748b', flexShrink: 0 }}>✕</button>
+                    </div>
+
+                    {/* Area list — available + occupied */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: '1.4rem' }}>
+                      {sortedAreas.map(a => {
+                        const occupied = a.isOccupied;
+                        const estimatedPrice = warehouseData?.pricePerM2 ? (warehouseData.pricePerM2 * a.size) : null;
+                        const fits = !occupied && a.size >= enteredVol;
+
+                        if (occupied) {
+                          // ── Occupied: disabled card ──────────────────────────
+                          return (
+                            <div key={a.id} style={{
+                              padding: '14px 16px', borderRadius: 12,
+                              border: '1.5px solid #fecaca',
+                              background: '#fff7f7',
+                              opacity: 0.72,
+                              cursor: 'not-allowed',
+                              position: 'relative',
+                            }}>
+                              {/* Occupied badge */}
+                              <div style={{
+                                position: 'absolute', top: 10, right: 12,
+                                display: 'flex', alignItems: 'center', gap: 4,
+                              }}>
+                                <span style={{
+                                  fontSize: '0.72rem', fontWeight: 700,
+                                  color: '#b91c1c', background: '#fee2e2',
+                                  padding: '2px 8px', borderRadius: 6,
+                                }}>Đang có hợp đồng</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ fontWeight: 700, color: '#6b7280', fontSize: '0.95rem' }}>{a.name}</span>
+                              </div>
+                              <div style={{ fontSize: '0.82rem', color: '#9ca3af' }}>{a.size} m³ · {a.width}m × {a.length}m</div>
+                              <div style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: 4, fontStyle: 'italic' }}>
+                                Ô khu này đang được thuê bởi người khác, không thể chọn.
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        // ── Available: clickable ─────────────────────────────
+                        return (
+                          <button
+                            key={a.id}
+                            onClick={() => { setSelectedArea(a); doSubmitRequest(a); }}
+                            style={{
+                              padding: '14px 16px', borderRadius: 12,
+                              border: fits ? '1.5px solid #86efac' : '1.5px solid #e2e8f0',
+                              background: fits ? '#f0fdf4' : '#f8fafc',
+                              cursor: 'pointer', textAlign: 'left',
+                              transition: 'all 0.15s', width: '100%',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = fits ? '#dcfce7' : '#f1f5f9'; e.currentTarget.style.borderColor = fits ? '#4ade80' : '#94a3b8'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = fits ? '#f0fdf4' : '#f8fafc'; e.currentTarget.style.borderColor = fits ? '#86efac' : '#e2e8f0'; }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{a.name}</span>
+                                  {fits && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0369a1', background: '#e0f2fe', padding: '1px 7px', borderRadius: 6 }}>Phù hợp</span>}
+                                </div>
+                                <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 2 }}>{a.size} m³ · {a.width}m × {a.length}m</div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                {estimatedPrice && (
+                                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#065f46' }}>
+                                    {Number(estimatedPrice).toLocaleString('vi-VN')} ₫/tháng
+                                  </div>
+                                )}
+                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: 6 }}>Còn trống</span>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {availableCount === 0 && (
+                      <div style={{ padding: '0.8rem 1rem', textAlign: 'center', color: '#dc2626', fontSize: '0.88rem', background: '#fff7f7', borderRadius: 10, border: '1px solid #fecaca', marginBottom: '1.2rem' }}>
+                        Hiện tất cả ô khu đều đang được thuê. Hãy bỏ qua để chủ kho sắp xếp.
+                      </div>
+                    )}
+
+                    {/* Divider */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1.2rem' }}>
+                      <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                      <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>hoặc</span>
+                      <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                    </div>
+
+                    {/* Skip */}
+                    <button
+                      onClick={() => { setSelectedArea(null); doSubmitRequest(null); }}
+                      style={{
+                        width: '100%', padding: '12px 20px', borderRadius: 12,
+                        border: '1.5px solid #e2e8f0', background: '#f8fafc',
+                        color: '#475569', fontWeight: 700, fontSize: '0.92rem',
+                        cursor: 'pointer', transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f1f5f9'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#f8fafc'; }}
+                    >
+                      Bỏ qua — Chủ kho sẽ sắp xếp vị trí ({enteredVol} m³)
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+
+
             {/* ── Rental Request Success Popup ── */}
             {showRentalSuccessPopup && (
               <div style={{
@@ -667,10 +1131,10 @@ const WarehouseDetailsPage = () => {
                     <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#065f46' }}>
                       {Number(warehouseData.pricePerM2).toLocaleString('vi-VN')} đ
                     </span>
-                    <span style={{ fontSize: '0.8rem', color: '#047857', fontWeight: 600 }}>/m²/tháng</span>
+                    <span style={{ fontSize: '0.8rem', color: '#047857', fontWeight: 600 }}>/m³/tháng</span>
                   </div>
                 ) : null}
-                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Diện tích còn trống: <strong>{warehouse.availableArea} m²</strong></p>
+                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Thể tích còn trống: <strong>{warehouse.availableArea} m³</strong></p>
               </div>
 
               {/* Feedback message */}
@@ -688,15 +1152,27 @@ const WarehouseDetailsPage = () => {
 
               {/* Form fields */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '1.2rem' }}>
-                <div style={fieldGroup}>
-                  <label style={fieldLabel}>DIỆN TÍCH CẦN THUÊ (m²) *</label>
-                  <input
-                    type="number" name="requestedArea" min="1" step="0.1"
-                    placeholder={`Tối đa ${warehouse.availableArea} m²`}
-                    value={formData.requestedArea} onChange={handleInputChange}
-                    style={fieldInput}
-                  />
-                </div>
+                {/* Selected area badge */}
+                {selectedArea && (
+                  <div style={{ padding: '10px 14px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #86efac', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ô khu đã chọn</div>
+                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{selectedArea.name} — {selectedArea.size} m³</div>
+                    </div>
+                    <button onClick={() => setSelectedArea(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>✕</button>
+                  </div>
+                )}
+                {!selectedArea && (
+                  <div style={fieldGroup}>
+                    <label style={fieldLabel}>THỂ TÍCH CẦN THUÊ (m³) *</label>
+                    <input
+                      type="number" name="requestedArea" min="1" step="0.1"
+                      placeholder={`Tối đa ${warehouse.availableArea} m³`}
+                      value={formData.requestedArea} onChange={handleInputChange}
+                      style={fieldInput}
+                    />
+                  </div>
+                )}
                 <div style={fieldGroup}>
                   <label style={fieldLabel}>NGÀY BẮT ĐẦU *</label>
                   <input
@@ -727,19 +1203,29 @@ const WarehouseDetailsPage = () => {
 
               {/* Submit button */}
               {isLoggedIn ? (
-                <button
-                  onClick={handleSubmitRequest}
-                  disabled={submitting}
-                  style={{
-                    width: '100%', backgroundColor: submitting ? '#94a3b8' : '#0095c7',
-                    color: '#fff', padding: '14px', borderRadius: '8px',
-                    fontWeight: 700, fontSize: '1rem', border: 'none',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    marginBottom: '12px', transition: 'background-color 0.2s'
-                  }}
-                >
-                  {submitting ? 'Đang gửi...' : 'Gửi yêu cầu thuê kho'}
-                </button>
+                <>
+                  {!selectedArea && !formData.requestedArea && (
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8', textAlign: 'center', marginBottom: 8, fontStyle: 'italic' }}>
+                      Nhập thể tích cần thuê để tiếp tục
+                    </div>
+                  )}
+                  <button
+                    onClick={handleSubmitRequest}
+                    disabled={submitting || (!selectedArea && (!formData.requestedArea || parseFloat(formData.requestedArea) <= 0))}
+                    style={{
+                      width: '100%',
+                      backgroundColor: submitting ? '#94a3b8'
+                        : (!selectedArea && (!formData.requestedArea || parseFloat(formData.requestedArea) <= 0)) ? '#cbd5e1'
+                        : '#0095c7',
+                      color: '#fff', padding: '14px', borderRadius: '8px',
+                      fontWeight: 700, fontSize: '1rem', border: 'none',
+                      cursor: (submitting || (!selectedArea && (!formData.requestedArea || parseFloat(formData.requestedArea) <= 0))) ? 'not-allowed' : 'pointer',
+                      marginBottom: '12px', transition: 'background-color 0.2s',
+                    }}
+                  >
+                    {submitting ? 'Đang gửi...' : 'Gửi yêu cầu thuê kho'}
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={() => navigate('/auth')}
@@ -756,7 +1242,13 @@ const WarehouseDetailsPage = () => {
 
               {/* Owner info */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '20px' }}>
-                <img src={warehouse.ownerAvatarUrl} alt="Owner" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
+                {warehouse.ownerAvatarUrl ? (
+                  <img src={warehouse.ownerAvatarUrl} alt="Owner" style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 700 }}>
+                    {(warehouse.ownerName || 'C').charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Chủ kho</div>
                   <div style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b' }}>{warehouse.ownerName}</div>

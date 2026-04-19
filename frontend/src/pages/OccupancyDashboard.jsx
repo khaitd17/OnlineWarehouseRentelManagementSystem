@@ -59,8 +59,8 @@ const OccupancyDashboard = () => {
     const KPI_CARDS = [
         { label: 'Tổng số kho', value: totalWarehouses, sub: 'Kho hàng đang quản lý', icon: <Package size={20} />, bg: 'bg-indigo-50 text-indigo-600', border: 'border-indigo-100' },
         { label: 'Tỉ lệ lấp đầy TB', value: `${averageOccupancyRate.toFixed(1)}%`, sub: 'Toàn bộ hệ thống', icon: <Activity size={20} />, bg: 'bg-orange-50 text-orange-600', border: 'border-orange-100' },
-        { label: 'Diện tích sử dụng', value: `${totalOccupiedArea.toLocaleString()} m²`, sub: 'Đang được thuê thực tế', icon: <Layers size={20} />, bg: 'bg-emerald-50 text-emerald-600', border: 'border-emerald-100' },
-        { label: 'Diện tích đặt trước', value: `${totalReservedArea.toLocaleString()} m²`, sub: 'Hợp đồng sắp hiệu lực', icon: <Clock size={20} />, bg: 'bg-amber-50 text-amber-600', border: 'border-amber-100' },
+        { label: 'Thể tích sử dụng', value: `${totalOccupiedArea.toLocaleString()} m³`, sub: 'Đang được thuê thực tế', icon: <Layers size={20} />, bg: 'bg-emerald-50 text-emerald-600', border: 'border-emerald-100' },
+        { label: 'Thể tích đặt trước', value: `${totalReservedArea.toLocaleString()} m³`, sub: 'Hợp đồng sắp hiệu lực', icon: <Clock size={20} />, bg: 'bg-amber-50 text-amber-600', border: 'border-amber-100' },
     ];
 
     // Data for Pie Chart
@@ -377,10 +377,10 @@ const OccupancyDashboard = () => {
                                                     <span className="text-[11px] text-slate-400 font-bold uppercase mt-0.5">ID: WH-{wh.warehouseId}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-5 text-center font-bold text-slate-600">{wh.totalArea.toLocaleString()} m²</td>
-                                            <td className="px-6 py-5 text-center text-emerald-600 font-black">{wh.occupiedArea.toLocaleString()} m²</td>
-                                            <td className="px-6 py-5 text-center text-amber-500 font-bold">{wh.reservedArea.toLocaleString()} m²</td>
-                                            <td className="px-6 py-5 text-center text-slate-400 font-medium italic">{wh.availableArea.toLocaleString()} m²</td>
+                                            <td className="px-6 py-5 text-center font-bold text-slate-600">{wh.totalArea.toLocaleString()} m³</td>
+                                            <td className="px-6 py-5 text-center text-emerald-600 font-black">{wh.occupiedArea.toLocaleString()} m³</td>
+                                            <td className="px-6 py-5 text-center text-amber-500 font-bold">{wh.reservedArea.toLocaleString()} m³</td>
+                                            <td className="px-6 py-5 text-center text-slate-400 font-medium italic">{wh.availableArea.toLocaleString()} m³</td>
                                             <td className="px-8 py-5">
                                                 <div className="space-y-2">
                                                     <div className="flex items-center justify-between gap-3">

@@ -2,135 +2,139 @@ import React, { useState } from 'react';
 import rentalService from '../services/rentalService';
 
 /**
- * CancelRequestButton - Button to cancel a rental request with reason
+ * CancelRequestButton — cho phép người thuê hủy yêu cầu thuê kho.
+ * Modal dùng inline style (không phụ thuộc Tailwind CSS).
  */
-const CancelRequestButton = ({ 
-  requestId, 
+const CancelRequestButton = ({
+  requestId,
   requestStatus,
-  onCancelSuccess, 
+  onCancelSuccess,
   onCancelError,
-  variant = 'button', // 'button' | 'link' | 'icon'
-  className = '' 
+  variant = 'button',
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [reason, setReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState(null);
 
-  // Only show for cancellable statuses
-  const cancellableStatuses = ['PENDING', 'APPROVED', 'PENDING_CONTRACT'];
-  if (!cancellableStatuses.includes(requestStatus)) {
-    return null;
-  }
+  // Chỉ hiện với các trạng thái có thể hủy
+  const cancellableStatuses = ['PENDING', 'DRAFT'];
+  if (!cancellableStatuses.includes(requestStatus)) return null;
 
   const handleCancel = async () => {
-    if (!reason.trim()) {
-      setError('Vui lòng nhập lý do hủy');
-      return;
-    }
-
+    if (!reason.trim()) { setError('Vui lòng nhập lý do hủy.'); return; }
     setIsCancelling(true);
     setError(null);
-
     try {
       const result = await rentalService.cancelRentalRequest(requestId, reason);
       setShowModal(false);
       setReason('');
-      
-      if (onCancelSuccess) {
-        onCancelSuccess(result);
-      }
+      if (onCancelSuccess) onCancelSuccess(result);
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Có lỗi xảy ra khi hủy yêu cầu';
-      setError(errorMessage);
-      if (onCancelError) {
-        onCancelError(errorMessage);
+      const msg = err.response?.data?.message || 'Có lỗi xảy ra khi hủy yêu cầu.';
+      // Nếu request đã được hủy rồi (stale UI), đóng modal và refresh danh sách
+      if (msg.includes('CANCELLED') || msg.toLowerCase().includes('đã hủy')) {
+        setShowModal(false);
+        setReason('');
+        if (onCancelSuccess) onCancelSuccess();
+      } else {
+        setError(msg);
       }
     } finally {
       setIsCancelling(false);
     }
   };
 
-  const renderTrigger = () => {
-    switch (variant) {
-      case 'link':
-        return (
-          <button
-            onClick={() => setShowModal(true)}
-            className={`text-red-600 hover:text-red-800 hover:underline ${className}`}
-          >
-            Hủy yêu cầu
-          </button>
-        );
-      case 'icon':
-        return (
-          <button
-            onClick={() => setShowModal(true)}
-            className={`p-2 text-red-600 hover:bg-red-50 rounded-full ${className}`}
-            title="Hủy yêu cầu"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        );
-      default:
-        return (
-          <button
-            onClick={() => setShowModal(true)}
-            className={`px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 ${className}`}
-          >
-            Hủy yêu cầu
-          </button>
-        );
-    }
-  };
+  const handleClose = () => { setShowModal(false); setReason(''); setError(null); };
 
   return (
     <>
-      {renderTrigger()}
+      {/* Trigger button */}
+      <button
+        onClick={() => setShowModal(true)}
+        style={{
+          padding: '10px 20px', borderRadius: 10,
+          border: '1.5px solid #fca5a5', background: '#fef2f2',
+          color: '#dc2626', fontWeight: 700, fontSize: '0.88rem',
+          cursor: 'pointer', transition: 'all 0.18s',
+          whiteSpace: 'nowrap',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.borderColor = '#f87171'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.borderColor = '#fca5a5'; }}
+      >
+        Hủy yêu cầu
+      </button>
 
       {/* Cancel Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Hủy yêu cầu thuê kho</h3>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Lý do hủy <span className="text-red-500">*</span>
+        <div
+          onClick={handleClose}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 20,
+              padding: '2rem 2rem 1.6rem', maxWidth: 440, width: '92%',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
+              position: 'relative',
+            }}
+          >
+            {/* Close X */}
+            <button onClick={handleClose} style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#64748b' }}>✕</button>
+
+            <h3 style={{ margin: '0 0 6px', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Hủy yêu cầu thuê kho</h3>
+            <p style={{ margin: '0 0 20px', fontSize: '0.85rem', color: '#64748b' }}>Sau khi hủy, yêu cầu sẽ không thể khôi phục.</p>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                Lý do hủy <span style={{ color: '#dc2626' }}>*</span>
               </label>
               <textarea
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={e => { setReason(e.target.value); setError(null); }}
                 placeholder="Nhập lý do hủy yêu cầu..."
                 rows={3}
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{
+                  width: '100%', padding: '10px 14px', borderRadius: 10,
+                  border: error ? '1.5px solid #fca5a5' : '1.5px solid #e2e8f0',
+                  fontSize: '0.9rem', resize: 'vertical', outline: 'none',
+                  boxSizing: 'border-box', fontFamily: 'inherit', lineHeight: 1.6, color: '#0f172a',
+                }}
+                onFocus={e => e.target.style.borderColor = '#0ea5e9'}
+                onBlur={e => e.target.style.borderColor = error ? '#fca5a5' : '#e2e8f0'}
               />
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+              <div style={{ padding: '10px 14px', marginBottom: 16, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, fontSize: '0.85rem', color: '#dc2626', fontWeight: 600 }}>
                 {error}
               </div>
             )}
 
-            <div className="flex gap-3 justify-end">
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
-                onClick={() => {
-                  setShowModal(false);
-                  setReason('');
-                  setError(null);
-                }}
+                onClick={handleClose}
                 disabled={isCancelling}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                style={{ padding: '10px 20px', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}
               >
                 Đóng
               </button>
               <button
                 onClick={handleCancel}
-                disabled={isCancelling}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                disabled={isCancelling || !reason.trim()}
+                style={{
+                  padding: '10px 22px', borderRadius: 10, border: 'none',
+                  background: isCancelling || !reason.trim() ? '#fca5a5' : 'linear-gradient(135deg, #dc2626, #b91c1c)',
+                  color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+                  cursor: isCancelling || !reason.trim() ? 'not-allowed' : 'pointer',
+                  boxShadow: isCancelling || !reason.trim() ? 'none' : '0 4px 14px rgba(220,38,38,0.35)',
+                  transition: 'all 0.2s',
+                }}
               >
                 {isCancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
               </button>

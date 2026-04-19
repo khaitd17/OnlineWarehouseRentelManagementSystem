@@ -102,8 +102,8 @@ export default function WarehousesPage() {
       )
     }] : []),
     { key: "address", label: "Địa chỉ", render: v => <span style={{ maxWidth: 180, display: "inline-block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v}</span> },
-    { key: "totalArea", label: "Diện tích", sortable: true, render: v => `${v} m²` },
-    { key: "availableArea", label: "Khả dụng", sortable: true, render: v => `${v} m²` },
+    { key: "totalArea", label: "Thể tích", sortable: true, render: v => `${v} m³` },
+    { key: "availableArea", label: "Khả dụng", sortable: true, render: v => `${v} m³` },
     { key: "status", label: "Trạng thái", sortable: true, render: v => <StatusBadge status={v} /> },
     { key: "occupancyRate", label: "Lấp đầy", sortable: true, render: v => (
       <span style={{ fontWeight: 600, color: v > 80 ? "#ef4444" : v > 50 ? "#f59e0b" : "#10b981" }}>{v}%</span>

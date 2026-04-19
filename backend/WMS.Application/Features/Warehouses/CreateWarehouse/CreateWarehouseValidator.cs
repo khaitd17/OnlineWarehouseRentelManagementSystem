@@ -46,12 +46,6 @@ public class CreateWarehouseValidator : AbstractValidator<CreateWarehouseCommand
             .InclusiveBetween(-180, 180).When(x => x.Lng.HasValue)
             .WithMessage("Kinh độ không hợp lệ (-180 đến 180)");
 
-        // Cross-field validations
-        RuleFor(x => x)
-            .Must(x => !x.Width.HasValue || !x.Length.HasValue ||
-                       Math.Abs(x.TotalArea - (x.Width.Value * x.Length.Value)) < 0.01)
-            .WithMessage("TotalArea phải bằng Width × Length");
-
         RuleFor(x => x)
             .Must(x => x.Is24HoursAccess || !x.OpenTime.HasValue || !x.CloseTime.HasValue || x.OpenTime < x.CloseTime)
             .WithMessage("Giờ mở cửa phải trước giờ đóng cửa");

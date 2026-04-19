@@ -39,28 +39,36 @@ public class CancelRentalRequestHandler : IRequestHandler<CancelRentalRequestCom
         rentalRequest.CancelWithReason(cancellationReason, "USER");
         await _repository.UpdateAsync(rentalRequest);
 
-        // Log cancellation
-        var cancellationLog = CancellationLog.Create(
-            rentalRequestId: rentalRequest.RequestId,
-            rentalContractId: null,
-            cancelledStage: "PENDING",
-            cancelledBy: "USER",
-            cancellationReason: cancellationReason,
-            refundAmount: null,
-            cancellationFee: null
-        );
-        await _cancellationLogRepository.AddAsync(cancellationLog);
+        // Log cancellation (non-critical — skip if table not yet migrated)
+        try
+        {
+            var cancellationLog = CancellationLog.Create(
+                rentalRequestId: rentalRequest.RequestId,
+                rentalContractId: null,
+                cancelledStage: "PENDING",
+                cancelledBy: "USER",
+                cancellationReason: cancellationReason,
+                refundAmount: null,
+                cancellationFee: null
+            );
+            await _cancellationLogRepository.AddAsync(cancellationLog);
+        }
+        catch { /* Bảng cancellation_logs chưa migrate — bỏ qua */ }
 
-        // Send notification to warehouse owner
-        var notification = Notification.Create(
-            receiverUserId: rentalRequest.Warehouse.OwnerId,
-            title: "Yêu cầu thuê kho đã bị hủy",
-            message: $"Người thuê đã hủy yêu cầu thuê kho {rentalRequest.Warehouse.Name}. Lý do: {cancellationReason}",
-            notificationType: "IN_APP",
-            referenceId: rentalRequest.RequestId,
-            referenceType: "RentalRequest"
-        );
-        await _notificationRepository.AddAsync(notification);
+        // Send notification to warehouse owner (non-critical)
+        try
+        {
+            var notification = Notification.Create(
+                receiverUserId: rentalRequest.Warehouse?.OwnerId ?? 0,
+                title: "Yêu cầu thuê kho đã bị hủy",
+                message: $"Người thuê đã hủy yêu cầu thuê kho {rentalRequest.Warehouse?.Name ?? ""}. Lý do: {cancellationReason}",
+                notificationType: "IN_APP",
+                referenceId: rentalRequest.RequestId,
+                referenceType: "RentalRequest"
+            );
+            await _notificationRepository.AddAsync(notification);
+        }
+        catch { /* Không gửi được notification — bỏ qua */ }
 
         return Unit.Value;
     }

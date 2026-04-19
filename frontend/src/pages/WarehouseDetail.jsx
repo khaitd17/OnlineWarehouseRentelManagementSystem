@@ -346,19 +346,19 @@ const WarehouseDetail = () => {
 
                 <div>
                   <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
-                    Tổng diện tích
+                    Tổng thể tích
                   </div>
                   <div style={{ fontWeight: 700 }}>
-                    {warehouse.totalArea} m²
+                    {warehouse.totalArea} m³
                   </div>
                 </div>
 
                 <div>
                   <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
-                    Diện tích còn trống
+                    Thể tích còn trống
                   </div>
                   <div style={{ fontWeight: 700 }}>
-                    {warehouse.availableArea} m²
+                    {warehouse.availableArea} m³
                   </div>
                 </div>
 
@@ -485,7 +485,7 @@ const WarehouseDetail = () => {
                 
                 <div>
                   <label style={{ display: "block", fontWeight: 600, marginBottom: "8px", fontSize: "0.9rem" }}>
-                    Diện tích cần thuê (m²) <span style={{ color: "red" }}>*</span>
+                    Thể tích cần thuê (m³) <span style={{ color: "red" }}>*</span>
                   </label>
                   <input
                     type="number"
@@ -495,7 +495,7 @@ const WarehouseDetail = () => {
                     required
                     min="1"
                     max={warehouse?.availableArea}
-                    placeholder={`Tối đa ${warehouse?.availableArea} m²`}
+                    placeholder={`Tối đa ${warehouse?.availableArea} m³`}
                     style={{
                       width: "100%",
                       padding: "12px",

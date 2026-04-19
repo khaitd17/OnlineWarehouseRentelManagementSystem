@@ -191,7 +191,9 @@ const MyRentalRequests = () => {
           {requests.map((req, idx) => {
             const displayStatus = req.contractStatus || req.status;
             const s = statusConfig[displayStatus] || { bg: "#f1f5f9", color: "#475569", accent: "#94a3b8", label: displayStatus };
-            const isCardDisabled = req.status === "APPROVED" || ["CANCELLED", "CANCELLED_BY_USER", "CANCELLED_BY_OWNER", "CANCELLED_NO_PAYMENT"].includes(req.contractStatus || "");
+            const cancelledStatuses = ["CANCELLED", "CANCELLED_BY_USER", "CANCELLED_BY_OWNER", "CANCELLED_NO_PAYMENT"];
+            const isFullyCancelled = cancelledStatuses.includes(req.status) || cancelledStatuses.includes(req.contractStatus || "");
+            const isCardDisabled = req.status === "APPROVED" || isFullyCancelled || req.status === "REJECTED";
 
             return (
               <div
@@ -200,11 +202,12 @@ const MyRentalRequests = () => {
                 onClick={() => { if (!isCardDisabled) navigate(`/rental-request/${req.requestId}`); }}
                 style={{
                   background: "#fff", borderRadius: 18,
-                  overflow: "hidden", cursor: isCardDisabled ? "default" : "pointer",
+                  overflow: "hidden",
+                  cursor: isFullyCancelled || req.status === "REJECTED" ? "default" : isCardDisabled ? "default" : "pointer",
                   boxShadow: "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03)",
                   border: "1px solid #eef1f6",
                   animation: `cardIn 0.4s ease ${idx * 0.06}s both`,
-                  opacity: ["CANCELLED", "CANCELLED_BY_USER", "CANCELLED_BY_OWNER", "CANCELLED_NO_PAYMENT"].includes(req.contractStatus || "") ? 0.75 : 1,
+                  opacity: isFullyCancelled ? 0.65 : 1,
                 }}
               >
                 {/* Card top accent bar */}
@@ -265,20 +268,22 @@ const MyRentalRequests = () => {
                   }}>
                     {[
                       { label: "Địa chỉ", value: req.warehouseAddress },
-                      { label: "Diện tích", value: `${req.requestedArea} m²` },
+                      { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
+                      req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null,
                       { label: "Bắt đầu", value: formatDate(req.startDate) },
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
-                    ].map(item => (
+                    ].filter(Boolean).map(item => (
                       <div key={item.label} style={{
                         padding: "8px 14px", borderRadius: 10,
-                        background: "#f8fafc", border: "1px solid #f1f5f9",
+                        background: item.highlighted ? "#f0fdf4" : "#f8fafc",
+                        border: item.highlighted ? "1px solid #86efac" : "1px solid #f1f5f9",
                         display: "flex", flexDirection: "column", gap: 2,
                         minWidth: 120, flex: item.label === "Địa chỉ" ? "1 1 100%" : "0 0 auto",
                       }}>
-                        <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        <span style={{ fontSize: "0.65rem", fontWeight: 700, color: item.highlighted ? "#15803d" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                           {item.label}
                         </span>
-                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: "#334155" }}>
+                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: item.highlighted ? "#166534" : "#334155" }}>
                           {item.value}
                         </span>
                       </div>
@@ -326,6 +331,7 @@ const MyRentalRequests = () => {
                             className="rr-btn"
                             onClick={(e) => {
                               e.stopPropagation();
+                              window.scrollTo(0, 0);
                               navigate("/search");
                             }}
                             style={{
@@ -440,7 +446,6 @@ const MyRentalRequests = () => {
                           requestId={req.requestId}
                           requestStatus={req.status}
                           onCancelSuccess={() => fetchRequests()}
-                          onCancelError={(error) => alert(error)}
                           variant="button"
                         />
                       </div>

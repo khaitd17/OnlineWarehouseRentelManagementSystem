@@ -34,11 +34,11 @@ const PostWarehousePage = () => {
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>Bước 2: Diện tích & Giá thuê</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Diện tích (m²)</label>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Diện tích (m³)</label>
                 <input type="number" placeholder="0" style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Giá thuê (VNĐ/m²/tháng)</label>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Giá thuê (VNĐ/m³/tháng)</label>
                 <input type="number" placeholder="0" style={{ padding: '0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0' }} />
               </div>
             </div>

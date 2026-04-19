@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
+import paymentService from "../services/paymentService";
 import ContractSigningModal from "../components/ContractSigningModal";
 import TerminateContractModal from "../components/TerminateContractModal";
 import SigningHistoryTimeline from "../components/SigningHistoryTimeline";
@@ -14,6 +15,7 @@ const statusConfig = {
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
   SIGNED:     { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
   PENDING_PAYMENT: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ thanh toán" },
+  PENDING_PAYMENT_CONFIRMATION: { bg: "#dbeafe", color: "#2563eb", label: "Chờ chủ kho xác nhận thanh toán" },
   PAYMENT_FAILED: { bg: "#fee2e2", color: "#dc2626", label: "Thanh toán thất bại" },
   ACTIVE:     { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
   COMPLETED:  { bg: "#e0e7ff", color: "#6366f1", label: "Đã hoàn thành" },
@@ -137,6 +139,7 @@ const ContractDetail = () => {
   const [processingApproval, setProcessingApproval] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [terminationFee, setTerminationFee] = useState('');
+  const [hasPendingPayment, setHasPendingPayment] = useState(false);
 
   const reloadContract = () => {
     setRefreshKey(k => k + 1);
@@ -245,7 +248,25 @@ const ContractDetail = () => {
   useEffect(() => {
     setLoading(true);
     rentalService.getContractById(id)
-      .then(setContract)
+      .then(data => {
+        setContract(data);
+        // If PENDING_PAYMENT, check if a payment is already submitted
+        if (data?.status === "PENDING_PAYMENT" || data?.status === "SIGNED") {
+          paymentService.getPaymentsByContract(id)
+            .then(payments => {
+              if (Array.isArray(payments)) {
+                const submitted = payments.find(p =>
+                  p.paymentType === "DEPOSIT" &&
+                  (p.status === "PENDING" || p.status === "RETRY_PENDING" || p.status === "SUBMITTED")
+                );
+                setHasPendingPayment(!!submitted);
+              }
+            })
+            .catch(() => {}); // silently ignore
+        } else {
+          setHasPendingPayment(false);
+        }
+      })
       .catch((err) => {
         if (err.response?.status === 403) setError("Bạn không có quyền xem hợp đồng này.");
         else if (err.response?.status === 404) setError("Không tìm thấy hợp đồng.");
@@ -363,8 +384,10 @@ const ContractDetail = () => {
     (contract?.status === "DRAFT" || contract?.status === "PENDING_SIGNATURE" || contract?.status === "PENDING_RENTER_SIGNATURE");
   const canRenterDecline = contract?.isCurrentUserRenter &&
     (contract?.status === "DRAFT" || contract?.status === "PENDING_RENTER_SIGNATURE");
+  // canRenterPay: true only if no payment has been submitted/pending yet
   const canRenterPay = contract?.isCurrentUserRenter &&
-    (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED");
+    (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED") &&
+    !hasPendingPayment;
 
   if (loading) return (
     <div style={{ padding: "5rem 2rem", textAlign: "center" }}>
@@ -385,7 +408,11 @@ const ContractDetail = () => {
 
   if (!contract) return null;
 
-  const status = statusConfig[contract.status] || { bg: "#f1f5f9", color: "#64748b", label: contract.status };
+  // If payment already submitted but contract still PENDING_PAYMENT, show a different status label
+  const effectiveStatus = hasPendingPayment && contract.status === "PENDING_PAYMENT"
+    ? "PENDING_PAYMENT_CONFIRMATION"
+    : contract.status;
+  const status = statusConfig[effectiveStatus] || { bg: "#f1f5f9", color: "#64748b", label: contract.status };
 
   return (
     <div style={{ padding: "0 2rem 3rem", maxWidth: 940, margin: "0 auto", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
@@ -485,11 +512,13 @@ const ContractDetail = () => {
         {contract.ownerName && (
           <Section title="Bên cho thuê — Bên A" accent="#2563eb">
             <InfoRow label="Họ tên" value={contract.ownerName} />
+            <InfoRow label="Số điện thoại" value={contract.ownerPhone || "—"} />
           </Section>
         )}
         <Section title="Bên thuê — Bên B" accent="#7c3aed">
           <InfoRow label="Họ tên" value={contract.renterName} />
           <InfoRow label="Email" value={contract.renterEmail} />
+          <InfoRow label="Số điện thoại" value={contract.renterPhone || "—"} />
         </Section>
       </div>
 
@@ -498,6 +527,7 @@ const ContractDetail = () => {
         <Section title="Thông tin kho" accent="#0891b2">
           <InfoRow label="Tên kho" value={contract.warehouseName} />
           <InfoRow label="Địa chỉ" value={contract.warehouseAddress} />
+          <InfoRow label="Thể tích thuê" value={`${contract.requestedArea || 0} m³`} />
         </Section>
       </div>
 
@@ -883,7 +913,7 @@ const ContractDetail = () => {
         </div>
       )}
 
-      {/* Payment Button - Only for renter */}
+      {/* Payment Button - Only for renter, only if no payment submitted yet */}
       {canRenterPay && (
         <div style={{ marginTop: "0.5rem" }}>
           <div style={{
@@ -895,7 +925,7 @@ const ContractDetail = () => {
             fontSize: "0.9rem",
             marginBottom: "1rem"
           }}>
-            <strong>Hợp đồng đã ký thành công!</strong> Vui lòng thanh toán trong vòng 5 phút để kích hoạt hợp đồng.
+            <strong>Hợp đồng đã ký thành công!</strong> Vui lòng thanh toán để kích hoạt hợp đồng.
           </div>
           <button
             onClick={() => navigate(`/contracts/${id}/payment`)}
@@ -916,6 +946,29 @@ const ContractDetail = () => {
           >
             Thanh toán ngay
           </button>
+        </div>
+      )}
+
+      {/* Payment submitted, awaiting owner confirmation */}
+      {hasPendingPayment && contract?.isCurrentUserRenter &&
+        (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED") && (
+        <div style={{
+          marginTop: "0.5rem",
+          padding: "16px 20px",
+          backgroundColor: "#eff6ff",
+          borderRadius: "14px",
+          border: "1px solid #bfdbfe",
+          display: "flex", alignItems: "center", gap: 12,
+        }}>
+          <span style={{ fontSize: "1.3rem" }}>⏳</span>
+          <div>
+            <div style={{ fontWeight: 700, color: "#1d4ed8", fontSize: "0.92rem", marginBottom: 3 }}>
+              Đang chờ chủ kho xác nhận thanh toán
+            </div>
+            <div style={{ fontSize: "0.82rem", color: "#3b82f6" }}>
+              Bạn đã gửi thanh toán thành công. Chủ kho sẽ xác nhận và kích hoạt hợp đồng sớm nhất có thể.
+            </div>
+          </div>
         </div>
       )}
 

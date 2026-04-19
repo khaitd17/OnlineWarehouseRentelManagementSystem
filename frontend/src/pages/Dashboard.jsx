@@ -186,9 +186,6 @@ const Dashboard = () => {
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-slate-500">Tổng doanh thu</span>
-              <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
-                <span className="material-symbols-outlined text-xl leading-none">payments</span>
-              </div>
             </div>
             <div className="flex items-baseline gap-2">
               {loading.revenue ? <SkeletonNum /> : (
@@ -202,9 +199,6 @@ const Dashboard = () => {
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-slate-500">Tỷ lệ lấp đầy TB</span>
-              <div className="p-2 rounded-lg bg-orange-100 text-orange-600">
-                <span className="material-symbols-outlined text-xl leading-none">donut_large</span>
-              </div>
             </div>
             <div className="flex items-baseline gap-2">
               {loading.occupancy ? <SkeletonNum /> : (
@@ -218,9 +212,6 @@ const Dashboard = () => {
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-slate-500">Tổng số kho</span>
-              <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
-                <span className="material-symbols-outlined text-xl leading-none">warehouse</span>
-              </div>
             </div>
             <div className="flex items-baseline gap-2">
               {loading.warehouses ? <SkeletonNum /> : (
@@ -236,9 +227,6 @@ const Dashboard = () => {
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-slate-500">Tổng nhân viên</span>
-              <div className="p-2 rounded-lg bg-teal-100 text-teal-600">
-                <span className="material-symbols-outlined text-xl leading-none">group</span>
-              </div>
             </div>
             <div className="flex items-baseline gap-2">
               {loading.staff ? <SkeletonNum /> : (
@@ -311,7 +299,7 @@ const Dashboard = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-slate-700 font-medium">
-                            {wh.totalArea ? `${wh.totalArea.toLocaleString('vi-VN')} m²` : '—'}
+                            {wh.totalArea ? `${wh.totalArea.toLocaleString('vi-VN')} m³` : '—'}
                           </td>
                           <td className="px-6 py-4">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${st.cls}`}>

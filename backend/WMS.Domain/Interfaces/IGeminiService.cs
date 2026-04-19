@@ -28,5 +28,8 @@ public record GeminiAnalysisResult(
 public record DetectedItem(
     string Name,
     int Quantity,
-    double EstimatedVolumeM3
+    double EstimatedVolumeM3,
+    double WidthM,
+    double LengthM,
+    double HeightM
 );

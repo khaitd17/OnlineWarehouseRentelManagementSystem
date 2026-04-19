@@ -1157,5 +1157,16 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("FK_refunds_rental_contracts");
         });
+
+        // ── RentalArea: map Id → rental_area_id ────────────────────────────
+        modelBuilder.Entity<RentalArea>(entity =>
+        {
+            entity.Property(e => e.Id).HasColumnName("rental_area_id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.Size).HasColumnName("size");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+        });
     }
 }

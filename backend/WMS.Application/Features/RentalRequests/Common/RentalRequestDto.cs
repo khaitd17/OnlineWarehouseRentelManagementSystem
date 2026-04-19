@@ -25,4 +25,7 @@ public class RentalRequestDto
     public string? OwnerName { get; set; }
     public string? OwnerEmail { get; set; }
     public string? OwnerPhone { get; set; }
+    public int? RentalAreaId { get; set; }
+    public string? RentalAreaName { get; set; }
+    public double? RentalAreaSize { get; set; }
 }

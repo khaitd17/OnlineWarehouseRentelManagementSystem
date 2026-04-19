@@ -1,10 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Clock, CheckCircle, XCircle, Search, RefreshCw,
-  Warehouse, User, FileText, Image, MapPin, Maximize2, X,
-  ExternalLink, ChevronLeft, ChevronRight, Inbox,
-} from "lucide-react";
+// Icons removed
+
 import adminService from "../../services/adminService";
 import StatusBadge from "../../components/StatusBadge";
 import { useToast } from "../../components/Toast";
@@ -13,12 +10,13 @@ const BASE_URL = "http://localhost:5276";
 
 const DOC_TYPE_LABELS = {
   BUSINESS_LICENSE: "Giấy phép kinh doanh",
-  FIRE_SAFETY: "Phòng cháy chữa cháy",
-  LAND_USE_RIGHT: "Quyền sử dụng đất",
+  WAREHOUSE_CERT:   "Giấy chứng nhận quyền sử dụng kho",
+  FIRE_SAFETY:      "Chứng nhận phòng cháy chữa cháy",
+  LAND_USE_RIGHT:   "Quyền sử dụng đất",
   CONSTRUCTION_PERMIT: "Giấy phép xây dựng",
-  ENVIRONMENTAL: "Chứng nhận môi trường",
-  INSURANCE: "Bảo hiểm",
-  OTHER: "Khác",
+  ENVIRONMENTAL:    "Chứng nhận môi trường",
+  INSURANCE:        "Bảo hiểm",
+  OTHER:            "Tài liệu khác",
 };
 
 export default function AdminPendingWarehousesPage() {
@@ -101,46 +99,40 @@ export default function AdminPendingWarehousesPage() {
   return (
     <div>
       {/* ── Page Header ── */}
-      <div className="admin-page-header">
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)", borderRadius: 10, padding: "8px 10px", display: "flex" }}>
-            <Clock size={20} color="#fff" />
-          </div>
-          <div>
-            <h1 style={{ margin: 0 }}>Duyệt kho bãi</h1>
-            <p style={{ margin: 0 }}>Xem xét và phê duyệt các kho chờ đăng ký từ chủ kho</p>
-          </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", paddingBottom: "16px", borderBottom: "1px solid #e2e8f0" }}>
+        <div>
+          <h1 style={{ margin: "0 0 6px 0", fontSize: "1.5rem", fontWeight: 800, color: "#0f172a" }}>Duyệt kho bãi</h1>
+          <p style={{ margin: 0, fontSize: "0.9rem", color: "#64748b" }}>Xem xét và phê duyệt các kho chờ đăng ký từ chủ kho</p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {!loading && (
-            <span style={{ background: "#fef3c7", color: "#d97706", borderRadius: 20, padding: "6px 16px", fontWeight: 700, fontSize: 15 }}>
-              {data.totalCount} kho đang chờ
-            </span>
+            <div style={{ padding: "6px 14px", background: "#fefce8", border: "1px solid #fde047", color: "#854d0e", fontWeight: 700, fontSize: "0.85rem", borderRadius: "8px" }}>
+              Đang chờ duyệt: {data.totalCount}
+            </div>
           )}
-          <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={fetchData} disabled={loading}>
-            <RefreshCw size={14} style={{ marginRight: 4 }} />
-            Làm mới
+          <button onClick={fetchData} disabled={loading} style={{ padding: "8px 16px", background: "#fff", border: "1px solid #cbd5e1", borderRadius: "8px", color: "#334155", fontWeight: 600, fontSize: "0.85rem", cursor: "pointer" }}>
+            Làm mới danh sách
           </button>
         </div>
       </div>
 
       {/* ── Search Bar ── */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-        <div style={{ flex: 1, position: "relative" }}>
-          <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#9ca3af", pointerEvents: "none" }} />
+      <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+        <div style={{ flex: 1 }}>
           <input
-            className="admin-input"
             placeholder="Tìm kiếm theo tên kho, địa chỉ, chủ kho..."
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleSearch()}
-            style={{ paddingLeft: 38, width: "100%" }}
+            style={{ width: "100%", padding: "10px 16px", border: "1px solid #cbd5e1", borderRadius: "8px", fontSize: "0.9rem", outline: "none", boxSizing: "border-box" }}
           />
         </div>
-        <button className="admin-btn admin-btn-primary admin-btn-sm" onClick={handleSearch}>Tìm kiếm</button>
+        <button onClick={handleSearch} style={{ padding: "0 24px", background: "#0f172a", border: "none", borderRadius: "8px", color: "#fff", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer" }}>
+          Tìm kiếm
+        </button>
         {filters.search && (
-          <button className="admin-btn admin-btn-outline admin-btn-sm" onClick={() => { setSearchInput(""); setFilters(p => ({ ...p, search: "", page: 1 })); }}>
-            Xóa bộ lọc
+          <button onClick={() => { setSearchInput(""); setFilters(p => ({ ...p, search: "", page: 1 })); }} style={{ padding: "0 20px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "8px", color: "#475569", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer" }}>
+            Xóa lọc
           </button>
         )}
       </div>
@@ -152,10 +144,9 @@ export default function AdminPendingWarehousesPage() {
           Đang tải dữ liệu...
         </div>
       ) : data.items.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 80, background: "#fff", borderRadius: 12, border: "1px dashed #d1d5db" }}>
-          <Inbox size={48} style={{ color: "#9ca3af", marginBottom: 12 }} />
-          <div style={{ fontSize: 17, fontWeight: 600, color: "#374151", marginBottom: 6 }}>Không có kho nào chờ duyệt</div>
-          <div style={{ color: "#9ca3af", fontSize: 14 }}>Tất cả yêu cầu đã được xử lý.</div>
+        <div style={{ textAlign: "center", padding: "60px 20px", background: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+          <div style={{ fontSize: "1.1rem", fontWeight: 700, color: "#475569", marginBottom: 4 }}>Không có kho nào chờ duyệt</div>
+          <div style={{ color: "#64748b", fontSize: "0.9rem" }}>Tất cả các yêu cầu đã được xử lý hoàn tất.</div>
         </div>
       ) : (
         <div className="admin-card" style={{ marginBottom: 20 }}>
@@ -231,22 +222,21 @@ export default function AdminPendingWarehousesPage() {
                       </div>
                     </td>
                     <td style={{ maxWidth: 180 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, color: "#6b7280", fontSize: 13 }}>
-                        <MapPin size={12} style={{ flexShrink: 0 }} />
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.address}</span>
+                      <div style={{ color: "#475569", fontSize: "0.85rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {row.address}
                       </div>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 600, color: "#1f2937" }}>{row.totalArea} m²</span>
+                      <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.85rem" }}>{row.totalArea} m³</span>
                     </td>
                     <td>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, background: row.mediaCount > 0 ? "#eff6ff" : "#f9fafb", color: row.mediaCount > 0 ? "#2563eb" : "#9ca3af", padding: "3px 8px", borderRadius: 12, fontWeight: 500 }}>
-                        <Image size={12} /> {row.mediaCount}
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: row.mediaCount > 0 ? "#0284c7" : "#94a3b8" }}>
+                        {row.mediaCount} ảnh/video
                       </span>
                     </td>
                     <td>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, background: row.documentCount > 0 ? "#f0fdf4" : "#f9fafb", color: row.documentCount > 0 ? "#16a34a" : "#9ca3af", padding: "3px 8px", borderRadius: 12, fontWeight: 500 }}>
-                        <FileText size={12} /> {row.documentCount}
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: row.documentCount > 0 ? "#16a34a" : "#94a3b8" }}>
+                        {row.documentCount} giấy tờ
                       </span>
                     </td>
                     <td>
@@ -255,24 +245,21 @@ export default function AdminPendingWarehousesPage() {
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                         <button
-                          className="admin-btn admin-btn-sm admin-btn-outline"
                           onClick={() => openDetail(row)}
-                          title="Xem chi tiết">
-                          <Maximize2 size={12} style={{ marginRight: 4 }} /> Xem
+                          style={{ padding: "4px 10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "6px", color: "#334155", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
+                          Chi tiết
                         </button>
                         <button
-                          className="admin-btn admin-btn-sm admin-btn-success"
                           onClick={() => setApproveModal({ open: true, warehouseId: row.warehouseId, warehouseName: row.name, isApproved: true, reason: "", loading: false })}
-                          title="Duyệt kho">
-                          <CheckCircle size={12} style={{ marginRight: 4 }} /> Duyệt
+                          style={{ padding: "4px 10px", background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "6px", color: "#166534", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
+                          Duyệt
                         </button>
                         <button
-                          className="admin-btn admin-btn-sm admin-btn-danger"
                           onClick={() => setApproveModal({ open: true, warehouseId: row.warehouseId, warehouseName: row.name, isApproved: false, reason: "", loading: false })}
-                          title="Từ chối">
-                          <XCircle size={12} style={{ marginRight: 4 }} /> Từ chối
+                          style={{ padding: "4px 10px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "6px", color: "#991b1b", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>
+                          Từ chối
                         </button>
                       </div>
                     </td>
@@ -286,13 +273,13 @@ export default function AdminPendingWarehousesPage() {
 
       {/* ── Pagination ── */}
       {data.totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 20 }}>
-          <button className="admin-btn admin-btn-sm admin-btn-outline" disabled={data.page <= 1} onClick={() => setFilters(p => ({ ...p, page: p.page - 1 }))}>
-            <ChevronLeft size={14} />
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginBottom: 24, paddingTop: 16 }}>
+          <button disabled={data.page <= 1} onClick={() => setFilters(p => ({ ...p, page: p.page - 1 }))} style={{ padding: "6px 12px", background: "#fff", border: "1px solid #cbd5e1", borderRadius: "6px", cursor: data.page <= 1 ? "not-allowed" : "pointer", fontWeight: 600, fontSize: "0.85rem", color: "#475569" }}>
+            Trang trước
           </button>
-          <span style={{ fontSize: 13, color: "#6b7280" }}>Trang {data.page}/{data.totalPages} ({data.totalCount} kết quả)</span>
-          <button className="admin-btn admin-btn-sm admin-btn-outline" disabled={data.page >= data.totalPages} onClick={() => setFilters(p => ({ ...p, page: p.page + 1 }))}>
-            <ChevronRight size={14} />
+          <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#64748b" }}>Trang {data.page} / {data.totalPages}</span>
+          <button disabled={data.page >= data.totalPages} onClick={() => setFilters(p => ({ ...p, page: p.page + 1 }))} style={{ padding: "6px 12px", background: "#fff", border: "1px solid #cbd5e1", borderRadius: "6px", cursor: data.page >= data.totalPages ? "not-allowed" : "pointer", fontWeight: 600, fontSize: "0.85rem", color: "#475569" }}>
+            Trang tiếp
           </button>
         </div>
       )}
@@ -318,18 +305,20 @@ export default function AdminPendingWarehousesPage() {
             animation: "slideInRight 0.25s ease",
           }}>
             {/* Panel Header */}
-            <div style={{ padding: "20px 24px", borderBottom: "1px solid #f3f4f6", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Warehouse size={18} color="#0095c7" />
-                <span style={{ fontWeight: 700, fontSize: 16, color: "#1f2937" }}>
-                  {detailModal.loading ? "Đang tải..." : wh?.name}
-                </span>
-                {!detailModal.loading && <StatusBadge status={wh?.status} />}
+            <div style={{ padding: "24px 32px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 }}>
+              <div>
+                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "1px", marginBottom: "4px" }}>CHI TIẾT KHO</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontWeight: 800, fontSize: "1.4rem", color: "#0f172a" }}>
+                    {detailModal.loading ? "Đang tải..." : wh?.name}
+                  </span>
+                  {!detailModal.loading && <StatusBadge status={wh?.status} />}
+                </div>
               </div>
               <button
                 onClick={() => setDetailModal({ open: false, warehouse: null, loading: false })}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", padding: 4 }}>
-                <X size={20} />
+                style={{ background: "#f1f5f9", border: "none", cursor: "pointer", color: "#475569", padding: "6px 12px", borderRadius: "8px", fontWeight: 700, fontSize: "0.8rem" }}>
+                ĐÓNG
               </button>
             </div>
 
@@ -348,8 +337,8 @@ export default function AdminPendingWarehousesPage() {
                       <div style={{ fontWeight: 600, color: "#1f2937", marginBottom: 2 }}>{wh.owner?.fullName}</div>
                       <div style={{ fontSize: 12, color: "#6b7280" }}>{wh.owner?.email} {wh.owner?.phone ? `· ${wh.owner.phone}` : ""}</div>
                     </div>
-                    <button className="admin-btn admin-btn-sm admin-btn-outline" onClick={() => navigate(`/admin/warehouses/${wh.warehouseId}`)}>
-                      <ExternalLink size={12} style={{ marginRight: 4 }} /> Trang chi tiết
+                    <button style={{ padding: "6px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "6px", color: "#334155", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }} onClick={() => navigate(`/admin/warehouses/${wh.warehouseId}`)}>
+                      Mở trang kho
                     </button>
                   </div>
 
@@ -358,8 +347,8 @@ export default function AdminPendingWarehousesPage() {
                     {[
                       ["Địa chỉ", wh.address],
                       ["Loại kho", wh.warehouseType || "Khác"],
-                      ["Diện tích tổng", `${wh.totalArea} m²`],
-                      ["Diện tích khả dụng", `${wh.availableArea} m²`],
+                      ["Diện tích tổng", `${wh.totalArea} m³`],
+                      ["Diện tích khả dụng", `${wh.availableArea} m³`],
                       ["Giờ hoạt động", wh.operatingHours || (wh.is24HoursAccess ? "24/7" : "—")],
                       ["Ngày tạo", wh.createdAt ? new Date(wh.createdAt).toLocaleDateString("vi-VN") : "—"],
                     ].map(([label, value]) => (
@@ -369,7 +358,7 @@ export default function AdminPendingWarehousesPage() {
                       </div>
                     ))}
 
-                    {/* Giá thuê/m² — full-width highlighted */}
+                    {/* Giá thuê/m³ — full-width highlighted */}
                     <div style={{
                       gridColumn: "1 / -1",
                       borderRadius: 10, padding: "14px 16px",
@@ -381,11 +370,11 @@ export default function AdminPendingWarehousesPage() {
                     }}>
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", color: wh.pricePerM2 ? "#065f46" : "#92400e" }}>
-                          Giá thuê / m² / tháng
+                          Giá thuê / m³ / tháng
                         </div>
                         {wh.pricePerM2 ? (
                           <div style={{ fontSize: 20, fontWeight: 900, color: "#065f46" }}>
-                            {new Intl.NumberFormat("vi-VN").format(wh.pricePerM2)}&nbsp;<span style={{ fontSize: 13, fontWeight: 600, color: "#047857" }}>₫/m²</span>
+                            {new Intl.NumberFormat("vi-VN").format(wh.pricePerM2)}&nbsp;<span style={{ fontSize: 13, fontWeight: 600, color: "#047857" }}>₫/m³</span>
                           </div>
                         ) : (
                           <div style={{ fontSize: 13, fontWeight: 600, color: "#92400e" }}>Chưa cập nhật</div>
@@ -441,8 +430,8 @@ export default function AdminPendingWarehousesPage() {
                   {/* Media */}
                   {wh.media && wh.media.length > 0 && (
                     <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: "#374151", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                        <Image size={14} color="#0095c7" /> Hình ảnh & Video ({wh.media.length})
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#374151", marginBottom: 10 }}>
+                        ẢNH & VIDEO KHO ({wh.media.length})
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))", gap: 8 }}>
                         {wh.media.map(m => {
@@ -469,27 +458,58 @@ export default function AdminPendingWarehousesPage() {
                   {/* Documents */}
                   {wh.documents && wh.documents.length > 0 && (
                     <div style={{ marginBottom: 20 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: "#374151", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                        <FileText size={14} color="#10b981" /> Giấy tờ pháp lý ({wh.documents.length})
+                      <div style={{ fontWeight: 600, fontSize: 13, color: "#374151", marginBottom: 10 }}>
+                        GIẤY TỜ PHÁP LÝ ({wh.documents.length} / 3)
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {wh.documents.map(doc => (
-                          <div key={doc.documentId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f9fafb", borderRadius: 8, padding: "10px 14px", border: "1px solid #e5e7eb" }}>
-                            <div>
-                              <div style={{ fontWeight: 500, fontSize: 13, color: "#1f2937" }}>
-                                {DOC_TYPE_LABELS[doc.documentType] || doc.documentType}
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {wh.documents.map(doc => {
+                          const docUrl = doc.documentUrl?.startsWith("http")
+                            ? doc.documentUrl
+                            : `${BASE_URL}${doc.documentUrl}`;
+                          const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(docUrl);
+                          const isPdf   = /\.pdf$/i.test(docUrl);
+                          return (
+                            <div key={doc.documentId} style={{ background: "#f9fafb", borderRadius: 10, border: "1px solid #e5e7eb", overflow: "hidden" }}>
+                              {/* Row header */}
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px" }}>
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: 13, color: "#1f2937" }}>
+                                    {DOC_TYPE_LABELS[doc.documentType] || doc.documentType}
+                                  </div>
+                                  {doc.documentNumber && <div style={{ fontSize: 11, color: "#9ca3af" }}>Số: {doc.documentNumber}</div>}
+                                  {doc.expiryDate && <div style={{ fontSize: 11, color: "#f59e0b" }}>Hết hạn: {doc.expiryDate}</div>}
+                                </div>
+                                <a href={docUrl} target="_blank" rel="noopener noreferrer"
+                                  style={{ display: "inline-flex", alignItems: "center", padding: "5px 12px", background: "#f0f7ff", border: "1px solid #bfdbfe", borderRadius: 8, color: "#1d4ed8", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                                  {isPdf ? "Mở PDF" : "Xem file"}
+                                </a>
                               </div>
-                              {doc.documentNumber && <div style={{ fontSize: 11, color: "#9ca3af" }}>Số: {doc.documentNumber}</div>}
-                              {doc.expiryDate && <div style={{ fontSize: 11, color: "#f59e0b" }}>Hết hạn: {doc.expiryDate}</div>}
+                              {/* Preview for images */}
+                              {isImage && (
+                                <a href={docUrl} target="_blank" rel="noopener noreferrer">
+                                  <img src={docUrl} alt={doc.documentType} style={{ width: "100%", maxHeight: 180, objectFit: "cover", display: "block", borderTop: "1px solid #e5e7eb" }}
+                                    onError={e => { e.target.style.display = "none"; }} />
+                                </a>
+                              )}
+                              {isPdf && (
+                                <div style={{ padding: "10px 14px", borderTop: "1px solid #e5e7eb", background: "#eff6ff", fontSize: 12, color: "#1d4ed8" }}>
+                                  Tài liệu PDF — nhấn nút "Mở PDF" để xem
+                                </div>
+                              )}
                             </div>
-                            <a href={doc.documentUrl} target="_blank" rel="noopener noreferrer"
-                              className="admin-btn admin-btn-sm admin-btn-outline"
-                              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                              <ExternalLink size={11} /> Xem
-                            </a>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
+                      {wh.documents.length < 3 && (
+                        <div style={{ marginTop: 8, padding: "8px 12px", background: "#fffbeb", borderRadius: 8, border: "1px solid #fde68a", fontSize: 12, color: "#b45309" }}>
+                          Còn {3 - wh.documents.length} loại giấy tờ chưa được tải lên (đang chờ cấp hoặc chưa bổ sung).
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {(!wh.documents || wh.documents.length === 0) && (
+                    <div style={{ marginBottom: 20, padding: "12px 14px", background: "#fef2f2", borderRadius: 10, border: "1px solid #fecaca", fontSize: 13, color: "#dc2626" }}>
+                      Chưa có giấy tờ pháp lý nào được tải lên.
                     </div>
                   )}
                 </>
@@ -500,16 +520,14 @@ export default function AdminPendingWarehousesPage() {
             {!detailModal.loading && wh?.status === "PENDING" && (
               <div style={{ padding: "16px 24px", borderTop: "1px solid #f3f4f6", display: "flex", gap: 12, flexShrink: 0, background: "#fafafa" }}>
                 <button
-                  className="admin-btn admin-btn-danger"
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, padding: "12px", background: "#fef2f2", color: "#991b1b", border: "1px solid #fecaca", borderRadius: "8px", fontWeight: 700, cursor: "pointer" }}
                   onClick={() => setApproveModal({ open: true, warehouseId: wh.warehouseId, warehouseName: wh.name, isApproved: false, reason: "", loading: false })}>
-                  <XCircle size={14} style={{ marginRight: 6 }} /> Từ chối kho này
+                  TỪ CHỐI KHO NÀY
                 </button>
                 <button
-                  className="admin-btn admin-btn-success"
-                  style={{ flex: 1 }}
+                  style={{ flex: 1, padding: "12px", background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0", borderRadius: "8px", fontWeight: 700, cursor: "pointer" }}
                   onClick={() => setApproveModal({ open: true, warehouseId: wh.warehouseId, warehouseName: wh.name, isApproved: true, reason: "", loading: false })}>
-                  <CheckCircle size={14} style={{ marginRight: 6 }} /> Duyệt kho này
+                  DUYỆT KHO NÀY
                 </button>
               </div>
             )}
@@ -530,9 +548,9 @@ export default function AdminPendingWarehousesPage() {
               <div style={{
                 width: 56, height: 56, borderRadius: "50%",
                 background: approveModal.isApproved ? "linear-gradient(135deg,#10b981,#059669)" : "linear-gradient(135deg,#ef4444,#dc2626)",
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 900, fontSize: 32
               }}>
-                {approveModal.isApproved ? <CheckCircle size={28} color="#fff" /> : <XCircle size={28} color="#fff" />}
+                {approveModal.isApproved ? "✓" : "✕"}
               </div>
             </div>
 
@@ -566,18 +584,16 @@ export default function AdminPendingWarehousesPage() {
 
             <div style={{ display: "flex", gap: 12 }}>
               <button
-                className="admin-btn admin-btn-outline"
-                style={{ flex: 1 }}
+                style={{ flex: 1, padding: "10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: "8px", color: "#475569", fontWeight: 600, cursor: "pointer" }}
                 onClick={() => setApproveModal(defaultApproveModal)}
                 disabled={approveModal.loading}>
                 Hủy
               </button>
               <button
-                className={`admin-btn ${approveModal.isApproved ? "admin-btn-success" : "admin-btn-danger"}`}
-                style={{ flex: 1 }}
+                style={approveModal.isApproved ? { flex: 1, padding: "10px", background: "#10b981", border: "1px solid #059669", borderRadius: "8px", color: "#fff", fontWeight: 700, cursor: "pointer" } : { flex: 1, padding: "10px", background: "#ef4444", border: "1px solid #dc2626", borderRadius: "8px", color: "#fff", fontWeight: 700, cursor: "pointer" }}
                 onClick={handleApproveSubmit}
                 disabled={approveModal.loading || (!approveModal.isApproved && !approveModal.reason.trim())}>
-                {approveModal.loading ? "Đang xử lý..." : approveModal.isApproved ? "✓ Phê duyệt" : "✕ Từ chối"}
+                {approveModal.loading ? "Đang xử lý..." : approveModal.isApproved ? "Phê duyệt" : "Từ chối"}
               </button>
             </div>
           </div>

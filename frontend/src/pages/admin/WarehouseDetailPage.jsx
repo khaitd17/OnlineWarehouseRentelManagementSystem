@@ -134,10 +134,10 @@ export default function WarehouseDetailPage() {
               <div className="admin-detail-grid">
                 <div className="admin-detail-item"><div className="admin-detail-label">Trạng thái</div><StatusBadge status={wh.status} /></div>
                 <div className="admin-detail-item"><div className="admin-detail-label">Loại kho</div><div className="admin-detail-value">{wh.warehouseType || "Khác"}</div></div>
-                <div className="admin-detail-item"><div className="admin-detail-label">Diện tích tổng</div><div className="admin-detail-value">{wh.totalArea} m²</div></div>
-                <div className="admin-detail-item"><div className="admin-detail-label">Diện tích khả dụng</div><div className="admin-detail-value">{wh.availableArea} m²</div></div>
+                <div className="admin-detail-item"><div className="admin-detail-label">Diện tích tổng</div><div className="admin-detail-value">{wh.totalArea} m³</div></div>
+                <div className="admin-detail-item"><div className="admin-detail-label">Diện tích khả dụng</div><div className="admin-detail-value">{wh.availableArea} m³</div></div>
                 <div className="admin-detail-item">
-                  <div className="admin-detail-label">Giá thuê/m² (VNĐ/tháng)</div>
+                  <div className="admin-detail-label">Giá thuê/m³ (VNĐ/tháng)</div>
                   <div className="admin-detail-value">
                     {wh.pricePerM2 ? (
                       <span style={{
@@ -147,7 +147,7 @@ export default function WarehouseDetailPage() {
                         padding: "4px 10px", borderRadius: 8,
                         border: "1px solid #a7f3d0"
                       }}>
-                        {new Intl.NumberFormat("vi-VN").format(wh.pricePerM2)} ₫/m²
+                        {new Intl.NumberFormat("vi-VN").format(wh.pricePerM2)} ₫/m³
                       </span>
                     ) : <span style={{ color: "#9ca3af" }}>Chưa cập nhật</span>}
                   </div>

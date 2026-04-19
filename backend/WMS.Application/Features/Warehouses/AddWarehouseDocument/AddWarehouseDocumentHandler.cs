@@ -26,10 +26,25 @@ public class AddWarehouseDocumentHandler : IRequestHandler<AddWarehouseDocumentC
         if (!exists)
             throw new Exception("Warehouse not found");
 
+        var folder = Path.Combine("uploads", "documents");
+
+        if (!Directory.Exists(folder))
+            Directory.CreateDirectory(folder);
+
+        var fileName = Guid.NewGuid() + Path.GetExtension(request.File.FileName);
+        var path = Path.Combine(folder, fileName);
+
+        using (var stream = new FileStream(path, FileMode.Create))
+        {
+            await request.File.CopyToAsync(stream);
+        }
+
+        var url = $"/uploads/documents/{fileName}";
+
         await _documentRepository.AddAsync(
             request.WarehouseId,
             request.DocumentType,
-            request.DocumentUrl,
+            url,
             cancellationToken);
     }
 }
