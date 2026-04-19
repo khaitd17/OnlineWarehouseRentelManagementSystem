@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom';
 /* ── Format giá ────────────────────────────────────────── */
 const fmtPrice = (p) => {
   if (!p) return 'Liên hệ';
-  if (p >= 1000) return `${(p / 1000).toFixed(0)}k đ/m²`;
-  return `${Number(p).toLocaleString('vi-VN')} đ/m²`;
+  if (p >= 1000) return `${(p / 1000).toFixed(0)}k đ/m³`;
+  return `${Number(p).toLocaleString('vi-VN')} đ/m³`;
 };
 
 /* ── Resolve ảnh ───────────────────────────────────────── */
@@ -123,7 +123,7 @@ export default function WarehouseMap({ warehouses }) {
                     <span style={{
                       fontSize: '0.72rem', fontWeight: 600, color: '#16a34a',
                     }}>
-                      {(w.availableArea || 0).toLocaleString('vi-VN')} m²
+                      {(w.availableArea || 0).toLocaleString('vi-VN')} m³
                     </span>
                   </div>
                 </div>
@@ -199,7 +199,7 @@ export default function WarehouseMap({ warehouses }) {
                     <span style={{
                       fontSize: '0.78rem', fontWeight: 600, color: '#16a34a',
                     }}>
-                      {(selected.availableArea || 0).toLocaleString('vi-VN')} m² trống
+                      {(selected.availableArea || 0).toLocaleString('vi-VN')} m³ trống
                     </span>
                   </div>
                 </div>

@@ -10,15 +10,18 @@ public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IE
     private readonly IRentalRequestRepository _repository;
     private readonly IWarehouseRepository _warehouseRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IRentalAreaRepository _rentalAreaRepository;
 
     public GetOwnerRequestsHandler(
         IRentalRequestRepository repository,
         IWarehouseRepository warehouseRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IRentalAreaRepository rentalAreaRepository)
     {
         _repository = repository;
         _warehouseRepository = warehouseRepository;
         _userRepository = userRepository;
+        _rentalAreaRepository = rentalAreaRepository;
     }
 
     public async Task<IEnumerable<RentalRequestDto>> Handle(GetOwnerRequestsQuery request, CancellationToken cancellationToken)
@@ -40,6 +43,14 @@ public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IE
             var owner = warehouse != null
                 ? await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken)
                 : null;
+            // Rental area info
+            string? rentalAreaName = null;
+            double? rentalAreaSize = null;
+            if (r.RentalAreaId.HasValue)
+            {
+                try { var a = await _rentalAreaRepository.GetByIdAsync(r.RentalAreaId.Value, cancellationToken); rentalAreaName = a?.Name; rentalAreaSize = a?.Size; } catch { }
+            }
+
             result.Add(new RentalRequestDto
             {
                 RequestId = r.RequestId,
@@ -62,7 +73,10 @@ public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IE
                 ContractImageUrl = r.ContractImageUrl,
                 OwnerName = owner?.FullName ?? "",
                 OwnerEmail = owner?.Email ?? "",
-                OwnerPhone = owner?.Phone ?? ""
+                OwnerPhone = owner?.Phone ?? "",
+                RentalAreaId = r.RentalAreaId,
+                RentalAreaName = rentalAreaName,
+                RentalAreaSize = rentalAreaSize,
             });
         }
         return result;

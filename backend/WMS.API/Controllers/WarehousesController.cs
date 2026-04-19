@@ -47,7 +47,9 @@ public class WarehouseController : ControllerBase
         }
         catch (Exception ex)
         {
-            return BadRequest(new { message = ex.Message });
+            var inner = ex.InnerException?.InnerException?.Message ?? ex.InnerException?.Message ?? ex.Message;
+            Console.WriteLine($"[CreateWarehouse] ERROR: {ex.Message} | Inner: {inner}");
+            return BadRequest(new { message = inner });
         }
     }
 

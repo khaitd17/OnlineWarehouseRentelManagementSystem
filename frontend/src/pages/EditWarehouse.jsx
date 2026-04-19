@@ -2,14 +2,37 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/axiosClient";
 import { uploadWarehouseImage } from "../services/warehouseService";
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import L from "leaflet";
 import RentalAreaManagement from "../components/warehouse/RentalAreaManagement";
 
-const ChonViTri = ({ setLatLng }) => {
+const customMarkerIcon = new L.Icon({
+  iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
+
+const UpdateCenter = ({ lat, lng }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (lat && lng) {
+      map.flyTo([lat, lng], 15);
+    }
+  }, [lat, lng, map]);
+  return null;
+};
+
+const ChonViTri = ({ setLatLng, onLocationSelected }) => {
   useMapEvents({
     click(e) {
       const { lat, lng } = e.latlng;
       setLatLng(lat, lng);
+      if (onLocationSelected) onLocationSelected(lat, lng);
     }
   });
 
@@ -38,6 +61,7 @@ const EditWarehouse = () => {
     legalStatus: "",
     width: "",
     length: "",
+    height: "",
     totalArea: "",
     pricePerM2: ""
   });
@@ -84,6 +108,9 @@ const EditWarehouse = () => {
       legalStatus: res.data.mainDoorDirection || "",
       width: res.data.width ?? res.data.Width ?? "",
       length: res.data.length ?? res.data.Length ?? "",
+      height: (res.data.width && res.data.length && (res.data.totalArea || res.data.TotalArea)) 
+                ? parseFloat(((res.data.totalArea ?? res.data.TotalArea) / (res.data.width * res.data.length)).toFixed(2)) 
+                : "5",
       totalArea: res.data.totalArea ?? res.data.TotalArea ?? "",
       pricePerM2: res.data.pricePerM2 ?? res.data.PricePerM2 ?? ""
     });
@@ -114,12 +141,15 @@ const EditWarehouse = () => {
         [name]: type === "checkbox" ? checked : value
       };
 
-      // Auto-calculate TotalArea if width or length changes
-      if (name === "width" || name === "length") {
+      // Auto-calculate TotalArea if width or length or height changes
+      if (name === "width" || name === "length" || name === "height") {
         const w = parseFloat(nextData.width) || 0;
         const l = parseFloat(nextData.length) || 0;
-        if (w > 0 && l > 0) {
-          nextData.totalArea = w * l;
+        const h = parseFloat(nextData.height) || 0;
+        if (w > 0 && l > 0 && h > 0) {
+          nextData.totalArea = parseFloat((w * l * h).toFixed(2));
+        } else {
+          nextData.totalArea = "";
         }
       }
 
@@ -134,6 +164,54 @@ const EditWarehouse = () => {
       lng
     }));
   };
+
+  const isMapClickRef = useRef(false);
+
+  const handleLocationSelected = async (lat, lng) => {
+    isMapClickRef.current = true;
+    try {
+      let addressStr = "";
+      if (GOOGLE_MAPS_API_KEY) {
+        const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}&language=vi`);
+        const data = await res.json();
+        if (data.results && data.results.length > 0) addressStr = data.results[0].formatted_address;
+      } else {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&accept-language=vi`);
+        const data = await res.json();
+        if (data && data.display_name) addressStr = data.display_name;
+      }
+      if (addressStr) setFormData((prev) => ({ ...prev, address: addressStr }));
+    } catch (e) { console.error("Geocoding err", e); }
+    setTimeout(() => { isMapClickRef.current = false; }, 800);
+  };
+
+  useEffect(() => {
+    if (isMapClickRef.current || !formData.address || formData.address.trim().length < 5) return;
+    
+    const handler = setTimeout(async () => {
+      try {
+        let lat, lng;
+        if (GOOGLE_MAPS_API_KEY) {
+           const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(formData.address)}&key=${GOOGLE_MAPS_API_KEY}&language=vi`);
+           const data = await res.json();
+           if (data.results && data.results.length > 0) {
+             lat = data.results[0].geometry.location.lat;
+             lng = data.results[0].geometry.location.lng;
+           }
+        } else {
+           const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(formData.address)}&format=json&limit=1&accept-language=vi`);
+           const data = await res.json();
+           if (data && data.length > 0) {
+             lat = parseFloat(data[0].lat);
+             lng = parseFloat(data[0].lon);
+           }
+        }
+        if (lat && lng) setLatLng(lat, lng);
+      } catch (e) { console.error("Forward Geocode err", e); }
+    }, 1500);
+
+    return () => clearTimeout(handler);
+  }, [formData.address]);
 
   const handleSubmit = async (e) => {
 
@@ -394,18 +472,38 @@ const EditWarehouse = () => {
                   />
                 </div>
                 <div style={groupStyle}>
-                  <label style={labelStyle}>Tổng diện tích (m²)</label>
+                  <label style={labelStyle}>Chiều cao (m)</label>
                   <input 
-                    name="totalArea" 
+                    name="height" 
                     type="number" 
-                    value={formData.totalArea} 
-                    readOnly 
-                    style={{ ...inputStyle, backgroundColor: "#f1f5f9", cursor: "not-allowed", fontWeight: 700 }} 
+                    value={formData.height} 
+                    onChange={handleChange} 
+                    readOnly={!canEditDimensions}
+                    style={{ 
+                      ...inputStyle, 
+                      backgroundColor: !canEditDimensions ? "#f8fafc" : "#fff",
+                      cursor: !canEditDimensions ? "not-allowed" : "text",
+                      color: !canEditDimensions ? "#64748b" : "#1e293b"
+                    }} 
+                    placeholder="VD: 5"
                   />
                 </div>
               </div>
 
-              {/* Giá thuê/m² */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div style={groupStyle}>
+                  <label style={labelStyle}>Tổng thể tích (m³)</label>
+                  <input 
+                    name="totalArea" 
+                    type="text" 
+                    value={formData.totalArea} 
+                    placeholder="Tự động tính bằng Rộng x Dài x Cao"
+                    readOnly 
+                    style={{ ...inputStyle, backgroundColor: "#f1f5f9", cursor: "not-allowed", fontWeight: 700 }} 
+                  />
+                </div>
+
+              {/* Giá thuê/m³ */}
               <div style={groupStyle}>
                 {/* Re-approval warning – shown only when APPROVED warehouse price changes */}
                 {(() => {
@@ -437,7 +535,7 @@ const EditWarehouse = () => {
                   ) : null;
                 })()}
                 <label style={labelStyle}>
-                  Giá thuê/m² (VNĐ/tháng) <span style={{ color: "#ef4444" }}>*</span>
+                  Giá thuê/m³ (VNĐ/tháng) <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <div style={{ position: "relative" }}>
                   <input
@@ -459,13 +557,14 @@ const EditWarehouse = () => {
                   <span style={{
                     position: "absolute", right: "18px", top: "50%", transform: "translateY(-50%)",
                     fontSize: "0.85rem", fontWeight: 700, color: "#64748b", pointerEvents: "none"
-                  }}>₫/m²</span>
+                  }}>₫/m³</span>
                 </div>
                 {formData.pricePerM2 && formData.totalArea && (
                   <div style={{ fontSize: "0.82rem", color: "#0095c7", fontWeight: 600, marginTop: 2 }}>
                     ≈ {new Intl.NumberFormat("vi-VN").format(Number(formData.pricePerM2) * Number(formData.totalArea))} ₫/tháng (toàn bộ kho)
                   </div>
                 )}
+              </div>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
@@ -612,8 +711,9 @@ const EditWarehouse = () => {
                   style={{ height: "100%", width: "100%" }}
                 >
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  <ChonViTri setLatLng={setLatLng} />
-                  {formData.lat && <Marker position={[formData.lat, formData.lng]} />}
+                  <UpdateCenter lat={formData.lat} lng={formData.lng} />
+                  <ChonViTri setLatLng={setLatLng} onLocationSelected={handleLocationSelected} />
+                  {formData.lat && <Marker position={[formData.lat, formData.lng]} icon={customMarkerIcon} />}
                 </MapContainer>
                 <div style={{ position: "absolute", bottom: "10px", left: "10px", right: "10px", background: "rgba(255,255,255,0.9)", backdropFilter: "blur(4px)", padding: "8px 12px", borderRadius: "10px", fontSize: "0.75rem", color: "#64748b", zIndex: 1000, border: "1px solid #e2e8f0" }}>
                   Nhấn lên bản đồ để cập nhật tọa độ kho
@@ -670,12 +770,39 @@ const EditWarehouse = () => {
                 })}
               </div>
               
-              {formData.images.length === 0 && (
-                <div style={{ textAlign: "center", padding: "30px", border: "2px dashed #e2e8f0", borderRadius: "20px" }}>
-                   <span className="material-symbols-outlined" style={{ fontSize: "32px", color: "#cbd5e1", marginBottom: "8px" }}>no_photography</span>
-                   <p style={{ color: "#94a3b8", fontSize: "0.85rem", margin: 0 }}>Chưa có hình ảnh</p>
-                </div>
-              )}
+              {formData.images.length === 0 && (() => {
+                 const FALLBACK_IMAGES = [
+                  "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1200",
+                  "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=600",
+                  "https://images.unsplash.com/photo-1565891741441-64926e441838?auto=format&fit=crop&q=80&w=600",
+                  "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=600",
+                  "https://images.unsplash.com/photo-1624927637280-f033784c1279?auto=format&fit=crop&q=80&w=600"
+                ];
+                return (
+                  <div>
+                    <div style={{ marginBottom: "1rem", padding: "12px", background: "#f0f9ff", borderRadius: "12px", border: "1px solid #bae6fd", fontSize: "0.85rem", color: "#0369a1", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 20 }}>info</span>
+                      Kho sẽ hiển thị ảnh mặc định dưới đây nếu bạn không tải ảnh lên.
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', opacity: 0.85 }}>
+                      <div style={{ borderRadius: '12px', overflow: 'hidden', height: '240px', gridColumn: "span 2" }}>
+                        <img src={FALLBACK_IMAGES[0]} alt="Main" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ borderRadius: '8px', overflow: 'hidden', height: '140px' }}>
+                        <img src={FALLBACK_IMAGES[1]} alt="Gallery 1" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                      <div style={{ borderRadius: '8px', overflow: 'hidden', position: 'relative', height: '140px' }}>
+                        <img src={FALLBACK_IMAGES[2]} alt="More" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {FALLBACK_IMAGES.length > 3 && (
+                          <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1rem', fontWeight: 700 }}>
+                            +{FALLBACK_IMAGES.length - 3} ảnh
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>

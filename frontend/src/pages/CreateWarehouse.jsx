@@ -29,6 +29,7 @@ const CreateWarehouse = () => {
     lng: "",
     width: "",
     length: "",
+    height: "",
     totalArea: "",
     pricePerM2: "",
     is24HoursAccess: false,
@@ -68,6 +69,7 @@ const CreateWarehouse = () => {
         lng: data.lng || "",
         width: data.width || "",
         length: data.length || "",
+        height: (data.width && data.length && data.totalArea) ? parseFloat((data.totalArea / (data.width * data.length)).toFixed(2)) : "5",
         totalArea: data.totalArea || "",
         pricePerM2: data.pricePerM2 || "",
         is24HoursAccess: data.operatingHours === "24/7",
@@ -101,11 +103,12 @@ const CreateWarehouse = () => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => {
       const nextData = { ...prev, [name]: type === "checkbox" ? checked : value };
-      if (name === "width" || name === "length") {
+      if (name === "width" || name === "length" || name === "height") {
         const w = parseFloat(nextData.width) || 0;
         const l = parseFloat(nextData.length) || 0;
-        if (w > 0 && l > 0) {
-          nextData.totalArea = w * l;
+        const h = parseFloat(nextData.height) || 0;
+        if (w > 0 && l > 0 && h > 0) {
+          nextData.totalArea = parseFloat((w * l * h).toFixed(2));
         } else {
           nextData.totalArea = "";
         }
@@ -130,11 +133,11 @@ const CreateWarehouse = () => {
     if (!formData.address?.trim()) { alert('Địa chỉ không được để trống'); return; }
     const totalArea = parseFloat(formData.totalArea);
     if (!formData.totalArea || isNaN(totalArea) || totalArea < 10 || totalArea > 1000000) {
-      alert('Diện tích kho phải từ 10 đến 1,000,000 m²'); return;
+      alert('Diện tích kho phải từ 10 đến 1,000,000 m³'); return;
     }
     const price = parseFloat(formData.pricePerM2);
     if (formData.pricePerM2 && !isNaN(price) && (price < 1000 || price > 100000000)) {
-      alert('Giá thuê phải từ 1,000 đến 100,000,000 VNĐ/m²/tháng'); return;
+      alert('Giá thuê phải từ 1,000 đến 100,000,000 VNĐ/m³/tháng'); return;
     }
     if (formData.lat && (parseFloat(formData.lat) < -90 || parseFloat(formData.lat) > 90)) {
       alert('Vĩ độ phải từ -90 đến 90'); return;
@@ -178,8 +181,14 @@ const CreateWarehouse = () => {
       }
       setStep(2);
     } catch (error) {
-      console.error(error);
-      alert("Có lỗi khi lưu bản nháp");
+      console.error("Lỗi khi lưu bản nháp:", error);
+      const rd = error?.response?.data;
+      const msg = rd?.message
+        || (rd?.errors ? JSON.stringify(rd.errors) : null)
+        || (typeof rd === 'string' ? rd : null)
+        || error?.message
+        || "Có lỗi khi lưu bản nháp";
+      alert(msg);
     }
   };
 
@@ -211,7 +220,7 @@ const CreateWarehouse = () => {
         </p>
       </div>
 
-      <StepIndicator step={step > 3 ? 3 : step} />
+      <StepIndicator step={step} />
 
       <div style={{ transition: "all 0.4s ease-in-out" }}>
         {step === 1 && (
@@ -227,6 +236,7 @@ const CreateWarehouse = () => {
           <Step2UploadImages
             warehouseId={warehouseId}
             existingImages={existingImages}
+            onBack={() => setStep(1)}
             onImagesSelected={(files) => {
               setImages(files);
               setStep(3);
@@ -238,6 +248,7 @@ const CreateWarehouse = () => {
           <Step3UploadDocuments
             warehouseId={warehouseId}
             existingDoc={existingDoc}
+            onBack={() => setStep(2)}
             onComplete={handleFinalSubmit}
           />
         )}

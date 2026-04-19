@@ -120,7 +120,8 @@ public async Task<Warehouse?> GetByIdAsync(
     {
         var warehouses = await _context.Warehouses
             .Include(w => w.WarehouseMedia)
-            .Where(w => w.OwnerId == ownerId && w.Status != "DELETED")
+            .Where(w => w.OwnerId == ownerId)
+            .OrderByDescending(w => w.CreatedAt)
             .ToListAsync(cancellationToken);
 
         return warehouses.Select(entity => new Warehouse
@@ -200,22 +201,36 @@ public async Task<Warehouse?> GetByIdAsync(
         var entity = await _context.Warehouses
             .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId, cancellationToken);
             
-        if (entity != null)
-        {
-            entity.Status = "DELETED";
-            
-            // Soft delete all associated equipments
-            var equipments = await _context.Equipments
-                .Where(e => e.WarehouseId == warehouseId)
-                .ToListAsync(cancellationToken);
-                
-            foreach (var equipment in equipments)
-            {
-                equipment.Status = "DELETED";
-            }
+        if (entity == null) return;
 
-            await _context.SaveChangesAsync(cancellationToken);
+        // Nếu kho đã DELETED hoặc là DRAFT → hard delete (xóa hẳn khỏi DB)
+        if (entity.Status == "DELETED" || entity.Status == "DRAFT")
+        {
+            var id = warehouseId;
+            // Cascade xóa các bảng phụ theo thứ tự FK
+            await _context.Database.ExecuteSqlRawAsync($@"
+                DELETE FROM warehouse_membership_skills WHERE membership_id IN (SELECT membership_id FROM warehouse_memberships WHERE warehouse_id = {id});
+                DELETE FROM warehouse_membership_zones WHERE membership_id IN (SELECT membership_id FROM warehouse_memberships WHERE warehouse_id = {id});
+                DELETE FROM warehouse_memberships WHERE warehouse_id = {id};
+                DELETE FROM warehouse_media WHERE warehouse_id = {id};
+                DELETE FROM warehouse_documents WHERE warehouse_id = {id};
+                DELETE FROM zones WHERE warehouse_id = {id};
+                DELETE FROM warehouse_shifts WHERE warehouse_id = {id};
+                DELETE FROM equipments WHERE warehouse_id = {id};
+                DELETE FROM warehouses WHERE warehouse_id = {id};
+            ", cancellationToken);
+            return;
         }
+
+        // Soft delete (APPROVED, PENDING, HIDDEN...)
+        entity.Status = "DELETED";
+        var equipments = await _context.Equipments
+            .Where(e => e.WarehouseId == warehouseId)
+            .ToListAsync(cancellationToken);
+        foreach (var equipment in equipments)
+            equipment.Status = "DELETED";
+
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<List<Warehouse>> GetApprovedWarehousesAsync(

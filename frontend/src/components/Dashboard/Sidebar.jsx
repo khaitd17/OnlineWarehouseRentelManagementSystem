@@ -520,7 +520,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   useEffect(() => {
     const role = loadUserInfo();
     if (role === "RENTER") fetchUnratedCount();
-    if (role === "OWNER" || role === "OPERATOR") {
+    if (role === "OWNER" || role === "OPERATOR" || role === "OWNER_OPERATOR") {
       fetchUnrepliedCount();
       fetchPendingPaymentCount();
       fetchPendingAuditCount();
@@ -538,7 +538,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       } else {
         setUnratedCount(0);
       }
-      if (role === "OWNER" || role === "OPERATOR") {
+      if (role === "OWNER" || role === "OPERATOR" || role === "OWNER_OPERATOR") {
         fetchUnrepliedCount();
         fetchPendingPaymentCount();
         fetchPendingAuditCount();
@@ -572,7 +572,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     const handler = () => {
-      if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR")
+      if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR" || effectiveRole === "OWNER_OPERATOR")
         fetchUnrepliedCount();
     };
     window.addEventListener("replyChanged", handler);
@@ -590,7 +590,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   useEffect(() => {
     if (effectiveRole === "RENTER") fetchUnratedCount();
-    if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR")
+    if (effectiveRole === "OWNER" || effectiveRole === "OPERATOR" || effectiveRole === "OWNER_OPERATOR")
       fetchUnrepliedCount();
     if (effectiveRole === "MANAGER") fetchPendingRequestCount();
     if (effectiveRole === "STAFF") fetchPendingAssignedCount();
@@ -994,7 +994,7 @@ const Sidebar = ({ isOpen, onClose }) => {
             </div>
 
             {/* Subscription status badge */}
-            {(effectiveRole === "OWNER" || effectiveRole === "OPERATOR") &&
+            {(effectiveRole === "OWNER" || effectiveRole === "OPERATOR" || effectiveRole === "OWNER_OPERATOR") &&
               subStatus && (
                 <Link
                   to="/subscriptions"

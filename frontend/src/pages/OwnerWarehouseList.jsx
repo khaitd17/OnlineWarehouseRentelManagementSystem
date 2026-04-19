@@ -146,7 +146,10 @@ const OwnerWarehouseList = () => {
           gap: "24px"
         }}
       >
-        {warehouses.map((w) => (
+        {warehouses.map((w) => {
+          const isDeleted = w.status?.toUpperCase() === "DELETED";
+          const isDraft   = w.status?.toUpperCase() === "DRAFT";
+          return (
           <div
             key={w.warehouseId}
             style={{
@@ -154,11 +157,13 @@ const OwnerWarehouseList = () => {
               borderRadius: "20px",
               overflow: "hidden",
               boxShadow: "0 10px 30px rgba(0,0,0,0.04)",
-              border: "1px solid #e2e8f0",
+              border: isDeleted ? "1px solid #fecaca" : "1px solid #e2e8f0",
               transition: "transform 0.3s ease, box-shadow 0.3s ease",
               display: "flex",
               flexDirection: "column",
-              cursor: "default"
+              cursor: "default",
+              opacity: isDeleted ? 0.72 : 1,
+              filter: isDeleted ? "grayscale(30%)" : "none",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = "translateY(-5px)";
@@ -178,11 +183,21 @@ const OwnerWarehouseList = () => {
                 ? (rawUrl.startsWith('http') ? rawUrl : `http://localhost:5276${rawUrl.startsWith('/') ? rawUrl : '/' + rawUrl}`)
                 : null;
 
+              const FALLBACK_IMAGES = [
+                "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1200",
+                "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=600",
+                "https://images.unsplash.com/photo-1565891741441-64926e441838?auto=format&fit=crop&q=80&w=600",
+                "https://images.unsplash.com/photo-1587293852726-70cdb56c2866?auto=format&fit=crop&q=80&w=600"
+              ];
+              // Pick a consistent fallback based on ID so it's not random on every render
+              const fallbackUrl = FALLBACK_IMAGES[(w.warehouseId || 0) % FALLBACK_IMAGES.length];
+              const displayUrl = imgUrl || fallbackUrl;
+
               return (
                 <div style={{ height: "180px", position: "relative", overflow: "hidden", borderBottom: "1px solid #e2e8f0" }}>
-                  {imgUrl ? (
+                  {displayUrl ? (
                     <img
-                      src={imgUrl}
+                      src={displayUrl}
                       alt={w.name}
                       style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       onError={(e) => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.style.background = "linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%)"; }}
@@ -245,6 +260,21 @@ const OwnerWarehouseList = () => {
                 </div>
               )}
 
+              {isDeleted && (
+                <div style={{
+                  display: "flex", alignItems: "flex-start", gap: 10,
+                  background: "linear-gradient(135deg,#f9fafb,#f1f5f9)",
+                  border: "1px solid #fecaca", borderRadius: "12px",
+                  padding: "12px 14px",
+                }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: "#dc2626", flexShrink: 0 }}>delete_forever</span>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "#991b1b", fontSize: "0.9rem", marginBottom: 2 }}>Kho đã bị xóa</div>
+                    <div style={{ color: "#dc2626", fontSize: "0.82rem" }}>Kho này đã bị xóa khỏi danh sách hoạt động. Bấm "Xóa vĩnh viễn" để xóa hẳn khỏi hệ thống.</div>
+                  </div>
+                </div>
+              )}
+
               {w.status?.toUpperCase() === "APPROVED" && (
                 <div style={{
                   display: "flex", alignItems: "center", gap: 8,
@@ -269,16 +299,16 @@ const OwnerWarehouseList = () => {
 
               <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
                 <div style={{ flex: 1, backgroundColor: "#f8fafc", padding: "12px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "4px", fontWeight: 600 }}>TỔNG DIỆN TÍCH</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1e293b" }}>{w.totalArea} <span style={{ fontSize: "0.9rem", color: "#94a3b8" }}>m²</span></div>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "4px", fontWeight: 600 }}>TỔNG THỂ TÍCH</div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1e293b" }}>{w.totalArea} <span style={{ fontSize: "0.9rem", color: "#94a3b8" }}>m³</span></div>
                 </div>
                 <div style={{ flex: 1, backgroundColor: "#f0fdf4", padding: "12px", borderRadius: "12px", border: "1px solid #dcfce7" }}>
                   <div style={{ fontSize: "0.8rem", color: "#166534", marginBottom: "4px", fontWeight: 600 }}>CÒN TRỐNG</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#15803d" }}>{w.availableArea} <span style={{ fontSize: "0.9rem", color: "#86efac" }}>m²</span></div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#15803d" }}>{w.availableArea} <span style={{ fontSize: "0.9rem", color: "#86efac" }}>m³</span></div>
                 </div>
               </div>
 
-              {/* Giá thuê/m² */}
+              {/* Giá thuê/m³ */}
               <div style={{
                 padding: "12px 14px", borderRadius: "12px",
                 background: w.pricePerM2
@@ -289,11 +319,11 @@ const OwnerWarehouseList = () => {
               }}>
                 <div>
                   <div style={{ fontSize: "0.75rem", fontWeight: 700, color: w.pricePerM2 ? "#166534" : "#94a3b8", marginBottom: 3, textTransform: "uppercase" }}>
-                    Giá thuê / m² / tháng
+                    Giá thuê / m³ / tháng
                   </div>
                   {w.pricePerM2 ? (
                     <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#15803d" }}>
-                      {new Intl.NumberFormat("vi-VN").format(w.pricePerM2)} <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#16a34a" }}>₫/m²</span>
+                      {new Intl.NumberFormat("vi-VN").format(w.pricePerM2)} <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#16a34a" }}>₫/m³</span>
                     </div>
                   ) : (
                     <div style={{ fontSize: "0.88rem", color: "#94a3b8", fontWeight: 500 }}>Chưa cập nhật giá</div>
@@ -313,45 +343,58 @@ const OwnerWarehouseList = () => {
             </div>
 
             {/* Actions Footer */}
-            <div style={{ padding: "20px 24px", background: "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", gap: "12px" }}>
-              {w.status?.toUpperCase() === "DRAFT" ? (
+            <div style={{ padding: "20px 24px", background: isDeleted ? "#fff5f5" : "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", gap: "12px" }}>
+              {isDeleted ? (
+                // Kho đã xóa → chỉ hiện nút Xóa vĩnh viễn
                 <button
                   style={{
-                    flex: 2,
-                    padding: "10px",
-                    background: "#00b2d6",
-                    border: "none",
-                    borderRadius: "10px",
-                    color: "#fff",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
+                    flex: 1, padding: "10px",
+                    background: "linear-gradient(135deg,#ef4444,#dc2626)",
+                    border: "none", borderRadius: "10px",
+                    color: "#fff", fontWeight: 700, cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                   }}
-                  onClick={() => navigate(`/create-warehouse?id=${w.warehouseId}`)}
+                  onClick={() => setDeleteModal({ open: true, warehouseId: w.warehouseId, warehouseName: w.name, loading: false, isPermanent: true })}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>arrow_forward</span>
-                  Tiếp tục đăng ký
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>delete_forever</span>
+                  Xóa vĩnh viễn
                 </button>
-              ) : (
+              ) : isDraft ? (
+                // Kho DRAFT → Tiếp tục đăng ký + Xóa
                 <>
                   <button
                     style={{
-                      flex: 1,
-                      padding: "10px",
-                      background: "#fff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "10px",
-                      color: "#334155",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      transition: "background 0.2s"
+                      flex: 2, padding: "10px", background: "#00b2d6",
+                      border: "none", borderRadius: "10px", color: "#fff",
+                      fontWeight: 700, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                    }}
+                    onClick={() => navigate(`/create-warehouse?id=${w.warehouseId}`)}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>arrow_forward</span>
+                    Tiếp tục đăng ký
+                  </button>
+                  <button
+                    style={{
+                      padding: "10px", background: "#fee2e2",
+                      border: "1px solid #fecaca", borderRadius: "10px",
+                      color: "#ef4444", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                    onClick={() => setDeleteModal({ open: true, warehouseId: w.warehouseId, warehouseName: w.name, loading: false, isPermanent: true })}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>delete</span>
+                  </button>
+                </>
+              ) : (
+                // Kho ACTIVE (APPROVED, PENDING, REJECTED, HIDDEN)
+                <>
+                  <button
+                    style={{
+                      flex: 1, padding: "10px", background: "#fff",
+                      border: "1px solid #cbd5e1", borderRadius: "10px",
+                      color: "#334155", fontWeight: 600, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "#fff"}
@@ -360,22 +403,12 @@ const OwnerWarehouseList = () => {
                     <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>dashboard</span>
                     Chi tiết
                   </button>
-
                   <button
                     style={{
-                      flex: 1,
-                      padding: "10px",
-                      background: "#fef3c7",
-                      border: "1px solid #fde68a",
-                      borderRadius: "10px",
-                      color: "#d97706",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      transition: "background 0.2s"
+                      flex: 1, padding: "10px", background: "#fef3c7",
+                      border: "1px solid #fde68a", borderRadius: "10px",
+                      color: "#d97706", fontWeight: 600, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.background = "#fde68a"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "#fef3c7"}
@@ -384,32 +417,23 @@ const OwnerWarehouseList = () => {
                     <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>edit</span>
                     Sửa
                   </button>
+                  <button
+                    style={{
+                      padding: "10px", background: "#fee2e2",
+                      border: "1px solid #fecaca", borderRadius: "10px",
+                      color: "#ef4444", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                    onClick={() => setDeleteModal({ open: true, warehouseId: w.warehouseId, warehouseName: w.name, loading: false, isPermanent: false })}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>delete</span>
+                  </button>
                 </>
               )}
-
-              <button
-                style={{
-                  padding: "10px",
-                  background: "#fee2e2",
-                  border: "1px solid #fecaca",
-                  borderRadius: "10px",
-                  color: "#ef4444",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "background 0.2s"
-                }}
-                title="Xóa Kho"
-                onMouseEnter={(e) => e.currentTarget.style.background = "#fecaca"}
-                onMouseLeave={(e) => e.currentTarget.style.background = "#fee2e2"}
-                onClick={() => setDeleteModal({ open: true, warehouseId: w.warehouseId, warehouseName: w.name, loading: false })}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>delete</span>
-              </button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       
       {warehouses.length === 0 && (
@@ -467,10 +491,12 @@ const OwnerWarehouseList = () => {
             </div>
 
             <h2 style={{ textAlign: "center", margin: "0 0 8px", fontSize: 20, fontWeight: 900, color: "#0f172a" }}>
-              Xác nhận xóa kho
+              {deleteModal.isPermanent ? "Xóa vĩnh viễn khỏi hệ thống" : "Xác nhận xóa kho"}
             </h2>
             <p style={{ textAlign: "center", color: "#64748b", fontSize: 14, margin: "0 0 8px", lineHeight: 1.6 }}>
-              Bạn có chắc chắn muốn xóa kho
+              {deleteModal.isPermanent
+                ? "Bạn có chắc muốn xóa vĩnh viễn kho"
+                : "Bạn có chắc chắn muốn xóa kho"}
             </p>
             <p style={{ textAlign: "center", fontWeight: 800, fontSize: 15, color: "#0f172a", margin: "0 0 6px" }}>
               "{deleteModal.warehouseName}"
@@ -482,7 +508,11 @@ const OwnerWarehouseList = () => {
               display: "flex", alignItems: "center", gap: 8,
             }}>
               <span className="material-symbols-outlined" style={{ color: "#dc2626", fontSize: 18 }}>warning</span>
-              <span style={{ fontSize: 13, color: "#991b1b", fontWeight: 600 }}>Hành động này không thể hoàn tác!</span>
+              <span style={{ fontSize: 13, color: "#991b1b", fontWeight: 600 }}>
+                {deleteModal.isPermanent
+                  ? "Dữ liệu sẽ bị xóa hẳn khỏi cơ sở dữ liệu, không thể khôi phục!"
+                  : "Hành động này không thể hoàn tác!"}
+              </span>
             </div>
 
             <div style={{ display: "flex", gap: 12 }}>
@@ -511,13 +541,12 @@ const OwnerWarehouseList = () => {
                   cursor: deleteModal.loading ? "not-allowed" : "pointer",
                   boxShadow: "0 8px 20px rgba(239,68,68,0.3)",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  transition: "all 0.2s",
                 }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
                   {deleteModal.loading ? "hourglass_empty" : "delete_forever"}
                 </span>
-                {deleteModal.loading ? "Đang xóa..." : "Xóa kho"}
+                {deleteModal.loading ? "Đang xóa..." : deleteModal.isPermanent ? "Xóa vĩnh viễn" : "Xóa kho"}
               </button>
             </div>
           </div>

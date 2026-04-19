@@ -182,25 +182,25 @@ const SubscriptionPage = () => {
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: isPremium ? '#fff' : '#1e293b', fontSize: '14px' }}>
                             <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                <CheckCircleOutlined style={{ color: '#10b981' }} />
-                               <span>Tối đa <strong>{pkg.name === 'Basic' ? '1' : '5'}</strong> kho bãi</span>
+                               <span>Tối đa <strong>{pkg.maxWarehouses}</strong> kho bãi</span>
                             </li>
                             <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                <CheckCircleOutlined style={{ color: '#10b981' }} />
-                               <span><strong>{pkg.name === 'Basic' ? '5' : '50'}</strong> nhân viên / mỗi kho</span>
+                               <span><strong>{pkg.maxStaffPerWarehouse}</strong> nhân viên / mỗi kho</span>
                             </li>
                             <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                <CheckCircleOutlined style={{ color: '#10b981' }} />
-                               <span><strong>{pkg.name === 'Basic' ? '3' : '10'}</strong> khu vực (Zones) / kho</span>
+                               <span><strong>{pkg.maxZonesPerWarehouse}</strong> khu vực (Zones) / kho</span>
                             </li>
                             <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                <CheckCircleOutlined style={{ color: '#10b981' }} />
-                               <span>Tổng diện tích: <strong>{pkg.name === 'Basic' ? '500' : '5000'}</strong> m²</span>
+                               <span>Tổng thể tích: <strong>{Number(pkg.maxTotalArea).toLocaleString('vi-VN')}</strong> m³</span>
                             </li>
-                            <li style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: pkg.name === 'Basic' ? 0.5 : 1 }}>
-                               <span className="material-symbols-outlined" style={{ fontSize: '16px', color: pkg.name === 'Basic' ? '#94a3b8' : '#10b981' }}>
-                                 {pkg.name === 'Basic' ? 'block' : 'check_circle'}
+                            <li style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: pkg.allowEquipmentManagement ? 1 : 0.5 }}>
+                               <span className="material-symbols-outlined" style={{ fontSize: '16px', color: pkg.allowEquipmentManagement ? '#10b981' : '#94a3b8' }}>
+                                 {pkg.allowEquipmentManagement ? 'check_circle' : 'block'}
                                </span>
-                               <span style={{ textDecoration: pkg.name === 'Basic' ? 'line-through' : 'none' }}>Quản lý thiết bị vòng đời</span>
+                               <span style={{ textDecoration: pkg.allowEquipmentManagement ? 'none' : 'line-through' }}>Quản lý thiết bị vòng đời</span>
                             </li>
                           </ul>
                         </div>

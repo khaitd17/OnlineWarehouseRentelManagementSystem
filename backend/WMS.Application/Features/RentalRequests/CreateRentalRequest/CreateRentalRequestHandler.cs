@@ -61,7 +61,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         // Check if user already has pending request for this warehouse
         var hasPending = await _rentalRequestRepository.HasPendingRequestAsync(request.RenterId, request.WarehouseId);
         if (hasPending)
-            throw new InvalidOperationException("You already have a pending request for this warehouse");
+            throw new InvalidOperationException("Bạn đã có yêu cầu thuê đang chờ xử lý với kho này.");
 
         // Create rental request
         var rentalRequest = RentalRequest.Create(
@@ -85,7 +85,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         {
             UserId = warehouse.OwnerId,
             Title = "Yêu cầu thuê kho mới",
-            Message = $"{renterName} đã gửi yêu cầu thuê kho {warehouse.Name}. Diện tích: {request.RequestedArea}m², Thời hạn: {request.DurationMonths} tháng.",
+            Message = $"{renterName} đã gửi yêu cầu thuê kho {warehouse.Name}. Thể tích: {request.RequestedArea}m³, Thời hạn: {request.DurationMonths} tháng.",
             Type = "RENTAL_REQUEST_RECEIVED",
             ReferenceId = requestId,
             ReferenceType = "RENTAL_REQUEST"

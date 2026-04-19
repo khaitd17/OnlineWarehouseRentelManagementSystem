@@ -161,7 +161,7 @@ public class AnalyzeItemsHandler : IRequestHandler<AnalyzeItemsCommand, AnalyzeI
         return new AnalyzeItemsResult(
             SessionId: session.SessionId,
             Items: geminiResult.Items.Select(i =>
-                new DetectedItemDto(i.Name, i.Quantity, i.EstimatedVolumeM3)).ToList(),
+                new DetectedItemDto(i.Name, i.Quantity, i.EstimatedVolumeM3, i.WidthM, i.LengthM, i.HeightM)).ToList(),
             TotalVolumeM3: geminiResult.TotalVolumeM3,
             SuggestedWarehouseType: geminiResult.SuggestedWarehouseType,
             SpecialNotes: geminiResult.SpecialNotes,

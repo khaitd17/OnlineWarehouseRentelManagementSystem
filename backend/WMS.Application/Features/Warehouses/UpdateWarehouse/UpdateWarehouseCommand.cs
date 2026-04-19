@@ -30,6 +30,7 @@ public class UpdateWarehouseCommand : IRequest
     public double TotalArea { get; set; }
     public double? Width { get; set; }
     public double? Length { get; set; }
+    public double? Height { get; set; }
     public string? MainDoorDirection { get; set; }
     public string? Status { get; set; }
     public decimal? PricePerM2 { get; set; }

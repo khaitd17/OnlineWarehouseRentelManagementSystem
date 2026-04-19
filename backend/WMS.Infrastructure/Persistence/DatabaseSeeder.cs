@@ -17,21 +17,33 @@ namespace WMS.Infrastructure.Persistence
             {
                 new SubscriptionPackage 
                 { 
-                    Name = "Basic", Price = 2000, Description = "Gói cơ bản: 1 kho, 3 nhân viên, 3 zones, 1000m2", 
-                    DurationMonths = 1, MaxWarehouses = 1, MaxStaffPerWarehouse = 3, MaxZonesPerWarehouse = 3, MaxTotalArea = 1000, 
+                    Name = "Basic", Price = 2000, Description = "Gói cơ bản: 1 kho, 3 nhân viên, 3 zones, 10.000 m³", 
+                    DurationMonths = 1, MaxWarehouses = 1, MaxStaffPerWarehouse = 3, MaxZonesPerWarehouse = 3, MaxTotalArea = 10000, 
                     AllowEquipmentManagement = false, IsActive = true, CreatedAt = DateTime.UtcNow 
                 },
                 new SubscriptionPackage 
                 { 
-                    Name = "Premium", Price = 500000, Description = "Gói cao cấp: 10 kho, 20 nhân viên, 10 zones, 10.000m2, Quản lý thiết bị", 
-                    DurationMonths = 1, MaxWarehouses = 10, MaxStaffPerWarehouse = 20, MaxZonesPerWarehouse = 10, MaxTotalArea = 10000, 
+                    Name = "Premium", Price = 500000, Description = "Gói cao cấp: 8 kho, 20 nhân viên, 10 zones, 50.000 m³, Quản lý thiết bị", 
+                    DurationMonths = 1, MaxWarehouses = 8, MaxStaffPerWarehouse = 20, MaxZonesPerWarehouse = 10, MaxTotalArea = 50000, 
                     AllowEquipmentManagement = true, IsActive = true, CreatedAt = DateTime.UtcNow 
                 }
             };
             foreach (var package in packages)
             {
-                if (!context.SubscriptionPackages.Any(p => p.Name == package.Name))
+                var existing = context.SubscriptionPackages.FirstOrDefault(p => p.Name == package.Name);
+                if (existing == null)
+                {
                     context.SubscriptionPackages.Add(package);
+                }
+                else
+                {
+                    // Update limits to latest values every startup
+                    existing.MaxWarehouses = package.MaxWarehouses;
+                    existing.MaxTotalArea  = package.MaxTotalArea;
+                    existing.MaxStaffPerWarehouse  = package.MaxStaffPerWarehouse;
+                    existing.MaxZonesPerWarehouse  = package.MaxZonesPerWarehouse;
+                    existing.Description   = package.Description;
+                }
             }
             context.SaveChanges();
 

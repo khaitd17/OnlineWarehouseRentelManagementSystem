@@ -100,6 +100,7 @@ public class RentalContractsController : ControllerBase
             var contracts = await _db.Contracts
                 .Include(c => c.Warehouse)
                 .Include(c => c.Renter)
+                .Include(c => c.Request)
                 .Where(c => c.Warehouse != null && c.Warehouse.OwnerId == ownerId)
                 .OrderByDescending(c => c.CreatedAt)
                 .Select(c => new
@@ -112,6 +113,7 @@ public class RentalContractsController : ControllerBase
                     c.MonthlyPayment,
                     c.TotalValue,
                     c.CreatedAt,
+                    RequestedArea = c.Request != null ? c.Request.RequestedArea : 0,
                     WarehouseId   = c.Warehouse!.WarehouseId,
                     WarehouseName = c.Warehouse.Name,
                     WarehouseAddress = c.Warehouse.Address,
@@ -540,8 +542,8 @@ public class RentalContractsController : ControllerBase
         [FromQuery] int warehouseId,
         CancellationToken ct)
     {
-        const int    UnitsPerM2  = 10;
-        const double KgPerM2     = 500.0;
+        const int    UnitsPerM3  = 10;
+        const double KgPerM3     = 500.0;
 
         // Lấy diện tích hợp đồng
         double contractedArea = await _contractRepo.GetContractedAreaAsync(renterId, warehouseId, ct);
@@ -562,9 +564,9 @@ public class RentalContractsController : ControllerBase
             .ToListAsync(ct);
         int currentStock = inventoryRows.Sum(x => x.ri.Quantity);
 
-        int maxQty       = contractedArea > 0 ? (int)Math.Floor(contractedArea * UnitsPerM2) : 0;
+        int maxQty       = contractedArea > 0 ? (int)Math.Floor(contractedArea * UnitsPerM3) : 0;
         int remainingQty = Math.Max(0, maxQty - currentStock);
-        double maxWeightKg = contractedArea * KgPerM2;
+        double maxWeightKg = contractedArea * KgPerM3;
 
         return Ok(new
         {
@@ -572,7 +574,7 @@ public class RentalContractsController : ControllerBase
             renterName        = renter?.FullName ?? "—",
             renterEmail       = renter?.Email    ?? "—",
             warehouseId,
-            contractedAreaM2  = contractedArea,
+            contractedAreaM3  = contractedArea,
             maxQty,
             currentStock,
             remainingQty,

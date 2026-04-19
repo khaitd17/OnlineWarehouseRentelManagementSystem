@@ -17,7 +17,10 @@ public record AnalyzeItemsResult(
 public record DetectedItemDto(
     string Name,
     int Quantity,
-    double EstimatedVolumeM3
+    double EstimatedVolumeM3,
+    double WidthM,
+    double LengthM,
+    double HeightM
 );
 
 /// <summary>Thông tin kho gợi ý cho người dùng.</summary>

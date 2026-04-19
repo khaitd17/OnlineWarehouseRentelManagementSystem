@@ -12,9 +12,9 @@ const fmtBytes = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}
 const fileIcon = name => { const e = name.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(e)) return '🖼️'; if(e==='pdf') return '📄'; if(['xls','xlsx'].includes(e)) return '📊'; return '📎'; };
 const newRow = () => ({ id: Date.now()+Math.random(), assetId: null, itemName: '', unit: 'cái', qty: 1, note: '', isNew: false, availableQty: null, search: '', showDrop: false });
 const inp = (extra={}) => ({ padding:'9px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', fontSize:'0.87rem', outline:'none', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s', boxSizing:'border-box', width:'100%', ...extra });
-const UNITS = ['cái','chiếc','thùng','hộp','kg','tấn','lít','mét','m²','m³','cuộn','bao','pallet','chai','gói','bẹ'];
-const UNITS_PER_M2 = 10;   // Hệ số: 10 đơn vị / m² khả dụng
-const KG_PER_M2_WARN = 300; // Ngưỡng cảnh báo tải trọng (kg/m²)
+const UNITS = ['cái','chiếc','thùng','hộp','kg','tấn','lít','mét','m³','m³','cuộn','bao','pallet','chai','gói','bẹ'];
+const UNITS_PER_M2 = 10;   // Hệ số: 10 đơn vị / m³ khả dụng
+const KG_PER_M3_WARN = 300; // Ngưỡng cảnh báo tải trọng (kg/m³)
 
 function UnitCombobox({ value, onChange, accent }) {
   const [show, setShow] = useState(false);
@@ -59,7 +59,7 @@ function UnitCombobox({ value, onChange, accent }) {
 /* ── Searchable row (INBOUND only) ─────────────────────────────────────── */
 function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, onEnter, canRemove, maxQty, contractedArea }) {
   const ref = useRef(null);
-  const KG_PER_M2 = 500; // tải trọng sàn kho tiêu chuẩn kg/m²
+  const KG_PER_M3 = 500; // tải trọng sàn kho tiêu chuẩn kg/m³
   const filtered = (item.search ? list.filter(a=>(a.assetName||'').toLowerCase().includes(item.search.toLowerCase())) : list).slice(0,20);
 
   // OUTBOUND: vượt tồn kho (hard block)
@@ -72,7 +72,7 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
   const itemWeight = item.weightPerUnit && Number(item.weightPerUnit) > 0
     ? Number(item.weightPerUnit) * Number(item.qty || 1)
     : null;
-  const maxWeightKg = contractedArea > 0 ? contractedArea * KG_PER_M2 : null;
+  const maxWeightKg = contractedArea > 0 ? contractedArea * KG_PER_M3 : null;
   const isOverWeight = itemWeight !== null && maxWeightKg !== null && itemWeight > maxWeightKg;
 
   useEffect(()=>{
@@ -570,7 +570,7 @@ export default function CreateInventoryRequest() {
       if(!it.qty||Number(it.qty)<1){setError('Số lượng phải >= 1.');return;}
     }
     // Lưu ý: Số lượng vượt ước tính diện tích (soft warning) KHÔNG bị chặn ở đây.
-    // Backend sẽ chặn nếu TỔNG TRỌNG LƯỢNG vượt tải trọng sàn kho (500 kg/m²).
+    // Backend sẽ chặn nếu TỔNG TRỌNG LƯỢNG vượt tải trọng sàn kho (500 kg/m³).
     // Hàng nhẹ (bút, hộp giấy...) sẽ qua được và Manager approval sẽ là gate cuối cùng.
     setSubmitting(true);
     try {
@@ -691,7 +691,7 @@ export default function CreateInventoryRequest() {
                             )}
                             {/* Diện tích hợp đồng */}
                             <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8' }}>
-                              HĐ: {wh.requestedArea.toLocaleString('vi-VN')} m² / ~{maxQty?.toLocaleString('vi-VN')} đơn vị ước tính
+                              HĐ: {wh.requestedArea.toLocaleString('vi-VN')} m³ / ~{maxQty?.toLocaleString('vi-VN')} đơn vị ước tính
                             </span>
                           </>
                           )

@@ -28,7 +28,7 @@ const calculateTotalValue = (monthlyPayment, durationMonths) => {
 };
 
 const generateDefaultTerms = (req) => {
-  return `1. Bên A cho Bên B thuê diện tích ${req.requestedArea} m² tại kho ${req.warehouseName}, địa chỉ: ${req.warehouseAddress}.
+  return `1. Bên A cho Bên B thuê thể tích ${req.requestedArea} m³ tại kho ${req.warehouseName}, địa chỉ: ${req.warehouseAddress}.
 2. Bên B sử dụng kho đúng mục đích thuê, không chứa hàng cấm, hàng nguy hiểm, dễ cháy nổ.
 3. Bên B thanh toán tiền thuê hàng tháng, chậm nhất vào ngày 05 của mỗi tháng.
 4. Nếu Bên B chậm thanh toán quá 15 ngày, Bên A có quyền đơn phương chấm dứt hợp đồng.
@@ -412,7 +412,7 @@ const PendingRentalRequests = () => {
         {/* ── Warehouse info ── */}
         <ContractSection title="Thông tin kho hàng" icon="warehouse" accent="#0891b2">
           <ReadOnlyField label="Tên kho" value={req.warehouseName} />
-          <ReadOnlyField label="Diện tích thuê" value={`${req.requestedArea} m²`} />
+          <ReadOnlyField label="Thể tích thuê" value={`${req.requestedArea} m³`} />
           <ReadOnlyField label="Địa chỉ" value={req.warehouseAddress} fullWidth />
         </ContractSection>
 
@@ -443,10 +443,10 @@ const PendingRentalRequests = () => {
 
         {/* ── Pricing ── */}
         <ContractSection title="Giá thuê và thanh toán" icon="payments" accent="#d97706">
-          <ReadOnlyField label="Giá/m² (VNĐ)" value={formatCurrency(contractForm.pricePerM2)} />
-          <ReadOnlyField label="Diện tích thuê" value={`${req.requestedArea} m²`} />
+          <ReadOnlyField label="Giá/m³ (VNĐ)" value={formatCurrency(contractForm.pricePerM2)} />
+          <ReadOnlyField label="Thể tích thuê" value={`${req.requestedArea} m³`} />
           <ReadOnlyField
-            label={`Giá thuê/tháng (${req.requestedArea}m² × ${formatCurrency(contractForm.pricePerM2)})`}
+            label={`Giá thuê/tháng (${req.requestedArea}m³ × ${formatCurrency(contractForm.pricePerM2)})`}
             value={formatCurrency(contractForm.monthlyPayment)}
             fullWidth
           />
@@ -785,11 +785,11 @@ const PendingRentalRequests = () => {
                   background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88, transparent)`,
                 }} />
 
-                <div style={{ padding: "22px 28px 24px" }}>
-                  {/* Header row */}
+                <div style={{ padding: "22px 28px 0" }}>
+                  {/* ── Header row: YC+badge left | dates right ── */}
                   <div style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "flex-start",
-                    gap: 16, marginBottom: 18,
+                    display: "flex", justifyContent: "space-between",
+                    alignItems: "flex-start", gap: 16, marginBottom: 18,
                   }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
@@ -816,69 +816,54 @@ const PendingRentalRequests = () => {
                       </h3>
                     </div>
 
-                    {/* Actions (top-right for PENDING) */}
-                    {req.status === "PENDING" && (
-                      <div style={{ display: "flex", gap: 10, flexShrink: 0 }}>
-                        <button
-                          className="ow-btn"
-                          onClick={() => openApproveModal(req)}
-                          style={{
-                            padding: "10px 24px", borderRadius: 10, border: "none",
-                            background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                            color: "#fff", fontWeight: 700, cursor: "pointer",
-                            fontSize: "0.88rem",
-                            boxShadow: "0 4px 14px rgba(37,99,235,0.3)",
-                          }}
-                        >
-                          Gửi hợp đồng
-                        </button>
-                        <button
-                          className="ow-btn"
-                          onClick={() => openRejectModal(req)}
-                          style={{
-                            padding: "10px 24px", borderRadius: 10,
-                            border: "1.5px solid #fca5a5",
-                            background: "#fff", color: "#dc2626",
-                            fontWeight: 700, cursor: "pointer",
-                            fontSize: "0.88rem",
-                          }}
-                        >
-                          Từ chối
-                        </button>
-                      </div>
-                    )}
+                    {/* Dates top-right (same as renter side) */}
+                    <div style={{
+                      textAlign: "right", flexShrink: 0,
+                      padding: "8px 14px", borderRadius: 10,
+                      background: "#f8fafc", border: "1px solid #f1f5f9",
+                    }}>
+                      <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>Ngày gửi</div>
+                      <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#334155" }}>{formatDate(req.createdAt)}</div>
+                      {req.reviewedAt && (
+                        <>
+                          <div style={{ fontSize: "0.68rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6 }}>Duyệt</div>
+                          <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#334155" }}>{formatDate(req.reviewedAt)}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Info chips */}
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: req.notes ? 16 : 0 }}>
+                  {/* ── Info chips (same layout as renter side) ── */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: req.notes ? 14 : 18 }}>
                     {[
                       { label: "Người thuê", value: `${req.renterName} (${req.renterEmail})`, wide: true },
                       { label: "Địa chỉ", value: req.warehouseAddress, wide: true },
-                      { label: "Diện tích", value: `${req.requestedArea} m²` },
+                      { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
+                      req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null,
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
                       { label: "Ngày bắt đầu", value: formatDate(req.startDate) },
-                      { label: "Ngày gửi", value: formatDate(req.createdAt) },
-                    ].map(item => (
+                    ].filter(Boolean).map(item => (
                       <div key={item.label} style={{
                         padding: "8px 14px", borderRadius: 10,
-                        background: "#f8fafc", border: "1px solid #f1f5f9",
+                        background: item.highlighted ? "#f0fdf4" : "#f8fafc",
+                        border: item.highlighted ? "1px solid #86efac" : "1px solid #f1f5f9",
                         display: "flex", flexDirection: "column", gap: 2,
                         minWidth: 120, flex: item.wide ? "1 1 100%" : "0 0 auto",
                       }}>
-                        <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                        <span style={{ fontSize: "0.65rem", fontWeight: 700, color: item.highlighted ? "#15803d" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                           {item.label}
                         </span>
-                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: "#334155" }}>
+                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: item.highlighted ? "#166534" : "#334155" }}>
                           {item.value}
                         </span>
                       </div>
                     ))}
                   </div>
 
-                  {/* Notes */}
+                  {/* ── Notes ── */}
                   {req.notes && (
                     <div style={{
-                      padding: "12px 16px",
+                      padding: "12px 16px", marginBottom: 18,
                       background: "linear-gradient(135deg, #fffbeb, #fef3c7)",
                       borderRadius: 10, borderLeft: "4px solid #f59e0b",
                       fontSize: "0.85rem", color: "#92400e", lineHeight: 1.6,
@@ -887,6 +872,43 @@ const PendingRentalRequests = () => {
                     </div>
                   )}
                 </div>
+
+                {/* ── Action footer (bottom, separated, same pattern as renter) ── */}
+                {req.status === "PENDING" && (
+                  <div style={{
+                    display: "flex", justifyContent: "flex-end", alignItems: "center",
+                    gap: 10, padding: "14px 28px",
+                    borderTop: "1px solid #f1f5f9",
+                    background: "#fafbfd",
+                  }}>
+                    <button
+                      className="ow-btn"
+                      onClick={() => openApproveModal(req)}
+                      style={{
+                        padding: "10px 28px", borderRadius: 10, border: "none",
+                        background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                        color: "#fff", fontWeight: 700, cursor: "pointer",
+                        fontSize: "0.88rem",
+                        boxShadow: "0 4px 14px rgba(37,99,235,0.25)",
+                      }}
+                    >
+                      Gửi hợp đồng
+                    </button>
+                    <button
+                      className="ow-btn"
+                      onClick={() => openRejectModal(req)}
+                      style={{
+                        padding: "10px 24px", borderRadius: 10,
+                        border: "1.5px solid #fca5a5",
+                        background: "#fff", color: "#dc2626",
+                        fontWeight: 700, cursor: "pointer",
+                        fontSize: "0.88rem",
+                      }}
+                    >
+                      Từ chối
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

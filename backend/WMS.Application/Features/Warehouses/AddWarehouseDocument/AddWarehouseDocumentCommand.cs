@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.AspNetCore.Http;
 
 public class AddWarehouseDocumentCommand : IRequest
 {
@@ -6,5 +7,5 @@ public class AddWarehouseDocumentCommand : IRequest
 
     public string DocumentType { get; set; } = null!;
 
-    public string DocumentUrl { get; set; } = null!;
+    public IFormFile File { get; set; } = null!;
 }

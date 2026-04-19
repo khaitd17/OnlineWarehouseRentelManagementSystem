@@ -137,7 +137,7 @@ export default function WarehouseCard({ w }) {
             }}>
               <strong style={{ color: '#065f46', fontSize: '0.9rem' }}>
                 {Number(w.pricePerM2).toLocaleString('vi-VN')} đ
-              </strong>/m²/tháng
+              </strong>/m³/tháng
             </div>
           )}
           <div style={{
@@ -147,13 +147,13 @@ export default function WarehouseCard({ w }) {
             <div>
               <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>Tổng DT</div>
               <div style={{ fontWeight: 700, color: '#334155', fontSize: '0.92rem' }}>
-                {w.totalArea?.toLocaleString()} m²
+                {w.totalArea?.toLocaleString()} m³
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>Còn trống</div>
               <div style={{ fontWeight: 800, color: '#0095c7', fontSize: '0.98rem' }}>
-                {w.availableArea?.toLocaleString()} m²
+                {w.availableArea?.toLocaleString()} m³
               </div>
             </div>
           </div>
