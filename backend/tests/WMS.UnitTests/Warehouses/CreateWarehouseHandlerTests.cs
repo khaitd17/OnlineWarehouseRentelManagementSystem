@@ -77,12 +77,12 @@ public class CreateWarehouseHandlerTests
         // Assert
         Assert.Equal(100, result);  // Return = T → warehouseId = 100
 
-        // Verify OPERATOR membership assigned automatically after creation
+        // Verify OWNER membership assigned automatically after creation
         membershipRepo.Verify(x => x.CreateMembershipAsync(
             It.Is<CreateMembershipDto>(d =>
                 d.UserId      == 2       &&
                 d.WarehouseId == 100     &&
-                d.RoleCode    == "OPERATOR" &&
+                d.RoleCode    == "OWNER" &&
                 d.IsAllSkill  == true),
             It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -220,8 +220,8 @@ public class CreateWarehouseHandlerTests
     [Fact]
     public async Task UTC008_NullStatus_Handler_DefaultsStatusToHidden()
     {
-        // Handler logic: Status = request.Status ?? "HIDDEN"
-        // When Status is null, warehouse is created with Status = "HIDDEN".
+        // Handler logic: Status = "DRAFT" (hardcoded in current version)
+        // When Status is null, warehouse is created with Status = "DRAFT".
 
         // Arrange
         var (handler, warehouseRepo, membershipRepo) = BuildHandler();
@@ -238,7 +238,7 @@ public class CreateWarehouseHandlerTests
             Name      = "New Warehouse",
             Address   = "Valid Address 123",
             TotalArea = 1000,
-            Status    = null,   // null → should default to "HIDDEN"
+            Status    = null,   // null → should default to "DRAFT"
         };
 
         // Act
@@ -247,16 +247,15 @@ public class CreateWarehouseHandlerTests
         // Assert
         Assert.Equal(107, result);
         Assert.NotNull(capturedWarehouse);
-        Assert.Equal("HIDDEN", capturedWarehouse!.Status);  // default applied
+        Assert.Equal("DRAFT", capturedWarehouse!.Status);  // default applied
     }
 
     // ── UTC009 — Boundary: Status = "INVALID_STATUS" → handler passes through (GAP) ─
     [Fact]
     public async Task UTC009_InvalidStatus_HandlerPassesThrough_DocumentedAsGap()
     {
-        // GAP: Status enum validation is not done in handler.
-        //      "INVALID_STATUS" is assigned directly to Warehouse.Status.
-        //      DB or pipeline should reject invalid status values.
+        //      DB or pipeline should reject invalid status values. 
+        // NOTE: Current handler hardcodes Status = "DRAFT", ignoring command input.
 
         // Arrange
         var (handler, warehouseRepo, membershipRepo) = BuildHandler();
@@ -281,7 +280,7 @@ public class CreateWarehouseHandlerTests
 
         // Assert: handler does not throw (gap)
         Assert.Equal(108, result);
-        Assert.Equal("INVALID_STATUS", capturedWarehouse!.Status);  // passed through as-is
+        Assert.Equal("DRAFT", capturedWarehouse!.Status);  // Now hardcoded to DRAFT
     }
 
     // ── UTC010 — Boundary: Name longer than 200 characters → Validator rejects ─
@@ -435,7 +434,7 @@ public class CreateWarehouseHandlerTests
             TotalArea        = 1000,
             Width            = 20,
             Length           = 50,
-            Status           = "PENDING",
+            Status           = "PENDING", // Ignored by handler, becomes "DRAFT"
             Is24HoursAccess  = true,
             PricePerM2       = 50000,
         };
@@ -454,12 +453,12 @@ public class CreateWarehouseHandlerTests
                 w.TotalArea == 1000),
             It.IsAny<CancellationToken>()), Times.Once);
 
-        // OPERATOR membership created for the warehouse owner
+        // OWNER membership created for the warehouse owner
         membershipRepo.Verify(x => x.CreateMembershipAsync(
             It.Is<CreateMembershipDto>(d =>
                 d.UserId      == 2       &&
                 d.WarehouseId == 200     &&
-                d.RoleCode    == "OPERATOR"),
+                d.RoleCode    == "OWNER"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 }

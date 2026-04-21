@@ -139,9 +139,12 @@ namespace WMS.Infrastructure.Persistence
                 context.SaveChanges();
             }
 
-            // Lấy warehouse2/warehouse3 nếu đã tồn tại trong DB (không tạo mới nữa)
-            var warehouse2 = context.Warehouses.FirstOrDefault(w => w.Name == "Kho Hải Phòng");
-            var warehouse3 = context.Warehouses.FirstOrDefault(w => w.Name == "Kho TP.HCM");
+            // Đảm bảo warehouse2/warehouse3 tồn tại trong DB
+            var warehouse2 = EnsureWarehouse(context, "Kho Hải Phòng", "456 Đường Lê Hồng Phong, Hải Phòng", 
+                ownerUser.UserId, adminUser.UserId, 3000, 3000, 20.8449, 106.6881, "08:00 - 17:00", "Kho trung chuyển khu vực Cảng Hải Phòng");
+            
+            var warehouse3 = EnsureWarehouse(context, "Kho TP.HCM", "789 Đường Mai Chí Thọ, Quận 2, TP.HCM", 
+                ownerUser.UserId, adminUser.UserId, 8000, 8000, 10.7817, 106.7273, "24/7", "Kho tổng quy mô lớn tại miền Nam");
 
             // Add Zones for warehouse 1
             if (!context.Zones.Any(z => z.WarehouseId == warehouse.WarehouseId))
