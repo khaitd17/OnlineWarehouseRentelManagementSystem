@@ -266,10 +266,11 @@ public class AuditSessionsController : ControllerBase
     {
         int userId = GetCurrentUserId();
 
+        bool isOwner    = await _db.Warehouses.AnyAsync(w => w.WarehouseId == warehouseId && w.OwnerId == userId, HttpContext.RequestAborted);
         bool isOperator = await _membershipRepo.HasRoleAsync(userId, warehouseId, "OPERATOR", HttpContext.RequestAborted);
         bool isManager  = await _membershipRepo.HasRoleAsync(userId, warehouseId, "MANAGER",  HttpContext.RequestAborted);
-        if (!isOperator && !isManager)
-            return StatusCode(403, new { success = false, message = "Chỉ OPERATOR / MANAGER mới xem được danh sách nhân viên." });
+        if (!isOwner && !isOperator && !isManager)
+            return StatusCode(403, new { success = false, message = "Chỉ OWNER / OPERATOR / MANAGER mới xem được danh sách nhân viên." });
 
         // Chỉ lấy STAFF có skill INVENTORY_OPERATOR — đây là người đủ điều kiện được giao kiểm kê
         var staff = await _db.WarehouseMemberships
@@ -316,16 +317,24 @@ public class AuditSessionsController : ControllerBase
 
         var warehouseId = session.WarehouseId;
 
-        // [PERMISSION FIX] Xác định role của người tạo phiên qua warehouse membership
-        // (không dùng creator.Role.RoleName vì system role nay chỉ còn USER/ADMIN)
+        // Xác định role của người tạo phiên qua warehouse membership
         var creatorMembership = await _membershipRepo.GetCallerMembershipAsync(
             session.CreatedBy, warehouseId, HttpContext.RequestAborted);
         var roleName = creatorMembership?.RoleCode?.ToUpper() ?? "";
 
-        // Toàn bộ logic if/else bên dưới giữ nguyên như cũ
+        // Fallback: nếu không có membership entry, kiểm tra xem họ có hợp đồng thuê kho không
+        // (RENTER đôi khi chỉ tồn tại qua hợp đồng, không có WarehouseMembership)
+        bool creatorIsRenter = roleName == "RENTER";
+        if (!creatorIsRenter && creatorMembership == null)
+        {
+            creatorIsRenter = await _db.RentalContracts.AnyAsync(
+                c => c.RenterId == session.CreatedBy && c.WarehouseId == warehouseId && c.Status == "ACTIVE",
+                HttpContext.RequestAborted);
+        }
+
         var resultItems = new List<object>();
 
-        if (roleName == "RENTER")
+        if (creatorIsRenter)
         {
             // Renter chỉ thấy hàng của mình
             var renterItems = await _db.RenterInventories

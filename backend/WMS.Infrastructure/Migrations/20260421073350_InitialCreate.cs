@@ -87,6 +87,11 @@ namespace WMS.Infrastructure.Migrations
                     price = table.Column<decimal>(type: "decimal(15,2)", nullable: false),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     duration_months = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    max_warehouses = table.Column<int>(type: "int", nullable: false, defaultValue: 1),
+                    max_staff_per_warehouse = table.Column<int>(type: "int", nullable: false, defaultValue: 5),
+                    max_zones_per_warehouse = table.Column<int>(type: "int", nullable: false, defaultValue: 3),
+                    max_total_area = table.Column<decimal>(type: "decimal(18,2)", nullable: false, defaultValue: 500m),
+                    allow_equipment_management = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     is_active = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
                     updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
@@ -147,6 +152,7 @@ namespace WMS.Infrastructure.Migrations
                     name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     is_all_skill = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    is_manual = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     skill_id = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
@@ -157,6 +163,31 @@ namespace WMS.Infrastructure.Migrations
                         column: x => x.skill_id,
                         principalTable: "skills",
                         principalColumn: "skill_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ai_analysis_sessions",
+                columns: table => new
+                {
+                    session_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    analyzed_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
+                    image_urls = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    result_json = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    estimated_volume_m3 = table.Column<double>(type: "float", nullable: true),
+                    suggested_type = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    special_notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    confidence = table.Column<double>(type: "float", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ai_analysis_sessions", x => x.session_id);
+                    table.ForeignKey(
+                        name: "FK_ai_analysis_sessions_users",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -216,6 +247,7 @@ namespace WMS.Infrastructure.Migrations
                     asset_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "cái"),
                     weight_per_unit = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
+                    volume_per_unit = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
                 },
@@ -264,11 +296,13 @@ namespace WMS.Infrastructure.Migrations
                     lat = table.Column<double>(type: "float", nullable: true),
                     lng = table.Column<double>(type: "float", nullable: true),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    WarehouseType = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     total_area = table.Column<double>(type: "float", nullable: false),
                     Width = table.Column<double>(type: "float", nullable: true),
                     Length = table.Column<double>(type: "float", nullable: true),
                     MainDoorDirection = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     available_area = table.Column<double>(type: "float", nullable: false),
+                    available_volume = table.Column<double>(type: "float", nullable: true),
                     PricePerM2 = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     operating_hours = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     is_24_hours_access = table.Column<bool>(type: "bit", nullable: false),
@@ -352,6 +386,8 @@ namespace WMS.Infrastructure.Migrations
                     updated_at = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "(getdate())"),
                     ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    renter_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    manager_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     document_urls = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
@@ -629,8 +665,13 @@ namespace WMS.Infrastructure.Migrations
                     quantity = table.Column<int>(type: "int", nullable: false),
                     unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     weight = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
+                    EstimatedVolume = table.Column<decimal>(type: "decimal(10,3)", nullable: true),
+                    VerifiedVolume = table.Column<decimal>(type: "decimal(10,3)", nullable: true),
+                    VerifiedWeight = table.Column<decimal>(type: "decimal(10,3)", nullable: true),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    asset_id = table.Column<int>(type: "int", nullable: true)
+                    asset_id = table.Column<int>(type: "int", nullable: true),
+                    verified_quantity = table.Column<int>(type: "int", nullable: true),
+                    verify_note = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -735,7 +776,7 @@ namespace WMS.Infrastructure.Migrations
                     requested_area = table.Column<double>(type: "float", nullable: false),
                     start_date = table.Column<DateTime>(type: "datetime2", nullable: false),
                     duration_months = table.Column<int>(type: "int", nullable: false),
-                    status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "PENDING"),
+                    status = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false, defaultValue: "PENDING"),
                     notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "(getdate())"),
                     updated_at = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "(getdate())"),
@@ -743,9 +784,9 @@ namespace WMS.Infrastructure.Migrations
                     reviewed_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     rejection_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     contract_image_url = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
-                    CancellationReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CancelledAt = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CancelledBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    cancellation_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    cancelled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    cancelled_by = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -931,6 +972,7 @@ namespace WMS.Infrastructure.Migrations
                     owner_signed_file_url = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     owner_signed_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     owner_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    renter_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     TerminatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     TerminationReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     termination_requested_by = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
@@ -982,6 +1024,7 @@ namespace WMS.Infrastructure.Migrations
                     owner_signed_file_url = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     owner_signed_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     owner_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    renter_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
                     updated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     parent_contract_id = table.Column<int>(type: "int", nullable: true),
@@ -992,7 +1035,7 @@ namespace WMS.Infrastructure.Migrations
                     CancelledAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CancelledBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     GracePeriodHours = table.Column<int>(type: "int", nullable: false),
-                    cancellation_fee = table.Column<decimal>(type: "decimal(15,2)", nullable: true),
+                    CancellationFee = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     owner_signature_expiry = table.Column<DateTime>(type: "datetime2", nullable: true),
                     RenterSignatureExpiry = table.Column<DateTime>(type: "datetime2", nullable: true),
                     PaymentExpiry = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -1000,7 +1043,7 @@ namespace WMS.Infrastructure.Migrations
                     TerminationRequestedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     RenterApprovedTermination = table.Column<bool>(type: "bit", nullable: false),
                     OwnerApprovedTermination = table.Column<bool>(type: "bit", nullable: false),
-                    early_termination_fee = table.Column<decimal>(type: "decimal(15,2)", nullable: true)
+                    EarlyTerminationFee = table.Column<decimal>(type: "decimal(18,2)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1034,7 +1077,12 @@ namespace WMS.Infrastructure.Migrations
                     time_out1 = table.Column<string>(type: "nvarchar(5)", maxLength: 5, nullable: true),
                     time_in2 = table.Column<string>(type: "nvarchar(5)", maxLength: 5, nullable: true),
                     time_out2 = table.Column<string>(type: "nvarchar(5)", maxLength: 5, nullable: true),
-                    shift_type = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true)
+                    shift_type = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: true),
+                    overtime_hours = table.Column<decimal>(type: "decimal(4,1)", nullable: false, defaultValue: 0m),
+                    check_in_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    check_in_photo = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    check_out_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    check_out_photo = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1434,6 +1482,11 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_ai_analysis_sessions_user_id",
+                table: "ai_analysis_sessions",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_audit_results_audit",
                 table: "audit_results",
                 column: "audit_id");
@@ -1601,11 +1654,6 @@ namespace WMS.Infrastructure.Migrations
                 column: "rental_area_id");
 
             migrationBuilder.CreateIndex(
-                name: "idx_equipments_iot",
-                table: "equipments",
-                column: "iot_device_id");
-
-            migrationBuilder.CreateIndex(
                 name: "idx_equipments_status",
                 table: "equipments",
                 column: "status");
@@ -1614,6 +1662,20 @@ namespace WMS.Infrastructure.Migrations
                 name: "idx_equipments_warehouse",
                 table: "equipments",
                 column: "warehouse_id");
+
+            migrationBuilder.CreateIndex(
+                name: "UQ__equipments__iot",
+                table: "equipments",
+                column: "iot_device_id",
+                unique: true,
+                filter: "[iot_device_id] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "UQ__equipments__serial",
+                table: "equipments",
+                column: "serial_number",
+                unique: true,
+                filter: "[serial_number] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "idx_inventory_items_asset",
@@ -1978,9 +2040,9 @@ namespace WMS.Infrastructure.Migrations
                 column: "zone_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_warehouse_memberships_user_id_warehouse_id",
+                name: "IX_warehouse_memberships_user_warehouse_role",
                 table: "warehouse_memberships",
-                columns: new[] { "user_id", "warehouse_id" },
+                columns: new[] { "user_id", "warehouse_id", "warehouse_role_id" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -2047,6 +2109,9 @@ namespace WMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "ai_analysis_sessions");
+
             migrationBuilder.DropTable(
                 name: "audit_results");
 
