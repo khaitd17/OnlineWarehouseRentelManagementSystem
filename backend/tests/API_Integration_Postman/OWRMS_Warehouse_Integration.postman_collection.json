@@ -1,0 +1,1351 @@
+{
+    "info": {
+        "name": "OWRMS_Warehouse_Integration_FINAL_30TCs",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "01. Authentication",
+            "item": [
+                {
+                    "name": "PC-01: Login Admin",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{admin_email}}\",\n    \"password\": \"{{admin_password}}\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function() { pm.response.to.have.status(200); });",
+                                    "pm.environment.set('admin_token', pm.response.json().token);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PC-02: Login Owner Premium",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"premium_owner@owrms.com\",\n    \"password\": \"123456\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status is 200', function() { pm.response.to.have.status(200); });",
+                                    "pm.environment.set('owner_token', pm.response.json().token);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PC-03: Login Owner Basic",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"owner@owrms.com\",\n    \"password\": \"123456\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.environment.set('basic_owner_token', pm.response.json().token);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "PC-04: Login Renter",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/auth/login",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"{{renter_email}}\",\n    \"password\": \"{{renter_password}}\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.environment.set('renter_token', pm.response.json().token);"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "02. Owner Lifecycle",
+            "item": [
+                {
+                    "name": "IT-WH-01: Create WH (Premium)",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/create",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "create"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Kho A\",\n    \"address\": \"123 Test\",\n    \"totalArea\": 500,\n    \"pricePerM2\": 10000,\n    \"is24HoursAccess\": true,\n    \"warehouseType\": \"Cold Storage\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.environment.set('wh_name', 'Kho Test ' + Math.floor(Math.random()*10000));"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 200', function() { pm.response.to.have.status(200); });",
+                                    "var d = pm.response.json(); pm.environment.set('temp_wh_id', d.warehouseId);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-02: Create Fails Missing Args",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/create",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "create"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"\",\n    \"address\": \"\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('Status 400', function(){ pm.response.to.have.status(400); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-04: Get Owner WHs",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/my-warehouses",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "my-warehouses"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 array', function(){ pm.response.to.have.status(200); pm.expect(pm.response.json()).to.be.an('array'); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-05: Update WH Info",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/{{temp_wh_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "{{temp_wh_id}}"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"{{temp_wh_id}}\",\n    \"name\": \"Kho B Updated\",\n    \"address\": \"456 Test\",\n    \"totalArea\": 600,\n    \"pricePerM2\": 15000\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-14: Get Detailed Private View",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/{{temp_wh_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "{{temp_wh_id}}"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-03: Submit for Approval",
+                    "request": {
+                        "method": "PATCH",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/{{temp_wh_id}}/submit",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "{{temp_wh_id}}",
+                                "submit"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "03. Admin Approval & Control",
+            "item": [
+                {
+                    "name": "IT-WH-16: Admin List Pending",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/admin/warehouses/pending",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "warehouses",
+                                "pending"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-18: Admin Rejects WH",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/admin/warehouses/{{temp_wh_id}}/approve",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "warehouses",
+                                "{{temp_wh_id}}",
+                                "approve"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"isApproved\": false,\n    \"rejectionReason\": \"Thieu thong tin pccc\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-21: Owner Resubmits",
+                    "request": {
+                        "method": "PATCH",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/{{temp_wh_id}}/submit",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "{{temp_wh_id}}",
+                                "submit"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-17: Admin Approves WH",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/admin/warehouses/{{temp_wh_id}}/approve",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "warehouses",
+                                "{{temp_wh_id}}",
+                                "approve"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"isApproved\": true,\n    \"rejectionReason\": \"\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-19: Admin Unlists WH",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/admin/warehouses/{{temp_wh_id}}/listing",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "warehouses",
+                                "{{temp_wh_id}}",
+                                "listing"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"action\": \"HIDE\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-20: Admin Relists WH",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/admin/warehouses/{{temp_wh_id}}/listing",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "warehouses",
+                                "{{temp_wh_id}}",
+                                "listing"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"action\": \"SHOW\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "04. Public Search & Filter",
+            "item": [
+                {
+                    "name": "IT-WH-07: Search Approved",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/approved/search?sortBy=newest",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "approved",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "sortBy",
+                                    "value": "newest"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-08: Get Detail Public",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/{{temp_wh_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "{{temp_wh_id}}"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-22: Search No Results",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/approved/search?minArea=999999",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "approved",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "minArea",
+                                    "value": "999999"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 empty array', function(){ pm.response.to.have.status(200); pm.expect(pm.response.json().data.items).to.be.an('array').that.is.empty; });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-09: Filter Explicit Area",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/approved/search?minArea=50",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "approved",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "minArea",
+                                    "value": "50"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-23: Filter by Price",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/approved/search?minPrice=1000&maxPrice=100000",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "approved",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "minPrice",
+                                    "value": "1000"
+                                },
+                                {
+                                    "key": "maxPrice",
+                                    "value": "100000"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-24: Combined Filter",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/approved/search?minPrice=100&maxPrice=50000&minArea=100&warehouseType=Cold Storage",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "approved",
+                                "search"
+                            ],
+                            "query": [
+                                {
+                                    "key": "minPrice",
+                                    "value": "100"
+                                },
+                                {
+                                    "key": "maxPrice",
+                                    "value": "50000"
+                                },
+                                {
+                                    "key": "minArea",
+                                    "value": "100"
+                                },
+                                {
+                                    "key": "warehouseType",
+                                    "value": "Cold Storage"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "05. Interactions & Stats",
+            "item": [
+                {
+                    "name": "IT-WH-10: Toggle Favorite Add",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/{{temp_wh_id}}/favorite",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "{{temp_wh_id}}",
+                                "favorite"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{renter_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-25: Get Favorites",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Favorites/my-list",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Favorites",
+                                "my-list"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{renter_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-10: Toggle Favorite Remove",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/{{temp_wh_id}}/favorite",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "{{temp_wh_id}}",
+                                "favorite"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{renter_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-11: Occupancy Stats",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/stats/occupancy",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "stats",
+                                "occupancy"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200', function(){ pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "06. Security & Negative Scenarios",
+            "item": [
+                {
+                    "name": "IT-WH-12: Basic Create Limit",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/create",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "create"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{basic_owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"FailWH\",\n    \"address\": \"XYZ\",\n    \"totalArea\": 500,\n    \"pricePerM2\": 10000\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('400', function(){ pm.response.to.have.status(400); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-26: Renter->Admin API",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/admin/accounts",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "accounts"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{renter_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('403', function(){ pm.response.to.have.status(403); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-27: Unauth Access",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/my-warehouses",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "my-warehouses"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('401', function(){ pm.response.to.have.status(401); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-28: WH Not Found",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/999999",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "999999"
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('404', function(){ pm.response.to.have.status(404); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-13: Owner A Edit Owner B",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/{{temp_wh_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "{{temp_wh_id}}"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{basic_owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": \"{{temp_wh_id}}\",\n    \"name\": \"Hack\",\n    \"address\": \"Hack\",\n    \"totalArea\": 1,\n    \"pricePerM2\": 1\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('403', function(){ pm.response.to.have.status(403); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-WH-30: Invalid Data Size",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Warehouses/create",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Warehouses",
+                                "create"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Test\",\n    \"address\": \"Test\",\n    \"totalArea\": -100,\n    \"pricePerM2\": 100\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('400', function(){ pm.response.to.have.status(400); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
