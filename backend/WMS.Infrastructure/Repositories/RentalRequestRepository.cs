@@ -102,7 +102,13 @@ public class RentalRequestRepository : IRentalRequestRepository
             DurationMonths = request.DurationMonths,
             Status = request.Status,
             Notes = request.Notes,
-            CreatedAt = request.CreatedAt
+            CreatedAt = request.CreatedAt,
+            IsCustomArea = request.IsCustomArea,
+            ProposedPositionX = request.ProposedPositionX,
+            ProposedPositionY = request.ProposedPositionY,
+            ProposedWidth = request.ProposedWidth,
+            ProposedLength = request.ProposedLength,
+            BaseRentalAreaId = request.BaseRentalAreaId
         };
 
         _context.RentalRequests.Add(dbRequest);
@@ -177,6 +183,20 @@ public class RentalRequestRepository : IRentalRequestRepository
         contractImageUrlProp?.SetValue(domainRequest, dbRequest.ContractImageUrl);
         rentalAreaIdProp?.SetValue(domainRequest, dbRequest.RentalAreaId);
         warehouseProp?.SetValue(domainRequest, dbRequest.Warehouse);  // Map Warehouse navigation
+
+        var isCustomAreaProp = typeof(DomainRentalRequest).GetProperty("IsCustomArea");
+        var proposedPositionXProp = typeof(DomainRentalRequest).GetProperty("ProposedPositionX");
+        var proposedPositionYProp = typeof(DomainRentalRequest).GetProperty("ProposedPositionY");
+        var proposedWidthProp = typeof(DomainRentalRequest).GetProperty("ProposedWidth");
+        var proposedLengthProp = typeof(DomainRentalRequest).GetProperty("ProposedLength");
+        var baseRentalAreaIdProp = typeof(DomainRentalRequest).GetProperty("BaseRentalAreaId");
+
+        isCustomAreaProp?.SetValue(domainRequest, dbRequest.IsCustomArea);
+        proposedPositionXProp?.SetValue(domainRequest, dbRequest.ProposedPositionX);
+        proposedPositionYProp?.SetValue(domainRequest, dbRequest.ProposedPositionY);
+        proposedWidthProp?.SetValue(domainRequest, dbRequest.ProposedWidth);
+        proposedLengthProp?.SetValue(domainRequest, dbRequest.ProposedLength);
+        baseRentalAreaIdProp?.SetValue(domainRequest, dbRequest.BaseRentalAreaId);
 
         return domainRequest;
     }

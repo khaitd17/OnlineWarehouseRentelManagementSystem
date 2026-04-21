@@ -77,6 +77,13 @@ public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IE
                 RentalAreaId = r.RentalAreaId,
                 RentalAreaName = rentalAreaName,
                 RentalAreaSize = rentalAreaSize,
+                // Custom area
+                IsCustomArea      = r.IsCustomArea,
+                ProposedPositionX = r.ProposedPositionX,
+                ProposedPositionY = r.ProposedPositionY,
+                ProposedWidth     = r.ProposedWidth,
+                ProposedLength    = r.ProposedLength,
+                BaseRentalAreaId  = r.BaseRentalAreaId,
             });
         }
         return result;

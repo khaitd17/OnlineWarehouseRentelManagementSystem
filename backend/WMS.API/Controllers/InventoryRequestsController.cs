@@ -193,7 +193,8 @@ public class InventoryRequestsController : ControllerBase
                 Id      = id,
                 StaffId = staffId,
                 Notes   = body?.Notes,
-                Role    = confirmRole
+                Role    = confirmRole,
+                StaffSignatureBase64 = body?.StaffSignatureBase64
             });
             return Ok(result);
         }
@@ -249,7 +250,12 @@ public class InventoryRequestsController : ControllerBase
             return StatusCode(403, new { message = "Chỉ OPERATOR / MANAGER được duyệt." });
         try
         {
-            var result = await _mediator.Send(new ApproveInventoryRequestCommand { Id = id, ManagerId = managerId, Note = body?.Note });
+            var result = await _mediator.Send(new ApproveInventoryRequestCommand { 
+                Id = id, 
+                ManagerId = managerId, 
+                Note = body?.Note,
+                ManagerSignatureBase64 = body?.ManagerSignatureBase64 
+            });
             return Ok(result);
         }
         catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
@@ -319,8 +325,8 @@ public class InventoryRequestsController : ControllerBase
 }
 
 public record AssignRequestBody    { public int StaffId { get; init; } public string? Note { get; init; } }
-public record ApproveRequestBody   { public string? Note    { get; init; } }
-public record ConfirmRequestBody   { public string? Notes   { get; init; } }
-public record RejectRequestBody    { public string? Reason   { get; init; } }
+public record ApproveRequestBody   { public string? Note { get; init; } public string? ManagerSignatureBase64 { get; init; } }
+public record ConfirmRequestBody   { public string? Notes { get; init; } public string? StaffSignatureBase64 { get; init; } }
+public record RejectRequestBody    { public string? Reason { get; init; } }
 public record VerifyRequestBody    { public List<VerifyItemInput> Items { get; init; } = new(); }
 

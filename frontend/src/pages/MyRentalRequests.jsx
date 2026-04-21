@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
+import warehouseService from "../services/warehouseService";
+import axiosClient from "../services/axiosClient";
 import CancelRequestButton from "../components/CancelRequestButton";
+import ProposedZonePreviewModal from "../components/warehouse/ProposedZonePreviewModal";
 
 const statusConfig = {
   DRAFT:     { bg: "#e0f2fe", color: "#0369a1", accent: "#0ea5e9", label: "Nháp" },
@@ -36,6 +39,19 @@ const MyRentalRequests = () => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [zonePreview, setZonePreview] = useState(null);
+
+  const openZonePreview = async (req) => {
+    try {
+      const [warehouse, areasRes] = await Promise.all([
+        warehouseService.getWarehouseById(req.warehouseId),
+        axiosClient.get(`/RentalAreas/warehouse/${req.warehouseId}`),
+      ]);
+      setZonePreview({ request: req, warehouseData: warehouse, areas: areasRes.data || [] });
+    } catch (err) {
+      alert('Không thể tải bản đồ khu vực.');
+    }
+  };
 
   useEffect(() => { fetchRequests(); }, []);
 
@@ -193,7 +209,7 @@ const MyRentalRequests = () => {
             const s = statusConfig[displayStatus] || { bg: "#f1f5f9", color: "#475569", accent: "#94a3b8", label: displayStatus };
             const cancelledStatuses = ["CANCELLED", "CANCELLED_BY_USER", "CANCELLED_BY_OWNER", "CANCELLED_NO_PAYMENT"];
             const isFullyCancelled = cancelledStatuses.includes(req.status) || cancelledStatuses.includes(req.contractStatus || "");
-            const isCardDisabled = req.status === "APPROVED" || isFullyCancelled || req.status === "REJECTED";
+            const isCardDisabled = req.status === "PENDING" || req.status === "APPROVED" || isFullyCancelled || req.status === "REJECTED";
 
             return (
               <div
@@ -269,21 +285,44 @@ const MyRentalRequests = () => {
                     {[
                       { label: "Địa chỉ", value: req.warehouseAddress },
                       { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
-                      req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null,
+                      req.isCustomArea
+                        ? {
+                            label: "Vị trí tự sắp xếp",
+                            value: `(${req.proposedPositionX}m, ${req.proposedPositionY}m) — ${req.proposedWidth}m × ${req.proposedLength}m`,
+                            customZone: true,
+                          }
+                        : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null),
                       { label: "Bắt đầu", value: formatDate(req.startDate) },
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
                     ].filter(Boolean).map(item => (
                       <div key={item.label} style={{
                         padding: "8px 14px", borderRadius: 10,
-                        background: item.highlighted ? "#f0fdf4" : "#f8fafc",
-                        border: item.highlighted ? "1px solid #86efac" : "1px solid #f1f5f9",
-                        display: "flex", flexDirection: "column", gap: 2,
-                        minWidth: 120, flex: item.label === "Địa chỉ" ? "1 1 100%" : "0 0 auto",
+                        background: item.customZone ? "#fffbeb" : item.highlighted ? "#f0fdf4" : "#f8fafc",
+                        border: item.customZone ? "1px solid #fde68a" : item.highlighted ? "1px solid #86efac" : "1px solid #f1f5f9",
+                        display: "flex", flexDirection: "column", gap: 4,
+                        flex: (item.label === "Địa chỉ" || item.customZone) ? "1 1 100%" : "0 0 auto",
+                        minWidth: item.customZone ? undefined : 120,
                       }}>
-                        <span style={{ fontSize: "0.65rem", fontWeight: 700, color: item.highlighted ? "#15803d" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                          {item.label}
-                        </span>
-                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: item.highlighted ? "#166534" : "#334155" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: item.customZone ? "#b45309" : item.highlighted ? "#15803d" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                            {item.label}
+                          </span>
+                          {item.customZone && (
+                            <button
+                              onClick={e => { e.stopPropagation(); openZonePreview(req); }}
+                              style={{
+                                padding: "3px 12px", borderRadius: 8, border: "none",
+                                background: "linear-gradient(135deg,#f59e0b,#d97706)",
+                                color: "#fff", fontWeight: 700, fontSize: "0.72rem",
+                                cursor: "pointer", whiteSpace: "nowrap",
+                                boxShadow: "0 2px 6px rgba(245,158,11,0.35)",
+                              }}
+                            >
+                              Xem bản đồ vị trí
+                            </button>
+                          )}
+                        </div>
+                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: item.customZone ? "#92400e" : item.highlighted ? "#166534" : "#334155" }}>
                           {item.value}
                         </span>
                       </div>
@@ -473,6 +512,16 @@ const MyRentalRequests = () => {
             );
           })}
         </div>
+      )}
+
+      {zonePreview && (
+        <ProposedZonePreviewModal
+          open={!!zonePreview}
+          onClose={() => setZonePreview(null)}
+          request={zonePreview.request}
+          warehouseData={zonePreview.warehouseData}
+          areas={zonePreview.areas}
+        />
       )}
     </div>
   );

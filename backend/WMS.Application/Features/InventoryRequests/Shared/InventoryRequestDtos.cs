@@ -48,6 +48,7 @@ public record InventoryRequestDto
     public DateTime? ScheduledDate { get; init; }
     public string? RenterSignatureBase64 { get; init; }
     public string? ManagerSignatureBase64 { get; init; }
+    public string? StaffSignatureBase64 { get; init; }
     public DateTime? UpdatedAt { get; init; }
     public int TotalItems { get; init; }
     /// <summary>Tổng thể tích ước tính theo Renter (m³) — hiển thị cho Manager khi xem xét.</summary>
@@ -89,6 +90,7 @@ public static class InventoryRequestMapper
         ScheduledDate   = r.ScheduledDate,
         RenterSignatureBase64 = r.RenterSignatureBase64,
         ManagerSignatureBase64 = r.ManagerSignatureBase64,
+        StaffSignatureBase64 = r.StaffSignatureBase64,
         AssignedStaffId   = r.AssignedStaffId,
         AssignedStaffName = r.AssignedStaff?.FullName,
         AssignedNote      = r.AssignedNote,

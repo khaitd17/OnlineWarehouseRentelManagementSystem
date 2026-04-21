@@ -48,30 +48,124 @@ public class RentalAreaRepository : IRentalAreaRepository
             .Where(a => a.WarehouseId == warehouseId)
             .ToListAsync(cancellationToken);
 
-        // Join rental_requests + contracts to find occupied areas
+        // Join rental_requests + contracts to find occupied areas and custom mapped areas
         var occupied = await _context.Contracts
             .Where(c => OccupiedStatuses.Contains(c.Status) && c.WarehouseId == warehouseId)
             .Join(_context.RentalRequests,
                 c => c.RequestId,
                 r => r.RequestId,
-                (c, r) => new { c.ContractId, r.RentalAreaId })
-            .Where(x => x.RentalAreaId != null)
+                (c, r) => new { 
+                    c.ContractId, 
+                    r.RentalAreaId,
+                    r.BaseRentalAreaId,
+                    r.IsCustomArea,
+                    r.ProposedPositionX,
+                    r.ProposedPositionY,
+                    r.ProposedWidth,
+                    r.ProposedLength
+                })
             .ToListAsync(cancellationToken);
 
-        var occupiedMap = occupied
+        var resultAreas = new List<RentalArea>();
+        var baseAreasToRemove = new HashSet<int>();
+
+        // 1. Regular occupied full-areas
+        var fullOccupiedMap = occupied
+            .Where(x => x.RentalAreaId != null && !x.IsCustomArea)
             .GroupBy(x => x.RentalAreaId!.Value)
             .ToDictionary(g => g.Key, g => g.First().ContractId);
 
+        // 2. Custom mapped areas (splits)
+        var customSplits = occupied
+            .Where(x => x.IsCustomArea && x.BaseRentalAreaId != null)
+            .ToList();
+
         foreach (var area in areas)
         {
-            if (occupiedMap.TryGetValue(area.Id, out var cid))
+            if (fullOccupiedMap.TryGetValue(area.Id, out var cid))
             {
                 area.IsOccupied = true;
                 area.ActiveContractId = cid;
+                resultAreas.Add(area);
+                continue;
             }
+
+            var customSplit = customSplits.FirstOrDefault(x => x.BaseRentalAreaId == area.Id);
+            if (customSplit != null)
+            {
+                baseAreasToRemove.Add(area.Id);
+                
+                double height = ((area.Width ?? 0) > 0 && (area.Length ?? 0) > 0) 
+                    ? (area.Size) / ((area.Width ?? 1) * (area.Length ?? 1)) 
+                    : 5.0;
+
+                // Add Khu A (Occupied)
+                // Use a negative deterministic ID so React maps uniquely (e.g., -100 * area.Id)
+                var areaA = new RentalArea
+                {
+                    Id = -(area.Id * 100),
+                    WarehouseId = area.WarehouseId,
+                    Name = area.Name + "A",
+                    PositionX = customSplit.ProposedPositionX ?? area.PositionX,
+                    PositionY = customSplit.ProposedPositionY ?? area.PositionY,
+                    Width = customSplit.ProposedWidth ?? area.Width,
+                    Length = customSplit.ProposedLength ?? area.Length,
+                    Size = (customSplit.ProposedWidth ?? 0) * (customSplit.ProposedLength ?? 0) * height,
+                    IsOccupied = true,
+                    ActiveContractId = customSplit.ContractId,
+                    Description = area.Description
+                };
+                resultAreas.Add(areaA);
+
+                // Add Khu B (Remaining Available)
+                bool isFullWidth = (customSplit.ProposedWidth ?? 0) == (area.Width ?? 0);
+                bool isFullLength = (customSplit.ProposedLength ?? 0) == (area.Length ?? 0);
+                bool isTopAligned = (customSplit.ProposedPositionY ?? 0) == (area.PositionY ?? 0);
+                bool isLeftAligned = (customSplit.ProposedPositionX ?? 0) == (area.PositionX ?? 0);
+
+                var areaB = new RentalArea
+                {
+                    Id = -(area.Id * 100 + 1),
+                    WarehouseId = area.WarehouseId,
+                    Name = area.Name + "B",
+                    IsOccupied = false,
+                    ActiveContractId = null,
+                    Description = area.Description
+                };
+
+                if (isFullWidth && !isFullLength)
+                {
+                    areaB.Width = area.Width;
+                    areaB.Length = area.Length - customSplit.ProposedLength;
+                    areaB.PositionX = area.PositionX;
+                    areaB.PositionY = isTopAligned 
+                        ? area.PositionY + customSplit.ProposedLength 
+                        : area.PositionY;
+                    areaB.Size = (areaB.Width ?? 0) * (areaB.Length ?? 0) * height;
+                }
+                else if (isFullLength && !isFullWidth)
+                {
+                    areaB.Width = area.Width - customSplit.ProposedWidth;
+                    areaB.Length = area.Length;
+                    areaB.PositionY = area.PositionY;
+                    areaB.PositionX = isLeftAligned 
+                        ? area.PositionX + customSplit.ProposedWidth 
+                        : area.PositionX;
+                    areaB.Size = (areaB.Width ?? 0) * (areaB.Length ?? 0) * height;
+                }
+
+                if ((areaB.Size) > 0)
+                {
+                    resultAreas.Add(areaB);
+                }
+                continue;
+            }
+
+            // Normal unoccupied area
+            resultAreas.Add(area);
         }
 
-        return areas;
+        return resultAreas;
     }
 
     public async Task UpdateAsync(RentalArea rentalArea, CancellationToken cancellationToken)

@@ -22,12 +22,16 @@ public class ApproveTerminationHandlerTests
         _mockWarehouseRepository = new Mock<IWarehouseRepository>();
         _mockNotificationRepository = new Mock<INotificationRepository>();
         _mockNotificationSender = new Mock<INotificationSender>();
+        var mockRenterAssetRepository = new Mock<IRenterAssetRepository>();
+        var mockRentalRequestRepository = new Mock<IRentalRequestRepository>();
 
         _handler = new ApproveTerminationHandler(
             _mockContractRepository.Object,
             _mockWarehouseRepository.Object,
             _mockNotificationRepository.Object,
-            _mockNotificationSender.Object
+            _mockNotificationSender.Object,
+            mockRenterAssetRepository.Object,
+            mockRentalRequestRepository.Object
         );
     }
 

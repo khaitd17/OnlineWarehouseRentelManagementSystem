@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WMS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421162004_AddManagerAndStaffSignatureToInventoryRequest")]
+    partial class AddManagerAndStaffSignatureToInventoryRequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -922,6 +925,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
 
+                    b.Property<decimal?>("EstimatedVolume")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("EstimatedVolume");
+
                     b.Property<int>("InvReqId")
                         .HasColumnType("int")
                         .HasColumnName("inv_req_id");
@@ -945,6 +952,14 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<int?>("VerifiedQuantity")
                         .HasColumnType("int")
                         .HasColumnName("verified_quantity");
+
+                    b.Property<decimal?>("VerifiedVolume")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("VerifiedVolume");
+
+                    b.Property<decimal?>("VerifiedWeight")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("VerifiedWeight");
 
                     b.Property<string>("VerifyNote")
                         .HasMaxLength(500)
@@ -1004,6 +1019,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("document_urls");
 
+                    b.Property<string>("ManagerSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("manager_signature_base64");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("notes");
@@ -1012,8 +1031,16 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("renter_id");
 
+                    b.Property<string>("RenterSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("renter_signature_base64");
+
                     b.Property<DateTime?>("ScheduledDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("StaffSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("staff_signature_base64");
 
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
@@ -1919,6 +1946,9 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasDefaultValue("cái")
                         .HasColumnName("unit");
+
+                    b.Property<decimal?>("VolumePerUnit")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal?>("WeightPerUnit")
                         .HasColumnType("decimal(10, 2)")
@@ -3281,7 +3311,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("skill_id");
 
-                    b.ToTable("warehouse_membership_skills", (string)null);
+                    b.ToTable("warehouse_membership_skills");
                 });
 
             modelBuilder.Entity("warehouse_membership_zones", b =>
@@ -3296,7 +3326,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("zone_id");
 
-                    b.ToTable("warehouse_membership_zones", (string)null);
+                    b.ToTable("warehouse_membership_zones");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.AiAnalysisSession", b =>

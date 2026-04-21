@@ -46,8 +46,11 @@ public class InventoryRequestRepository : IInventoryRequestRepository
         int page, int pageSize, CancellationToken cancellationToken)
     {
         var query = _context.InventoryRequests
+            .Include(r => r.Renter)
             .Include(r => r.Warehouse)
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
+            .Include(r => r.ConfirmedByNavigation)
+            .Include(r => r.AssignedStaff)
             .Where(r => r.RenterId == renterId && r.Type == type);
 
         if (!string.IsNullOrEmpty(status))
@@ -65,7 +68,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
     // warehouseId BẮT BUỘC — không được phép query toàn hệ thống
     public async Task<(List<InventoryRequest> Items, int TotalCount)> GetForStaffAsync(
         string type, string? status, int? warehouseId,
-        int page, int pageSize, CancellationToken cancellationToken)
+        int page, int pageSize, bool excludePending, CancellationToken cancellationToken)
     {
         if (!warehouseId.HasValue)
             throw new ArgumentException("warehouseId là bắt buộc khi truy vấn với vai trò vận hành kho.");
@@ -74,7 +77,14 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.Renter)
             .Include(r => r.Warehouse)
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
+            .Include(r => r.ConfirmedByNavigation)
+            .Include(r => r.AssignedStaff)
             .Where(r => r.Type == type && r.WarehouseId == warehouseId.Value);
+
+        if (excludePending)
+        {
+            query = query.Where(r => r.Status != "PENDING" && r.Status != "REJECTED");
+        }
 
         if (!string.IsNullOrEmpty(status))
             query = query.Where(r => r.Status == status);

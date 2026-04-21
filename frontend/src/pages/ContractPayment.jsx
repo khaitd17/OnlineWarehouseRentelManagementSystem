@@ -20,8 +20,6 @@ const ContractPayment = () => {
   const extensionId = new URLSearchParams(location.search).get("extensionId");
   const isTerminationPayment = purpose === "termination";
   const isExtensionPayment = purpose === "extension";
-  const targetPaymentType = isTerminationPayment ? "PENALTY" : isExtensionPayment ? "EXTENSION" : "DEPOSIT";
-
   const [contract, setContract] = useState(null);
   const [payment, setPayment] = useState(null);
   const [qrInfo, setQrInfo] = useState(null);
@@ -86,6 +84,14 @@ const ContractPayment = () => {
           ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
           : (contractData.depositAmount || contractData.monthlyPayment);
 
+      const determinedPaymentType = isTerminationPayment
+        ? "PENALTY"
+        : isExtensionPayment
+          ? "EXTENSION"
+          : (contractData.depositAmount && contractData.depositAmount > 0)
+            ? "DEPOSIT"
+            : "MONTHLY";
+
       // Helper: check if a payment is still valid (PENDING and not expired)
       // IMPORTANT: expiredAt from API is UTC, must parse as UTC to avoid timezone shift
       const isStillValid = (p) => {
@@ -101,7 +107,7 @@ const ContractPayment = () => {
       console.log('[initPayment] existingPayments:', existingPayments);
 
       const relevantPayments = Array.isArray(existingPayments)
-        ? existingPayments.filter((p) => p.paymentType === targetPaymentType)
+        ? existingPayments.filter((p) => p.paymentType === determinedPaymentType)
         : [];
 
       let currentPayment;
@@ -125,7 +131,7 @@ const ContractPayment = () => {
           currentPayment = await paymentService.createPayment({
             contractId: parseInt(id, 10),
             amountOverride,
-            paymentType: targetPaymentType
+            paymentType: determinedPaymentType
           });
           console.log('[initPayment] Created payment:', currentPayment);
         }
@@ -162,7 +168,7 @@ const ContractPayment = () => {
       // Always release the guard so manual re-trigger (Tạo QR mới) can work
       isInitializingRef.current = false;
     }
-  }, [id, navigate, isTerminationPayment, isExtensionPayment, extensionId, targetPaymentType]);
+  }, [id, navigate, isTerminationPayment, isExtensionPayment, extensionId]);
 
   // Load on mount
   useEffect(() => {
@@ -244,7 +250,7 @@ const ContractPayment = () => {
       {/* Header */}
       <div style={{ marginBottom: "2rem", textAlign: "center" }}>
         <h1 style={{ fontSize: "1.8rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.5rem" }}>
-          💳 {isTerminationPayment ? "Thanh toán phí kết thúc sớm" : isExtensionPayment ? "Thanh toán gia hạn hợp đồng" : "Thanh toán hợp đồng"}
+          {isTerminationPayment ? "Thanh toán phí kết thúc sớm" : isExtensionPayment ? "Thanh toán gia hạn hợp đồng" : "Thanh toán hợp đồng"}
         </h1>
         <p style={{ color: "#64748b", fontSize: "0.95rem" }}>
           Hợp đồng {contract?.contractNumber}
@@ -259,7 +265,7 @@ const ContractPayment = () => {
           color: "#dc2626", marginBottom: "2rem"
         }}>
           <div style={{ fontWeight: 700, marginBottom: "1rem" }}>
-            ❌ {paymentStatus === 'FAILED' ? 'Thanh toán thất bại' : 'Mã QR đã hết hạn'}
+            {paymentStatus === 'FAILED' ? 'Thanh toán thất bại' : 'Mã QR đã hết hạn'}
           </div>
           <div style={{ marginBottom: "1rem", color: "#7f1d1d" }}>
             {paymentStatus === 'FAILED' 
@@ -279,7 +285,7 @@ const ContractPayment = () => {
                 fontSize: "0.95rem", opacity: loading ? 0.7 : 1
               }}
             >
-              {loading ? '⏳ Đang tạo...' : '🔄 Tạo mã QR mới'}
+              {loading ? 'Đang tạo...' : 'Tạo mã QR mới'}
             </button>
           ) : (
             /* Retry Button for FAILED */
@@ -316,7 +322,7 @@ const ContractPayment = () => {
           borderRadius: "12px", border: "1px solid #86efac",
           color: "#166534", marginBottom: "2rem", textAlign: "center"
         }}>
-          <strong>✅ Thanh toán thành công!</strong>
+          <strong>Thanh toán thành công!</strong>
           {isTerminationPayment
             ? " Hệ thống đang cập nhật trạng thái kết thúc sớm hợp đồng..."
             : " Đang chuyển đến trang xác nhận..."}
@@ -336,174 +342,158 @@ const ContractPayment = () => {
         />
       )}
 
-      {/* Payment Info */}
+      {/* Main Content Grid */}
       <div style={{
-        backgroundColor: "#fff", borderRadius: "16px",
-        padding: "1.5rem 2rem", boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-        border: "1px solid #e2e8f0", marginBottom: "2rem"
+        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "2rem"
       }}>
-        <h2 style={{
-          fontSize: "1.1rem", fontWeight: 700, color: "#0f172a",
-          marginBottom: "1.5rem", paddingBottom: "1rem",
-          borderBottom: "1px solid #f1f5f9"
-        }}>
-          Thông tin thanh toán
-        </h2>
+        {/* Left Column: Info & Instructions */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          
+          {/* Payment Info */}
+          <div style={{
+            backgroundColor: "#fff", borderRadius: "16px",
+            padding: "1.5rem 2rem", boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+            border: "1px solid #e2e8f0"
+          }}>
+            <h2 style={{
+              fontSize: "1.1rem", fontWeight: 700, color: "#0f172a",
+              marginBottom: "1.5rem", paddingBottom: "1rem",
+              borderBottom: "1px solid #f1f5f9"
+            }}>
+              THÔNG TIN THANH TOÁN
+            </h2>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "#64748b" }}>Số tiền:</span>
-            <span style={{ fontWeight: 700, fontSize: "1.2rem", color: "#0f172a" }}>
-              {formatCurrency(payment?.amount)}
-            </span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "#64748b" }}>Loại thanh toán:</span>
-            <span style={{ fontWeight: 600, color: "#0f172a" }}>
-              {payment?.paymentType === 'DEPOSIT'
-                ? 'Đặt cọc'
-                : payment?.paymentType === 'PENALTY'
-                  ? 'Phí kết thúc sớm'
-                  : payment?.paymentType === 'EXTENSION'
-                    ? `Phí gia hạn (${extensionInfo?.durationMonths || 0} tháng)`
-                  : 'Thanh toán hàng tháng'}
-            </span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "#64748b" }}>Mã thanh toán:</span>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span style={{ fontWeight: 600, color: "#0f172a" }}>
-                {payment?.paymentCode}
-              </span>
-              <button
-                onClick={() => copyToClipboard(payment?.paymentCode)}
-                style={{
-                  padding: "4px 8px", borderRadius: "6px",
-                  backgroundColor: "#f1f5f9", border: "none",
-                  cursor: "pointer", fontSize: "0.8rem"
-                }}
-              >
-                📋
-              </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b", fontSize: "0.95rem" }}>Số tiền</span>
+                <span style={{ fontWeight: 800, fontSize: "1.25rem", color: "#0284c7" }}>
+                  {formatCurrency(payment?.amount)}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b", fontSize: "0.95rem" }}>Loại giao dịch</span>
+                <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.95rem" }}>
+                  {payment?.paymentType === 'DEPOSIT' ? 'Đặt cọc'
+                  : payment?.paymentType === 'PENALTY' ? 'Phí kết thúc sớm'
+                  : payment?.paymentType === 'EXTENSION' ? `Phí gia hạn (${extensionInfo?.durationMonths || 0} tháng)`
+                  : 'Thanh toán hoá đơn'}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b", fontSize: "0.95rem" }}>Tài khoản</span>
+                <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.95rem" }}>
+                  {qrInfo?.accountName || "—"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b", fontSize: "0.95rem" }}>Ngân hàng</span>
+                <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.95rem" }}>
+                  {qrInfo?.bankName || "—"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "#64748b", fontSize: "0.95rem" }}>Số tài khoản</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{ fontWeight: 700, color: "#0f172a", fontSize: "1rem" }}>
+                    {qrInfo?.accountNumber || "—"}
+                  </span>
+                  {qrInfo?.accountNumber && (
+                    <button
+                      onClick={() => copyToClipboard(qrInfo.accountNumber)}
+                      style={{
+                        padding: "4px 10px", borderRadius: "4px", backgroundColor: "#f1f5f9",
+                        border: "1px solid #cbd5e1", cursor: "pointer", fontSize: "0.7rem",
+                        fontWeight: 600, color: "#475569", textTransform: "uppercase"
+                      }}
+                    >
+                      COPY
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
+            
+            <div style={{
+              marginTop: "1.5rem", padding: "1.25rem", backgroundColor: "#fefce8",
+              borderRadius: "10px", border: "1px solid #fef08a"
+            }}>
+              <div style={{ fontSize: "0.85rem", color: "#854d0e", marginBottom: "0.5rem", fontWeight: 600 }}>
+                NỘI DUNG CHUYỂN KHOẢN
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 800, color: "#854d0e", fontSize: "1.1rem", letterSpacing: "0.05em" }}>
+                  {payment?.paymentCode}
+                </span>
+                <button
+                  onClick={() => copyToClipboard(payment?.paymentCode)}
+                  style={{
+                    padding: "6px 12px", borderRadius: "6px", backgroundColor: "#fde047",
+                    border: "none", cursor: "pointer", fontSize: "0.8rem", fontWeight: 700, color: "#854d0e",
+                  }}
+                >
+                  SAO CHÉP
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Instructions */}
+          <div style={{
+            padding: "1.5rem 2rem", backgroundColor: "#fff",
+            borderRadius: "16px", border: "1px solid #e2e8f0",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.04)"
+          }}>
+            <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem" }}>
+              Hướng dẫn thanh toán
+            </h3>
+            <ol style={{ paddingLeft: "1.2rem", margin: 0, lineHeight: 1.8, color: "#475569", fontSize: "0.95rem" }}>
+              <li>Mở ứng dụng Mobile Banking của bạn</li>
+              <li>Sử dụng chức năng quét mã QR Pay</li>
+              <li>Kiểm tra kĩ thông tin người nhận trước khi duyệt</li>
+              <li><strong>Phải đảm bảo nội dung chuyển khoản nhập chính xác mã: <span style={{color: '#854d0e'}}>{payment?.paymentCode}</span></strong></li>
+              <li>{isTerminationPayment ? "Hệ thống sẽ ghi nhận kết thúc sớm ngay." : "Hệ thống tự động xác nhận trong vòng 30s."}</li>
+            </ol>
           </div>
         </div>
-      </div>
 
-      {/* QR Code - Only show if payment is PENDING or RETRY_PENDING */}
-      {qrInfo && (paymentStatus === 'PENDING' || paymentStatus === 'RETRY_PENDING') && (
-        <div style={{
-          backgroundColor: "#fff", borderRadius: "16px",
-          padding: "2rem", boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-          border: "1px solid #e2e8f0", textAlign: "center"
-        }}>
-          <h2 style={{
-            fontSize: "1.1rem", fontWeight: 700, color: "#0f172a",
-            marginBottom: "1.5rem"
-          }}>
-            Quét mã QR để thanh toán
-          </h2>
+        {/* Right Column: QR Code */}
+        {qrInfo && (paymentStatus === 'PENDING' || paymentStatus === 'RETRY_PENDING') && (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{
+              backgroundColor: "#fff", borderRadius: "16px",
+              padding: "2.5rem 2rem", boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+              border: "1px solid #e2e8f0", textAlign: "center",
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              flex: 1
+            }}>
+              <h2 style={{
+                fontSize: "1.1rem", fontWeight: 700, color: "#0f172a",
+                marginBottom: "2rem", letterSpacing: "0.02em"
+              }}>
+                QUÉT MÃ ĐỂ THANH TOÁN
+              </h2>
 
-          <img
-            src={qrInfo.qrImageUrl || qrInfo.qrCodeUrl}
-            alt="QR Code"
-            style={{
-              width: "300px", height: "300px",
-              margin: "0 auto 1.5rem", display: "block",
-              border: "4px solid #f1f5f9", borderRadius: "12px"
-            }}
-          />
-
-          <div style={{
-            padding: "1rem", backgroundColor: "#f8fafc",
-            borderRadius: "10px", marginBottom: "1rem"
-          }}>
-            <div style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: "0.5rem" }}>
-              Ngân hàng
-            </div>
-            <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "1.1rem" }}>
-              {qrInfo.bankName}
+              <div style={{
+                padding: "1rem", background: "#f8fafc", borderRadius: "16px",
+                border: "2px dashed #cbd5e1"
+              }}>
+                <img
+                  src={qrInfo.qrImageUrl || qrInfo.qrCodeUrl}
+                  alt="Mã QR Thanh Toán"
+                  style={{
+                    width: "100%", maxWidth: "280px", height: "auto",
+                    display: "block", borderRadius: "8px",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+                  }}
+                />
+              </div>
+              
+              <p style={{ marginTop: "1.5rem", color: "#64748b", fontSize: "0.85rem" }}>
+                Hỗ trợ thanh toán VietQR với hơn 40 ngân hàng hiển thị
+              </p>
             </div>
           </div>
-
-          <div style={{
-            padding: "1rem", backgroundColor: "#f8fafc",
-            borderRadius: "10px", marginBottom: "1rem"
-          }}>
-            <div style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: "0.5rem" }}>
-              Số tài khoản
-            </div>
-            <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "1.1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
-              {qrInfo.accountNumber}
-              <button
-                onClick={() => copyToClipboard(qrInfo.accountNumber)}
-                style={{
-                  padding: "4px 8px", borderRadius: "6px",
-                  backgroundColor: "#e2e8f0", border: "none",
-                  cursor: "pointer", fontSize: "0.8rem"
-                }}
-              >
-                📋
-              </button>
-            </div>
-          </div>
-
-          <div style={{
-            padding: "1rem", backgroundColor: "#f8fafc",
-            borderRadius: "10px", marginBottom: "1rem"
-          }}>
-            <div style={{ fontSize: "0.85rem", color: "#64748b", marginBottom: "0.5rem" }}>
-              Chủ tài khoản
-            </div>
-            <div style={{ fontWeight: 700, color: "#0f172a" }}>
-              {qrInfo.accountName}
-            </div>
-          </div>
-
-          <div style={{
-            padding: "1rem", backgroundColor: "#fef3c7",
-            borderRadius: "10px", border: "1px solid #fde047"
-          }}>
-            <div style={{ fontSize: "0.85rem", color: "#854d0e", marginBottom: "0.5rem" }}>
-              Nội dung chuyển khoản (BẮT BUỘC)
-            </div>
-            <div style={{ fontWeight: 700, color: "#854d0e", fontSize: "1.2rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
-              {payment?.paymentCode}
-              <button
-                onClick={() => copyToClipboard(payment?.paymentCode)}
-                style={{
-                  padding: "6px 10px", borderRadius: "6px",
-                  backgroundColor: "#fde047", border: "none",
-                  cursor: "pointer", fontSize: "0.9rem"
-                }}
-              >
-                📋 Sao chép
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Instructions */}
-      <div style={{
-        marginTop: "2rem", padding: "1.5rem", backgroundColor: "#f8fafc",
-        borderRadius: "12px", border: "1px solid #e2e8f0"
-      }}>
-        <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem" }}>
-          Hướng dẫn thanh toán
-        </h3>
-        <ol style={{ paddingLeft: "1.5rem", lineHeight: 1.8, color: "#475569" }}>
-          <li>Mở ứng dụng Mobile Banking của bạn</li>
-          <li>Chọn chức năng quét mã QR hoặc chuyển khoản</li>
-          <li>Quét mã QR hoặc nhập thông tin chuyển khoản</li>
-          <li><strong>Đảm bảo nội dung chuyển khoản chính xác: {payment?.paymentCode}</strong></li>
-          <li>Xác nhận và hoàn tất giao dịch</li>
-          <li>
-            {isTerminationPayment
-              ? 'Hệ thống sẽ tự động xác nhận và kết thúc sớm hợp đồng sau khi nhận được thanh toán.'
-              : 'Hệ thống sẽ tự động xác nhận sau khi nhận được thanh toán (trong vòng 30 giây)'}
-          </li>
-        </ol>
+        )}
       </div>
 
       {/* Back Buttons */}
@@ -527,7 +517,7 @@ const ContractPayment = () => {
           onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f0f9ff"; e.currentTarget.style.borderColor = "#0284c7"; }}
           onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.borderColor = "#bae6fd"; }}
         >
-          ← Chọn phương thức khác
+          Quay lại phương thức khác
         </button>
         <button
           onClick={() => navigate(`/contracts/${id}`)}

@@ -437,6 +437,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Notes).HasColumnName("notes");
             entity.Property(e => e.RenterSignatureBase64).HasColumnName("renter_signature_base64").IsRequired(false);
             entity.Property(e => e.ManagerSignatureBase64).HasColumnName("manager_signature_base64").IsRequired(false);
+            entity.Property(e => e.StaffSignatureBase64).HasColumnName("staff_signature_base64").IsRequired(false);
             entity.Property(e => e.DocumentUrls).HasColumnName("document_urls");
             entity.Property(e => e.RenterId).HasColumnName("renter_id");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
@@ -593,6 +594,13 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CancellationReason).HasColumnName("cancellation_reason");
             entity.Property(e => e.CancelledAt).HasColumnName("cancelled_at");
             entity.Property(e => e.CancelledBy).HasMaxLength(20).HasColumnName("cancelled_by");
+            // Custom area columns
+            entity.Property(e => e.IsCustomArea).HasColumnName("is_custom_area").HasDefaultValue(false);
+            entity.Property(e => e.ProposedPositionX).HasColumnName("proposed_position_x").IsRequired(false);
+            entity.Property(e => e.ProposedPositionY).HasColumnName("proposed_position_y").IsRequired(false);
+            entity.Property(e => e.ProposedWidth).HasColumnName("proposed_width").IsRequired(false);
+            entity.Property(e => e.ProposedLength).HasColumnName("proposed_length").IsRequired(false);
+            entity.Property(e => e.BaseRentalAreaId).HasColumnName("base_rental_area_id").IsRequired(false);
             entity.HasOne(d => d.Renter).WithMany(p => p.RentalRequestRenters).HasForeignKey(d => d.RenterId).HasConstraintName("FK_rental_requests_renter");
             entity.HasOne(d => d.ReviewedByNavigation).WithMany(p => p.RentalRequestReviewedByNavigations).HasForeignKey(d => d.ReviewedBy).HasConstraintName("FK_rental_requests_reviewer");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.RentalRequests).HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_rental_requests_warehouse");

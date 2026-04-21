@@ -35,6 +35,7 @@ public partial class InventoryRequest
 
     public string? RenterSignatureBase64 { get; set; }
     public string? ManagerSignatureBase64 { get; set; }
+    public string? StaffSignatureBase64 { get; set; }
 
     public string? DocumentUrls { get; set; }
 

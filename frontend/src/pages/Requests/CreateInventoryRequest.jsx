@@ -852,9 +852,7 @@ export default function CreateInventoryRequest() {
                             <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8' }}>
                               Sức chứa: {wh.requestedArea.toLocaleString('vi-VN')} m³
                             </span>
-                            <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#faf5ff', border:'1px solid #e9d5ff', color:'#7c3aed' }}>
-                              Tải trọng tối đa: {(wh.requestedArea * 500).toLocaleString('vi-VN')} kg
-                            </span>
+
                           </>
                         ) : (
                           <span style={{ fontSize:'0.7rem', color:'#94a3b8' }}>Đang tải thông tin hợp đồng...</span>
@@ -1096,30 +1094,64 @@ export default function CreateInventoryRequest() {
 
       {/* Signature Modal */}
       {signModalOpen && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={() => setSignModalOpen(false)}>
-          <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:500, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
-            <h2 style={{ margin:0, fontSize:'1.4rem', fontWeight:800, color:'#0f172a', marginBottom:12 }}>
-              Ký xác nhận phiếu yêu cầu
-            </h2>
-            <p style={{ color:'#64748b', fontSize:'0.9rem', marginBottom:24 }}>
-              Chữ ký này sẽ được lấy làm chữ ký của "Người lập phiếu" trong bản PDF Phiếu nhập/xuất kho.
-            </p>
-            
-            <div style={{ border: '2px dashed #cbd5e1', borderRadius: '12px', overflow: 'hidden', background: '#f8fafc', marginBottom: 20 }}>
-              <SignatureCanvas ref={signatureCanvasRef} canvasProps={{width: 436, height: 200}} />
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={() => setSignModalOpen(false)}>
+          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:520, boxShadow:'0 32px 80px rgba(0,0,0,0.22)', overflow:'hidden' }} onClick={e=>e.stopPropagation()}>
+
+            {/* Header */}
+            <div style={{ background: type==='INBOUND' ? 'linear-gradient(135deg,#0ea5e9,#0284c7)' : 'linear-gradient(135deg,#f59e0b,#d97706)', padding:'22px 28px' }}>
+              <p style={{ margin:0, fontSize:'1.15rem', fontWeight:800, color:'#fff', letterSpacing:'-0.01em' }}>Ký xác nhận phiếu yêu cầu</p>
+              <p style={{ margin:'4px 0 0', fontSize:'0.78rem', color:'rgba(255,255,255,0.8)', fontWeight:500 }}>
+                {type==='INBOUND' ? 'Phiếu nhập kho' : 'Phiếu xuất kho'} · {selectedWH?.name || ''}
+              </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => signatureCanvasRef.current?.clear()} style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
-                Xóa làm lại
+            <div style={{ padding:'24px 28px' }}>
+              {/* Info note */}
+              <div style={{ padding:'10px 14px', borderRadius:8, background:'#f0f9ff', border:'1px solid #bae6fd', marginBottom:20 }}>
+                <p style={{ margin:0, fontSize:'0.82rem', color:'#0369a1', lineHeight:1.6 }}>
+                  Chữ ký dưới đây sẽ được in là chữ ký của <strong>Người lập phiếu</strong> trong bản PDF Phiếu {type==='INBOUND'?'nhập':'xuất'} kho.
+                </p>
+              </div>
+
+              {/* Signature area label */}
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                <span style={{ fontSize:'0.75rem', fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.06em' }}>Vùng ký tên</span>
+                <button
+                  onClick={() => signatureCanvasRef.current?.clear()}
+                  style={{ padding:'4px 12px', background:'transparent', border:'1px solid #e2e8f0', borderRadius:6, fontSize:'0.75rem', fontWeight:600, color:'#64748b', cursor:'pointer', transition:'all 0.15s' }}
+                  onMouseEnter={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.borderColor='#cbd5e1';}}
+                  onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='#e2e8f0';}}
+                >
+                  Xóa làm lại
+                </button>
+              </div>
+
+              {/* Canvas */}
+              <div style={{ border:'1.5px solid #e2e8f0', borderRadius:10, overflow:'hidden', background:'#fdfdfd' }}>
+                <SignatureCanvas ref={signatureCanvasRef} canvasProps={{width: 464, height: 180}} />
+              </div>
+              <p style={{ margin:'6px 0 16px', fontSize:'0.75rem', color:'#cbd5e1', textAlign:'center', fontWeight:500 }}>Vẽ chữ ký của bạn vào ô trên</p>
+
+              {/* Primary action */}
+              <button
+                onClick={submitToServer}
+                style={{ width:'100%', padding:'13px', background: type==='INBOUND'?'#0ea5e9':'#f59e0b', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:'0.95rem', cursor:'pointer', letterSpacing:'0.01em', boxShadow: type==='INBOUND'?'0 4px 14px rgba(14,165,233,0.35)':'0 4px 14px rgba(245,158,11,0.35)', transition:'opacity 0.2s', marginBottom:10 }}
+                onMouseEnter={e=>e.currentTarget.style.opacity='0.88'}
+                onMouseLeave={e=>e.currentTarget.style.opacity='1'}
+              >
+                Xác nhận &amp; Gửi yêu cầu
               </button>
-              <button onClick={submitToServer} style={{ flex: 2, padding: '12px', background: accent, color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', boxShadow: `0 4px 12px ${accent}40` }}>
-                Xác nhận & Gửi yêu cầu
+
+              {/* Secondary action */}
+              <button
+                onClick={() => setSignModalOpen(false)}
+                style={{ width:'100%', padding:'10px', background:'transparent', color:'#94a3b8', border:'none', cursor:'pointer', fontSize:'0.82rem', fontWeight:600, letterSpacing:'0.01em', transition:'color 0.15s' }}
+                onMouseEnter={e=>e.currentTarget.style.color='#475569'}
+                onMouseLeave={e=>e.currentTarget.style.color='#94a3b8'}
+              >
+                Hủy và quay lại
               </button>
             </div>
-            <button onClick={() => setSignModalOpen(false)} style={{ width: '100%', padding: '12px', background: 'transparent', color: '#64748b', border: 'none', cursor: 'pointer', marginTop: 12, fontWeight: 600 }}>
-              Đóng (hủy gửi)
-            </button>
           </div>
         </div>
       )}
