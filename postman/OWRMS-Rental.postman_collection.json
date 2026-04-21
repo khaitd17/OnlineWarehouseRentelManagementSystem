@@ -1,0 +1,752 @@
+{
+  "info": {
+    "_postman_id": "e804f72a-5ae1-4dcf-9bc2-40d20abca8bd",
+    "name": "OWRMS - Rental API Full Test",
+    "description": "Full rental request feature tests: create, send, approve, reject, cancel, and owner/renter views.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('startDate') || pm.environment.get('startDate') === 'AUTO') {",
+          "  const d = new Date();",
+          "  d.setDate(d.getDate() + 7);",
+          "  pm.environment.set('startDate', d.toISOString());",
+          "}",
+          "if (!pm.environment.get('requestNotes')) {",
+          "  pm.environment.set('requestNotes', 'Postman rental flow test');",
+          "}",
+          "if (!pm.environment.get('rejectReason')) {",
+          "  pm.environment.set('rejectReason', 'Area does not match current availability');",
+          "}",
+          "if (!pm.environment.get('cancelReason')) {",
+          "  pm.environment.set('cancelReason', 'User changed plan before contract signing');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "tokenRenter", "value": "" },
+    { "key": "tokenOwner", "value": "" },
+    { "key": "warehouseId", "value": "" },
+    { "key": "rentalAreaId", "value": "" },
+    { "key": "requestIdApprove", "value": "" },
+    { "key": "requestIdReject", "value": "" },
+    { "key": "requestIdCancel", "value": "" },
+    { "key": "contractIdFromApprove", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Authentication",
+      "item": [
+        {
+          "name": "Login Renter",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{renterEmail}}\",\n  \"password\": \"{{renterPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login renter status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const token = b.token ?? b.Token ?? b.data?.token ?? b.data?.Token;",
+                  "pm.expect(token, 'Missing renter token').to.be.a('string').and.not.empty;",
+                  "pm.collectionVariables.set('tokenRenter', token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login owner status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const token = b.token ?? b.Token ?? b.data?.token ?? b.data?.Token;",
+                  "pm.expect(token, 'Missing owner token').to.be.a('string').and.not.empty;",
+                  "pm.collectionVariables.set('tokenOwner', token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Warehouse Context",
+      "item": [
+        {
+          "name": "Get Approved Warehouses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/warehouse/approved?limit=10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Approved warehouse status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const list = Array.isArray(b) ? b : (b.data ?? b.items ?? b.result ?? b.warehouses ?? []);",
+                  "pm.expect(Array.isArray(list), 'Warehouse list should be array').to.eql(true);",
+                  "pm.expect(list.length, 'No approved warehouse found').to.be.greaterThan(0);",
+                  "const w = list[0];",
+                  "const warehouseId = w.id ?? w.warehouseId ?? w.Id ?? w.WarehouseId;",
+                  "pm.expect(warehouseId, 'Missing warehouseId').to.exist;",
+                  "pm.collectionVariables.set('warehouseId', String(warehouseId));",
+                  "pm.environment.set('warehouseId', String(warehouseId));",
+                  "const areas = w.rentalAreas ?? w.RentalAreas ?? w.areas ?? w.Areas ?? [];",
+                  "if (Array.isArray(areas) && areas.length > 0) {",
+                  "  const areaId = areas[0].id ?? areas[0].rentalAreaId ?? areas[0].Id ?? areas[0].RentalAreaId;",
+                  "  if (areaId) {",
+                  "    pm.collectionVariables.set('rentalAreaId', String(areaId));",
+                  "    pm.environment.set('rentalAreaId', String(areaId));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Approved Warehouses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/warehouse/approved/search?page=1&pageSize=12&sortBy=newest"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Search status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Warehouse Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/warehouse/{{warehouseId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Warehouse detail status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Approve Scenario",
+      "item": [
+        {
+          "name": "Create Request For Approve",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const warehouseId = Number(pm.collectionVariables.get('warehouseId') || pm.environment.get('warehouseId'));",
+                  "pm.expect(warehouseId, 'warehouseId is required').to.be.a('number').and.not.NaN;",
+                  "const payload = {",
+                  "  warehouseId: warehouseId,",
+                  "  requestedArea: Number(pm.environment.get('requestedArea')),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths')),",
+                  "  notes: pm.environment.get('requestNotes')",
+                  "};",
+                  "const areaRaw = pm.collectionVariables.get('rentalAreaId') || pm.environment.get('rentalAreaId');",
+                  "if (areaRaw) { payload.rentalAreaId = Number(areaRaw); }",
+                  "pm.variables.set('createRequestApproveBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{createRequestApproveBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create request status 200/201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const b = pm.response.json();",
+                  "const id = b.requestId ?? b.id ?? b.data?.requestId ?? b.data?.id ?? b.result?.id;",
+                  "pm.expect(id, 'Missing requestIdApprove').to.exist;",
+                  "pm.collectionVariables.set('requestIdApprove', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Request For Approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/{{requestIdApprove}}/send"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Send request status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Get Pending Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/pending"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pending request status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Approve Request",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  requestId: Number(pm.collectionVariables.get('requestIdApprove')),",
+                  "  contractImageUrl: pm.environment.get('contractImageUrl'),",
+                  "  monthlyPayment: Number(pm.environment.get('monthlyPayment')),",
+                  "  depositAmount: Number(pm.environment.get('depositAmount')),",
+                  "  terms: pm.environment.get('contractTerms'),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths'))",
+                  "};",
+                  "pm.variables.set('approveRequestBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{approveRequestBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests/{{requestIdApprove}}/approve"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Approve request status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const contractId = b.contractId ?? b.id ?? b.data?.contractId ?? b.data?.id ?? b.result?.contractId;",
+                  "pm.expect(contractId, 'Missing contractId from approve').to.exist;",
+                  "pm.collectionVariables.set('contractIdFromApprove', String(contractId));",
+                  "pm.environment.set('contractId', String(contractId));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Approved Request Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/{{requestIdApprove}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request detail status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const status = String(b.status ?? b.Status ?? b.data?.status ?? '').toUpperCase();",
+                  "pm.test('Status is approved-like', function () { pm.expect(['APPROVED', 'IN_PROGRESS']).to.include(status); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/my-requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('My requests status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Reject Scenario",
+      "item": [
+        {
+          "name": "Create Request For Reject",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  warehouseId: Number(pm.collectionVariables.get('warehouseId') || pm.environment.get('warehouseId')),",
+                  "  requestedArea: Number(pm.environment.get('requestedArea')),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths')),",
+                  "  notes: 'Reject scenario - ' + (pm.environment.get('requestNotes') || 'Postman')",
+                  "};",
+                  "const areaRaw = pm.collectionVariables.get('rentalAreaId') || pm.environment.get('rentalAreaId');",
+                  "if (areaRaw) { payload.rentalAreaId = Number(areaRaw); }",
+                  "pm.variables.set('createRequestRejectBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{createRequestRejectBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create reject scenario request status 200/201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const b = pm.response.json();",
+                  "const id = b.requestId ?? b.id ?? b.data?.requestId ?? b.data?.id ?? b.result?.id;",
+                  "pm.expect(id, 'Missing requestIdReject').to.exist;",
+                  "pm.collectionVariables.set('requestIdReject', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Request For Reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/{{requestIdReject}}/send"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Send reject scenario request status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Reject Request",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  requestId: Number(pm.collectionVariables.get('requestIdReject')),",
+                  "  rejectionReason: pm.environment.get('rejectReason')",
+                  "};",
+                  "pm.variables.set('rejectRequestBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{rejectRequestBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests/{{requestIdReject}}/reject"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Reject request status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Rejected Request Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/{{requestIdReject}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Rejected request detail status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const status = String(b.status ?? b.Status ?? b.data?.status ?? '').toUpperCase();",
+                  "pm.test('Status is rejected-like', function () { pm.expect(['REJECTED']).to.include(status); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Cancel Scenario",
+      "item": [
+        {
+          "name": "Create Request For Cancel",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  warehouseId: Number(pm.collectionVariables.get('warehouseId') || pm.environment.get('warehouseId')),",
+                  "  requestedArea: Number(pm.environment.get('requestedArea')),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths')),",
+                  "  notes: 'Cancel scenario - ' + (pm.environment.get('requestNotes') || 'Postman')",
+                  "};",
+                  "const areaRaw = pm.collectionVariables.get('rentalAreaId') || pm.environment.get('rentalAreaId');",
+                  "if (areaRaw) { payload.rentalAreaId = Number(areaRaw); }",
+                  "pm.variables.set('createRequestCancelBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{createRequestCancelBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create cancel scenario request status 200/201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const b = pm.response.json();",
+                  "const id = b.requestId ?? b.id ?? b.data?.requestId ?? b.data?.id ?? b.result?.id;",
+                  "pm.expect(id, 'Missing requestIdCancel').to.exist;",
+                  "pm.collectionVariables.set('requestIdCancel', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Request For Cancel",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/{{requestIdCancel}}/send"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Send cancel scenario request status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel Request By Renter",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"{{cancelReason}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests/{{requestIdCancel}}/cancel"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cancel request status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Canceled Request Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/{{requestIdCancel}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Canceled request detail status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const status = String(b.status ?? b.Status ?? b.data?.status ?? '').toUpperCase();",
+                  "pm.test('Status is canceled-like', function () {",
+                  "  pm.expect(['CANCELLED', 'CANCELLED_BY_USER', 'CANCELLED_BY_OWNER', 'CANCELLED_BY_SYSTEM']).to.include(status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Owner And Security Views",
+      "item": [
+        {
+          "name": "Owner Get All Requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/owner/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner all requests status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Get Requests By Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/owner/all?status=PENDING"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner status filter request 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unauthorized Create Request (Expect 401/403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"warehouseId\": {{warehouseId}},\n  \"requestedArea\": {{requestedArea}},\n  \"startDate\": \"{{startDate}}\",\n  \"durationMonths\": {{durationMonths}},\n  \"notes\": \"Unauthorized should fail\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthorized expected', function () { pm.expect([401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renter Access Owner Pending Queue (Expect 401/403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/pending"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Forbidden or unauthorized expected', function () { pm.expect([401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

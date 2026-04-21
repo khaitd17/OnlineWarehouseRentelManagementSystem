@@ -1,0 +1,819 @@
+{
+  "info": {
+    "_postman_id": "a5f5af13-fcc4-4eab-b904-1f56b23f6fb7",
+    "name": "OWRMS - Contract API Full Test",
+    "description": "Full contract feature tests: bootstrap contracts, OTP, owner/renter signing, logs, decline, extension, and role checks.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('startDate') || pm.environment.get('startDate') === 'AUTO') {",
+          "  const d = new Date();",
+          "  d.setDate(d.getDate() + 7);",
+          "  pm.environment.set('startDate', d.toISOString());",
+          "}",
+          "if (!pm.environment.get('requestNotes')) {",
+          "  pm.environment.set('requestNotes', 'Contract feature bootstrap request');",
+          "}",
+          "if (!pm.environment.get('contractTerms')) {",
+          "  pm.environment.set('contractTerms', 'Standard contract terms for Postman tests');",
+          "}",
+          "if (!pm.environment.get('signatureBase64')) {",
+          "  pm.environment.set('signatureBase64', 'c2lnbmF0dXJl');",
+          "}",
+          "if (!pm.environment.get('declineReason')) {",
+          "  pm.environment.set('declineReason', 'Renter declines due to updated business condition');",
+          "}",
+          "if (!pm.environment.get('extensionMonths')) {",
+          "  pm.environment.set('extensionMonths', '2');",
+          "}",
+          "if (!pm.environment.get('additionalMonthlyPayment')) {",
+          "  pm.environment.set('additionalMonthlyPayment', pm.environment.get('monthlyPayment') || '5000000');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "tokenRenter", "value": "" },
+    { "key": "tokenOwner", "value": "" },
+    { "key": "warehouseId", "value": "" },
+    { "key": "rentalAreaId", "value": "" },
+    { "key": "requestIdSign", "value": "" },
+    { "key": "requestIdDecline", "value": "" },
+    { "key": "contractIdSign", "value": "" },
+    { "key": "contractIdDecline", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01 - Auth And Bootstrap Contracts",
+      "item": [
+        {
+          "name": "Login Renter",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{renterEmail}}\",\n  \"password\": \"{{renterPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login renter status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const token = b.token ?? b.Token ?? b.data?.token ?? b.data?.Token;",
+                  "pm.expect(token, 'Missing renter token').to.be.a('string').and.not.empty;",
+                  "pm.collectionVariables.set('tokenRenter', token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login owner status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const token = b.token ?? b.Token ?? b.data?.token ?? b.data?.Token;",
+                  "pm.expect(token, 'Missing owner token').to.be.a('string').and.not.empty;",
+                  "pm.collectionVariables.set('tokenOwner', token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Approved Warehouses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/warehouse/approved?limit=10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Approved warehouse status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const list = Array.isArray(b) ? b : (b.data ?? b.items ?? b.result ?? b.warehouses ?? []);",
+                  "pm.expect(Array.isArray(list), 'Warehouse list must be array').to.eql(true);",
+                  "pm.expect(list.length, 'No approved warehouse found').to.be.greaterThan(0);",
+                  "const w = list[0];",
+                  "const warehouseId = w.id ?? w.warehouseId ?? w.Id ?? w.WarehouseId;",
+                  "pm.expect(warehouseId, 'Missing warehouseId').to.exist;",
+                  "pm.collectionVariables.set('warehouseId', String(warehouseId));",
+                  "pm.environment.set('warehouseId', String(warehouseId));",
+                  "const areas = w.rentalAreas ?? w.RentalAreas ?? w.areas ?? w.Areas ?? [];",
+                  "if (Array.isArray(areas) && areas.length > 0) {",
+                  "  const areaId = areas[0].id ?? areas[0].rentalAreaId ?? areas[0].Id ?? areas[0].RentalAreaId;",
+                  "  if (areaId) {",
+                  "    pm.collectionVariables.set('rentalAreaId', String(areaId));",
+                  "    pm.environment.set('rentalAreaId', String(areaId));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Request For Signing Scenario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  warehouseId: Number(pm.collectionVariables.get('warehouseId') || pm.environment.get('warehouseId')),",
+                  "  requestedArea: Number(pm.environment.get('requestedArea')),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths')),",
+                  "  notes: 'Contract sign scenario - ' + (pm.environment.get('requestNotes') || 'Postman')",
+                  "};",
+                  "const areaRaw = pm.collectionVariables.get('rentalAreaId') || pm.environment.get('rentalAreaId');",
+                  "if (areaRaw) { payload.rentalAreaId = Number(areaRaw); }",
+                  "pm.variables.set('createReqSignBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{createReqSignBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create sign scenario request status 200/201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const b = pm.response.json();",
+                  "const id = b.requestId ?? b.id ?? b.data?.requestId ?? b.data?.id ?? b.result?.id;",
+                  "pm.expect(id, 'Missing requestIdSign').to.exist;",
+                  "pm.collectionVariables.set('requestIdSign', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Request For Signing Scenario",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/{{requestIdSign}}/send"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Send sign scenario status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve Request For Signing Scenario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  requestId: Number(pm.collectionVariables.get('requestIdSign')),",
+                  "  contractImageUrl: pm.environment.get('contractImageUrl'),",
+                  "  monthlyPayment: Number(pm.environment.get('monthlyPayment')),",
+                  "  depositAmount: Number(pm.environment.get('depositAmount')),",
+                  "  terms: pm.environment.get('contractTerms'),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths'))",
+                  "};",
+                  "pm.variables.set('approveSignBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{approveSignBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests/{{requestIdSign}}/approve"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Approve sign scenario status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const contractId = b.contractId ?? b.id ?? b.data?.contractId ?? b.data?.id ?? b.result?.contractId;",
+                  "pm.expect(contractId, 'Missing contractIdSign').to.exist;",
+                  "pm.collectionVariables.set('contractIdSign', String(contractId));",
+                  "pm.environment.set('contractId', String(contractId));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Request For Decline Scenario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  warehouseId: Number(pm.collectionVariables.get('warehouseId') || pm.environment.get('warehouseId')),",
+                  "  requestedArea: Number(pm.environment.get('requestedArea')),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths')),",
+                  "  notes: 'Contract decline scenario - ' + (pm.environment.get('requestNotes') || 'Postman')",
+                  "};",
+                  "const areaRaw = pm.collectionVariables.get('rentalAreaId') || pm.environment.get('rentalAreaId');",
+                  "if (areaRaw) { payload.rentalAreaId = Number(areaRaw); }",
+                  "pm.variables.set('createReqDeclineBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{createReqDeclineBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create decline scenario request status 200/201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const b = pm.response.json();",
+                  "const id = b.requestId ?? b.id ?? b.data?.requestId ?? b.data?.id ?? b.result?.id;",
+                  "pm.expect(id, 'Missing requestIdDecline').to.exist;",
+                  "pm.collectionVariables.set('requestIdDecline', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Request For Decline Scenario",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/{{requestIdDecline}}/send"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Send decline scenario status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve Request For Decline Scenario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  requestId: Number(pm.collectionVariables.get('requestIdDecline')),",
+                  "  contractImageUrl: pm.environment.get('contractImageUrl'),",
+                  "  monthlyPayment: Number(pm.environment.get('monthlyPayment')),",
+                  "  depositAmount: Number(pm.environment.get('depositAmount')),",
+                  "  terms: pm.environment.get('contractTerms'),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths'))",
+                  "};",
+                  "pm.variables.set('approveDeclineBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{approveDeclineBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests/{{requestIdDecline}}/approve"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Approve decline scenario status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const contractId = b.contractId ?? b.id ?? b.data?.contractId ?? b.data?.id ?? b.result?.contractId;",
+                  "pm.expect(contractId, 'Missing contractIdDecline').to.exist;",
+                  "pm.collectionVariables.set('contractIdDecline', String(contractId));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Sign Flow And Audit",
+      "item": [
+        {
+          "name": "Send OTP For Signing",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}/send-otp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Send OTP status 200/204', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP Invalid (Negative)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otpCode\": \"000000\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}/verify-otp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid OTP should fail', function () { pm.expect([400, 401, 404, 422]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP Valid",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otpCode\": \"{{otpCode}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}/verify-otp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Valid OTP status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Sign Contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signatureBase64\": \"{{signatureBase64}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}/owner-sign"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner sign status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renter Sign Contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signatureBase64\": \"{{signatureBase64}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}/sign"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Renter sign status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Contract Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Contract detail status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const status = String(b.status ?? b.Status ?? b.data?.status ?? '').toUpperCase();",
+                  "pm.expect(status, 'Contract status is empty').to.not.eql('');",
+                  "pm.test('Status in valid post-sign states', function () {",
+                  "  pm.expect(['SIGNED', 'PENDING_PAYMENT', 'ACTIVE']).to.include(status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Signing History",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}/signing-history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Signing history status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Contract Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}/logs"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Contract logs status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Contract Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}/audit-logs"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Audit logs status 200 or 404', function () { pm.expect([200, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get My Contracts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/my-contracts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('My contracts status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Contracts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/owner-contracts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner contracts status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Contracts By Warehouse",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/warehouse/{{warehouseId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Contracts by warehouse status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Decline And Extension",
+      "item": [
+        {
+          "name": "Decline Contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"{{declineReason}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdDecline}}/decline"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Decline contract status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Declined Contract Detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdDecline}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Declined contract detail status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const status = String(b.status ?? b.Status ?? b.data?.status ?? '').toUpperCase();",
+                  "pm.test('Declined-like status', function () {",
+                  "  pm.expect(['DECLINED', 'CANCELLED', 'REJECTED']).to.include(status);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Try Owner Sign Declined Contract (Expect Fail)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signatureBase64\": \"{{signatureBase64}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdDecline}}/owner-sign"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sign declined contract should fail', function () { pm.expect([400, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Extend Signed Contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"extensionMonths\": {{extensionMonths}},\n  \"additionalMonthlyPayment\": {{additionalMonthlyPayment}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}/extend"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Extend returns known status', function () { pm.expect([200, 400, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unauthorized Get Contract (Expect 401/403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdSign}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthorized expected', function () { pm.expect([401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
