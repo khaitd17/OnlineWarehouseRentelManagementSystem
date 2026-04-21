@@ -1,0 +1,782 @@
+{
+    "info": {
+        "name": "OWRMS_Equipment_Integration_FINAL_20TCs",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "01. Equipment Lifecycle",
+            "item": [
+                {
+                    "name": "IT-EQ-01: Create Equipment",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": 1,\n    \"name\": \"Camera Giám Sát\",\n    \"type\": \"Camera\",\n    \"location\": \"Cổng B\",\n    \"iotDeviceId\": \"CAM-001\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });",
+                                    "pm.environment.set('temp_eq_id', pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-02: Get By Warehouse",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments/warehouse/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments",
+                                "warehouse",
+                                "1"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-03: Update Info",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments/{{temp_eq_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments",
+                                "{{temp_eq_id}}"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"equipmentId\": \"{{temp_eq_id}}\",\n    \"name\": \"Camera Giám Sát (Updated)\",\n    \"warehouseId\": 1\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-04: Update Status (BROKEN)",
+                    "request": {
+                        "method": "PATCH",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments/{{temp_eq_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments",
+                                "{{temp_eq_id}}",
+                                "status"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"equipmentId\": \"{{temp_eq_id}}\",\n    \"status\": \"BROKEN\",\n    \"note\": \"Ghi nhận hỏng qua test\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-05: IoT Control command",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments/{{temp_eq_id}}/control",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments",
+                                "{{temp_eq_id}}",
+                                "control"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"equipmentId\": \"{{temp_eq_id}}\",\n    \"action\": \"RESTART\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-06: Sync Shared Status",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments/sync-shared/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments",
+                                "sync-shared",
+                                "1"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "// 403 or 200 depending on operator role"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "02. Incident Management",
+            "item": [
+                {
+                    "name": "IT-EQ-07: Report Incident",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/equipment-incidents/report",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "equipment-incidents",
+                                "report"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{renter_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"equipmentId\": \"{{temp_eq_id}}\",\n    \"title\": \"Camera mờ\",\n    \"description\": \"Không nhìn rõ trần nhà\",\n    \"priority\": \"HIGH\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });",
+                                    "pm.environment.set('temp_inc_id', pm.response.json().id);"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-08: Get Incident Detail",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/equipment-incidents/{{temp_inc_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "equipment-incidents",
+                                "{{temp_inc_id}}"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-09: Add Comment",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/equipment-incidents/{{temp_inc_id}}/comments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "equipment-incidents",
+                                "{{temp_inc_id}}",
+                                "comments"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"incidentId\": \"{{temp_inc_id}}\",\n    \"content\": \"Đang cho nhân viên đi kiểm tra.\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-10: Update Incident Status",
+                    "request": {
+                        "method": "PATCH",
+                        "url": {
+                            "raw": "{{base_url}}/api/equipment-incidents/{{temp_inc_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "equipment-incidents",
+                                "{{temp_inc_id}}",
+                                "status"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"incidentId\": \"{{temp_inc_id}}\",\n    \"status\": \"RESOLVED\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-11: Incident List by WH",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/equipment-incidents/warehouse/1",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "equipment-incidents",
+                                "warehouse",
+                                "1"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "03. Security & Boundaries",
+            "item": [
+                {
+                    "name": "IT-EQ-12: Create Fails Missing Name",
+                    "request": {
+                        "method": "POST",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"warehouseId\": 1\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('400', function(){ pm.response.to.have.status(400); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-13: Update Fails ID mismatch",
+                    "request": {
+                        "method": "PUT",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments/9999",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments",
+                                "9999"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"equipmentId\": 8888,\n    \"name\": \"Fake\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('400', function(){ pm.response.to.have.status(400); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-14: Unauthorized Delete",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments/{{temp_eq_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments",
+                                "{{temp_eq_id}}"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{renter_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('403', function(){ pm.response.to.have.status(403); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-15: Invalid Incident Status",
+                    "request": {
+                        "method": "PATCH",
+                        "url": {
+                            "raw": "{{base_url}}/api/equipment-incidents/{{temp_inc_id}}/status",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "equipment-incidents",
+                                "{{temp_inc_id}}",
+                                "status"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"incidentId\": \"{{temp_inc_id}}\",\n    \"status\": \"INVALID_STATE\"\n}"
+                        },
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('400', function(){ pm.response.to.have.status(400); });"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "IT-EQ-16: Incident NotFound",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{base_url}}/api/equipment-incidents/999999",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "equipment-incidents",
+                                "999999"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('404', function(){ pm.response.to.have.status(404); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "04. Cleanup",
+            "item": [
+                {
+                    "name": "IT-EQ-17: Delete Equipment",
+                    "request": {
+                        "method": "DELETE",
+                        "url": {
+                            "raw": "{{base_url}}/api/Equipments/{{temp_eq_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "Equipments",
+                                "{{temp_eq_id}}"
+                            ]
+                        },
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{owner_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "pm.test('200 OK', function() { pm.response.to.have.status(200); });"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -301,6 +301,10 @@ using (var scope = app.Services.CreateScope())
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_zones_per_warehouse') ALTER TABLE subscription_packages ADD max_zones_per_warehouse int NOT NULL DEFAULT 3;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_total_area') ALTER TABLE subscription_packages ADD max_total_area decimal(18,2) NOT NULL DEFAULT 500;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'allow_equipment_management') ALTER TABLE subscription_packages ADD allow_equipment_management bit NOT NULL DEFAULT 0;",
+            // Patch: Thêm các cột hủy đơn cho rental_requests
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_requests') AND name = 'cancellation_reason') ALTER TABLE rental_requests ADD cancellation_reason nvarchar(max) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_requests') AND name = 'cancelled_at') ALTER TABLE rental_requests ADD cancelled_at datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_requests') AND name = 'cancelled_by') ALTER TABLE rental_requests ADD cancelled_by nvarchar(50) NULL;",
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('task_types') AND name = 'is_manual') ALTER TABLE task_types ADD is_manual bit NOT NULL CONSTRAINT DF_task_types_is_manual DEFAULT 0;",
             // Patch: đảm bảo tasks có ref_type/ref_id (luồng tạo task từ nhập/xuất)
             "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('tasks') AND name = 'ref_type') ALTER TABLE tasks ADD ref_type nvarchar(20) NULL;",
@@ -359,6 +363,52 @@ using (var scope = app.Services.CreateScope())
             // Patch: Cập nhật dữ liệu chuẩn cho các gói (Basic vs Premium)
             "UPDATE subscription_packages SET max_warehouses = 1, max_staff_per_warehouse = 5, max_zones_per_warehouse = 3, max_total_area = 500, allow_equipment_management = 0 WHERE name = 'Basic';",
             "UPDATE subscription_packages SET max_warehouses = 5, max_staff_per_warehouse = 50, max_zones_per_warehouse = 10, max_total_area = 5000, allow_equipment_management = 1 WHERE name = 'Premium';",
+            // Patch: Thêm available_volume cho warehouses
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('warehouses') AND name = 'available_volume') ALTER TABLE warehouses ADD available_volume float NULL;",
+            // Patch: Thêm signature và tracking cho rental_contracts
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'owner_signature_base64') ALTER TABLE rental_contracts ADD owner_signature_base64 nvarchar(max) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'renter_signature_base64') ALTER TABLE rental_contracts ADD renter_signature_base64 nvarchar(max) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'owner_signature_expiry') ALTER TABLE rental_contracts ADD owner_signature_expiry datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'RenterSignatureExpiry') ALTER TABLE rental_contracts ADD RenterSignatureExpiry datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'PaymentExpiry') ALTER TABLE rental_contracts ADD PaymentExpiry datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'CancellationFee') ALTER TABLE rental_contracts ADD CancellationFee decimal(18,2) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'EarlyTerminationFee') ALTER TABLE rental_contracts ADD EarlyTerminationFee decimal(18,2) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'cancellation_reason') ALTER TABLE rental_contracts ADD cancellation_reason nvarchar(max) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'CancelledAt') ALTER TABLE rental_contracts ADD CancelledAt datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'CancelledBy') ALTER TABLE rental_contracts ADD CancelledBy nvarchar(50) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'GracePeriodHours') ALTER TABLE rental_contracts ADD GracePeriodHours int NOT NULL DEFAULT 24;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminationRequestedBy') ALTER TABLE rental_contracts ADD TerminationRequestedBy nvarchar(50) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminationRequestedAt') ALTER TABLE rental_contracts ADD TerminationRequestedAt datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'renter_approved_termination') ALTER TABLE rental_contracts ADD renter_approved_termination bit NOT NULL DEFAULT 0;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'owner_approved_termination') ALTER TABLE rental_contracts ADD owner_approved_termination bit NOT NULL DEFAULT 0;",
+            // Patch: Thêm signature cho contracts (bảng cũ)
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'owner_signed_file_url') ALTER TABLE contracts ADD owner_signed_file_url nvarchar(500) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'owner_signed_at') ALTER TABLE contracts ADD owner_signed_at datetime2 NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'owner_signature_base64') ALTER TABLE contracts ADD owner_signature_base64 nvarchar(max) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'renter_signature_base64') ALTER TABLE contracts ADD renter_signature_base64 nvarchar(max) NULL;",
+            // Patch: Thêm volume/weight cho inventory_items
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_items') AND name = 'EstimatedVolume') ALTER TABLE inventory_items ADD EstimatedVolume decimal(10,3) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_items') AND name = 'VerifiedVolume') ALTER TABLE inventory_items ADD VerifiedVolume decimal(10,3) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_items') AND name = 'VerifiedWeight') ALTER TABLE inventory_items ADD VerifiedWeight decimal(10,3) NULL;",
+            // Patch: Thêm updated_at cho warehouses và các cột submission
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('warehouses') AND name = 'updated_at') ALTER TABLE warehouses ADD updated_at datetime2 NULL DEFAULT (getdate());",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('warehouses') AND name = 'submission_type') ALTER TABLE warehouses ADD submission_type nvarchar(20) NOT NULL DEFAULT 'NEW';",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('warehouses') AND name = 'pending_change_note') ALTER TABLE warehouses ADD pending_change_note nvarchar(500) NULL;",
+            // Patch: Thêm updated_at cho rental_contracts
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'updated_at') ALTER TABLE rental_contracts ADD updated_at datetime2 NULL DEFAULT (getdate());",
+            // Patch: Thêm updated_at cho contracts
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'updated_at') ALTER TABLE contracts ADD updated_at datetime2 NULL DEFAULT (getdate());",
+            // Patch: Thêm các cột cho inventory_requests
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'renter_signature_base64') ALTER TABLE inventory_requests ADD renter_signature_base64 nvarchar(max) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'manager_signature_base64') ALTER TABLE inventory_requests ADD manager_signature_base64 nvarchar(max) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'updated_at') ALTER TABLE inventory_requests ADD updated_at datetime2 NULL DEFAULT (getdate());",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'assigned_staff_id') ALTER TABLE inventory_requests ADD assigned_staff_id int NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'assigned_note') ALTER TABLE inventory_requests ADD assigned_note nvarchar(max) NULL;",
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'assigned_at') ALTER TABLE inventory_requests ADD assigned_at datetime2 NULL;",
+            // Patch: Thêm updated_at cho rental_requests
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_requests') AND name = 'updated_at') ALTER TABLE rental_requests ADD updated_at datetime2 NULL DEFAULT (getdate());",
+            // Patch: Thêm updated_at cho users
+            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('users') AND name = 'updated_at') ALTER TABLE users ADD updated_at datetime2 NULL DEFAULT (getdate());",
         };
         foreach (var sql in patchSqls)
         {
