@@ -11,17 +11,23 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
         private readonly IWarehouseRepository _warehouseRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly INotificationSender _notificationSender;
+        private readonly IRenterAssetRepository _assetRepo;
+        private readonly IRentalRequestRepository _rentalRequestRepository;
 
         public ApproveTerminationHandler(
             IRentalContractRepository contractRepository,
             IWarehouseRepository warehouseRepository,
             INotificationRepository notificationRepository,
-            INotificationSender notificationSender)
+            INotificationSender notificationSender,
+            IRenterAssetRepository assetRepo,
+            IRentalRequestRepository rentalRequestRepository)
         {
             _contractRepository = contractRepository;
             _warehouseRepository = warehouseRepository;
             _notificationRepository = notificationRepository;
             _notificationSender = notificationSender;
+            _assetRepo = assetRepo;
+            _rentalRequestRepository = rentalRequestRepository;
         }
 
         public async Task<ApproveTerminationResponse> Handle(ApproveTerminationCommand request, CancellationToken cancellationToken)
@@ -126,6 +132,29 @@ namespace WMS.Application.Features.Contracts.ApproveTermination
                                        hasPositiveTerminationFee;
                 bool isFullyApproved = updatedContract.Status == RentalContractStatus.Terminated ||
                                        updatedContract.Status == RentalContractStatus.Closed;
+
+                // Xóa tồn kho khi cả hai bên đã đồng ý chấm dứt hợp đồng
+                if (isFullyApproved)
+                {
+                    try
+                    {
+                        await _assetRepo.ClearRenterInventoryAsync(
+                            updatedContract.RenterId, updatedContract.WarehouseId, cancellationToken);
+                    }
+                    catch { /* không chặn luồng */ }
+
+                    // Revert available area for the warehouse
+                    var rentalRequest = await _rentalRequestRepository.GetByIdAsync(updatedContract.RentalRequestId);
+                    if (rentalRequest != null)
+                    {
+                        warehouse.AvailableArea += rentalRequest.RequestedArea;
+                        if (warehouse.AvailableArea > warehouse.TotalArea)
+                        {
+                            warehouse.AvailableArea = warehouse.TotalArea; // Ensure it doesn't exceed total
+                        }
+                        await _warehouseRepository.UpdateAsync(warehouse, cancellationToken);
+                    }
+                }
 
                 // Notify the other party
                 int notifyUserId = isRenter ? warehouse.OwnerId : updatedContract.RenterId;

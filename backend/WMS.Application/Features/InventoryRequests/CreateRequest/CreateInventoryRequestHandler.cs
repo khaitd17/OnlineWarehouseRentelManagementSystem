@@ -12,8 +12,9 @@ public record CreateInventoryItemInput
     public int Quantity { get; init; }
     public string Unit { get; init; } = "cái";
     public decimal? Weight { get; init; }
+    /// <summary>Thể tích ước tính (m³) do Renter điền tự hoặc do AI gợi ý.</summary>
+    public decimal? EstimatedVolume { get; init; }
     public string? Description { get; init; }
-
     /// <summary>FK về catalogue renter_assets (nếu chọn từ catalogue)</summary>
     public int? AssetId { get; init; }
 }
@@ -28,6 +29,7 @@ public record CreateInventoryRequestCommand : IRequest<InventoryRequestDto>
     public List<string>? DocumentUrls { get; init; }
     public List<CreateInventoryItemInput> Items { get; init; } = new();
     public DateTime? ScheduledDate { get; init; }
+    public string? RenterSignatureBase64 { get; init; }
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -70,10 +72,9 @@ public class CreateInventoryRequestHandler
                 $"Kho hiện đang đóng cửa. Thời gian hoạt động: {timeStr}. Vui lòng thực hiện yêu cầu trong giờ làm việc.");
         }
 
-        // ── Dual-Constraint Validation cho INBOUND ─────────────────────────────────
+        // ── Dual-Constraint Validation cho INBOUND ─────────────────────────────────────────────
         if (cmd.Type.ToUpper() == "INBOUND")
         {
-            const int    UnitsPerM2     = 10;       // Hệ số ước lượng số đơn vị / m²
             const decimal KgPerM2Limit  = 500m;    // Tải trọng sàn tiêu chuẩn kho (kg/m²)
 
             var contractedArea = await _contractRepo.GetContractedAreaAsync(
@@ -89,7 +90,7 @@ public class CreateInventoryRequestHandler
 
                 foreach (var item in cmd.Items)
                 {
-                    decimal? wPerUnit = item.Weight; // weight đã được resolve từ asset (nếu có)
+                    decimal? wPerUnit = item.Weight;
 
                     // Nếu có assetId, thử lấy weight từ catalogue
                     if ((wPerUnit == null || wPerUnit <= 0) && item.AssetId.HasValue && item.AssetId.Value > 0)
@@ -115,10 +116,9 @@ public class CreateInventoryRequestHandler
                             $"Vui lòng chia thành nhiều lô nhỏ hơn hoặc liên hệ quản lý kho.");
                 }
 
-                // ── Tầng 2: Soft check — Số lượng đơn vị (chỉ thông báo, không chặn) ──
-                // Nếu tổng vượt ước lượng diện tích nhưng hàng nhẹ/nhỏ → Manager tự phán quyết
-                // Logic này được thực hiện ở frontend (soft warning màu vàng)
-                // Backend không chặn để Manager approval flow hoạt động bình thường
+                // ── Tầng 2: Soft check — Thể tích (cảnh báo, không chặn) ─────────────────
+                // Nếu Renter điền EstimatedVolume, tổng vượt hợp đồng → cảnh báo nhưng vẫn gửi được.
+                // Manager sẽ thấy cảnh báo khi xem yêu cầu và tự quyết định có duyệt hay không.
             }
         }
 
@@ -173,12 +173,13 @@ public class CreateInventoryRequestHandler
 
             inventoryItems.Add(new InventoryItem
             {
-                ItemName    = itemName,
-                Quantity    = item.Quantity,
-                Unit        = unit,
-                Weight      = weight,
-                Description = item.Description,
-                AssetId     = assetId,
+                ItemName        = itemName,
+                Quantity        = item.Quantity,
+                Unit            = unit,
+                Weight          = weight,
+                EstimatedVolume = item.EstimatedVolume,
+                Description     = item.Description,
+                AssetId         = assetId,
             });
         }
 
@@ -194,6 +195,7 @@ public class CreateInventoryRequestHandler
             Status         = "PENDING",
             InventoryItems = inventoryItems,
             ScheduledDate  = cmd.ScheduledDate,
+            RenterSignatureBase64 = cmd.RenterSignatureBase64,
         };
 
         var created = await _repo.CreateAsync(request, cancellationToken);

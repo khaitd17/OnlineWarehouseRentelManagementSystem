@@ -9,6 +9,12 @@ public record InventoryItemDto
     public int Quantity { get; init; }
     public string Unit { get; init; } = "";
     public decimal? Weight { get; init; }
+    /// <summary>Thể tích ước tính (m³) do Renter điền.</summary>
+    public decimal? EstimatedVolume { get; init; }
+    /// <summary>Thể tích thực tế Staff xác nhận (m³).</summary>
+    public decimal? VerifiedVolume { get; init; }
+    /// <summary>Khối lượng thực tế Staff cân (kg).</summary>
+    public decimal? VerifiedWeight { get; init; }
     public string? Description { get; init; }
     public int? AssetId { get; init; }
     public string? AssetName { get; init; }
@@ -38,8 +44,16 @@ public record InventoryRequestDto
     public string? AssignedStaffName { get; init; }
     public string? AssignedNote { get; init; }
     public DateTime? AssignedAt { get; init; }
+    public string? ManagerName { get; init; }
+    public DateTime? ScheduledDate { get; init; }
+    public string? RenterSignatureBase64 { get; init; }
+    public string? ManagerSignatureBase64 { get; init; }
     public DateTime? UpdatedAt { get; init; }
     public int TotalItems { get; init; }
+    /// <summary>Tổng thể tích ước tính theo Renter (m³) — hiển thị cho Manager khi xem xét.</summary>
+    public decimal? TotalEstimatedVolume { get; init; }
+    /// <summary>Tổng thể tích thực tế Staff xác nhận (m³).</summary>
+    public decimal? TotalVerifiedVolume { get; init; }
     public List<InventoryItemDto> Items { get; init; } = new();
 }
 
@@ -71,6 +85,10 @@ public static class InventoryRequestMapper
         CreatedAt       = r.CreatedAt,
         ConfirmedAt     = r.ConfirmedAt,
         ConfirmedByName = r.ConfirmedByNavigation?.FullName,
+        ManagerName     = r.ConfirmedByNavigation?.FullName,
+        ScheduledDate   = r.ScheduledDate,
+        RenterSignatureBase64 = r.RenterSignatureBase64,
+        ManagerSignatureBase64 = r.ManagerSignatureBase64,
         AssignedStaffId   = r.AssignedStaffId,
         AssignedStaffName = r.AssignedStaff?.FullName,
         AssignedNote      = r.AssignedNote,
@@ -89,6 +107,13 @@ public static class InventoryRequestMapper
             AssetName       = i.Asset?.AssetName,
             VerifiedQuantity = i.VerifiedQuantity,
             VerifyNote      = i.VerifyNote,
-        }).ToList()
+            EstimatedVolume = i.EstimatedVolume,
+            VerifiedVolume  = i.VerifiedVolume,
+            VerifiedWeight  = i.VerifiedWeight,
+        }).ToList(),
+        TotalEstimatedVolume = r.InventoryItems.Sum(i => i.EstimatedVolume ?? 0) is decimal tv && tv > 0 ? tv : null,
+        TotalVerifiedVolume  = r.InventoryItems.Any(i => i.VerifiedVolume.HasValue)
+            ? r.InventoryItems.Sum(i => i.VerifiedVolume ?? 0)
+            : null,
     };
 }

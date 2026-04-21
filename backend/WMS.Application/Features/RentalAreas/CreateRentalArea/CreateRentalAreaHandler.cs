@@ -24,10 +24,13 @@ public class CreateRentalAreaHandler : IRequestHandler<CreateRentalAreaCommand, 
         }
 
         var totalAllocated = await _rentalAreaRepository.GetTotalAllocatedAreaAsync(request.WarehouseId, cancellationToken);
-        
-        if (totalAllocated + request.Size > warehouse.TotalArea)
+
+        // TotalArea stores the total volume capacity (m³ = W × L × H).
+        // zone.Size is also in m³, so compare directly.
+        if (totalAllocated + request.Size > warehouse.TotalArea + 0.01)
         {
-            throw new Exception($"Cannot create rental area. Warehouse capacity exceeded. Max available: {warehouse.TotalArea - totalAllocated}");
+            var remaining = Math.Round(warehouse.TotalArea - totalAllocated, 2);
+            throw new Exception($"Không thể tạo khu vực. Tổng thể tích vượt quá sức chứa kho ({warehouse.TotalArea} m³). Còn trống: {remaining} m³");
         }
 
         // Validate overlap

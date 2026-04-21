@@ -12,19 +12,22 @@ namespace WMS.Application.Features.Contracts.CancelContract
         private readonly IWarehouseRepository _warehouseRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly INotificationSender _notificationSender;
+        private readonly IRenterAssetRepository _assetRepo;
 
         public CancelContractHandler(
             IRentalContractRepository contractRepository,
             IRentalRequestRepository rentalRequestRepository,
             IWarehouseRepository warehouseRepository,
             INotificationRepository notificationRepository,
-            INotificationSender notificationSender)
+            INotificationSender notificationSender,
+            IRenterAssetRepository assetRepo)
         {
             _contractRepository = contractRepository;
             _rentalRequestRepository = rentalRequestRepository;
             _warehouseRepository = warehouseRepository;
             _notificationRepository = notificationRepository;
             _notificationSender = notificationSender;
+            _assetRepo = assetRepo;
         }
 
 
@@ -64,6 +67,15 @@ namespace WMS.Application.Features.Contracts.CancelContract
                 // Cancel contract
                 contract.Cancel(request.CancellationReason);
                 await _contractRepository.UpdateAsync(contract);
+
+                // Xóa tồn kho của renter tại kho này khi hủy hợp đồng
+                // (tránh tồn kho cũ hiển thị sai trong hợp đồng mới)
+                try
+                {
+                    await _assetRepo.ClearRenterInventoryAsync(
+                        contract.RenterId, contract.WarehouseId, cancellationToken);
+                }
+                catch { /* không chặn luồng hủy vì đây là cleanup */ }
 
                 // Revert available area for the warehouse
                 var rentalRequest = await _rentalRequestRepository.GetByIdAsync(contract.RentalRequestId);

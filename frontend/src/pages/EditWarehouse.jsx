@@ -489,6 +489,20 @@ const EditWarehouse = () => {
                   />
                 </div>
               </div>
+              {/* Lock badge */}
+              {!canEditDimensions && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "10px",
+                  background: "#f0f9ff", border: "1px solid #bae6fd",
+                  borderRadius: "12px", padding: "10px 14px", marginTop: "-0.5rem"
+                }}>
+                  <span className="material-symbols-outlined" style={{ color: "#0284c7", fontSize: "18px", flexShrink: 0 }}>lock</span>
+                  <span style={{ fontSize: "0.82rem", color: "#0369a1", lineHeight: 1.5 }}>
+                    Kích thước kho <strong>đã được khóa</strong> sau khi thiết lập lần đầu để đảm bảo tính nhất quán với các khu vực đã tạo.
+                    Nếu cần thay đổi, vui lòng liên hệ quản trị viên.
+                  </span>
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div style={groupStyle}>

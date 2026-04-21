@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import inventoryService from '../../services/inventoryService';
 import { getMyWarehouses } from '../../services/warehouseService';
+import { ReceiptPreviewModal } from '../../components/InventoryReceiptPDF';
 
 /* ──────────────────────────────────────────────────────────────
    Helpers
@@ -53,61 +54,57 @@ const formatDateTime = (dt) => {
   };
 };
 
-const TimelineStep = ({ icon, iconBg, iconColor, title, subtitle, meta, note, isLast, isActive, isDone, isFailed }) => {
-  const borderColor = isFailed ? '#fecaca' : isDone ? '#a7f3d0' : isActive ? '#bfdbfe' : '#e5e7eb';
+const TimelineStep = ({ title, subtitle, meta, note, isLast, isActive, isDone, isFailed, stepNumber }) => {
   const lineColor   = isDone   ? '#10b981' : '#e5e7eb';
+  const dotBg       = isFailed ? '#ef4444' : isDone ? '#10b981' : isActive ? '#3b82f6' : '#f1f5f9';
+  const dotColor    = isDone || isActive || isFailed ? '#fff' : '#94a3b8';
+
   return (
-    <div style={{ display: 'flex', gap: 14, position: 'relative' }}>
-      {/* Vertical line */}
+    <div style={{ display: 'flex', gap: 18, position: 'relative' }}>
       {!isLast && (
-        <div style={{
-          position: 'absolute', left: 19, top: 40, bottom: -8,
-          width: 2, background: lineColor, zIndex: 0,
-        }} />
+        <div style={{ position: 'absolute', left: 15, top: 32, bottom: -8, width: 2, background: lineColor, zIndex: 0 }} />
       )}
-      {/* Icon circle */}
       <div style={{
-        width: 40, height: 40, borderRadius: '50%', flexShrink: 0, zIndex: 1,
-        background: iconBg, border: `2px solid ${borderColor}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 32, height: 32, borderRadius: '50%', flexShrink: 0, zIndex: 1,
+        background: dotBg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontWeight: 800, fontSize: '0.85rem', color: dotColor,
+        boxShadow: isActive ? `0 0 0 4px ${dotBg}33` : 'none',
+        marginTop: 2
       }}>
-        <span className="material-symbols-outlined" style={{ fontSize: 18, color: iconColor }}>{icon}</span>
+        {stepNumber}
       </div>
-      {/* Content */}
-      <div style={{ paddingBottom: isLast ? 0 : 20, flex: 1 }}>
-        <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: isDone || isActive ? '#111827' : '#9ca3af' }}>
+      <div style={{ paddingBottom: isLast ? 0 : 24, flex: 1 }}>
+        <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: isDone || isActive ? '#0f172a' : '#64748b' }}>
           {title}
         </p>
         {subtitle && (
-          <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#6b7280', fontWeight: 500 }}>{subtitle}</p>
+          <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#475569', fontWeight: 500 }}>{subtitle}</p>
         )}
         {meta && (
-          <div style={{ marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 8, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: '0.72rem', color: '#6b7280', background: '#f1f5f9',
-              padding: '3px 8px', borderRadius: 6, fontWeight: 500,
+              display: 'inline-flex', alignItems: 'center',
+              fontSize: '0.75rem', color: '#475569', background: '#f8fafc',
+              padding: '4px 10px', borderRadius: 6, fontWeight: 600, border: '1px solid #e2e8f0'
             }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>calendar_today</span>
-              {meta.date}
+              Ngày: {meta.date}
             </span>
             <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: '0.72rem', color: '#6b7280', background: '#f1f5f9',
-              padding: '3px 8px', borderRadius: 6, fontWeight: 500,
+              display: 'inline-flex', alignItems: 'center',
+              fontSize: '0.75rem', color: '#475569', background: '#f8fafc',
+              padding: '4px 10px', borderRadius: 6, fontWeight: 600, border: '1px solid #e2e8f0'
             }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>schedule</span>
-              {meta.time}
+              Giờ: {meta.time}
             </span>
           </div>
         )}
         {note && (
           <div style={{
-            marginTop: 8, padding: '8px 12px', borderRadius: 8,
+            marginTop: 10, padding: '10px 14px', borderRadius: 8,
             background: '#fffbeb', border: '1px solid #fde68a',
-            fontSize: '0.78rem', color: '#92400e',
+            fontSize: '0.8rem', color: '#92400e', lineHeight: 1.4
           }}>
-            <span style={{ fontWeight: 700 }}>Ghi chú: </span>{note}
+            <strong style={{ fontWeight: 800 }}>Ghi chú: </strong>{note}
           </div>
         )}
       </div>
@@ -126,8 +123,6 @@ const TrackingTimeline = ({ req }) => {
 
   const steps = [
     {
-      icon: 'add_circle',
-      iconBg: '#d1fae5', iconColor: '#059669',
       title: `Yêu cầu được tạo bởi ${req.renterName}`,
       subtitle: req.renterEmail,
       meta: formatDateTime(req.createdAt),
@@ -135,24 +130,18 @@ const TrackingTimeline = ({ req }) => {
       isActive: false,
     },
     {
-      icon: isRejected && !isConfirmed ? 'cancel' : 'verified',
-      iconBg: isConfirmed ? '#d1fae5' : '#f1f5f9',
-      iconColor: isConfirmed ? '#059669' : '#d1d5db',
       title: isConfirmed
-        ? `Đã duyệt bởi ${req.confirmedByName || 'Manager'}`
-        : (isRejected ? 'Đã từ chối' : 'Chờ Manager xét duyệt'),
-      subtitle: isConfirmed ? `Manager phụ trách` : undefined,
+        ? `Đã duyệt bởi ${req.confirmedByName || 'Quản lý'}`
+        : (isRejected ? 'Đã từ chối' : 'Chờ Quản lý xét duyệt'),
+      subtitle: isConfirmed ? `Quản lý phụ trách` : undefined,
       meta: isConfirmed ? formatDateTime(req.confirmedAt) : null,
       isDone: isConfirmed,
       isActive: !isConfirmed && status === 'PENDING',
     },
     {
-      icon: 'person_pin_circle',
-      iconBg: isAssigned ? '#dbeafe' : '#f1f5f9',
-      iconColor: isAssigned ? '#2563eb' : '#d1d5db',
       title: isAssigned
         ? `Giao cho ${req.assignedStaffName || 'Nhân viên kho'}`
-        : 'Chờ giao nhân viên xử lý',
+        : 'Chờ phân quyền nhân viên xử lý',
       subtitle: isAssigned && req.assignedStaffEmail ? req.assignedStaffEmail : undefined,
       meta: isAssigned ? formatDateTime(req.assignedAt) : null,
       note: isAssigned && req.assignedNote ? req.assignedNote : null,
@@ -160,12 +149,9 @@ const TrackingTimeline = ({ req }) => {
       isActive: isConfirmed && !isAssigned,
     },
     {
-      icon: isCompleted ? 'check_circle' : isRejected ? 'cancel' : 'pending',
-      iconBg: isCompleted ? '#d1fae5' : isRejected ? '#fee2e2' : '#f1f5f9',
-      iconColor: isCompleted ? '#059669' : isRejected ? '#dc2626' : '#d1d5db',
       title: isCompleted ? 'Hoàn thành xuất/nhập kho'
-           : isRejected  ? 'Yêu cầu bị từ chối'
-           : 'Chờ thực hiện & hoàn thành',
+           : isRejected  ? 'Yêu cầu bị hủy/từ chối'
+           : 'Chờ hoàn tất',
       meta: (isCompleted || isRejected) ? formatDateTime(req.updatedAt) : null,
       isDone: isCompleted || isRejected,
       isFailed: isRejected,
@@ -176,12 +162,12 @@ const TrackingTimeline = ({ req }) => {
 
   return (
     <div>
-      <p style={{ margin: '0 0 14px', fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <p style={{ margin: '0 0 20px', fontSize: '0.85rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         Tiến trình xử lý
       </p>
-      <div style={{ borderLeft: 'none', paddingLeft: 0 }}>
+      <div style={{ paddingLeft: 8 }}>
         {steps.map((step, i) => (
-          <TimelineStep key={i} {...step} isLast={i === steps.length - 1} />
+          <TimelineStep key={i} {...step} isLast={i === steps.length - 1} stepNumber={i + 1} />
         ))}
       </div>
     </div>
@@ -192,6 +178,7 @@ const TrackingTimeline = ({ req }) => {
    Detail Modal
 ────────────────────────────────────────────────────────────── */
 const DetailModal = ({ req, onClose }) => {
+  const [pdfOpen, setPdfOpen] = React.useState(false);
   if (!req) return null;
   return (
     <div style={{
@@ -215,38 +202,59 @@ const DetailModal = ({ req, onClose }) => {
           borderRadius: '16px 16px 0 0',
         }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '2px 10px', borderRadius: 999,
-                fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                display: 'inline-flex', alignItems: 'center',
+                padding: '4px 10px', borderRadius: 6,
+                fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
                 background: req.type === 'INBOUND' ? '#dcfce7' : '#fef3c7',
                 color:      req.type === 'INBOUND' ? '#16a34a' : '#d97706',
                 border:     `1px solid ${req.type === 'INBOUND' ? '#bbf7d0' : '#fde68a'}`,
               }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 12 }}>
-                  {req.type === 'INBOUND' ? 'move_to_inbox' : 'outbox'}
-                </span>
-                {req.type === 'INBOUND' ? 'Nhập kho' : 'Xuất kho'}
+                {req.type === 'INBOUND' ? 'NHẬP KHO' : 'XUẤT KHO'}
               </span>
-              <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>#{req.invReqId}</span>
+              <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 700 }}>#{req.invReqId}</span>
             </div>
-            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#111827' }}>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>
               {req.warehouseName}
             </h2>
           </div>
-          <button onClick={onClose} style={{
-            background: '#f1f5f9', border: 'none', cursor: 'pointer',
-            width: 32, height: 32, borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'background 0.15s',
-          }}
-            onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
-            onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#6b7280' }}>close</span>
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {req.type === 'INBOUND' && (
+              <button
+                onClick={() => setPdfOpen(true)}
+                style={{
+                  background: '#1e293b', border: 'none', cursor: 'pointer',
+                  padding: '6px 14px', borderRadius: 8,
+                  fontSize: '0.8rem', fontWeight: 700, color: '#fff',
+                  fontFamily: 'Inter, sans-serif', transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
+                onMouseLeave={e => e.currentTarget.style.background = '#1e293b'}
+              >
+                Xem Phiếu Nhập Kho
+              </button>
+            )}
+            <button onClick={onClose} style={{
+              background: '#f1f5f9', border: 'none', cursor: 'pointer',
+              padding: '6px 12px', borderRadius: 8,
+              fontSize: '0.8rem', fontWeight: 700, color: '#475569',
+              fontFamily: 'Inter, sans-serif', transition: 'background 0.15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
+              onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
+            >
+              DONG
+            </button>
+          </div>
         </div>
+
+        {pdfOpen && (
+          <ReceiptPreviewModal
+            data={req}
+            onClose={() => setPdfOpen(false)}
+          />
+        )}
 
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -286,29 +294,69 @@ const DetailModal = ({ req, onClose }) => {
 
           {/* ── Danh sách Hàng hóa ───────────────────── */}
           <div>
-            <p style={{ margin: '0 0 10px', fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Danh sách hàng hóa
-              <span style={{
-                marginLeft: 8, padding: '1px 8px', borderRadius: 999,
-                background: '#e0f2fe', color: '#0284c7', fontSize: '0.72rem', fontWeight: 700,
-              }}>{req.items?.length || 0} mặt hàng</span>
-            </p>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+              <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Danh sách hàng hóa
+                <span style={{
+                  marginLeft: 8, padding: '1px 8px', borderRadius: 999,
+                  background: '#e0f2fe', color: '#0284c7', fontSize: '0.72rem', fontWeight: 700,
+                }}>{req.items?.length || 0} mặt hàng</span>
+              </p>
+              {/* Volume summary banner */}
+              {req.type === 'INBOUND' && req.totalEstimatedVolume > 0 && (
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ fontSize:'0.75rem', color:'#4f46e5', fontWeight:700, background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:6, padding:'3px 10px' }}>
+                    Ước tính: {req.totalEstimatedVolume?.toFixed(2)} m³
+                  </span>
+                  {req.totalVerifiedVolume > 0 && (
+                    <span style={{ fontSize:'0.75rem', color:'#059669', fontWeight:700, background:'#d1fae5', border:'1px solid #a7f3d0', borderRadius:6, padding:'3px 10px' }}>
+                      Thực tế: {req.totalVerifiedVolume?.toFixed(2)} m³
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {(req.items || []).map((item) => (
                 <div key={item.itemId} style={{
                   border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 14px',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
                   background: '#fff',
                 }}>
-                  <div>
+                  <div style={{ flex:1 }}>
                     <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{item.itemName}</p>
                     {item.description && <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>{item.description}</p>}
+                    {/* Verified info from Staff */}
+                    {(item.verifiedVolume || item.verifiedWeight) && (
+                      <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
+                        {item.verifiedVolume && (
+                          <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#059669', background:'#d1fae5', border:'1px solid #a7f3d0', borderRadius:5, padding:'1px 7px' }}>
+                            Thực tế: {item.verifiedVolume} m³
+                          </span>
+                        )}
+                        {item.verifiedWeight && (
+                          <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#d97706', background:'#fef3c7', border:'1px solid #fde68a', borderRadius:5, padding:'1px 7px' }}>
+                            Cân nặng: {item.verifiedWeight} kg
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
                     <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#00b2d6' }}>
                       {item.quantity.toLocaleString()} {item.unit}
                     </p>
+                    {item.estimatedVolume && (
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#6366f1', fontWeight:600 }}>
+                        ~{item.estimatedVolume} m³
+                      </p>
+                    )}
                     {item.weight && <p style={{ margin: 0, fontSize: '0.72rem', color: '#9ca3af' }}>{item.weight} kg</p>}
+                    {item.verifiedQuantity !== null && item.verifiedQuantity !== undefined && item.verifiedQuantity !== item.quantity && (
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#dc2626', fontWeight:700 }}>
+                        Thực nhận: {item.verifiedQuantity}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
@@ -330,11 +378,16 @@ const DetailModal = ({ req, onClose }) => {
                     const isImage = ['jpg','jpeg','png','webp'].includes(ext);
                     const fullUrl = rawUrl.startsWith('http') ? rawUrl : `http://localhost:5276${rawUrl.startsWith('/') ? rawUrl : '/' + rawUrl}`;
                     return (
-                      <a key={i} href={fullUrl} target="_blank" rel="noopener noreferrer" style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'6px 12px', background:'#f8fafc', border:'1px solid #e2e8f0', borderRadius:8, textDecoration:'none', color:'#3b82f6', fontSize:'0.8rem', fontWeight:600, transition: 'all 0.2s' }}
+                      <a key={i} href={fullUrl} target="_blank" rel="noopener noreferrer" style={{
+                        display:'inline-flex', alignItems:'center',
+                        padding:'6px 14px', background:'#f8fafc', border:'1px solid #e2e8f0',
+                        borderRadius:6, textDecoration:'none', color:'#3b82f6',
+                        fontSize:'0.8rem', fontWeight:700, transition: 'all 0.2s'
+                      }}
                          onMouseEnter={(e)=>{e.currentTarget.style.borderColor='#93c5fd'; e.currentTarget.style.background='#eff6ff';}}
                          onMouseLeave={(e)=>{e.currentTarget.style.borderColor='#e2e8f0'; e.currentTarget.style.background='#f8fafc';}}>
-                        <span className="material-symbols-outlined" style={{ fontSize:16 }}>{isImage ? 'image' : 'description'}</span>
-                        Tài liệu {i + 1}
+                        {isImage ? '[HÌNH ẢNH] ' : '[TÀI LIỆU] '}
+                        Tệp {i + 1}
                       </a>
                     );
                   })}
@@ -438,29 +491,20 @@ const OwnerInventoryRequests = () => {
 
       {/* Stat Cards */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap', animation: 'floatIn 0.5s ease-out backwards' }}>
-        <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, display: 'flex', alignItems: 'center', gap: 18 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg, #e0f2fe, #bae6fd)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0284c7' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 26 }}>inventory_2</span>
-          </div>
+        <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', borderTop: '4px solid #0284c7', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div>
             <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng yêu cầu</p>
             <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{data.totalCount}</p>
           </div>
         </div>
-        <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, display: 'flex', alignItems: 'center', gap: 18 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg, #fef3c7, #fde68a)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 26 }}>schedule</span>
-          </div>
-          <div>
+        <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', borderTop: '4px solid #d97706', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ flex: 1 }}>
             <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chờ duyệt</p>
             <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{pending}</p>
           </div>
         </div>
-        <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 24, display: 'flex', alignItems: 'center', gap: 18 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 14, background: 'linear-gradient(135deg, #d1fae5, #a7f3d0)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 26 }}>check_circle</span>
-          </div>
-          <div>
+        <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', borderTop: '4px solid #059669', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ flex: 1 }}>
             <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã xác nhận</p>
             <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{confirmed}</p>
           </div>
@@ -470,8 +514,8 @@ const OwnerInventoryRequests = () => {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {[
-          { key: 'INBOUND',  icon: 'move_to_inbox', label: '📥 Nhập kho', color: '#10b981' },
-          { key: 'OUTBOUND', icon: 'outbox',        label: '📤 Xuất kho', color: '#f59e0b' },
+          { key: 'INBOUND',  label: 'NHẬP KHO', color: '#10b981' },
+          { key: 'OUTBOUND', label: 'XUẤT KHO', color: '#f59e0b' },
         ].map(tab => (
           <button key={tab.key} onClick={() => handleTabChange(tab.key)} className={`tab-btn ${activeTab === tab.key ? 'active' : ''}`} style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -494,14 +538,13 @@ const OwnerInventoryRequests = () => {
           <div style={{ flex: 1, minWidth: 260 }}>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.05em' }}>Tìm kiếm</label>
             <div style={{ position: 'relative' }}>
-              <span className="material-symbols-outlined" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 20, color: '#94a3b8' }}>search</span>
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Tìm mã số yêu cầu, tên khách, kho bãi..."
                 style={{
                   width: '100%', boxSizing: 'border-box',
-                  padding: '10px 14px 10px 40px', borderRadius: 10,
+                  padding: '10px 14px', borderRadius: 10,
                   border: '1.5px solid #e2e8f0', fontSize: '0.9rem',
                   outline: 'none', fontFamily: 'Inter, sans-serif',
                   background: '#f8fafc', transition: 'all 0.2s',
@@ -520,7 +563,7 @@ const OwnerInventoryRequests = () => {
                 value={statusFilter}
                 onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
                 style={{
-                  width: '100%', padding: '10px 36px 10px 14px', borderRadius: 10, appearance: 'none',
+                  width: '100%', padding: '10px 14px', borderRadius: 10, appearance: 'auto',
                   border: '1.5px solid #e2e8f0', fontSize: '0.9rem', fontWeight: 600, color: '#334155',
                   outline: 'none', fontFamily: 'Inter, sans-serif', background: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s',
                 }}
@@ -532,7 +575,6 @@ const OwnerInventoryRequests = () => {
                 <option value="CONFIRMED">Đã duyệt (CONFIRMED)</option>
                 <option value="REJECTED">Bị từ chối (REJECTED)</option>
               </select>
-              <span className="material-symbols-outlined" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 20, color: '#94a3b8', pointerEvents: 'none' }}>expand_more</span>
             </div>
           </div>
 
@@ -545,7 +587,7 @@ const OwnerInventoryRequests = () => {
                   value={warehouseFilter}
                   onChange={e => { setWarehouseFilter(e.target.value); setPage(1); }}
                   style={{
-                    width: '100%', padding: '10px 36px 10px 14px', borderRadius: 10, appearance: 'none',
+                    width: '100%', padding: '10px 14px', borderRadius: 10, appearance: 'auto',
                     border: '1.5px solid #e2e8f0', fontSize: '0.9rem', fontWeight: 600, color: '#334155',
                     outline: 'none', fontFamily: 'Inter, sans-serif', background: '#f8fafc', cursor: 'pointer', transition: 'all 0.2s',
                   }}
@@ -557,7 +599,6 @@ const OwnerInventoryRequests = () => {
                     <option key={w.warehouseId} value={w.warehouseId}>{w.name}</option>
                   ))}
                 </select>
-                <span className="material-symbols-outlined" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 20, color: '#94a3b8', pointerEvents: 'none' }}>expand_more</span>
               </div>
             </div>
           )}
@@ -581,14 +622,12 @@ const OwnerInventoryRequests = () => {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: '60px 0', textAlign: 'center', color: '#9ca3af' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 32, display: 'block', marginBottom: 12, animation: 'spin 1s linear infinite', color: '#38bdf8' }}>sync</span>
-                  Đang tải dữ liệu...
+                <tr><td colSpan={7} style={{ padding: '60px 0', textAlign: 'center', color: '#9ca3af', fontWeight: 600 }}>
+                  Đang tải dữ liệu ...
                 </td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={7} style={{ padding: '60px 0', textAlign: 'center' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#cbd5e1', display: 'block', marginBottom: 12 }}>inbox</span>
-                  <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>Không tìm thấy yêu cầu nào phù hợp.</p>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem', fontWeight: 600 }}>Không tìm thấy yêu cầu nào phù hợp.</p>
                 </td></tr>
               ) : filtered.map(req => (
                 <tr key={req.invReqId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s' }}
@@ -599,8 +638,7 @@ const OwnerInventoryRequests = () => {
                     #{req.invReqId}
                   </td>
                   <td style={{ padding: '16px 20px', fontSize: '0.9rem', color: '#475569', fontWeight: 500 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#94a3b8' }}>warehouse</span>
+                    <div style={{ fontSize: '0.9rem', color: '#475569', fontWeight: 600 }}>
                       {req.warehouseName}
                     </div>
                   </td>
@@ -612,9 +650,8 @@ const OwnerInventoryRequests = () => {
                     <div style={{
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                       background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 8,
-                      color: '#475569', fontWeight: 700, fontSize: '0.85rem', padding: '4px 12px', gap: 6
+                      padding: '4px 12px'
                     }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>category</span>
                       {req.totalItems}
                     </div>
                   </td>
@@ -629,17 +666,15 @@ const OwnerInventoryRequests = () => {
                       onClick={() => setSelectedReq(req)}
                       title="Xem chi tiết"
                       style={{
-                        background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '6px 12px', borderRadius: 8,
-                        color: '#3b82f6', fontSize: '0.8rem', fontWeight: 600,
-                        transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                        padding: '6px 12px', borderRadius: 6,
+                        color: '#0ea5e9', fontSize: '0.85rem', fontWeight: 700, textDecoration: 'underline',
+                        transition: 'all 0.2s', outline: 'none'
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#0284c7'; e.currentTarget.style.background = '#f0f9ff'; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#0ea5e9'; e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>visibility</span>
-                      Chi tiết
+                      Xem chi tiết
                     </button>
                   </td>
                 </tr>
@@ -669,7 +704,6 @@ const OwnerInventoryRequests = () => {
               onMouseEnter={e => { if(page > 1) { e.currentTarget.style.background = '#f1f5f9'; } }}
               onMouseLeave={e => { if(page > 1) { e.currentTarget.style.background = '#fff'; } }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_left</span>
               Trước
             </button>
             <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, background: '#fff', padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
@@ -688,7 +722,6 @@ const OwnerInventoryRequests = () => {
               onMouseLeave={e => { if(page < data.totalPages) { e.currentTarget.style.background = '#fff'; } }}
             >
               Sau
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>chevron_right</span>
             </button>
           </div>
         </div>

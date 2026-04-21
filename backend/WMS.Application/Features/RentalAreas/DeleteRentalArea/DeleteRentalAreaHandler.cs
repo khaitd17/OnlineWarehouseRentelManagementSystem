@@ -16,12 +16,13 @@ public class DeleteRentalAreaHandler : IRequestHandler<DeleteRentalAreaCommand, 
     {
         var rentalArea = await _rentalAreaRepository.GetByIdAsync(request.Id, cancellationToken);
         if (rentalArea == null)
-        {
-            throw new Exception("Rental area not found");
-        }
+            throw new Exception("Không tìm thấy khu vực này.");
+
+        var isOccupied = await _rentalAreaRepository.IsAreaOccupiedAsync(request.Id, cancellationToken);
+        if (isOccupied)
+            throw new Exception("Không thể xóa khu vực đang có hợp đồng thuê hoạt động.");
 
         await _rentalAreaRepository.DeleteAsync(rentalArea, cancellationToken);
-        
         return true;
     }
 }

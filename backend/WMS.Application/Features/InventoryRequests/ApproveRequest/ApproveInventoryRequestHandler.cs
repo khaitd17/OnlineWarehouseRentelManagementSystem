@@ -11,6 +11,7 @@ public record ApproveInventoryRequestCommand : IRequest<InventoryRequestDto>
     public int     ManagerId { get; init; }
     public string? Note      { get; init; }
     public string? Role      { get; init; }
+    public string? ManagerSignatureBase64 { get; init; }
 }
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
@@ -42,6 +43,11 @@ public class ApproveInventoryRequestHandler
         req.ConfirmedBy = cmd.ManagerId;
         req.ConfirmedAt = DateTime.Now;
         req.UpdatedAt   = DateTime.Now;
+        
+        if (!string.IsNullOrEmpty(cmd.ManagerSignatureBase64))
+        {
+            req.ManagerSignatureBase64 = cmd.ManagerSignatureBase64;
+        }
 
         // Ghi chú phê duyệt (append vào Notes nếu có)
         if (!string.IsNullOrWhiteSpace(cmd.Note))

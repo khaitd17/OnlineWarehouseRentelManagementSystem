@@ -132,27 +132,70 @@ public class GeminiService : IGeminiService
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
         };
         var json = JsonSerializer.Serialize(requestBody, jsonOptions);
-        var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var url = $"https://generativelanguage.googleapis.com/v1/models/{_model}:generateContent?key={_apiKey}";
+        // ── Gọi Gemini API với retry on 429/404 ──────────────────────────────────
+        const int maxRetries = 3;
+        int[]     delaysMs   = [2000, 5000, 10000]; // 2s, 5s, 10s
 
-        // ── Gọi Gemini API ───────────────────────────────────────────
-        HttpResponseMessage response;
-        try
+        // Mỗi tuple là (modelName, apiVersion)
+        // Lưu ý: Các ảnh bắt buộc phải truyền vào model hỗ trợ Vision (1.5-flash hoặc 1.5-pro)
+        (string model, string apiVer)[] modelChain =
+        [
+            ("gemini-1.5-flash", "v1beta"), // Model an toàn nhất, tỷ lệ thành công cao nhất
+            ("gemini-1.5-pro", "v1beta"),   // Nếu flash lỗi thử pro
+            ("gemini-1.5-flash", "v1"),     // Fallback cuối cùng ở bản v1 stable
+        ];
+
+        HttpResponseMessage response = null!;
+        string responseBody = "";
+
+        for (int attempt = 0; attempt < maxRetries; attempt++)
         {
-            response = await _http.PostAsync(url, content, cancellationToken);
-        }
-        catch (TaskCanceledException)
-        {
-            throw new TimeoutException("Gemini API không phản hồi trong thời gian cho phép. Vui lòng thử lại.");
-        }
+            var (modelToUse, apiVersion) = attempt < modelChain.Length ? modelChain[attempt] : modelChain[^1];
+            var url = $"https://generativelanguage.googleapis.com/{apiVersion}/models/{modelToUse}:generateContent?key={_apiKey}";
 
-        var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var contentPayload = new StringContent(json, Encoding.UTF8, "application/json");
+
+            try
+            {
+                response = await _http.PostAsync(url, contentPayload, cancellationToken);
+            }
+            catch (TaskCanceledException)
+            {
+                throw new TimeoutException("Gemini API không phản hồi trong thời gian cho phép. Vui lòng thử lại.");
+            }
+
+            responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+                break; // Thành công → thoát retry loop
+
+            var statusCode = (int)response.StatusCode;
+
+            // Retry khi: 429 (rate limit), 503 (unavailable), 404 (model not found → thử model khác)
+            if ((statusCode == 429 || statusCode == 503 || statusCode == 404) && attempt < maxRetries - 1)
+            {
+                int delayMs = statusCode == 404 ? 500 : delaysMs[attempt]; // 404 không cần delay dài
+                if (statusCode != 404 && response.Headers.TryGetValues("Retry-After", out var retryAfterValues)
+                    && int.TryParse(retryAfterValues.FirstOrDefault(), out var retryAfterSec))
+                {
+                    delayMs = Math.Max(delayMs, retryAfterSec * 1000);
+                }
+
+                Console.WriteLine($"[GeminiService] {statusCode} - Retry {attempt + 1}/{maxRetries - 1} sau {delayMs}ms với model '{modelToUse}' ({apiVersion})...");
+                await Task.Delay(delayMs, cancellationToken);
+                continue;
+            }
+
+            // Lỗi khác hoặc đã hết retry → throw
+            throw new HttpRequestException(
+                $"Gemini API trả về lỗi {statusCode}: {responseBody}");
+        }
 
         if (!response.IsSuccessStatusCode)
         {
             throw new HttpRequestException(
-                $"Gemini API trả về lỗi {(int)response.StatusCode}: {responseBody}");
+                $"Gemini API không thể hoàn thành sau {maxRetries} lần thử: {responseBody}");
         }
 
         // ── Parse response ───────────────────────────────────────────

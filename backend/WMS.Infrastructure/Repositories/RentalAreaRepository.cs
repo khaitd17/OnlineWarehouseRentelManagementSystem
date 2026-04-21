@@ -82,6 +82,31 @@ public class RentalAreaRepository : IRentalAreaRepository
 
     public async Task DeleteAsync(RentalArea rentalArea, CancellationToken cancellationToken)
     {
+        // Null-out all FK references to avoid constraint violations
+        // 1. rental_requests.RentalAreaId
+        var linkedRequests = await _context.RentalRequests
+            .Where(r => r.RentalAreaId == rentalArea.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var req in linkedRequests)
+            req.RentalAreaId = null;
+
+        // 2. equipments.RentalAreaId
+        var linkedEquipment = await _context.Equipments
+            .Where(e => e.RentalAreaId == rentalArea.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var eq in linkedEquipment)
+            eq.RentalAreaId = null;
+
+        // 3. equipment_histories.PreviousRentalAreaId / NewRentalAreaId
+        var linkedHistory = await _context.EquipmentHistories
+            .Where(h => h.PreviousRentalAreaId == rentalArea.Id || h.NewRentalAreaId == rentalArea.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var h in linkedHistory)
+        {
+            if (h.PreviousRentalAreaId == rentalArea.Id) h.PreviousRentalAreaId = null;
+            if (h.NewRentalAreaId == rentalArea.Id) h.NewRentalAreaId = null;
+        }
+
         _context.RentalAreas.Remove(rentalArea);
         await _context.SaveChangesAsync(cancellationToken);
     }
@@ -91,5 +116,25 @@ public class RentalAreaRepository : IRentalAreaRepository
         return await _context.RentalAreas
             .Where(r => r.WarehouseId == warehouseId)
             .SumAsync(r => r.Size, cancellationToken);
+    }
+
+    public async Task<double> GetTotalAllocatedFloorAreaAsync(int warehouseId, CancellationToken cancellationToken)
+    {
+        var areas = await _context.RentalAreas
+            .Where(r => r.WarehouseId == warehouseId && r.Width.HasValue && r.Length.HasValue)
+            .Select(r => new { r.Width, r.Length })
+            .ToListAsync(cancellationToken);
+        return areas.Sum(r => (r.Width ?? 0) * (r.Length ?? 0));
+    }
+
+    public async Task<bool> IsAreaOccupiedAsync(int id, CancellationToken cancellationToken)
+    {
+        return await _context.Contracts
+            .Where(c => OccupiedStatuses.Contains(c.Status))
+            .Join(_context.RentalRequests,
+                c => c.RequestId,
+                r => r.RequestId,
+                (c, r) => r.RentalAreaId)
+            .AnyAsync(areaId => areaId == id, cancellationToken);
     }
 }

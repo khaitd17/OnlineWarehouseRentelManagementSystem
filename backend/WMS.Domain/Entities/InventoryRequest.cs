@@ -33,6 +33,9 @@ public partial class InventoryRequest
 
     public string? Notes { get; set; }
 
+    public string? RenterSignatureBase64 { get; set; }
+    public string? ManagerSignatureBase64 { get; set; }
+
     public string? DocumentUrls { get; set; }
 
     public virtual User? ConfirmedByNavigation { get; set; }

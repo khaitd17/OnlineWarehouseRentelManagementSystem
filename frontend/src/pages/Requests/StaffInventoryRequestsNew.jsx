@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axiosClient from '../../services/axiosClient';
 import authService from '../../services/authService';
+import { ReceiptPreviewModal } from '../../components/InventoryReceiptPDF';
 
 const INBOUND_COLOR  = '#10b981';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -27,17 +28,19 @@ const StatusBadge = ({ status }) => {
 
 /* ── Verify Modal ───────────────────────────────────────────── */
 const VerifyModal = ({ req, onClose, onVerify, loading }) => {
-  // verifiedItems: { [itemId]: { verifiedQuantity: number, verifyNote: string } }
+  // verifiedItems: { [itemId]: { verifiedQuantity, verifyNote, verifiedVolume, verifiedWeight } }
   const [verifiedItems, setVerifiedItems] = useState({});
+  const [pdfOpen, setPdfOpen] = useState(false);
 
   useEffect(() => {
     if (!req) return;
-    // Khởi tạo state với giá trị đã verify trước đó (nếu có), hoặc để trống
     const init = {};
     (req.items || []).forEach(item => {
       init[item.itemId] = {
         verifiedQuantity: item.verifiedQuantity ?? item.quantity,
-        verifyNote: item.verifyNote ?? '',
+        verifyNote:       item.verifyNote ?? '',
+        verifiedVolume:   item.verifiedVolume ?? '',
+        verifiedWeight:   item.verifiedWeight ?? '',
       };
     });
     setVerifiedItems(init);
@@ -65,12 +68,15 @@ const VerifyModal = ({ req, onClose, onVerify, loading }) => {
     const items = (req.items || []).map(item => ({
       itemId: item.itemId,
       verifiedQuantity: Number(verifiedItems[item.itemId]?.verifiedQuantity ?? item.quantity),
-      verifyNote: verifiedItems[item.itemId]?.verifyNote || null,
+      verifyNote:    verifiedItems[item.itemId]?.verifyNote || null,
+      verifiedVolume: verifiedItems[item.itemId]?.verifiedVolume ? Number(verifiedItems[item.itemId].verifiedVolume) : null,
+      verifiedWeight: verifiedItems[item.itemId]?.verifiedWeight ? Number(verifiedItems[item.itemId].verifiedWeight) : null,
     }));
     onVerify(req.invReqId, items);
   };
 
   return (
+    <>
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, padding:0, width:'100%', maxWidth:680, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
 
@@ -88,9 +94,16 @@ const VerifyModal = ({ req, onClose, onVerify, loading }) => {
 
           {hasAnyDiscrepancy && (
             <div style={{ marginTop:10, padding:'8px 12px', borderRadius:8, background:'#fff7ed', border:'1px solid #fed7aa', display:'flex', alignItems:'center', gap:8 }}>
-              <span style={{ fontSize:'1rem' }}>⚠️</span>
-              <span style={{ fontSize:'0.81rem', color:'#c2410c', fontWeight:600 }}>Phát hiện chênh lệch số lượng giữa yêu cầu và thực tế!</span>
+              <span style={{ fontSize:'0.81rem', color:'#c2410c', fontWeight:600 }}>Phat hien chenh lech so luong giua yeu cau va thuc te!</span>
             </div>
+          )}
+          {req.type === 'INBOUND' && (
+            <button
+              onClick={() => setPdfOpen(true)}
+              style={{ marginTop:10, padding:'6px 14px', borderRadius:8, border:'none', background:'#1e293b', color:'#fff', fontWeight:700, fontSize:'0.78rem', cursor:'pointer', fontFamily:'Inter,sans-serif' }}
+            >
+              Xem Phiếu Nhập Kho
+            </button>
           )}
         </div>
 
@@ -156,6 +169,36 @@ const VerifyModal = ({ req, onClose, onVerify, loading }) => {
                       />
                     </div>
                   </div>
+                  {req.type === 'INBOUND' && (
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:8, paddingTop:8, borderTop:'1px solid #f1f5f9' }}>
+                      <div>
+                        <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:'#4f46e5', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5 }}>
+                          Thể tích thực tế (m³)
+                        </label>
+                        <input type="number" min="0" step="0.001"
+                          value={verifiedItems[item.itemId]?.verifiedVolume ?? ''}
+                          onChange={e => updateItem(item.itemId, 'verifiedVolume', e.target.value)}
+                          placeholder={item.estimatedVolume ? `Ước tính: ${item.estimatedVolume} m³` : 'm³'}
+                          style={{ width:'100%', boxSizing:'border-box', padding:'8px 12px', borderRadius:8, border:'1.5px solid #c7d2fe', fontSize:'0.85rem', fontWeight:600, color:'#4f46e5', outline:'none', fontFamily:'Inter,sans-serif' }}
+                          onFocus={e=>e.target.style.borderColor='#6366f1'}
+                          onBlur={e=>e.target.style.borderColor='#c7d2fe'}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:'#d97706', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5 }}>
+                          Cân nặng thực tế (kg)
+                        </label>
+                        <input type="number" min="0" step="0.1"
+                          value={verifiedItems[item.itemId]?.verifiedWeight ?? ''}
+                          onChange={e => updateItem(item.itemId, 'verifiedWeight', e.target.value)}
+                          placeholder="kg"
+                          style={{ width:'100%', boxSizing:'border-box', padding:'8px 12px', borderRadius:8, border:'1.5px solid #fde68a', fontSize:'0.85rem', fontWeight:600, color:'#d97706', outline:'none', fontFamily:'Inter,sans-serif' }}
+                          onFocus={e=>e.target.style.borderColor='#f59e0b'}
+                          onBlur={e=>e.target.style.borderColor='#fde68a'}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -198,6 +241,13 @@ const VerifyModal = ({ req, onClose, onVerify, loading }) => {
         </div>
       </div>
     </div>
+    {pdfOpen && (
+      <ReceiptPreviewModal
+        data={req}
+        onClose={() => setPdfOpen(false)}
+      />
+    )}
+  </>
   );
 };
 

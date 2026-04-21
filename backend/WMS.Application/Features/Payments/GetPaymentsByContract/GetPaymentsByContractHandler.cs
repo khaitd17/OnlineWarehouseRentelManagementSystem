@@ -21,6 +21,7 @@ public class GetPaymentsByContractHandler : IRequestHandler<GetPaymentsByContrac
             PaymentId = p.PaymentId,
             PaymentCode = p.PaymentCode,
             PaymentType = p.PaymentType,
+            PaymentMethod = p.PaymentMethod,
             Amount = p.Amount,
             Status = p.Status,
             PaidAt = p.PaidAt.HasValue ? DateTime.SpecifyKind(p.PaidAt.Value, DateTimeKind.Utc) : null,

@@ -9,80 +9,80 @@ import authService from '../services/authService';
 const FloorPlanView = ({ areas, warehouseData }) => {
   const [hovered, setHovered] = useState(null);
 
-  const whWidth  = warehouseData?.width  || 50;
-  const whLength = warehouseData?.length || 50;
+  const whWidth  = parseFloat(warehouseData?.width  ?? warehouseData?.Width  ?? 0) || 0;
+  const whLength = parseFloat(warehouseData?.length ?? warehouseData?.Length ?? 0) || 0;
 
-  const CANVAS_W = 560;
-  const CANVAS_H = Math.round(CANVAS_W * (whLength / whWidth));
-  const scaleX = CANVAS_W / whWidth;
-  const scaleY = CANVAS_H / whLength;
-
-  // Simple row-packing layout
-  let placed = [];
-  let cursorX = 0, cursorY = 0, rowMaxH = 0;
-  for (const a of areas) {
-    const pw = Math.max((a.width  || 10) * scaleX, 60);
-    const ph = Math.max((a.length || 10) * scaleY, 50);
-    if (cursorX + pw > CANVAS_W + 2) {
-      cursorY += rowMaxH;
-      cursorX = 0;
-      rowMaxH = 0;
-    }
-    placed.push({ ...a, px: cursorX, py: cursorY, pw, ph });
-    cursorX += pw;
-    if (ph > rowMaxH) rowMaxH = ph;
-  }
+  // Fit both dimensions into a max 500×380px box
+  const MAX_W = 500;
+  const MAX_H = 380;
+  const scaleX = whWidth  > 0 ? Math.min(MAX_W / whWidth,  MAX_H / whLength) : 1;
+  const scaleY = scaleX;
+  const CANVAS_W = whWidth  > 0 ? Math.round(whWidth  * scaleX) : MAX_W;
+  const CANVAS_H = whLength > 0 ? Math.round(whLength * scaleY) : MAX_H;
 
   return (
     <section>
-      <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', marginBottom: '0.5rem' }}>
-        Sơ đồ mặt bằng ô khu
-      </h2>
-      <p style={{ fontSize: '0.82rem', color: '#64748b', marginBottom: '1.2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+          Sơ đồ mặt bằng ô khu
+        </h2>
+        {whWidth > 0 && whLength > 0 && (
+          <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>
+            {whWidth}m × {whLength}m
+          </span>
+        )}
+      </div>
+      <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>
         Di chuột vào từng ô để xem chi tiết. Tỉ lệ dựa theo kích thước thực tế.
       </p>
 
       {/* Legend */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 16, height: 16, borderRadius: 4, background: '#bfdbfe', border: '1.5px solid #3b82f6' }} />
-          <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>Còn trống</span>
+          <div style={{ width: 14, height: 14, borderRadius: 3, background: '#bfdbfe', border: '1.5px solid #3b82f6' }} />
+          <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>Còn trống</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 16, height: 16, borderRadius: 4, background: '#fecaca', border: '1.5px solid #ef4444' }} />
-          <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>Đang được thuê</span>
+          <div style={{ width: 14, height: 14, borderRadius: 3, background: '#fecaca', border: '1.5px solid #ef4444' }} />
+          <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>Đang được thuê</span>
         </div>
       </div>
 
-      <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', maxWidth: '100%' }}>
-        {/* Top axis (Width) */}
-        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: 6, letterSpacing: '0.03em' }}>
-          Ngang (W): {whWidth} m
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+      <div style={{ maxWidth: '100%', overflowX: 'auto', paddingBottom: 8, display: 'flex', justifyContent: 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', margin: '0 auto' }}>
           {/* Left axis (Length) */}
-          <div style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginRight: 8, whiteSpace: 'nowrap' }}>
-            Dài (L): {whLength} m
+          <div style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)', fontSize: '0.72rem', fontWeight: 700, color: '#334155', marginRight: 6, whiteSpace: 'nowrap' }}>
+            ↕ Dài: {whLength} m
           </div>
 
-          {/* Blueprint canvas */}
-          <div style={{
-            position: 'relative',
-            width: CANVAS_W,
-            height: CANVAS_H,
-            maxWidth: '100%',
-            background: '#f0f7ff',
-            border: '2px solid #3b82f6',
-            borderRadius: 12,
-            overflow: 'hidden',
-            boxShadow: '0 4px 24px rgba(59,130,246,0.12)',
-            backgroundImage: 'linear-gradient(rgba(59,130,246,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.08) 1px, transparent 1px)',
-            backgroundSize: '20px 20px',
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {/* Top axis (Width) */}
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#334155', marginBottom: 4, letterSpacing: '0.03em' }}>
+              ← Ngang: {whWidth} m →
+            </div>
+
+            {/* Blueprint canvas */}
+            <div style={{
+              position: 'relative',
+              width: CANVAS_W,
+              height: CANVAS_H,
+              flexShrink: 0,
+              background: '#f0f7ff',
+              border: '2px solid #3b82f6',
+              borderRadius: 10,
+              overflow: 'visible',
+            boxShadow: '0 4px 20px rgba(59,130,246,0.1)',
+            backgroundImage: 'linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px)',
+            backgroundSize: `${Math.max(scaleX * 5, 10)}px ${Math.max(scaleY * 5, 10)}px`,
           }}>
-            {placed.map((a) => {
+            {areas.map((a) => {
+              const pw = Math.max((a.width  || 1) * scaleX, 4);
+              const ph = Math.max((a.length || 1) * scaleY, 4);
+              const px = (a.positionX || 0) * scaleX;
+              const py = (a.positionY || 0) * scaleY;
               const occupied = a.isOccupied;
               const isHov = hovered === a.id;
+              const isPortrait = pw < 50 && ph >= 60;
               return (
                 <div
                   key={a.id}
@@ -90,25 +90,32 @@ const FloorPlanView = ({ areas, warehouseData }) => {
                   onMouseLeave={() => setHovered(null)}
                   style={{
                     position: 'absolute',
-                    left: a.px, top: a.py, width: a.pw, height: a.ph,
+                    left: px, top: py, width: pw, height: ph,
                     background: occupied ? (isHov ? '#fca5a5' : '#fecaca') : (isHov ? '#93c5fd' : '#bfdbfe'),
                     border: occupied ? '2px dashed #ef4444' : '2px dashed #3b82f6',
                     boxSizing: 'border-box', borderRadius: 4,
                     cursor: occupied ? 'not-allowed' : 'pointer',
                     transition: 'background 0.18s',
-                    overflow: 'hidden', display: 'flex', flexDirection: 'column',
-                    justifyContent: 'flex-start', padding: '6px 8px',
+                    overflow: isHov ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column',
+                    justifyContent: 'center', alignItems: 'center', padding: '2px', textAlign: 'center',
+                    zIndex: isHov ? 10 : 1,
                   }}
                 >
-                  <div style={{ fontWeight: 700, color: occupied ? '#991b1b' : '#1e3a8a', fontSize: '0.78rem', lineHeight: 1.2 }}>{a.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: occupied ? '#b91c1c' : '#1d4ed8', marginTop: 2 }}>{a.size} m³</div>
-                  <div style={{ fontSize: '0.65rem', color: occupied ? '#dc2626' : '#2563eb', marginTop: 1 }}>{a.width}m × {a.length}m</div>
+                  <div style={{ fontWeight: 800, color: occupied ? '#991b1b' : '#1e3a8a', fontSize: '0.75rem', lineHeight: 1.2, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', writingMode: isPortrait ? 'vertical-rl' : 'horizontal-tb', transform: isPortrait ? 'rotate(180deg)' : 'none' }}>{a.name}</div>
+                  <div style={{ fontSize: '0.65rem', color: occupied ? '#b91c1c' : '#1d4ed8', marginTop: 2, fontWeight: 700, display: pw < 50 || ph < 50 ? 'none' : 'block' }}>{a.size} m³</div>
+                  <div style={{ fontSize: '0.6rem', color: occupied ? '#dc2626' : '#2563eb', marginTop: 2, display: pw < 50 || ph < 60 ? 'none' : 'block' }}>{a.width}m × {a.length}m</div>
                   {isHov && (
                     <div style={{
-                      marginTop: 'auto', fontSize: '0.65rem', fontWeight: 700,
+                      position: 'absolute',
+                      top: (pw < 60 || ph < 50) ? '50%' : undefined,
+                      bottom: (pw < 60 || ph < 50) ? undefined : 6,
+                      left: '50%', transform: (pw < 60 || ph < 50) ? 'translate(-50%, -50%)' : 'translateX(-50%)',
+                      fontSize: '0.65rem', fontWeight: 700,
                       color: occupied ? '#dc2626' : '#16a34a',
                       background: occupied ? '#fee2e2' : '#dcfce7',
-                      borderRadius: 4, padding: '2px 5px', alignSelf: 'flex-start',
+                      border: `1px solid ${occupied ? '#fca5a5' : '#86efac'}`,
+                      borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none'
                     }}>
                       {occupied ? 'Đang thuê' : 'Còn trống'}
                     </div>
@@ -117,13 +124,14 @@ const FloorPlanView = ({ areas, warehouseData }) => {
               );
             })}
           </div>
-        </div>
 
-        {/* Gate */}
-        <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ width: 0, height: 0, borderLeft: '10px solid transparent', borderRight: '10px solid transparent', borderBottom: '12px solid #f59e0b' }} />
-          <div style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.08em', padding: '8px 24px', borderRadius: 8, boxShadow: '0 4px 12px rgba(245,158,11,0.35)' }}>
-            CỔNG CHÍNH VÀO KHO
+          {/* Gate */}
+          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderBottom: '10px solid #f59e0b' }} />
+            <div style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff', fontWeight: 800, fontSize: CANVAS_W < 120 ? '0.62rem' : '0.72rem', letterSpacing: '0.04em', padding: CANVAS_W < 120 ? '5px 10px' : '6px 20px', borderRadius: 7, boxShadow: '0 3px 10px rgba(245,158,11,0.3)', maxWidth: Math.max(CANVAS_W, 60), textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.2 }}>
+              {CANVAS_W < 90 ? 'CỔNG' : 'CỔNG CHÍNH VÀO KHO'}
+            </div>
+          </div>
           </div>
         </div>
       </div>

@@ -17,6 +17,15 @@ public partial class InventoryItem
 
     public decimal? Weight { get; set; }
 
+    /// <summary>Thể tích ước tính (m³) do Renter điền khi tạo yêu cầu.</summary>
+    public decimal? EstimatedVolume { get; set; }
+
+    /// <summary>Thể tích thực tế Staff đo được khi tiếp nhận (m³).</summary>
+    public decimal? VerifiedVolume { get; set; }
+
+    /// <summary>Khối lượng thực tế Staff cân được khi tiếp nhận (kg).</summary>
+    public decimal? VerifiedWeight { get; set; }
+
     public string? Description { get; set; }
 
     public virtual InventoryRequest InvReq { get; set; } = null!;

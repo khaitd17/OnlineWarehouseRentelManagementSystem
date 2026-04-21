@@ -13,6 +13,12 @@ public record VerifyItemInput
     /// <summary>Số lượng thực tế Staff kiểm đếm được.</summary>
     public int VerifiedQuantity { get; init; }
 
+    /// <summary>Thể tích thực tế Staff đo (m³). Tùy chọn.</summary>
+    public decimal? VerifiedVolume { get; init; }
+
+    /// <summary>Khối lượng thực tế Staff cân (kg). Tùy chọn.</summary>
+    public decimal? VerifiedWeight { get; init; }
+
     /// <summary>Ghi chú của Staff (tùy chọn). VD: "Thiếu 2 thùng do hàng bị hỏng".</summary>
     public string? VerifyNote { get; init; }
 }
@@ -40,6 +46,8 @@ public record VerifyItemResultDto
     public int    RequestedQty     { get; init; }
     public int    VerifiedQty      { get; init; }
     public int    Discrepancy      { get; init; }     // VerifiedQty - RequestedQty (âm = thiếu, dương = thừa)
+    public decimal? VerifiedVolume { get; init; }
+    public decimal? VerifiedWeight { get; init; }
     public string? VerifyNote      { get; init; }
 }
 
@@ -79,11 +87,13 @@ public class VerifyInventoryRequestHandler
                     $"Số lượng thực tế không được âm (ItemId: {input.ItemId}).");
         }
 
-        // 5. Cập nhật VerifiedQuantity và VerifyNote cho từng item
+        // 5. Cập nhật VerifiedQuantity, VerifiedVolume, VerifiedWeight và VerifyNote cho từng item
         foreach (var input in cmd.Items)
         {
             var item = itemLookup[input.ItemId];
             item.VerifiedQuantity = input.VerifiedQuantity;
+            item.VerifiedVolume   = input.VerifiedVolume;
+            item.VerifiedWeight   = input.VerifiedWeight;
             item.VerifyNote       = string.IsNullOrWhiteSpace(input.VerifyNote)
                 ? null
                 : input.VerifyNote.Trim();
@@ -96,15 +106,17 @@ public class VerifyInventoryRequestHandler
         var results = req.InventoryItems.Select(item =>
         {
             // Nếu item không có trong cmd.Items thì VerifiedQuantity có thể vẫn là null (chưa verify item đó)
-            var verifiedQty = item.VerifiedQuantity ?? item.Quantity; // default = quantity nếu chưa verify
+            var verifiedQty = item.VerifiedQuantity ?? item.Quantity;
             return new VerifyItemResultDto
             {
-                ItemId       = item.ItemId,
-                ItemName     = item.ItemName,
-                RequestedQty = item.Quantity,
-                VerifiedQty  = verifiedQty,
-                Discrepancy  = verifiedQty - item.Quantity,
-                VerifyNote   = item.VerifyNote,
+                ItemId         = item.ItemId,
+                ItemName       = item.ItemName,
+                RequestedQty   = item.Quantity,
+                VerifiedQty    = verifiedQty,
+                Discrepancy    = verifiedQty - item.Quantity,
+                VerifyNote     = item.VerifyNote,
+                VerifiedVolume = item.VerifiedVolume,
+                VerifiedWeight = item.VerifiedWeight,
             };
         }).ToList();
 
