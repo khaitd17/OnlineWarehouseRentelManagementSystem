@@ -629,10 +629,9 @@ public class RentalContractsController : ControllerBase
         [FromQuery] int warehouseId,
         CancellationToken ct)
     {
-        const int    UnitsPerM3  = 10;
-        const double KgPerM3     = 500.0;
+        const double KgPerM3 = 500.0;
 
-        // Lấy diện tích hợp đồng
+        // Lấy diện tích hợp đồng (m³)
         double contractedArea = await _contractRepo.GetContractedAreaAsync(renterId, warehouseId, ct);
 
         // Lấy tên & email renter
@@ -641,33 +640,44 @@ public class RentalContractsController : ControllerBase
             .Select(u => new { u.FullName, u.Email })
             .FirstOrDefaultAsync(ct);
 
-        // Lấy tồn kho hiện tại (join qua RenterAsset vì RenterInventory không có RenterId trực tiếp)
-        var inventoryRows = await _db.RenterInventories
-            .Join(_db.RenterAssets,
-                ri => ri.AssetId,
-                ra => ra.AssetId,
-                (ri, ra) => new { ri, ra })
-            .Where(x => x.ra.RenterId == renterId && x.ri.WarehouseId == warehouseId)
-            .ToListAsync(ct);
-        int currentStock = inventoryRows.Sum(x => x.ri.Quantity);
+        // Tính tổng thể tích đang lưu kho (m³) từ các phiếu đã duyệt (CONFIRMED/ASSIGNED/COMPLETED)
+        var inboundStatuses = new[] { "CONFIRMED", "ASSIGNED", "COMPLETED" };
 
-        int maxQty       = contractedArea > 0 ? (int)Math.Floor(contractedArea * UnitsPerM3) : 0;
-        int remainingQty = Math.Max(0, maxQty - currentStock);
-        double maxWeightKg = contractedArea * KgPerM3;
+        var confirmedInboundVolume = await _db.InventoryRequests
+            .Where(r => r.RenterId == renterId
+                     && r.WarehouseId == warehouseId
+                     && r.Type == "INBOUND"
+                     && inboundStatuses.Contains(r.Status!))
+            .SelectMany(r => r.InventoryItems)
+            .SumAsync(i => (double?)(i.EstimatedVolume ?? 0), ct) ?? 0.0;
+
+        var confirmedOutboundVolume = await _db.InventoryRequests
+            .Where(r => r.RenterId == renterId
+                     && r.WarehouseId == warehouseId
+                     && r.Type == "OUTBOUND"
+                     && inboundStatuses.Contains(r.Status!))
+            .SelectMany(r => r.InventoryItems)
+            .SumAsync(i => (double?)(i.EstimatedVolume ?? 0), ct) ?? 0.0;
+
+        double currentVolumeM3 = Math.Max(0, confirmedInboundVolume - confirmedOutboundVolume);
+        double remainingM3     = Math.Max(0, contractedArea - currentVolumeM3);
+        double maxWeightKg     = contractedArea * KgPerM3;
+        double usagePercent    = contractedArea > 0
+            ? Math.Round(currentVolumeM3 / contractedArea * 100, 1)
+            : 0;
 
         return Ok(new
         {
             renterId,
-            renterName        = renter?.FullName ?? "—",
-            renterEmail       = renter?.Email    ?? "—",
+            renterName       = renter?.FullName ?? "—",
+            renterEmail      = renter?.Email    ?? "—",
             warehouseId,
-            contractedAreaM3  = contractedArea,
-            maxQty,
-            currentStock,
-            remainingQty,
-            usagePercent      = maxQty > 0 ? Math.Round((double)currentStock / maxQty * 100, 1) : 0,
+            contractedAreaM3 = contractedArea,
+            currentVolumeM3,
+            remainingM3,
+            usagePercent,
             maxWeightKg,
-            hasContract       = contractedArea > 0,
+            hasContract      = contractedArea > 0,
         });
     }
 }

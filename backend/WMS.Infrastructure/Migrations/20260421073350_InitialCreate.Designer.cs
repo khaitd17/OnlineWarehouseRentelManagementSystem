@@ -1038,6 +1038,10 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<DateTime?>("ScheduledDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("StaffSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("staff_signature_base64");
+
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)

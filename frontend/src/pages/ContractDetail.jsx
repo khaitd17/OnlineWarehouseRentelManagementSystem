@@ -147,9 +147,6 @@ const ContractDetail = () => {
   const [warehouseAreas, setWarehouseAreas] = useState([]);
   const [warehouseInfo, setWarehouseInfo] = useState(null);
   const [floorPlanHovered, setFloorPlanHovered] = useState(null);
-  const [assigningArea, setAssigningArea] = useState(false);
-  const [assignMsg, setAssignMsg] = useState(null);
-  const [editingZone, setEditingZone] = useState(false); // chế độ chọn khu khác
 
   const reloadContract = () => {
     setRefreshKey(k => k + 1);
@@ -625,95 +622,19 @@ const ContractDetail = () => {
                   <div style={{ width: 12, height: 12, borderRadius: 3, background: '#bfdbfe', border: '1.5px solid #3b82f6' }} />
                   <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Còn trống</span>
                 </div>
+
               </div>
 
-              {/* Banner trạng thái phân khu + nút hành động */}
-              {contract.isCurrentUserOwner && (
-                <div style={{ marginBottom: 14 }}>
-                  {!hasAssignedZone ? (
-                    /* --- Chưa phân khu --- */
-                    <div style={{ padding: '10px 14px', background: '#fefce8', border: '1px solid #fde047',
-                      borderRadius: 10, fontSize: '0.82rem', color: '#854d0e', fontWeight: 500,
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                      <span>Chủ kho chưa phân công vị trí khu cụ thể cho hợp đồng này.</span>
-                      <button
-                        disabled={assigningArea}
-                        onClick={async () => {
-                          setAssigningArea(true); setAssignMsg(null);
-                          try {
-                            const res = await rentalService.assignRentalArea(contract.contractId);
-                            setAssignMsg({ type: 'success', text: res.message });
-                            const areasRes = await api.get(`/RentalAreas/warehouse/${contract.warehouseId}`);
-                            setWarehouseAreas(areasRes.data || []);
-                          } catch (err) {
-                            setAssignMsg({ type: 'error', text: err.response?.data?.message || 'Không thể phân khu.' });
-                          } finally { setAssigningArea(false); }
-                        }}
-                        style={{
-                          padding: '7px 16px', background: assigningArea ? '#e2e8f0' : 'linear-gradient(135deg,#f59e0b,#d97706)',
-                          color: assigningArea ? '#94a3b8' : '#fff', border: 'none', borderRadius: 8,
-                          fontWeight: 700, fontSize: '0.8rem', cursor: assigningArea ? 'wait' : 'pointer',
-                          whiteSpace: 'nowrap', transition: 'all 0.2s', flexShrink: 0,
-                        }}
-                      >
-                        {assigningArea ? 'Đang phân...' : 'Tự động phân khu'}
-                      </button>
-                    </div>
-                  ) : editingZone ? (
-                    /* --- Đang chọn khu mới --- */
-                    <div style={{ padding: '10px 14px', background: '#eff6ff', border: '1.5px solid #3b82f6',
-                      borderRadius: 10, fontSize: '0.82rem', color: '#1e40af', fontWeight: 500,
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                      <span>→ Bấm vào ô khu xanh hoặc những ô trống bên dưới để đổi sang khu đó.</span>
-                      <button
-                        onClick={() => { setEditingZone(false); setAssignMsg(null); }}
-                        style={{
-                          padding: '6px 14px', background: '#e2e8f0', color: '#475569',
-                          border: 'none', borderRadius: 8, fontWeight: 700, fontSize: '0.8rem',
-                          cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                        }}
-                      >
-                        Hủy
-                      </button>
-                    </div>
-                  ) : (
-                    /* --- Đã có khu, hiện nút Đổi khu --- */
-                    <div style={{ padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a',
-                      borderRadius: 10, fontSize: '0.82rem', color: '#92400e', fontWeight: 500,
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                      <span>★ Đã phân khu — chủ kho có thể đổi sang ô khu khác nếu cần.</span>
-                      <button
-                        onClick={() => { setEditingZone(true); setAssignMsg(null); }}
-                        style={{
-                          padding: '7px 16px', background: 'linear-gradient(135deg,#0ea5e9,#0284c7)',
-                          color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700,
-                          fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
-                          boxShadow: '0 2px 8px rgba(14,165,233,0.35)', flexShrink: 0, transition: 'all 0.2s',
-                        }}
-                      >
-                        Đổi khu
-                      </button>
-                    </div>
-                  )}
-                  {assignMsg && (
-                    <div style={{
-                      marginTop: 8, padding: '8px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
-                      background: assignMsg.type === 'success' ? '#dcfce7' : '#fee2e2',
-                      color: assignMsg.type === 'success' ? '#15803d' : '#dc2626',
-                      border: `1px solid ${assignMsg.type === 'success' ? '#86efac' : '#fca5a5'}`,
-                    }}>
-                      {assignMsg.text}
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* Banner cho renter khi chưa phân khu */}
-              {!contract.isCurrentUserOwner && !hasAssignedZone && (
-                <div style={{ padding: '10px 14px', background: '#fefce8', border: '1px solid #fde047',
-                  borderRadius: 10, marginBottom: 14, fontSize: '0.82rem', color: '#854d0e', fontWeight: 500 }}>
+              {/* Banner khi chưa phân khu (không tính custom area) */}
+              {!contract.isCustomArea && !hasAssignedZone ? (
+                <div style={{
+                  marginBottom: 14, padding: '10px 14px',
+                  background: '#fefce8', border: '1px solid #fde047',
+                  borderRadius: 10, fontSize: '0.82rem', color: '#854d0e', fontWeight: 500,
+                }}>
                   Chủ kho chưa phân công vị trí khu cụ thể cho hợp đồng này.
                 </div>
-              )}
+              ) : null}
 
               {/* Canvas */}
               <div style={{ maxWidth: '100%', overflowX: 'auto', paddingBottom: 8, display: 'flex', justifyContent: 'center' }}>
@@ -739,72 +660,40 @@ const ContractDetail = () => {
                       backgroundSize: `${Math.max(scale * 5, 10)}px ${Math.max(scale * 5, 10)}px`,
                     }}>
                       {warehouseAreas.map(a => {
-                      const pw = Math.max((a.width  || 1) * scale, 4);
-                      const ph = Math.max((a.length || 1) * scale, 4);
-                      const px = (a.positionX || 0) * scale;
-                      const py = (a.positionY || 0) * scale;
-                      const zs = getZoneStyle(a);
+                      let pw = Math.max((a.width  || 1) * scale, 4);
+                      let ph = Math.max((a.length || 1) * scale, 4);
+                      let px = (a.positionX || 0) * scale;
+                      let py = (a.positionY || 0) * scale;
+                      let size = a.size;
+                      let name = a.name;
+
+                      const zs = getZoneStyle({ ...a, name, size });
                       const isThisContract = a.activeContractId === contract.contractId;
                       const isHov = floorPlanHovered === a.id;
                       const isPortrait = pw < 50 && ph >= 60;
-                      // Trong edit mode: zone còn trống và zone hiện tại đều có thể chọn
-                      const isClickable = editingZone && contract.isCurrentUserOwner
-                        && (!a.isOccupied || isThisContract) && !assigningArea;
-
-                      const handleZoneClick = async () => {
-                        if (!isClickable) return;
-                        if (isThisContract) return; // đang là khu hiện tại → bỏ qua
-                        setAssigningArea(true); setAssignMsg(null);
-                        try {
-                          const res = await rentalService.assignRentalArea(contract.contractId, a.id);
-                          setAssignMsg({ type: 'success', text: res.message });
-                          const areasRes = await api.get(`/RentalAreas/warehouse/${contract.warehouseId}`);
-                          setWarehouseAreas(areasRes.data || []);
-                          setEditingZone(false);
-                        } catch (err) {
-                          setAssignMsg({ type: 'error', text: err.response?.data?.message || 'Không thể đổi khu.' });
-                        } finally { setAssigningArea(false); }
-                      };
 
                       return (
                         <div key={a.id}
                           onMouseEnter={() => setFloorPlanHovered(a.id)}
                           onMouseLeave={() => setFloorPlanHovered(null)}
-                          onClick={handleZoneClick}
                           style={{
                             position: 'absolute', left: px, top: py, width: pw, height: ph,
                             background: zs.bg, border: zs.border,
                             boxSizing: 'border-box', borderRadius: 4,
                             overflow: isHov ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column',
                             justifyContent: 'center', alignItems: 'center', padding: '2px', textAlign: 'center',
-                            transition: 'background 0.18s, transform 0.12s',
+                            transition: 'background 0.18s',
                             boxShadow: isThisContract ? '0 0 0 2px #f59e0b, 0 4px 12px rgba(245,158,11,0.4)' : 'none',
                             zIndex: isThisContract ? 2 : 1,
-                            cursor: isClickable && !isThisContract ? 'pointer' : 'default',
-                            transform: isClickable && isHov && !isThisContract ? 'scale(1.03)' : 'scale(1)',
-                            outline: isClickable && isHov && !isThisContract ? '2.5px solid #0ea5e9' : 'none',
+                            cursor: 'default',
                           }}
                         >
                           <div style={{ fontWeight: 800, color: zs.textColor, fontSize: '0.75rem', lineHeight: 1.2, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', writingMode: isPortrait ? 'vertical-rl' : 'horizontal-tb', transform: isPortrait ? 'rotate(180deg)' : 'none' }}>
-                            {isThisContract ? (isPortrait ? '★' : '★ ') : ''}{a.name}
+                            {isThisContract ? (isPortrait ? '★' : '★ ') : ''}{name}
                           </div>
-                          <div style={{ fontSize: '0.65rem', color: zs.textColor, marginTop: 2, fontWeight: 700, display: pw < 50 || ph < 50 ? 'none' : 'block' }}>{a.size} m³</div>
-                          <div style={{ fontSize: '0.6rem', color: zs.textColor, marginTop: 2, display: pw < 50 || ph < 60 ? 'none' : 'block' }}>{a.width}m × {a.length}m</div>
-                          {isHov && !isThisContract && isClickable && (
-                            <div style={{
-                              position: 'absolute',
-                              top: (pw < 60 || ph < 50) ? '50%' : undefined,
-                              bottom: (pw < 60 || ph < 50) ? undefined : 6,
-                              left: '50%', transform: (pw < 60 || ph < 50) ? 'translate(-50%, -50%)' : 'translateX(-50%)',
-                              fontSize: '0.65rem', fontWeight: 700,
-                              color: '#fff', background: '#0ea5e9', border: '1px solid #0284c7',
-                              borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none'
-                            }}>
-                              Chọn khu này
-                            </div>
-                          )}
-                          {isHov && !isClickable && (
+                          <div style={{ fontSize: '0.65rem', color: zs.textColor, marginTop: 2, fontWeight: 700, display: pw < 50 || ph < 50 ? 'none' : 'block' }}>{size} m³</div>
+                          <div style={{ fontSize: '0.6rem', color: zs.textColor, marginTop: 2, display: pw < 50 || ph < 60 ? 'none' : 'block' }}>{Math.round(pw/scale*10)/10}m × {Math.round(ph/scale*10)/10}m</div>
+                          {isHov && (
                             <div style={{
                               position: 'absolute',
                               top: (pw < 60 || ph < 50) ? '50%' : undefined,

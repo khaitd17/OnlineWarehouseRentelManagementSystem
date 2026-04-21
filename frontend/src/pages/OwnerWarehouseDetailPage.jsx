@@ -401,7 +401,7 @@ const OwnerWarehouseDetailPage = () => {
                           {AREA_STATUS_BADGE(isRented)}
                         </div>
                         <p style={{ margin: "4px 0", fontSize: "0.85rem", color: "#475569" }}>
-                          Thể tích: <strong>{(a.width * a.length || a.size || 0).toFixed(1)} m³</strong>
+                          Thể tích: <strong>{(a.size || (a.width * a.length * 5) || 0).toFixed(1)} m³</strong>
                         </p>
                         <p style={{ margin: "4px 0", fontSize: "0.85rem", color: "#475569" }}>
                           Kích thước: <strong>{a.width}m × {a.length}m</strong>

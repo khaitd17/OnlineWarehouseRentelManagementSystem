@@ -31,6 +31,13 @@ public class RentalContractDto
     public string? RenterSignatureBase64 { get; set; }
     public int? RentalAreaId { get; set; }
     public double RequestedArea { get; set; }
+    // Custom area fields
+    public bool IsCustomArea { get; set; }
+    public double? ProposedPositionX { get; set; }
+    public double? ProposedPositionY { get; set; }
+    public double? ProposedWidth { get; set; }
+    public double? ProposedLength { get; set; }
+    public int? BaseRentalAreaId { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsCurrentUserRenter { get; set; }
     public bool IsCurrentUserOwner { get; set; }

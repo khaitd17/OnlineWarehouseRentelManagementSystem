@@ -4,6 +4,7 @@ import api from '../services/axiosClient';
 import rentalService from '../services/rentalService';
 import ratingService from '../services/ratingService';
 import authService from '../services/authService';
+import CustomAreaSelectorModal from '../components/warehouse/CustomAreaSelectorModal';
 
 // ─── Floor Plan Blueprint ────────────────────────────────────────────────────
 const FloorPlanView = ({ areas, warehouseData }) => {
@@ -157,6 +158,8 @@ const WarehouseDetailsPage = () => {
   const [lightbox, setLightbox] = useState({ open: false, index: 0 });
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState(null);
+  const [showCustomAreaModal, setShowCustomAreaModal] = useState(false);
+  const [customAreaData, setCustomAreaData] = useState(null); // { posX, posY, width, length, baseAreaId }
   const [showRentalSuccessPopup, setShowRentalSuccessPopup] = useState(false);
   const [ratingsData, setRatingsData] = useState(null);
   const [replyText, setReplyText] = useState({});
@@ -326,7 +329,8 @@ const WarehouseDetailsPage = () => {
   };
 
   // Called after user decides whether to pick an area or not
-  const doSubmitRequest = async (areaOverride) => {
+  // customArea: { posX, posY, width, length, baseAreaId } | null
+  const doSubmitRequest = async (areaOverride, customArea) => {
     const chosenArea = areaOverride !== undefined ? areaOverride : selectedArea;
     const area = parseFloat(formData.requestedArea);   // Luôn dùng thể tích người thuê nhập
     const duration = parseInt(formData.durationMonths);
@@ -341,18 +345,33 @@ const WarehouseDetailsPage = () => {
     if (!duration || duration < 1 || duration > 60) { setSubmitMsg({ type: 'error', text: 'Thời hạn thuê từ 1 đến 60 tháng.' }); return; }
 
     setShowAreaModal(false);
+    setShowCustomAreaModal(false);
     setSubmitting(true);
     try {
-      await rentalService.createRentalRequest({
+      // Build the payload — include custom-area fields if renter self-arranged
+      const payload = {
         warehouseId: warehouse.id,
         requestedArea: area,
         rentalAreaId: chosenArea?.id || null,
         startDate: formData.startDate,
         durationMonths: duration,
         notes: formData.notes.trim() || null,
-      });
+      };
+
+      const ca = customArea || customAreaData;
+      if (ca) {
+        payload.isCustomArea      = true;
+        payload.proposedPositionX = ca.posX;
+        payload.proposedPositionY = ca.posY;
+        payload.proposedWidth     = ca.width;
+        payload.proposedLength    = ca.length;
+        payload.baseRentalAreaId  = ca.baseAreaId || null;
+      }
+
+      await rentalService.createRentalRequest(payload);
       setFormData({ requestedArea: '', startDate: '', durationMonths: '', notes: '' });
       setSelectedArea(null);
+      setCustomAreaData(null);
       setSubmitMsg(null);
       setShowRentalSuccessPopup(true);
     } catch (err) {
@@ -918,7 +937,7 @@ const WarehouseDetailsPage = () => {
                       <div>
                         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Chọn ô khu thuê</h3>
                         <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                          Bạn cần thuê <strong>{enteredVol} m³</strong> — Chọn ô khu còn trống hoặc bỏ qua để chủ kho sắp xếp.
+                          Bạn cần thuê <strong>{enteredVol} m³</strong> — Chọn ô khu còn trống hoặc Tự sắp xếp vị trí theo ý.
                         </p>
                       </div>
                       <button onClick={() => setShowAreaModal(false)} style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#64748b', flexShrink: 0 }}>✕</button>
@@ -1003,7 +1022,7 @@ const WarehouseDetailsPage = () => {
 
                     {availableCount === 0 && (
                       <div style={{ padding: '0.8rem 1rem', textAlign: 'center', color: '#dc2626', fontSize: '0.88rem', background: '#fff7f7', borderRadius: 10, border: '1px solid #fecaca', marginBottom: '1.2rem' }}>
-                        Hiện tất cả ô khu đều đang được thuê. Hãy bỏ qua để chủ kho sắp xếp.
+                        Hiện tất cả ô khu đều đang được thuê. Hãy Tự sắp xếp vị trí theo ý.
                       </div>
                     )}
 
@@ -1014,19 +1033,21 @@ const WarehouseDetailsPage = () => {
                       <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
                     </div>
 
-                    {/* Skip */}
+                    {/* Self-arrange or skip */}
                     <button
-                      onClick={() => { setSelectedArea(null); doSubmitRequest(null); }}
+                      onClick={() => { setShowAreaModal(false); setShowCustomAreaModal(true); }}
                       style={{
                         width: '100%', padding: '12px 20px', borderRadius: 12,
-                        border: '1.5px solid #e2e8f0', background: '#f8fafc',
-                        color: '#475569', fontWeight: 700, fontSize: '0.92rem',
+                        border: '1.5px solid #6366f1', background: 'linear-gradient(135deg,#eef2ff,#e0e7ff)',
+                        color: '#4338ca', fontWeight: 700, fontSize: '0.92rem',
                         cursor: 'pointer', transition: 'all 0.15s',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f1f5f9'; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#f8fafc'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#e0e7ff'; e.currentTarget.style.borderColor = '#4338ca'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg,#eef2ff,#e0e7ff)'; e.currentTarget.style.borderColor = '#6366f1'; }}
                     >
-                      Bỏ qua — Chủ kho sẽ sắp xếp vị trí ({enteredVol} m³)
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                      Tự sắp xếp vị trí theo ý
                     </button>
                   </div>
                 </div>
@@ -1290,6 +1311,23 @@ const WarehouseDetailsPage = () => {
         </div>
         <p style={{ fontSize: '0.8rem' }}>© 2026 Online Warehouse Rental Management System. All rights reserved.</p>
       </footer>
+
+      {/* ── Custom Area Selector Modal ───────────────────────────────────── */}
+      {showCustomAreaModal && (
+        <CustomAreaSelectorModal
+          open={showCustomAreaModal}
+          onClose={() => setShowCustomAreaModal(false)}
+          warehouseData={warehouseData}
+          areas={areas}
+          requestedM3={parseFloat(formData.requestedArea) || 0}
+          onConfirm={(ca) => {
+            setCustomAreaData(ca);
+            setShowCustomAreaModal(false);
+            // Immediately submit with the custom area data
+            doSubmitRequest(null, ca);
+          }}
+        />
+      )}
     </div>
   );
 };

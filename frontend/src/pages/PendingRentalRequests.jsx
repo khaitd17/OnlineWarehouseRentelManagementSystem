@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import rentalService from "../services/rentalService";
 import warehouseService from "../services/warehouseService";
 import SignatureCanvas from "../components/SignatureCanvas";
+import ProposedZonePreviewModal from "../components/warehouse/ProposedZonePreviewModal";
+import axiosClient from "../services/axiosClient";
 
 const statusColors = {
   PENDING: { bg: "#fef3c7", color: "#d97706", label: "Chờ duyệt" },
@@ -91,6 +93,9 @@ const PendingRentalRequests = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("PENDING"); // "PENDING" or "APPROVED"
 
+  // Zone preview modal
+  const [zonePreview, setZonePreview] = useState(null); // { request, warehouseData, areas }
+
   // Modal state
   const [actionModal, setActionModal] = useState(null);
   const [contractForm, setContractForm] = useState({
@@ -133,6 +138,23 @@ const PendingRentalRequests = () => {
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     return new Date(dateStr).toLocaleDateString("vi-VN");
+  };
+
+  const openZonePreview = async (req) => {
+    try {
+      const [warehouse, areasRes] = await Promise.all([
+        warehouseService.getWarehouseById(req.warehouseId),
+        axiosClient.get(`/RentalAreas/warehouse/${req.warehouseId}`),
+      ]);
+      setZonePreview({
+        request: req,
+        warehouseData: warehouse,
+        areas: areasRes.data || [],
+      });
+    } catch (err) {
+      console.error('Failed to load zone preview:', err);
+      alert('Không thể tải bản đồ khu vực. Vui lòng thử lại.');
+    }
   };
 
   const openApproveModal = async (req) => {
@@ -839,21 +861,44 @@ const PendingRentalRequests = () => {
                       { label: "Người thuê", value: `${req.renterName} (${req.renterEmail})`, wide: true },
                       { label: "Địa chỉ", value: req.warehouseAddress, wide: true },
                       { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
-                      req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null,
+                      req.isCustomArea
+                        ? {
+                            label: "Khu vực người thuê tự vẽ",
+                            value: `(${req.proposedPositionX}m, ${req.proposedPositionY}m) — ${req.proposedWidth}m × ${req.proposedLength}m`,
+                            highlighted: true,
+                            customZone: true,
+                          }
+                        : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null),
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
                       { label: "Ngày bắt đầu", value: formatDate(req.startDate) },
                     ].filter(Boolean).map(item => (
                       <div key={item.label} style={{
                         padding: "8px 14px", borderRadius: 10,
-                        background: item.highlighted ? "#f0fdf4" : "#f8fafc",
-                        border: item.highlighted ? "1px solid #86efac" : "1px solid #f1f5f9",
-                        display: "flex", flexDirection: "column", gap: 2,
-                        minWidth: 120, flex: item.wide ? "1 1 100%" : "0 0 auto",
+                        background: item.customZone ? "#fffbeb" : item.highlighted ? "#f0fdf4" : "#f8fafc",
+                        border: item.customZone ? "1px solid #fde68a" : item.highlighted ? "1px solid #86efac" : "1px solid #f1f5f9",
+                        display: "flex", flexDirection: "column", gap: 4,
+                        flex: "1 1 100%",
                       }}>
-                        <span style={{ fontSize: "0.65rem", fontWeight: 700, color: item.highlighted ? "#15803d" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                          {item.label}
-                        </span>
-                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: item.highlighted ? "#166534" : "#334155" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: item.customZone ? "#b45309" : item.highlighted ? "#15803d" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                            {item.label}
+                          </span>
+                          {item.customZone && (
+                            <button
+                              onClick={e => { e.stopPropagation(); openZonePreview(req); }}
+                              style={{
+                                padding: "3px 12px", borderRadius: 8, border: "none",
+                                background: "linear-gradient(135deg,#f59e0b,#d97706)",
+                                color: "#fff", fontWeight: 700, fontSize: "0.72rem",
+                                cursor: "pointer", whiteSpace: "nowrap",
+                                boxShadow: "0 2px 6px rgba(245,158,11,0.35)",
+                              }}
+                            >
+                              Xem bản đồ vị trí ↗
+                            </button>
+                          )}
+                        </div>
+                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: item.customZone ? "#92400e" : item.highlighted ? "#166534" : "#334155" }}>
                           {item.value}
                         </span>
                       </div>
@@ -953,6 +998,17 @@ const PendingRentalRequests = () => {
             {actionModal.type === "approve" ? renderApproveModal() : renderRejectModal()}
           </div>
         </div>
+      )}
+
+      {/* ── Zone Preview Modal ── */}
+      {zonePreview && (
+        <ProposedZonePreviewModal
+          open={!!zonePreview}
+          onClose={() => setZonePreview(null)}
+          request={zonePreview.request}
+          warehouseData={zonePreview.warehouseData}
+          areas={zonePreview.areas}
+        />
       )}
     </div>
   );

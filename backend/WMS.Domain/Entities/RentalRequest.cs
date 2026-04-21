@@ -35,6 +35,32 @@ public partial class RentalRequest
 
     public string? ContractImageUrl { get; set; }
     
+    // ── Custom Area (renter self-arranges zone) ────────────────────────────
+    /// <summary>
+    /// true if the renter proposed a custom zone position/size on submission.
+    /// When false (or null), the owner arranges the zone as before.
+    /// </summary>
+    public bool IsCustomArea { get; set; } = false;
+
+    /// <summary>X offset (metres) from warehouse origin for the proposed zone.</summary>
+    public double? ProposedPositionX { get; set; }
+
+    /// <summary>Y offset (metres) from warehouse origin for the proposed zone.</summary>
+    public double? ProposedPositionY { get; set; }
+
+    /// <summary>Width (metres) of the proposed zone.</summary>
+    public double? ProposedWidth { get; set; }
+
+    /// <summary>Length/depth (metres) of the proposed zone.</summary>
+    public double? ProposedLength { get; set; }
+
+    /// <summary>
+    /// If the renter carved out a portion of an existing RentalArea,
+    /// this holds the ID of that source area so we can shrink it on activation.
+    /// </summary>
+    public int? BaseRentalAreaId { get; set; }
+    // ──────────────────────────────────────────────────────────────────────
+
     // NEW - Cancel tracking
     public string? CancellationReason { get; set; }
     

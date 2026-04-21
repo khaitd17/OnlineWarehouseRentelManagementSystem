@@ -1,0 +1,41 @@
+﻿diff --cc backend/tests/WMS.UnitTests/Handlers/Contracts/ApproveTerminationHandlerTests.cs
+index 99f70c75,41f1254b..00000000
+--- a/backend/tests/WMS.UnitTests/Handlers/Contracts/ApproveTerminationHandlerTests.cs
++++ b/backend/tests/WMS.UnitTests/Handlers/Contracts/ApproveTerminationHandlerTests.cs
+@@@ -22,16 -29,26 +29,36 @@@ public class ApproveTerminationHandlerT
+          _mockWarehouseRepository = new Mock<IWarehouseRepository>();
+          _mockNotificationRepository = new Mock<INotificationRepository>();
+          _mockNotificationSender = new Mock<INotificationSender>();
+++<<<<<<< HEAD
+ +        var mockRenterAssetRepository = new Mock<IRenterAssetRepository>();
+ +        var mockRentalRequestRepository = new Mock<IRentalRequestRepository>();
+++=======
++ <<<<<<< HEAD
++         _mockAssetRepository = new Mock<IRenterAssetRepository>();
++         _mockRequestRepository = new Mock<IRentalRequestRepository>();
++ =======
++         _mockAssetRepo = new Mock<IRenterAssetRepository>();
++         _mockRentalRequestRepository = new Mock<IRentalRequestRepository>();
++ >>>>>>> 125e7be37b70d4db7ad3e4882be21dad05db1590
+++>>>>>>> origin/main
+  
+          _handler = new ApproveTerminationHandler(
+              _mockContractRepository.Object,
+              _mockWarehouseRepository.Object,
+              _mockNotificationRepository.Object,
+              _mockNotificationSender.Object,
+++<<<<<<< HEAD
+ +            mockRenterAssetRepository.Object,
+ +            mockRentalRequestRepository.Object
+++=======
++ <<<<<<< HEAD
++             _mockAssetRepository.Object,
++             _mockRequestRepository.Object
++ =======
++             _mockAssetRepo.Object,
++             _mockRentalRequestRepository.Object
++ >>>>>>> 125e7be37b70d4db7ad3e4882be21dad05db1590
+++>>>>>>> origin/main
+          );
+      }
+  

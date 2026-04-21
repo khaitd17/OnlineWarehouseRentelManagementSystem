@@ -15,7 +15,7 @@ public interface IInventoryRequestRepository
 
     Task<(List<InventoryRequest> Items, int TotalCount)> GetForStaffAsync(
         string type, string? status, int? warehouseId,
-        int page, int pageSize, CancellationToken cancellationToken);
+        int page, int pageSize, bool excludePending, CancellationToken cancellationToken);
 
 
     Task<List<InventoryRequest>> GetConfirmedByWarehouseAsync(int warehouseId, string? type, CancellationToken cancellationToken);

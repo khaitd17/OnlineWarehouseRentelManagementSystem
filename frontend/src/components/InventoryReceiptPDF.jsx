@@ -139,24 +139,35 @@ const fmtDate = (str) => {
   return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
-const fmtNum = (n, dec = 3) =>
+const fmtNum = (n, dec = 2) =>
   n == null || n === '' ? '—' : Number(n).toLocaleString('vi-VN', { maximumFractionDigits: dec });
 
 /* ── PDF Document ────────────────────────────────────────────────────────── */
 export function InventoryReceiptDocument({ data }) {
   const {
     invReqId,
+    type = 'INBOUND',
     warehouseName = 'Kho hàng',
     warehouseAddress,
     renterName = '.....................',
     renterEmail,
     managerName,
-    staffName,
+    staffName: staffNameProp,
+    assignedStaffName,
     scheduledDate,
     createdAt,
     notes,
     items = [],
   } = data;
+
+  const isOutbound = type === 'OUTBOUND';
+  const receiptTitle = isOutbound ? 'PHIẾU XUẤT KHO' : 'PHIẾU NHẬP KHO';
+  const receiptLabel = isOutbound ? 'Mẫu Phiếu Xuất Kho' : 'Mẫu Phiếu Nhập Kho';
+  const receiptCode  = isOutbound ? 'OUT' : 'INV';
+  const renterRole   = isOutbound ? 'Người lập phiếu xuất' : 'Người lập phiếu nhập';
+  const staffRole    = isOutbound ? 'Thủ kho' : 'Thủ kho';
+
+  const staffName = assignedStaffName || staffNameProp;
 
   const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
   const totalVol = items.reduce((s, i) => s + (Number(i.estimatedVolume) || 0), 0);
@@ -164,7 +175,7 @@ export function InventoryReceiptDocument({ data }) {
 
   return (
     <Document
-      title={`Phiếu Nhập Kho-#${invReqId}`}
+      title={`${receiptTitle}-#${invReqId}`}
       author="OWRMS - Online Warehouse Rental Management System"
       creator="OWRMS"
     >
@@ -179,7 +190,7 @@ export function InventoryReceiptDocument({ data }) {
             {warehouseAddress ? <Text>{warehouseAddress}</Text> : null}
           </View>
           <View style={S.mauRow}>
-            <Text style={S.mauLine}>Mẫu Phiếu Nhập Kho</Text>
+            <Text style={S.mauLine}>{receiptLabel}</Text>
             <Text style={S.mauLine}>(Tùy chỉnh theo hệ thống OWRMS)</Text>
             <Text style={[S.mauLine, { marginTop: 2 }]}>
               Ngày lập: {fmtDate(createdAt)}
@@ -191,28 +202,30 @@ export function InventoryReceiptDocument({ data }) {
 
         {/* ── Title ──────────────────────────────────────── */}
         <View style={S.titleWrap}>
-          <Text style={S.title}>PHIẾU NHẬP KHO</Text>
-          <Text style={S.reqNo}>Mã phiếu: INV-{String(invReqId).padStart(5, '0')}</Text>
+          <Text style={S.title}>{receiptTitle}</Text>
+          <Text style={S.reqNo}>Mã phiếu: {receiptCode}-{String(invReqId).padStart(5, '0')}</Text>
         </View>
 
         {/* ── Info block ─────────────────────────────────── */}
         <View style={S.infoSection}>
           <View style={S.infoRow}>
-            <Text style={S.infoLabel}>Người lập phiếu (Renter):</Text>
+            <Text style={S.infoLabel}>Người lập phiếu:</Text>
             <Text style={S.infoValue}>{renterName}</Text>
             <Text style={[S.infoLabel, { marginLeft: 12 }]}>Email:</Text>
             <Text style={S.infoValue}>{renterEmail || '.....................'}</Text>
           </View>
           <View style={S.infoRow}>
-            <Text style={S.infoLabel}>Kho nhận hàng:</Text>
+            <Text style={S.infoLabel}>{isOutbound ? 'Kho xuất hàng:' : 'Kho nhận hàng:'}</Text>
             <Text style={S.infoValue}>{warehouseName}</Text>
-            <Text style={[S.infoLabel, { marginLeft: 12 }]}>Ngày dự kiến nhập:</Text>
+            <Text style={[S.infoLabel, { marginLeft: 12 }]}>{isOutbound ? 'Ngày dự kiến xuất:' : 'Ngày dự kiến nhập:'}</Text>
             <Text style={S.infoValue}>{fmtDate(scheduledDate)}</Text>
           </View>
-          <View style={S.infoRow}>
-            <Text style={S.infoLabel}>Điều kiện bảo quản:</Text>
-            <Text style={S.infoValue}>Giữ khô, tránh ẩm ướt, xếp gọn gàng</Text>
-          </View>
+          {!isOutbound && (
+            <View style={S.infoRow}>
+              <Text style={S.infoLabel}>Điều kiện bảo quản:</Text>
+              <Text style={S.infoValue}>Giữ khô, tránh ẩm ướt, xếp gọn gàng</Text>
+            </View>
+          )}
         </View>
 
         {/* ── Items table ────────────────────────────────── */}
@@ -272,7 +285,7 @@ export function InventoryReceiptDocument({ data }) {
           <View style={S.tableFooter}>
             <View style={[S.colStt, S.cellCenter]} />
             <View style={[S.colName, S.cellLeft]}>
-              <Text style={S.cellTextBold}>Cộng:</Text>
+              <Text style={S.cellTextBold}>Tổng:</Text>
             </View>
             <View style={[S.colUnit, S.cellCenter]} />
             <View style={[S.colQty, S.cellCenter]}>
@@ -288,7 +301,7 @@ export function InventoryReceiptDocument({ data }) {
         {/* ── Notes ──────────────────────────────────────── */}
         {notesLines && (
           <View style={S.notesBlock}>
-            <Text style={S.notesLabel}>Ghi chú từ người thuê:</Text>
+            <Text style={S.notesLabel}>{isOutbound ? 'Ghi chú xuất kho:' : 'Ghi chú từ người thuê:'}</Text>
             <Text style={S.notesText}>{notesLines}</Text>
           </View>
         )}
@@ -318,7 +331,7 @@ export function InventoryReceiptDocument({ data }) {
           {/* Người lập phiếu = Renter */}
           <View style={S.sigBox}>
             <Text style={S.sigTitle}>Người Lập Phiếu</Text>
-            <Text style={S.sigRole}>(Khách thuê / Renter)</Text>
+            <Text style={S.sigRole}>{renterRole}</Text>
             <View style={S.sigSpace}>
               {data.renterSignatureBase64 ? (
                 <Image 
@@ -336,7 +349,7 @@ export function InventoryReceiptDocument({ data }) {
           {/* Quản lý kho = Manager */}
           <View style={S.sigBox}>
             <Text style={S.sigTitle}>Quản Lý Kho</Text>
-            <Text style={S.sigRole}>(Người duyệt / Manager)</Text>
+            <Text style={S.sigRole}>Người duyệt</Text>
             <View style={S.sigSpace}>
               {data.managerSignatureBase64 ? (
                 <Image 
@@ -354,9 +367,16 @@ export function InventoryReceiptDocument({ data }) {
           {/* Nhân viên kho = Staff */}
           <View style={S.sigBox}>
             <Text style={S.sigTitle}>Nhân Viên Kho</Text>
-            <Text style={S.sigRole}>(Thủ kho / Staff)</Text>
+            <Text style={S.sigRole}>{staffRole}</Text>
             <View style={S.sigSpace}>
-              <View style={S.sigLine} />
+              {data.staffSignatureBase64 ? (
+                <Image
+                  style={{ width: 80, height: 40 }}
+                  src={data.staffSignatureBase64.startsWith('data:image') ? data.staffSignatureBase64 : `data:image/png;base64,${data.staffSignatureBase64}`}
+                />
+              ) : (
+                <View style={S.sigLine} />
+              )}
             </View>
             <Text style={S.sigNameLabel}>Họ và tên:</Text>
             <Text style={S.sigNameValue}>{staffName || '.....................'}</Text>
@@ -367,7 +387,7 @@ export function InventoryReceiptDocument({ data }) {
         <View style={S.footerLine}>
           <Text style={S.footerText}>
             Phiếu được tạo tự động bởi hệ thống OWRMS •
-            Mã phiếu: INV-{String(invReqId).padStart(5, '0')} •
+            Mã phiếu: {receiptCode}-{String(invReqId).padStart(5, '0')} •
             Ngày tạo: {fmtDate(createdAt)}
           </Text>
           <Text style={[S.footerText, { marginTop: 2 }]}>
@@ -385,7 +405,11 @@ export function InventoryReceiptDocument({ data }) {
  * Renders a styled download link for the PDF.
  */
 export function ReceiptDownloadButton({ data, style = {}, children }) {
-  const fileName = `Phieu-Nhap-Kho-INV-${String(data?.invReqId || '0').padStart(5, '0')}.pdf`;
+  const isOutboundBtn = data?.type === 'OUTBOUND';
+  const fileName = isOutboundBtn
+    ? `Phieu-Xuat-Kho-OUT-${String(data?.invReqId || '0').padStart(5, '0')}.pdf`
+    : `Phieu-Nhap-Kho-INV-${String(data?.invReqId || '0').padStart(5, '0')}.pdf`;
+  const btnLabel = isOutboundBtn ? 'Tải Phiếu Xuất Kho (PDF)' : 'Tải Phiếu Nhập Kho (PDF)';
   return (
     <PDFDownloadLink
       document={<InventoryReceiptDocument data={data} />}
@@ -411,7 +435,7 @@ export function ReceiptDownloadButton({ data, style = {}, children }) {
       {({ loading: pdfLoading }) =>
         pdfLoading
           ? 'Đang tạo PDF...'
-          : (children || 'Tải Phiếu Nhập Kho (PDF)')
+          : (children || btnLabel)
       }
     </PDFDownloadLink>
   );
@@ -423,8 +447,13 @@ export function ReceiptDownloadButton({ data, style = {}, children }) {
  * plus a download button. Keeps the PDF rendering 100% client-side.
  */
 export function ReceiptPreviewModal({ data, onClose }) {
+  const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+  // Memoize the document to prevent BlobProvider from re-rendering the PDF whenever state changes
+  const doc = React.useMemo(() => <InventoryReceiptDocument data={data} />, [data]);
+
   return (
-    <BlobProvider document={<InventoryReceiptDocument data={data} />}>
+    <BlobProvider document={doc}>
       {({ blob, url, loading: pdfLoading, error }) => (
         <div
           style={{
@@ -435,22 +464,28 @@ export function ReceiptPreviewModal({ data, onClose }) {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 9999,
-            padding: 24,
+            padding: isFullscreen ? 0 : 24,
           }}
-          onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+          onClick={e => {
+            e.stopPropagation();
+            if (e.target === e.currentTarget && !isFullscreen) onClose();
+          }}
         >
           <div
             style={{
               background: '#fff',
-              borderRadius: 16,
+              borderRadius: isFullscreen ? 0 : 16,
               width: '100%',
-              maxWidth: 860,
-              maxHeight: '92vh',
+              maxWidth: isFullscreen ? '100%' : 860,
+              height: isFullscreen ? '100vh' : 'auto',
+              maxHeight: isFullscreen ? '100vh' : '92vh',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.35)',
+              boxShadow: isFullscreen ? 'none' : '0 32px 80px rgba(0,0,0,0.35)',
               overflow: 'hidden',
+              transition: 'all 0.2s ease-in-out',
             }}
+            onClick={e => e.stopPropagation()}
           >
             {/* Modal header */}
             <div
@@ -465,17 +500,38 @@ export function ReceiptPreviewModal({ data, onClose }) {
             >
               <div>
                 <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a', fontFamily: 'Inter,sans-serif' }}>
-                  Phiếu Nhập Kho — INV-{String(data?.invReqId || '0').padStart(5, '0')}
+                  {data?.type === 'OUTBOUND' ? 'Phiếu Xuất Kho' : 'Phiếu Nhập Kho'} — {data?.type === 'OUTBOUND' ? 'OUT' : 'INV'}-{String(data?.invReqId || '0').padStart(5, '0')}
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2, fontFamily: 'Inter,sans-serif' }}>
                   Kho: {data?.warehouseName} &nbsp;·&nbsp; Ngày lập: {data?.createdAt ? new Date(data.createdAt).toLocaleDateString('vi-VN') : '—'}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <button
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: 8,
+                    border: '1.5px solid #e2e8f0',
+                    background: '#f1f5f9',
+                    fontFamily: 'Inter,sans-serif',
+                    fontSize: '0.82rem',
+                    fontWeight: 700,
+                    color: '#475569',
+                    cursor: 'pointer',
+                    transition: 'background 0.15s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#f1f5f9'}
+                >
+                  {isFullscreen ? 'Thu nhỏ' : 'Phóng to'}
+                </button>
                 {!pdfLoading && !error && url && (
                   <a
                     href={url}
-                    download={`Phieu-Nhap-Kho-INV-${String(data?.invReqId || '0').padStart(5, '0')}.pdf`}
+                    download={data?.type === 'OUTBOUND'
+                      ? `Phieu-Xuat-Kho-OUT-${String(data?.invReqId || '0').padStart(5, '0')}.pdf`
+                      : `Phieu-Nhap-Kho-INV-${String(data?.invReqId || '0').padStart(5, '0')}.pdf`}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -526,12 +582,13 @@ export function ReceiptPreviewModal({ data, onClose }) {
               )}
               {!pdfLoading && !error && url && (
                 <iframe
-                  src={url}
+                  key={isFullscreen ? 'full' : 'normal'}
+                  src={`${url}#zoom=${isFullscreen ? 100 : 67}`}
                   title="Phieu Nhap Kho Preview"
                   style={{
                     width: '100%',
                     height: '100%',
-                    minHeight: 520,
+                    minHeight: isFullscreen ? '100%' : 520,
                     border: 'none',
                     borderRadius: 4,
                     background: '#fff',

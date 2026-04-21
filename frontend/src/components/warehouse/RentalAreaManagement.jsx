@@ -414,12 +414,6 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
             </div>
             <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
               <button
-                onClick={openAutoModal}
-                style={{padding:'12px 20px',background:'linear-gradient(135deg,#7c3aed 0%,#a855f7 100%)',color:'#fff',borderRadius:'10px',border:'none',cursor:'pointer',fontWeight:'bold',boxShadow:'0 4px 10px rgba(124,58,237,0.3)',fontSize:'0.9rem'}}
-              >
-                Tạo sơ đồ tự động
-              </button>
-              <button
                 onClick={openCreateForm}
                 style={{padding:'12px 20px',background:'linear-gradient(135deg,#0284c7 0%,#00b2d6 100%)',color:'#fff',borderRadius:'10px',border:'none',cursor:'pointer',fontWeight:'bold',boxShadow:'0 4px 10px rgba(14,165,233,0.3)',fontSize:'0.9rem'}}
               >
