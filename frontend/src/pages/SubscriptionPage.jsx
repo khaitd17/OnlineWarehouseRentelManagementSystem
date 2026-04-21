@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Button, Modal, Spin, Typography, Space, message, Row, Col } from 'antd';
 import { CheckCircleOutlined, StarOutlined, RocketOutlined } from '@ant-design/icons';
 import subscriptionService from '../services/subscriptionService';
+import authService from '../services/authService';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -84,6 +85,37 @@ const SubscriptionPage = () => {
     window.addEventListener('authChange', handleAuthChange);
     return () => window.removeEventListener('authChange', handleAuthChange);
   }, [qrModalVisible]);
+
+  React.useEffect(() => {
+    if (!qrModalVisible || !paymentInfo?.paymentCode) return;
+
+    let cancelled = false;
+    let timerId;
+
+    const pollStatus = async () => {
+      try {
+        const res = await subscriptionService.getSubscriptionStatus();
+        if (res.data?.success && res.data?.isActive) {
+          await authService.refreshWarehouseContext();
+          window.dispatchEvent(new Event("authChange"));
+          return;
+        }
+      } catch (err) {
+        console.warn("Failed to sync subscription status", err);
+      }
+
+      if (!cancelled) {
+        timerId = setTimeout(pollStatus, 5000);
+      }
+    };
+
+    pollStatus();
+
+    return () => {
+      cancelled = true;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, [qrModalVisible, paymentInfo?.paymentCode]);
 
   const handleModalClose = () => {
     setQrModalVisible(false);

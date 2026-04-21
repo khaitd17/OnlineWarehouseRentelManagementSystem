@@ -195,7 +195,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000","http://localhost:3001", "http://localhost:5173")
+            policy.WithOrigins("http://localhost:3000", "http://localhost:3001", "http://localhost:5173")
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
@@ -216,137 +216,10 @@ using (var scope = app.Services.CreateScope())
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
-        // 1. Apply any pending migrations automatically
-        // DISABLED: Migrations causing conflicts - use manual SQL scripts instead
-        // context.Database.Migrate();
-
-        // Patch: Thêm các cột còn thiếu cho contracts/rental_contracts để tránh lỗi runtime khi DB schema cũ.
-        var patchSqls = new[]
-        {
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'early_termination_fee') ALTER TABLE contracts ADD early_termination_fee decimal(18,2) NULL;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'owner_approved_termination') ALTER TABLE contracts ADD owner_approved_termination bit NOT NULL DEFAULT 0;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'renter_approved_termination') ALTER TABLE contracts ADD renter_approved_termination bit NOT NULL DEFAULT 0;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_at') ALTER TABLE contracts ADD termination_requested_at datetime2 NULL;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('contracts') AND name = 'termination_requested_by') ALTER TABLE contracts ADD termination_requested_by nvarchar(50) NULL;",
-            // Patch: sửa FK contract_extensions đang trỏ nhầm rental_contracts -> contracts
-            @"IF OBJECT_ID('contract_extensions', 'U') IS NOT NULL
-              BEGIN
-                  DECLARE @fkOriginal NVARCHAR(128);
-                  SELECT TOP 1 @fkOriginal = fk.name
-                  FROM sys.foreign_keys fk
-                  JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
-                  JOIN sys.tables pt ON fkc.parent_object_id = pt.object_id
-                  JOIN sys.columns pc ON pc.object_id = pt.object_id AND pc.column_id = fkc.parent_column_id
-                  JOIN sys.tables rt ON fkc.referenced_object_id = rt.object_id
-                  WHERE pt.name = 'contract_extensions'
-                    AND pc.name = 'original_contract_id'
-                    AND rt.name = 'rental_contracts';
-
-                  IF @fkOriginal IS NOT NULL
-                      EXEC('ALTER TABLE contract_extensions DROP CONSTRAINT [' + @fkOriginal + ']');
-
-                  IF NOT EXISTS (
-                      SELECT 1
-                      FROM sys.foreign_keys fk
-                      JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
-                      JOIN sys.tables pt ON fkc.parent_object_id = pt.object_id
-                      JOIN sys.columns pc ON pc.object_id = pt.object_id AND pc.column_id = fkc.parent_column_id
-                      JOIN sys.tables rt ON fkc.referenced_object_id = rt.object_id
-                      WHERE pt.name = 'contract_extensions'
-                        AND pc.name = 'original_contract_id'
-                        AND rt.name = 'contracts'
-                  )
-                      ALTER TABLE contract_extensions WITH CHECK
-                      ADD CONSTRAINT FK_contract_extensions_contracts_original_contract_id
-                      FOREIGN KEY (original_contract_id) REFERENCES contracts(contract_id);
-              END;",
-            @"IF OBJECT_ID('contract_extensions', 'U') IS NOT NULL
-              BEGIN
-                  DECLARE @fkNew NVARCHAR(128);
-                  SELECT TOP 1 @fkNew = fk.name
-                  FROM sys.foreign_keys fk
-                  JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
-                  JOIN sys.tables pt ON fkc.parent_object_id = pt.object_id
-                  JOIN sys.columns pc ON pc.object_id = pt.object_id AND pc.column_id = fkc.parent_column_id
-                  JOIN sys.tables rt ON fkc.referenced_object_id = rt.object_id
-                  WHERE pt.name = 'contract_extensions'
-                    AND pc.name = 'new_contract_id'
-                    AND rt.name = 'rental_contracts';
-
-                  IF @fkNew IS NOT NULL
-                      EXEC('ALTER TABLE contract_extensions DROP CONSTRAINT [' + @fkNew + ']');
-
-                  IF NOT EXISTS (
-                      SELECT 1
-                      FROM sys.foreign_keys fk
-                      JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
-                      JOIN sys.tables pt ON fkc.parent_object_id = pt.object_id
-                      JOIN sys.columns pc ON pc.object_id = pt.object_id AND pc.column_id = fkc.parent_column_id
-                      JOIN sys.tables rt ON fkc.referenced_object_id = rt.object_id
-                      WHERE pt.name = 'contract_extensions'
-                        AND pc.name = 'new_contract_id'
-                        AND rt.name = 'contracts'
-                  )
-                      ALTER TABLE contract_extensions WITH CHECK
-                      ADD CONSTRAINT FK_contract_extensions_contracts_new_contract_id
-                      FOREIGN KEY (new_contract_id) REFERENCES contracts(contract_id);
-              END;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminatedAt') ALTER TABLE rental_contracts ADD TerminatedAt datetime2 NULL;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_contracts') AND name = 'TerminationReason') ALTER TABLE rental_contracts ADD TerminationReason nvarchar(max) NULL;",
-            "IF OBJECT_ID('subscriptions', 'U') IS NULL BEGIN CREATE TABLE subscriptions (subscription_id int IDENTITY(1,1) NOT NULL PRIMARY KEY, user_id int NOT NULL, [plan] nvarchar(50) NOT NULL, [status] nvarchar(50) NOT NULL CONSTRAINT DF_subscriptions_status DEFAULT N'Pending', start_date datetime2 NULL, end_date datetime2 NULL, transaction_reference nvarchar(100) NULL, CONSTRAINT FK_subscriptions_users FOREIGN KEY (user_id) REFERENCES users(user_id)); END;",
-            "IF OBJECT_ID('subscription_packages', 'U') IS NULL BEGIN CREATE TABLE subscription_packages (package_id int IDENTITY(1,1) NOT NULL PRIMARY KEY, name nvarchar(100) NOT NULL, price decimal(15,2) NOT NULL, description nvarchar(max) NULL, duration_months int NOT NULL CONSTRAINT DF_subscription_packages_duration_months DEFAULT 1, is_active bit NOT NULL CONSTRAINT DF_subscription_packages_is_active DEFAULT 1, created_at datetime2 NOT NULL CONSTRAINT DF_subscription_packages_created_at DEFAULT (getdate()), updated_at datetime2 NOT NULL CONSTRAINT DF_subscription_packages_updated_at DEFAULT (getdate())); END;",
-            // Patch: thêm cột giới hạn cho subscription_packages (nếu bảng đã tồn tại nhưng thiếu cột)
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_warehouses') ALTER TABLE subscription_packages ADD max_warehouses int NOT NULL DEFAULT 1;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_staff_per_warehouse') ALTER TABLE subscription_packages ADD max_staff_per_warehouse int NOT NULL DEFAULT 5;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_zones_per_warehouse') ALTER TABLE subscription_packages ADD max_zones_per_warehouse int NOT NULL DEFAULT 3;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'max_total_area') ALTER TABLE subscription_packages ADD max_total_area decimal(18,2) NOT NULL DEFAULT 500;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('subscription_packages') AND name = 'allow_equipment_management') ALTER TABLE subscription_packages ADD allow_equipment_management bit NOT NULL DEFAULT 0;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('task_types') AND name = 'is_manual') ALTER TABLE task_types ADD is_manual bit NOT NULL CONSTRAINT DF_task_types_is_manual DEFAULT 0;",
-            // Patch: Thêm cột xác minh hàng hóa thực tế cho nhân viên kho
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_items') AND name = 'verified_quantity') ALTER TABLE inventory_items ADD verified_quantity INT NULL;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('inventory_items') AND name = 'verify_note') ALTER TABLE inventory_items ADD verify_note NVARCHAR(500) NULL;",
-            // Patch: Thêm cột retry tracking cho rental_payments
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_payments') AND name = 'RetryCount') ALTER TABLE rental_payments ADD RetryCount INT NOT NULL DEFAULT 0;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_payments') AND name = 'MaxRetry') ALTER TABLE rental_payments ADD MaxRetry INT NOT NULL DEFAULT 3;",
-            "IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('rental_payments') AND name = 'LastRetryAt') ALTER TABLE rental_payments ADD LastRetryAt DATETIME2 NULL;",
-            // Patch: Cập nhật dữ liệu chuẩn cho các gói (Basic vs Premium)
-            "UPDATE subscription_packages SET max_warehouses = 1, max_staff_per_warehouse = 5, max_zones_per_warehouse = 3, max_total_area = 500, allow_equipment_management = 0 WHERE name = 'Basic';",
-            "UPDATE subscription_packages SET max_warehouses = 5, max_staff_per_warehouse = 50, max_zones_per_warehouse = 10, max_total_area = 5000, allow_equipment_management = 1 WHERE name = 'Premium';",
-        };
-        foreach (var sql in patchSqls)
-        {
-            context.Database.ExecuteSqlRaw(sql);
-        }
-
-        // Emergency schema safeguard: if patch execution is skipped/failed mid-way, ensure subscriptions still exists.
-        var connString = builder.Configuration.GetConnectionString("DefaultConnection");
-        if (!string.IsNullOrWhiteSpace(connString))
-        {
-            using var conn = new SqlConnection(connString);
-            conn.Open();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = @"
-IF OBJECT_ID(N'dbo.subscriptions', N'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.subscriptions (
-        subscription_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-        user_id INT NOT NULL,
-        [plan] NVARCHAR(50) NOT NULL,
-        [status] NVARCHAR(50) NOT NULL CONSTRAINT DF_subscriptions_status DEFAULT N'Pending',
-        start_date DATETIME2 NULL,
-        end_date DATETIME2 NULL,
-        transaction_reference NVARCHAR(100) NULL
-    );
-
-    IF OBJECT_ID(N'dbo.users', N'U') IS NOT NULL
-    BEGIN
-        ALTER TABLE dbo.subscriptions
-        ADD CONSTRAINT FK_subscriptions_users FOREIGN KEY (user_id) REFERENCES dbo.users(user_id);
-    END
-END;";
-            cmd.ExecuteNonQuery();
-        }
-
+        // 1. Apply Entity Framework migrations
+        // We use Migrate instead of EnsureCreated to properly apply the schema changes
+        // in dependency order. (Any conflicting manual migration files were removed).
+        context.Database.Migrate();
         logger.LogInformation("Database migrations applied successfully.");
 
         // 2. Seed the database

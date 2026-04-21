@@ -1004,6 +1004,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("document_urls");
 
+                    b.Property<string>("ManagerSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("manager_signature_base64");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("notes");
@@ -1919,6 +1923,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(50)")
                         .HasDefaultValue("cái")
                         .HasColumnName("unit");
+
+                    b.Property<decimal?>("VolumePerUnit")
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("volume_per_unit");
 
                     b.Property<decimal?>("WeightPerUnit")
                         .HasColumnType("decimal(10, 2)")

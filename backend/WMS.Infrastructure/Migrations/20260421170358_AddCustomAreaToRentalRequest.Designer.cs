@@ -1948,7 +1948,8 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("unit");
 
                     b.Property<decimal?>("VolumePerUnit")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("volume_per_unit");
 
                     b.Property<decimal?>("WeightPerUnit")
                         .HasColumnType("decimal(10, 2)")

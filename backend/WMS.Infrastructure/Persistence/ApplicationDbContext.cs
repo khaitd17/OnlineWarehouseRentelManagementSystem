@@ -1084,6 +1084,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.AssetName).HasMaxLength(200).HasColumnName("asset_name");
             entity.Property(e => e.Unit).HasMaxLength(50).HasDefaultValue("cái").HasColumnName("unit");
             entity.Property(e => e.WeightPerUnit).HasColumnType("decimal(10, 2)").HasColumnName("weight_per_unit").IsRequired(false);
+            entity.Property(e => e.VolumePerUnit).HasColumnType("decimal(10, 2)").HasColumnName("volume_per_unit").IsRequired(false);
             entity.Property(e => e.Description).HasColumnName("description").IsRequired(false);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.HasOne(d => d.Renter).WithMany().HasForeignKey(d => d.RenterId)

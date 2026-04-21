@@ -73,8 +73,21 @@ public class UpdateSubscriptionPackageHandler : IRequestHandler<UpdateSubscripti
         if (package == null)
             return ApiResponse<bool>.ErrorResponse("Không tìm thấy gói cước.");
 
-        if (package.Name != request.Name && await _db.SubscriptionPackages.AnyAsync(p => p.Name == request.Name, cancellationToken))
+        var oldName = package.Name;
+        bool nameChanged = oldName != request.Name;
+
+        if (nameChanged && await _db.SubscriptionPackages.AnyAsync(p => p.Name == request.Name, cancellationToken))
             return ApiResponse<bool>.ErrorResponse("Gói cước với tên này đã tồn tại.");
+
+        // Cascade update all subscriptions that stored the old package name
+        if (nameChanged)
+        {
+            var affectedSubs = await _db.Subscriptions
+                .Where(s => s.Plan == oldName)
+                .ToListAsync(cancellationToken);
+            foreach (var sub in affectedSubs)
+                sub.Plan = request.Name;
+        }
 
         package.Name = request.Name;
         package.Price = request.Price;
@@ -85,7 +98,14 @@ public class UpdateSubscriptionPackageHandler : IRequestHandler<UpdateSubscripti
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        return ApiResponse<bool>.SuccessResponse(true, "Cập nhật gói cước thành công.");
+        var affectedCount = nameChanged
+            ? await _db.Subscriptions.CountAsync(s => s.Plan == request.Name, cancellationToken)
+            : 0;
+        var msg = nameChanged && affectedCount > 0
+            ? $"Cập nhật gói cước thành công. Đã cập nhật tên cho {affectedCount} đăng ký đang dùng gói này."
+            : "Cập nhật gói cước thành công.";
+
+        return ApiResponse<bool>.SuccessResponse(true, msg);
     }
 }
 
