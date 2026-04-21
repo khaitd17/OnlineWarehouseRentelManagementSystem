@@ -231,6 +231,13 @@ const rentalService = {
     return response.data;
   },
 
+  // Tự động phân khu hoặc đổi sang khu cụ thể (chỉ chủ kho)
+  // rentalAreaId: null → auto best-fit; số → gán thẳng khu đó
+  assignRentalArea: async (contractId, rentalAreaId = null) => {
+    const response = await axiosClient.post(`/rental-contracts/${contractId}/assign-area`, { rentalAreaId });
+    return response.data;
+  },
+
   // ── Contract Management & Download APIs ──────────────────────────────────────────
 
   /**

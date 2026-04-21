@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import inventoryService from "../../services/inventoryService";
+import { ReceiptPreviewModal } from "../../components/InventoryReceiptPDF";
 
 /* ── Status config ────────────────────────────────────────────── */
 const STATUS_MAP = {
@@ -48,6 +49,7 @@ export default function RenterInboundList() {
   const [search, setSearch] = useState("");
   const [sf, setSf]         = useState("Tất cả");
   const [conf, setConf]     = useState(null);
+  const [pdfReq, setPdfReq] = useState(null);
   const [successMsg, setSuccessMsg] = useState(location.state?.created ? "Yêu cầu nhập kho đã được tạo thành công!" : "");
 
   const fetchData = useCallback(async () => {
@@ -210,7 +212,14 @@ export default function RenterInboundList() {
                     <td style={td}><Badge s={row.status} /></td>
                     <td style={{ ...td, color: "#64748b" }}>{row.createdAt ? new Date(row.createdAt).toLocaleDateString("vi-VN") : "—"}</td>
                     <td style={{ ...td, textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "4px", justifyContent: "center" }}>
+                      <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+                        <button
+                          title="Xem Phiếu Nhập Kho"
+                          onClick={() => setPdfReq(row)}
+                          style={{ padding: "5px 10px", border: "1.5px solid #e2e8f0", background: "#f8fafc", borderRadius: "7px", cursor: "pointer", color: "#1e293b", fontSize: "0.75rem", fontWeight: 700, fontFamily: "Inter,sans-serif", whiteSpace: "nowrap" }}
+                        >
+                          Xem Phiếu
+                        </button>
                         {row.status === "PENDING" && (
                           <button title="Hủy / Xóa" onClick={() => setConf({ id: row.invReqId })} style={{ padding: "5px", border: "none", background: "#fff7ed", borderRadius: "7px", cursor: "pointer", color: "#ea580c", display: "flex" }}>
                             <span className="material-symbols-outlined" style={{ fontSize: "17px" }}>delete</span>
@@ -236,6 +245,13 @@ export default function RenterInboundList() {
           danger
           onOk={() => doDelete(conf.id)}
           onCancel={() => setConf(null)}
+        />
+      )}
+
+      {pdfReq && (
+        <ReceiptPreviewModal
+          data={pdfReq}
+          onClose={() => setPdfReq(null)}
         />
       )}
     </div>

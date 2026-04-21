@@ -12,4 +12,8 @@ public interface IRentalAreaRepository
     Task UpdateAsync(RentalArea rentalArea, CancellationToken cancellationToken);
     Task DeleteAsync(RentalArea rentalArea, CancellationToken cancellationToken);
     Task<double> GetTotalAllocatedAreaAsync(int warehouseId, CancellationToken cancellationToken);
+    /// <summary>Returns the total allocated FLOOR area (sum of width × length) in m², matching TotalArea unit.</summary>
+    Task<double> GetTotalAllocatedFloorAreaAsync(int warehouseId, CancellationToken cancellationToken);
+    /// <summary>Returns true if the area is linked to any active/pending contract.</summary>
+    Task<bool> IsAreaOccupiedAsync(int id, CancellationToken cancellationToken);
 }

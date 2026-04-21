@@ -506,18 +506,39 @@ const ContractPayment = () => {
         </ol>
       </div>
 
-      {/* Back Button */}
-      <div style={{ marginTop: "2rem", textAlign: "center" }}>
+      {/* Back Buttons */}
+      <div style={{ marginTop: "2rem", display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+        <button
+          onClick={() => {
+            const query = isTerminationPayment
+              ? "?purpose=termination"
+              : isExtensionPayment
+                ? `?purpose=extension&extensionId=${extensionId}`
+                : "";
+            navigate(`/contracts/${id}/payment${query}`);
+          }}
+          style={{
+            padding: "0.75rem 1.5rem", borderRadius: "10px",
+            backgroundColor: "#fff", color: "#0284c7",
+            border: "2px solid #bae6fd", fontWeight: 700,
+            cursor: "pointer", fontSize: "0.9rem",
+            transition: "all 0.18s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f0f9ff"; e.currentTarget.style.borderColor = "#0284c7"; }}
+          onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#fff"; e.currentTarget.style.borderColor = "#bae6fd"; }}
+        >
+          ← Chọn phương thức khác
+        </button>
         <button
           onClick={() => navigate(`/contracts/${id}`)}
           style={{
             padding: "0.75rem 1.5rem", borderRadius: "10px",
             backgroundColor: "#f1f5f9", color: "#64748b",
             border: "1px solid #e2e8f0", fontWeight: 600,
-            cursor: "pointer"
+            cursor: "pointer", fontSize: "0.9rem",
           }}
         >
-          ← Quay lại hợp đồng
+          Về hợp đồng
         </button>
       </div>
     </div>

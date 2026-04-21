@@ -412,6 +412,10 @@ public class ApplicationDbContext : DbContext
             // Verify fields (added via patchSql, mapped manually)
             entity.Property(e => e.VerifiedQuantity).HasColumnName("verified_quantity").IsRequired(false);
             entity.Property(e => e.VerifyNote).HasMaxLength(500).HasColumnName("verify_note").IsRequired(false);
+            // Volume fields (added via direct ALTER TABLE)
+            entity.Property(e => e.EstimatedVolume).HasColumnType("decimal(10, 3)").HasColumnName("EstimatedVolume").IsRequired(false);
+            entity.Property(e => e.VerifiedVolume).HasColumnType("decimal(10, 3)").HasColumnName("VerifiedVolume").IsRequired(false);
+            entity.Property(e => e.VerifiedWeight).HasColumnType("decimal(10, 3)").HasColumnName("VerifiedWeight").IsRequired(false);
             entity.HasOne(d => d.InvReq).WithMany(p => p.InventoryItems).HasForeignKey(d => d.InvReqId).HasConstraintName("FK_inventory_items_request");
             entity.HasOne(d => d.Asset).WithMany(p => p.InventoryItems).HasForeignKey(d => d.AssetId)
                 .IsRequired(false).OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_inventory_items_asset");
@@ -431,6 +435,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ConfirmedBy).HasColumnName("confirmed_by");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.RenterSignatureBase64).HasColumnName("renter_signature_base64").IsRequired(false);
+            entity.Property(e => e.ManagerSignatureBase64).HasColumnName("manager_signature_base64").IsRequired(false);
             entity.Property(e => e.DocumentUrls).HasColumnName("document_urls");
             entity.Property(e => e.RenterId).HasColumnName("renter_id");
             entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");

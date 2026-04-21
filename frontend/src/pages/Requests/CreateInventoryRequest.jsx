@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
 import renterAssetService from '../../services/renterAssetService';
+import aiService from '../../services/aiService';
+import SignatureCanvas from '../../components/SignatureCanvas';
 
 const INBOUND_COLOR = '#0ea5e9';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -10,10 +12,9 @@ const ALLOWED_EXT = /\.(pdf|jpg|jpeg|png|xls|xlsx|doc|docx)$/i;
 const ALLOWED_MIME = ['application/pdf','image/jpeg','image/png','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 const fmtBytes = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}KB` : `${(n/1048576).toFixed(1)}MB`;
 const fileIcon = name => { const e = name.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(e)) return '🖼️'; if(e==='pdf') return '📄'; if(['xls','xlsx'].includes(e)) return '📊'; return '📎'; };
-const newRow = () => ({ id: Date.now()+Math.random(), assetId: null, itemName: '', unit: 'cái', qty: 1, note: '', isNew: false, availableQty: null, search: '', showDrop: false });
+const newRow = () => ({ id: Date.now()+Math.random(), assetId: null, itemName: '', unit: 'cái', qty: 1, note: '', isNew: false, availableQty: null, search: '', showDrop: false, estimatedVolume: '', weightPerUnit: null });
 const inp = (extra={}) => ({ padding:'9px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', fontSize:'0.87rem', outline:'none', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s', boxSizing:'border-box', width:'100%', ...extra });
 const UNITS = ['cái','chiếc','thùng','hộp','kg','tấn','lít','mét','m³','m³','cuộn','bao','pallet','chai','gói','bẹ'];
-const UNITS_PER_M2 = 10;   // Hệ số: 10 đơn vị / m³ khả dụng
 const KG_PER_M3_WARN = 300; // Ngưỡng cảnh báo tải trọng (kg/m³)
 
 function UnitCombobox({ value, onChange, accent }) {
@@ -56,17 +57,216 @@ function UnitCombobox({ value, onChange, accent }) {
   );
 }
 
+/* ── AI Photo Analysis Modal ────────────────────────────────────────────── */
+function AiPhotoModal({ onClose, onImport }) {
+  const fileRef = useRef(null);
+  const [files, setFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [quota, setQuota] = useState(null);
+
+  useEffect(() => {
+    aiService.getQuota().then(r => setQuota(r.data)).catch(() => {});
+    return () => previews.forEach(u => URL.revokeObjectURL(u));
+  }, []);
+
+  useEffect(() => {
+    const urls = files.map(f => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => urls.forEach(u => URL.revokeObjectURL(u));
+  }, [files]);
+
+  const addFiles = useCallback((newFiles) => {
+    setError(null);
+    const images = Array.from(newFiles).filter(f => f.type.startsWith('image/'));
+    if (!images.length) { setError('Chỉ chấp nhận ảnh (JPG, PNG, WEBP).'); return; }
+    setFiles(prev => [...prev, ...images].slice(0, 5));
+  }, []);
+
+  const handleAnalyze = async () => {
+    if (!files.length) { setError('Vui lòng chọn ít nhất 1 ảnh.'); return; }
+    if (quota?.remaining === 0) { setError(`Hết ${quota.dailyLimit} lượt AI hôm nay. Thử lại ngày mai.`); return; }
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const res = await aiService.analyzeItems(files, null, null);
+      setResult(res.data);
+      setQuota(prev => prev ? { ...prev, remaining: prev.remaining - 1, usedToday: prev.usedToday + 1 } : null);
+    } catch (err) {
+      const rawMsg = err?.response?.data?.message || err?.message || '';
+      // Thông báo thân thiện cho lỗi rate limit / quota
+      const friendlyMsg = rawMsg.includes('429') || rawMsg.includes('Resource exhausted') || rawMsg.includes('RESOURCE_EXHAUSTED')
+        ? 'Gemini API đang bận (quá tải tạm thời). Hệ thống sẽ tự thử lại — nếu vẫn lỗi, vui lòng đợi 1-2 phút rồi thử lại.'
+        : rawMsg.includes('503') || rawMsg.includes('unavailable')
+        ? 'Dịch vụ AI tạm thời không khả dụng. Vui lòng thử lại sau ít phút.'
+        : rawMsg || 'Phân tích thất bại, vui lòng thử lại.';
+      setError(friendlyMsg);
+    } finally { setLoading(false); }
+  };
+
+  const handleImport = () => {
+    if (!result?.items?.length) return;
+    const rows = result.items.map(ai => ({
+      id: Date.now() + Math.random(),
+      assetId: null,
+      itemName: ai.name || '',
+      search: ai.name || '',
+      unit: 'cái',
+      qty: ai.quantity || 1,
+      estimatedVolume: ai.estimatedVolumeM3
+        ? parseFloat((ai.estimatedVolumeM3 * (ai.quantity || 1)).toFixed(3))
+        : '',
+      weightPerUnit: null,
+      note: '',
+      isNew: true,
+      availableQty: null,
+      showDrop: false,
+    }));
+    onImport(rows);
+    onClose();
+  };
+
+  const accent = '#6366f1';
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1100, padding:20 }} onClick={onClose}>
+      <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:700, maxHeight:'90vh', overflowY:'auto', boxShadow:'0 24px 80px rgba(0,0,0,0.22)' }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ padding:'22px 28px 16px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'linear-gradient(135deg,#eef2ff,#fff)', borderRadius:'20px 20px 0 0' }}>
+          <div>
+            <p style={{ margin:'0 0 2px', fontSize:'1.05rem', fontWeight:800, color:'#312e81' }}>Phân tích hàng hóa bằng AI</p>
+            <p style={{ margin:0, fontSize:'0.8rem', color:'#64748b' }}>Chụp ảnh hàng → AI tự nhận dạng tên, số lượng và thể tích ước tính</p>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            {quota && (
+              <span style={{ fontSize:'0.75rem', fontWeight:700, color: quota.remaining===0?'#dc2626':'#4f46e5', background: quota.remaining===0?'#fef2f2':'#eef2ff', border:`1px solid ${quota.remaining===0?'#fecaca':'#c7d2fe'}`, borderRadius:8, padding:'3px 10px' }}>
+                Còn {quota.remaining}/{quota.dailyLimit} lượt hôm nay
+              </span>
+            )}
+            <button onClick={onClose} style={{ background:'#f1f5f9', border:'none', borderRadius:8, padding:'6px 12px', cursor:'pointer', fontWeight:700, fontSize:'0.8rem', color:'#64748b' }}>ĐÓNG</button>
+          </div>
+        </div>
+
+        <div style={{ padding:'20px 28px' }}>
+          {/* Upload zone */}
+          {!result && (
+            <div
+              onClick={() => fileRef.current?.click()}
+              style={{ border:`2px dashed ${files.length?accent:'#e2e8f0'}`, borderRadius:14, padding:'32px 20px', textAlign:'center', cursor:'pointer', background: files.length?'#eef2ff':'#f8fafc', transition:'all 0.2s', marginBottom:16 }}
+              onDragOver={e => { e.preventDefault(); }}
+              onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
+            >
+              {files.length ? (
+                <p style={{ margin:0, fontWeight:700, color:accent }}>Đã chọn {files.length} ảnh — nhấp để thêm (tối đa 5)</p>
+              ) : (
+                <>
+                  <p style={{ margin:'0 0 6px', fontWeight:700, color:'#64748b' }}>Kéo thả ảnh vào đây hoặc nhấp để chọn file</p>
+                  <p style={{ margin:0, fontSize:'0.78rem', color:'#94a3b8' }}>JPG, PNG, WEBP — tối đa 5 ảnh</p>
+                </>
+              )}
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept="image/*" multiple style={{ display:'none' }} onChange={e => addFiles(e.target.files)} />
+
+          {/* Previews */}
+          {previews.length > 0 && !result && (
+            <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16 }}>
+              {previews.map((src, i) => (
+                <div key={i} style={{ position:'relative', width:80, height:80, borderRadius:10, overflow:'hidden', border:'2px solid #c7d2fe' }}>
+                  <img src={src} alt={`p${i}`} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                  <button onClick={() => { setFiles(p => p.filter((_,j)=>j!==i)); }} style={{ position:'absolute', top:3, right:3, background:'rgba(239,68,68,0.9)', border:'none', borderRadius:'50%', width:20, height:20, cursor:'pointer', color:'#fff', fontSize:13, lineHeight:'20px', textAlign:'center' }}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div style={{ padding:'10px 14px', borderRadius:10, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.83rem', marginBottom:14 }}>
+              {error}
+            </div>
+          )}
+
+          {/* Loading */}
+          {loading && (
+            <div style={{ textAlign:'center', padding:'24px 0' }}>
+              <div style={{ display:'inline-block', width:28, height:28, border:'3px solid #e2e8f0', borderTop:`3px solid ${accent}`, borderRadius:'50%', animation:'spin 0.8s linear infinite', marginBottom:12 }} />
+              <p style={{ margin:0, color:accent, fontWeight:700, fontSize:'0.9rem' }}>AI đang phân tích ảnh... (10-30 giây)</p>
+            </div>
+          )}
+
+          {/* Results */}
+          {result && (
+            <>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                <p style={{ margin:0, fontWeight:800, fontSize:'0.9rem', color:'#0f172a' }}>Kết quả phân tích — {result.items?.length || 0} mặt hàng · Tổng ~{result.totalVolumeM3} m³</p>
+                <button onClick={() => { setResult(null); setFiles([]); setError(null); }}
+                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:'0.78rem', fontWeight:600, color:'#475569' }}>
+                  Phân tích lại
+                </button>
+              </div>
+              <div style={{ border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden', marginBottom:16 }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.83rem' }}>
+                  <thead>
+                    <tr style={{ background:'#f8fafc' }}>
+                      {['Tên hàng hóa','Số lượng','Thể tích/cái (m³)','Tổng thể tích (m³)'].map(h => (
+                        <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontWeight:700, color:'#64748b', fontSize:'0.7rem', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #f1f5f9' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(result.items||[]).map((ai, i) => (
+                      <tr key={i} style={{ borderBottom:'1px solid #f9fafb' }}>
+                        <td style={{ padding:'10px 14px', fontWeight:600, color:'#1e293b' }}>{ai.name}</td>
+                        <td style={{ padding:'10px 14px', color:'#374151' }}>{ai.quantity || 1}</td>
+                        <td style={{ padding:'10px 14px', color:'#6366f1', fontWeight:600 }}>{(ai.estimatedVolumeM3||0).toFixed(4)}</td>
+                        <td style={{ padding:'10px 14px', color:'#4f46e5', fontWeight:700 }}>
+                          {((ai.estimatedVolumeM3||0)*(ai.quantity||1)).toFixed(3)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {result.specialNotes && (
+                <div style={{ padding:'10px 14px', borderRadius:10, background:'#fffbeb', border:'1px solid #fde68a', fontSize:'0.82rem', color:'#92400e', marginBottom:14 }}>
+                  Lưu ý từ AI: {result.specialNotes}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Actions */}
+          <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:4 }}>
+            {!result ? (
+              <button onClick={handleAnalyze} disabled={loading || !files.length}
+                style={{ padding:'11px 26px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.9rem', cursor: (!files.length||loading)?'not-allowed':'pointer', color:'#fff', background: (!files.length||loading)?'#e2e8f0':`linear-gradient(135deg,${accent},#8b5cf6)`, boxShadow: (!files.length||loading)?'none':'0 4px 16px rgba(99,102,241,0.4)', transition:'all 0.2s', display:'flex', alignItems:'center', gap:8 }}>
+                {loading && <span style={{ display:'inline-block', width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />}
+                {loading ? 'Đang phân tích...' : 'Phân tích với AI'}
+              </button>
+            ) : (
+              <button onClick={handleImport}
+                style={{ padding:'11px 28px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.9rem', cursor:'pointer', color:'#fff', background:'linear-gradient(135deg,#10b981,#059669)', boxShadow:'0 4px 16px rgba(16,185,129,0.4)', transition:'all 0.2s' }}>
+                Nhập {result.items?.length} mặt hàng vào yêu cầu
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Searchable row (INBOUND only) ─────────────────────────────────────── */
-function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, onEnter, canRemove, maxQty, contractedArea }) {
+function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, onEnter, canRemove, contractedArea }) {
   const ref = useRef(null);
   const KG_PER_M3 = 500; // tải trọng sàn kho tiêu chuẩn kg/m³
   const filtered = (item.search ? list.filter(a=>(a.assetName||'').toLowerCase().includes(item.search.toLowerCase())) : list).slice(0,20);
 
   // OUTBOUND: vượt tồn kho (hard block)
   const isOver = type==='OUTBOUND' && item.availableQty!==null && Number(item.qty)>item.availableQty;
-
-  // INBOUND tầng 2 — soft warning số lượng (vàng, không chặn)
-  const isOverCapacity = type==='INBOUND' && maxQty !== null && Number(item.qty) > maxQty;
 
   // INBOUND tầng 1 — hard warning trọng lượng (đỏ, chặn ở backend)
   const itemWeight = item.weightPerUnit && Number(item.weightPerUnit) > 0
@@ -105,7 +305,7 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
                       unit: a.unit||'cái', search: a.assetName,
                       availableQty: a.quantity??null, isNew: false,
                       showDrop: false,
-                      weightPerUnit: a.weightPerUnit || null  // ← pass cân nặng đơn vị
+                      weightPerUnit: a.weightPerUnit || null
                     })}
                     style={{ padding:'9px 14px', cursor:'pointer', fontSize:'0.85rem', display:'flex', justifyContent:'space-between', alignItems:'center' }}
                     onMouseEnter={e=>e.currentTarget.style.background='#f1f5f9'} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
@@ -136,29 +336,24 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
           value={item.qty} onChange={e=>onUpdate({ qty:e.target.value })}
           onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEnter(); }}}
           style={{ ...inp(),
-            borderColor: isOver ? '#fca5a5' : isOverWeight ? '#fca5a5' : isOverCapacity ? '#fde68a' : '#e2e8f0',
-            color: isOver ? '#dc2626' : isOverWeight ? '#dc2626' : isOverCapacity ? '#b45309' : '#1e293b',
+            borderColor: isOver ? '#fca5a5' : isOverWeight ? '#fca5a5' : '#e2e8f0',
+            color: isOver ? '#dc2626' : isOverWeight ? '#dc2626' : '#1e293b',
             fontWeight:700 }} />
-        {/* Tầng 1 — Hard: trọng lượng vượt (đỏ, backend sẽ block) */}
         {isOverWeight && (
           <div style={{ fontSize:'0.68rem', color:'#dc2626', marginTop:3, fontWeight:600, lineHeight:1.3 }}>
             🚫 Tải trọng vượt giới hạn sàn kho<br/>
             ({itemWeight?.toLocaleString('vi-VN')} kg / tối đa {maxWeightKg?.toLocaleString('vi-VN')} kg)
           </div>
         )}
-        {/* Tầng 2 — Soft: số lượng vượt ước tính (vàng, vẫn submit được) */}
-        {!isOverWeight && isOverCapacity && (
-          <div style={{ fontSize:'0.68rem', color:'#b45309', marginTop:3, fontWeight:600, lineHeight:1.3 }}>
-            ⚠️ Vượt ước tính ({maxQty?.toLocaleString('vi-VN')} đơn vị)<br/>
-            <span style={{ fontWeight:400, color:'#78716c' }}>Hàng nhẹ/nhỏ: Manager sẽ xem xét</span>
-          </div>
-        )}
-        {/* Hiển thị cân nặng ước tính nếu có */}
-        {!isOverWeight && !isOverCapacity && itemWeight !== null && itemWeight > 0 && (
+        {!isOverWeight && itemWeight !== null && itemWeight > 0 && (
           <div style={{ fontSize:'0.67rem', color:'#94a3b8', marginTop:2 }}>
             ~{itemWeight >= 1000 ? `${(itemWeight/1000).toFixed(1)} tấn` : `${itemWeight.toLocaleString('vi-VN')} kg`}
           </div>
         )}
+      </td>
+      <td style={{ padding:'6px 8px', width:120 }}>
+        <input type="number" min={0} step={0.001} value={item.estimatedVolume||''} onChange={e=>onUpdate({ estimatedVolume:e.target.value })}
+          placeholder="m³" style={{ ...inp(), fontSize:'0.82rem', color:'#4f46e5', fontWeight:600 }}/>
       </td>
       <td style={{ padding:'6px 8px', minWidth:160 }}>
         <input value={item.note||''} onChange={e=>onUpdate({ note:e.target.value })}
@@ -207,7 +402,6 @@ function OutboundInventoryTable({ inventory, loading, selectedItems, setSelected
 
   if (!loading && inventory.length === 0) return (
     <div style={{ padding:'48px 24px', textAlign:'center' }}>
-      <div style={{ fontSize:'3rem', marginBottom:12 }}>📭</div>
       <div style={{ fontWeight:700, fontSize:'1rem', color:'#1e293b', marginBottom:6 }}>Kho hiện không có hàng hóa</div>
       <div style={{ fontSize:'0.83rem', color:'#94a3b8' }}>Chưa có mặt hàng nào được nhập vào kho này.</div>
     </div>
@@ -383,11 +577,19 @@ export default function CreateInventoryRequest() {
   const [error, setError] = useState('');
   const [draftSaved, setDraftSaved] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [signModalOpen, setSignModalOpen] = useState(false);
+  const signatureCanvasRef = useRef(null);
   const DRAFT_KEY = 'inv_req_draft';
 
-  // Warehouse detail for capacity validation
-  const [selectedWarehouseDetail, setSelectedWarehouseDetail] = useState(null);
-  const [loadingWHDetail, setLoadingWHDetail] = useState(false);
+  // Import AI-analyzed rows into the items table
+  const handleAiImport = (rows) => {
+    setItems(prev => {
+      // Remove empty placeholder rows (first row if untouched)
+      const cleaned = prev.filter(i => i.itemName || i.search);
+      return cleaned.length ? [...cleaned, ...rows] : rows;
+    });
+  };
 
   useEffect(()=>{
     try {
@@ -424,7 +626,7 @@ export default function CreateInventoryRequest() {
   const accent = type==='INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
   const selectedWH = warehouses.find(w=>w.warehouseId===warehouseId);
 
-  // Load warehouses — trích luôn requestedArea từ contract response
+  // Load warehouses
   useEffect(()=>{
     axiosClient.get('/rental-contracts/my-contracts')
       .then(res=>{
@@ -438,7 +640,7 @@ export default function CreateInventoryRequest() {
               name: c.warehouseName||`Kho #${c.warehouseId}`,
               status: c.status,
               contractNumber: c.contractNumber,
-              requestedArea: c.requestedArea || 0,  // ← diện tích hợp đồng của renter
+              requestedArea: c.requestedArea || 0,
             });
           }
           return acc;
@@ -450,28 +652,14 @@ export default function CreateInventoryRequest() {
       .finally(()=>setLoadingWH(false));
   },[]);
 
-  // Tính maxQty từ diện tích hợp đồng của renter (KHÔNG dùng availableArea của kho)
   const selectedWHData = warehouses.find(w=>w.warehouseId===warehouseId);
-  const contractedArea = selectedWHData?.requestedArea ?? 0;
-  const maxQty = contractedArea > 0 ? Math.floor(contractedArea * UNITS_PER_M2) : null;
+  const contractedVolume = selectedWHData?.requestedArea ?? 0;
+  const contractedArea   = contractedVolume; // alias for weight check in ItemRow
 
-  // Tồn kho hiện tại của renter trong kho này (COMPLETED inbound)
-  const [currentStock, setCurrentStock] = useState(0);
-  const [loadingStock, setLoadingStock] = useState(false);
-  useEffect(()=>{
-    if(!warehouseId || type!=='INBOUND'){ setCurrentStock(0); return; }
-    setLoadingStock(true);
-    axiosClient.get(`/renter-assets/my-inventory?warehouseId=${warehouseId}`)
-      .then(res=>{
-        const rows = Array.isArray(res.data) ? res.data : [];
-        setCurrentStock(rows.reduce((sum, r) => sum + (r.quantity || 0), 0));
-      })
-      .catch(()=>setCurrentStock(0))
-      .finally(()=>setLoadingStock(false));
-  },[warehouseId, type]);
-
-  // Số đơn vị còn có thể nhập = giới hạn hợp đồng − tồn kho hiện tại
-  const remainingQty = maxQty !== null ? Math.max(0, maxQty - currentStock) : null;
+  // Tổng thể tích ước tính từ các items đang điền
+  const totalEstimatedVol = items.reduce((sum, i) => sum + (Number(i.estimatedVolume)||0), 0);
+  const volumeUsagePercent = contractedVolume > 0 ? (totalEstimatedVol / contractedVolume) * 100 : 0;
+  const isVolumeOverContract = totalEstimatedVol > contractedVolume && contractedVolume > 0;
 
   // Load assets for INBOUND
   useEffect(()=>{
@@ -498,20 +686,6 @@ export default function CreateInventoryRequest() {
   const addRow = () => setItems(prev=>[...prev,newRow()]);
   const removeRow = id => setItems(prev=>prev.length>1?prev.filter(i=>i.id!==id):prev);
 
-  // OUTBOUND helpers
-  const handleToggle = (asset) => {
-    setSelectedItems(prev => {
-      const cur = prev[asset.assetId] || { checked:false, qty:1, note:'' };
-      return { ...prev, [asset.assetId]: { ...cur, checked:!cur.checked } };
-    });
-  };
-  const handleQtyChange = (assetId, val) => {
-    setSelectedItems(prev => ({ ...prev, [assetId]: { ...(prev[assetId]||{ checked:true, note:'' }), qty: val } }));
-  };
-  const handleNoteChange = (assetId, val) => {
-    setSelectedItems(prev => ({ ...prev, [assetId]: { ...(prev[assetId]||{ checked:true, qty:1 }), note: val } }));
-  };
-
   const handleProceed = () => {
     if(!warehouseId){ setError('Vui lòng chọn kho.'); return; }
     setError('');
@@ -535,7 +709,6 @@ export default function CreateInventoryRequest() {
     setError('');
 
     if(type === 'OUTBOUND') {
-      // Validate outbound selectedItems
       const chosen = inventory.filter(a => selectedItems[a.assetId]?.checked);
       if(!chosen.length){ setError('Vui lòng chọn ít nhất 1 mặt hàng.'); return; }
       for(const asset of chosen){
@@ -543,6 +716,29 @@ export default function CreateInventoryRequest() {
         if(!s.qty || Number(s.qty) < 1){ setError(`"${asset.assetName}": Số lượng phải >= 1.`); return; }
         if(Number(s.qty) > asset.quantity){ setError(`"${asset.assetName}": Số lượng vượt tồn kho (${asset.quantity}).`); return; }
       }
+      setSignModalOpen(true);
+      return;
+    }
+
+    const valid=items.filter(i=>i.itemName.trim()||i.assetId);
+    if(!valid.length){setError('Vui lòng thêm ít nhất 1 mặt hàng.');return;}
+    for(const it of valid){
+      if(!it.itemName.trim()){setError('Vui lòng nhập tên hàng hóa.');return;}
+      if(!it.qty||Number(it.qty)<1){setError('Số lượng phải >= 1.');return;}
+    }
+    setSignModalOpen(true);
+  };
+
+  const submitToServer = async () => {
+    if (!signatureCanvasRef.current || signatureCanvasRef.current.isEmpty()) {
+      setError('Vui lòng vẽ chữ ký của bạn trước khi gửi yêu cầu.');
+      return;
+    }
+    const signatureBase64 = signatureCanvasRef.current.toBase64();
+    setSignModalOpen(false);
+
+    if(type === 'OUTBOUND') {
+      const chosen = inventory.filter(a => selectedItems[a.assetId]?.checked);
       setSubmitting(true);
       try {
         let docUrls=uploadedUrls;
@@ -554,7 +750,7 @@ export default function CreateInventoryRequest() {
           unit: asset.unit||'cái',
           description: selectedItems[asset.assetId].note||null,
         }));
-        await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'OUTBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processedItems });
+        await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'OUTBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processedItems, renterSignatureBase64: signatureBase64 });
         clearDraft();
         navigate('/renter-inventory-history?tab=outbound',{state:{created:true,type:'OUTBOUND'}});
       } catch(err){ setError(err?.response?.data?.message || err?.message || 'Tạo yêu cầu thất bại.'); }
@@ -562,16 +758,7 @@ export default function CreateInventoryRequest() {
       return;
     }
 
-    // INBOUND validation
     const valid=items.filter(i=>i.itemName.trim()||i.assetId);
-    if(!valid.length){setError('Vui lòng thêm ít nhất 1 mặt hàng.');return;}
-    for(const it of valid){
-      if(!it.itemName.trim()){setError('Vui lòng nhập tên hàng hóa.');return;}
-      if(!it.qty||Number(it.qty)<1){setError('Số lượng phải >= 1.');return;}
-    }
-    // Lưu ý: Số lượng vượt ước tính diện tích (soft warning) KHÔNG bị chặn ở đây.
-    // Backend sẽ chặn nếu TỔNG TRỌNG LƯỢNG vượt tải trọng sàn kho (500 kg/m³).
-    // Hàng nhẹ (bút, hộp giấy...) sẽ qua được và Manager approval sẽ là gate cuối cùng.
     setSubmitting(true);
     try {
       let docUrls=uploadedUrls;
@@ -583,9 +770,9 @@ export default function CreateInventoryRequest() {
           const r=await renterAssetService.createAsset({assetName:it.itemName.trim(),unit:it.unit,weightPerUnit:null});
           assetId=r.data.assetId;
         }
-        processed.push({ assetId, itemName:it.itemName.trim(), quantity:Number(it.qty), unit:it.unit, description:it.note||null });
+        processed.push({ assetId, itemName:it.itemName.trim(), quantity:Number(it.qty), unit:it.unit, description:it.note||null, estimatedVolume: it.estimatedVolume ? Number(it.estimatedVolume) : null });
       }
-      await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'INBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed });
+      await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'INBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed, renterSignatureBase64: signatureBase64 });
       clearDraft();
       navigate('/renter-inventory-history?tab=inbound',{state:{created:true,type:'INBOUND'}});
     } catch(err){ setError(err?.response?.data?.message || err?.message || 'Tạo yêu cầu thất bại.'); }
@@ -593,16 +780,12 @@ export default function CreateInventoryRequest() {
   };
 
   const card = { background:'#fff', borderRadius:16, border:'1px solid #e2e8f0', boxShadow:'0 2px 12px rgba(0,0,0,0.04)' };
-
-  // Count for action bar
   const outboundCheckedCount = Object.values(selectedItems).filter(v=>v.checked).length;
   const inboundFilledCount = items.filter(i=>i.itemName.trim()).length;
   const itemCount = type==='OUTBOUND' ? outboundCheckedCount : inboundFilledCount;
 
   return (
     <div style={{ fontFamily:'Inter, sans-serif', maxWidth:920, margin:'0 auto', paddingBottom:60 }}>
-
-      {/* Banner phục hồi nháp */}
       {hasDraft && (
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderRadius:12, background:'#fffbeb', border:'1.5px solid #fde68a', marginBottom:18 }}>
           <span style={{ fontSize:'1.1rem' }}>📝</span>
@@ -634,10 +817,8 @@ export default function CreateInventoryRequest() {
         </div>
       </div>
 
-      {/* Error */}
       {error&&<div style={{ padding:'11px 16px', borderRadius:10, marginBottom:18, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.87rem', fontWeight:600 }}>⚠️ {error}</div>}
 
-      {/* ── STEP 1 ── */}
       {step===1&&(
         <div style={{ ...card, padding:32 }}>
           <div style={{ marginBottom:28 }}>
@@ -664,37 +845,17 @@ export default function CreateInventoryRequest() {
                   <div style={{ flex:1 }}>
                     <div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1e293b' }}>{wh.name}</div>
                     {wh.contractNumber&&<div style={{ fontSize:'0.77rem', color:'#64748b', marginTop:2 }}>HĐ: {wh.contractNumber}</div>}
-                    {/* Capacity badges — chỉ hiện khi kho này được chọn và là INBOUND */}
                     {warehouseId===wh.warehouseId && type==='INBOUND' && (
                       <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
                         {wh.requestedArea > 0 ? (
-                          loadingStock ? (
-                            <span style={{ fontSize:'0.7rem', color:'#94a3b8' }}>Đang tính tồn kho...</span>
-                          ) : (
                           <>
-                            {/* Còn có thể nhập (ước tính đơn vị) */}
-                            <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700,
-                              background: remainingQty === 0 ? '#fef2f2' : '#f0fdf4',
-                              border: `1px solid ${remainingQty === 0 ? '#fecaca' : '#bbf7d0'}`,
-                              color: remainingQty === 0 ? '#dc2626' : '#15803d' }}>
-                              Còn ước tính: {(remainingQty ?? 0).toLocaleString('vi-VN')} đơn vị
-                            </span>
-                            {/* Tải trọng sàn kho (hard limit vật lý) */}
-                            <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#faf5ff', border:'1px solid #e9d5ff', color:'#7c3aed' }}>
-                              Tải trọng: {(wh.requestedArea * 500).toLocaleString('vi-VN')} kg tối đa
-                            </span>
-                            {/* Đã có trong kho */}
-                            {currentStock > 0 && (
-                              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#fff7ed', border:'1px solid #fed7aa', color:'#c2410c' }}>
-                                Đang lưu kho: {currentStock.toLocaleString('vi-VN')} đơn vị
-                              </span>
-                            )}
-                            {/* Diện tích hợp đồng */}
                             <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8' }}>
-                              HĐ: {wh.requestedArea.toLocaleString('vi-VN')} m³ / ~{maxQty?.toLocaleString('vi-VN')} đơn vị ước tính
+                              Sức chứa: {wh.requestedArea.toLocaleString('vi-VN')} m³
+                            </span>
+                            <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#faf5ff', border:'1px solid #e9d5ff', color:'#7c3aed' }}>
+                              Tải trọng tối đa: {(wh.requestedArea * 500).toLocaleString('vi-VN')} kg
                             </span>
                           </>
-                          )
                         ) : (
                           <span style={{ fontSize:'0.7rem', color:'#94a3b8' }}>Đang tải thông tin hợp đồng...</span>
                         )}
@@ -705,32 +866,22 @@ export default function CreateInventoryRequest() {
                     {warehouseId===wh.warehouseId && type==='OUTBOUND' && (
                       <div style={{ marginTop:8 }}>
                         {loadingInv ? (
-                          <span style={{ fontSize:'0.72rem', color:'#94a3b8' }}>⏳ Đang tải tồn kho...</span>
+                          <span style={{ fontSize:'0.72rem', color:'#94a3b8' }}>Đang tải tồn kho...</span>
                         ) : inventory.length === 0 ? (
-                          <span style={{ fontSize:'0.72rem', color:'#dc2626', fontWeight:600 }}>📭 Kho này hiện không có hàng hóa nào</span>
+                          <span style={{ fontSize:'0.72rem', color:'#dc2626', fontWeight:600 }}>Kho này hiện không có hàng hóa nào</span>
                         ) : (
-                          <div>
-                            {/* Tổng quan */}
-                            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginBottom:6 }}>
-                              <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#fff8e1', border:'1px solid #fde68a', color:'#d97706' }}>
-                                {inventory.length} mặt hàng · {inventory.reduce((s,i)=>s+(i.quantity||0),0).toLocaleString('vi-VN')} đơn vị
+                          <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                            {inventory.slice(0,5).map(item=>(
+                              <span key={item.assetId} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 10px', borderRadius:20, fontSize:'0.7rem', fontWeight:600, background:'#fafafa', border:'1px solid #e2e8f0', color:'#374151' }}>
+                                {item.assetName||item.itemName}
+                                <span style={{ color:accent, fontWeight:700 }}>×{(item.quantity||0).toLocaleString('vi-VN')}</span>
                               </span>
-                            </div>
-                            {/* Chip từng mặt hàng (max 5, còn lại badge +N) */}
-                            <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                              {inventory.slice(0,5).map(item=>(
-                                <span key={item.assetId} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 10px', borderRadius:20, fontSize:'0.7rem', fontWeight:600, background:'#fafafa', border:'1px solid #e2e8f0', color:'#374151' }}>
-                                  {item.assetName||item.itemName}
-                                  <span style={{ color:accent, fontWeight:700 }}>×{(item.quantity||0).toLocaleString('vi-VN')}</span>
-                                  {item.unit && <span style={{ color:'#94a3b8' }}>{item.unit}</span>}
-                                </span>
-                              ))}
-                              {inventory.length > 5 && (
-                                <span style={{ display:'inline-flex', alignItems:'center', padding:'2px 10px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:`${accent}15`, border:`1px solid ${accent}40`, color:accent }}>
-                                  +{inventory.length-5} mặt hàng khác
-                                </span>
-                              )}
-                            </div>
+                            ))}
+                            {inventory.length > 5 && (
+                              <span style={{ display:'inline-flex', alignItems:'center', padding:'2px 10px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:`${accent}15`, border:`1px solid ${accent}40`, color:accent }}>
+                                +{inventory.length-5} mặt hàng khác
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
@@ -783,14 +934,41 @@ export default function CreateInventoryRequest() {
                   accent={accent}
                 />
               : <>
-                  <div style={{ padding:'16px 22px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:10 }}>
-                    <span style={{ fontWeight:800, fontSize:'0.97rem', color:'#0f172a' }}>Danh sách hàng hóa</span>
+                  <div style={{ padding:'16px 22px', borderBottom:'1px solid #f1f5f9' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                        <span style={{ fontWeight:800, fontSize:'0.97rem', color:'#0f172a' }}>Danh sách hàng hóa</span>
+                        {/* AI analyze button */}
+                        <button onClick={()=>setAiModalOpen(true)}
+                          style={{ padding:'5px 14px', borderRadius:8, border:'1.5px solid #c7d2fe', background:'#eef2ff', cursor:'pointer', fontWeight:700, fontSize:'0.78rem', color:'#4f46e5', transition:'all 0.15s' }}
+                          onMouseEnter={e=>{e.currentTarget.style.background='#e0e7ff'; e.currentTarget.style.borderColor='#818cf8';}}
+                          onMouseLeave={e=>{e.currentTarget.style.background='#eef2ff'; e.currentTarget.style.borderColor='#c7d2fe';}}>
+                          Phân tích AI
+                        </button>
+                      </div>
+                      {/* Volume summary bar */}
+                      {contractedVolume > 0 && (
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          <div style={{ width:160, height:7, borderRadius:4, background:'#e2e8f0', overflow:'hidden' }}>
+                            <div style={{ height:'100%', borderRadius:4, transition:'width 0.4s', width:`${Math.min(100,volumeUsagePercent)}%`, background: isVolumeOverContract ? '#ef4444' : volumeUsagePercent > 80 ? '#f59e0b' : '#22c55e' }} />
+                          </div>
+                          <span style={{ fontSize:'0.78rem', fontWeight:700, color: isVolumeOverContract ? '#dc2626' : volumeUsagePercent > 80 ? '#d97706' : '#15803d' }}>
+                            {totalEstimatedVol.toFixed(2)} / {contractedVolume} m³
+                          </span>
+                          {isVolumeOverContract && (
+                            <span style={{ fontSize:'0.74rem', fontWeight:700, color:'#dc2626', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:6, padding:'2px 8px' }}>
+                              Vượt sức chứa — Manager có thể từ chối
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <table style={{ width:'100%', borderCollapse:'collapse' }}>
                       <thead>
                         <tr style={{ background:'#f8fafc' }}>
-                          {['#', 'Hàng hóa / Tài sản', 'Đơn vị', 'Số lượng', 'Ghi chú', ''].map((h,i)=>(
+                          {['#', 'Hàng hóa / Tài sản', 'Đơn vị', 'Số lượng', 'Thể tích ước tính (m³)', 'Ghi chú', ''].map((h,i)=>(
                             <th key={i} style={{ padding:'10px 14px', fontSize:'0.7rem', fontWeight:700, color:'#94a3b8', textAlign:'left', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
                           ))}
                         </tr>
@@ -803,8 +981,8 @@ export default function CreateInventoryRequest() {
                             onRemove={()=>removeRow(item.id)}
                             onEnter={addRow}
                             canRemove={items.length>1}
-                            maxQty={remainingQty}
                             contractedArea={contractedArea}
+                            contractedVolume={contractedVolume}
                           />
                         ))}
                       </tbody>
@@ -824,7 +1002,7 @@ export default function CreateInventoryRequest() {
 
           {/* Docs + Notes card */}
           <div style={{ ...card, padding:24 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:22, paddingBottom:18, borderBottom:'1px solid #f1f5f9' }}>
+            <div style={{ display:'flex', alignItems:'flex-end', gap:16, marginBottom:22, paddingBottom:18, borderBottom:'1px solid #f1f5f9' }}>
               <div style={{ flex:'0 0 auto' }}>
                 <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 8px' }}>
                   {type==='INBOUND'?'Ngày dự kiến nhập kho':'Ngày dự kiến xuất kho'}
@@ -915,6 +1093,44 @@ export default function CreateInventoryRequest() {
         .wh-card:nth-child(3) { animation-delay: 0.12s; }
         .wh-card:nth-child(4) { animation-delay: 0.18s; }
       `}</style>
+
+      {/* Signature Modal */}
+      {signModalOpen && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={() => setSignModalOpen(false)}>
+          <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:500, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
+            <h2 style={{ margin:0, fontSize:'1.4rem', fontWeight:800, color:'#0f172a', marginBottom:12 }}>
+              Ký xác nhận phiếu yêu cầu
+            </h2>
+            <p style={{ color:'#64748b', fontSize:'0.9rem', marginBottom:24 }}>
+              Chữ ký này sẽ được lấy làm chữ ký của "Người lập phiếu" trong bản PDF Phiếu nhập/xuất kho.
+            </p>
+            
+            <div style={{ border: '2px dashed #cbd5e1', borderRadius: '12px', overflow: 'hidden', background: '#f8fafc', marginBottom: 20 }}>
+              <SignatureCanvas ref={signatureCanvasRef} canvasProps={{width: 436, height: 200}} />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button onClick={() => signatureCanvasRef.current?.clear()} style={{ flex: 1, padding: '12px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', fontWeight: 600, cursor: 'pointer' }}>
+                Xóa làm lại
+              </button>
+              <button onClick={submitToServer} style={{ flex: 2, padding: '12px', background: accent, color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', boxShadow: `0 4px 12px ${accent}40` }}>
+                Xác nhận & Gửi yêu cầu
+              </button>
+            </div>
+            <button onClick={() => setSignModalOpen(false)} style={{ width: '100%', padding: '12px', background: 'transparent', color: '#64748b', border: 'none', cursor: 'pointer', marginTop: 12, fontWeight: 600 }}>
+              Đóng (hủy gửi)
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* AI Photo Modal */}
+      {aiModalOpen && type==='INBOUND' && (
+        <AiPhotoModal
+          onClose={() => setAiModalOpen(false)}
+          onImport={handleAiImport}
+        />
+      )}
     </div>
   );
 }

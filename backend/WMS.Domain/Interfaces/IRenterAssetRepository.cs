@@ -42,6 +42,13 @@ public interface IRenterAssetRepository
     /// Trả về "" nếu user không có membership.
     /// </summary>
     Task<string> GetHighestWarehouseRoleAsync(int userId, int warehouseId, CancellationToken ct);
+
+    /// <summary>
+    /// Xóa toàn bộ tồn kho (renter_inventory) của 1 renter tại 1 kho cụ thể.
+    /// Được gọi khi hợp đồng kết thúc / bị hủy để tránh tồn kho cũ hiển thị sai
+    /// trong hợp đồng mới hoặc khi renter không còn thuê kho đó.
+    /// </summary>
+    Task ClearRenterInventoryAsync(int renterId, int warehouseId, CancellationToken ct);
 }
 
 public record RenterInventoryRowDto

@@ -140,4 +140,26 @@ public class RenterAssetRepository : IRenterAssetRepository
         }
         return "";
     }
+
+    public async Task ClearRenterInventoryAsync(int renterId, int warehouseId, CancellationToken ct)
+    {
+        // Lấy tất cả asset_id thuộc renter này
+        var assetIds = await _db.RenterAssets
+            .Where(a => a.RenterId == renterId)
+            .Select(a => a.AssetId)
+            .ToListAsync(ct);
+
+        if (!assetIds.Any()) return;
+
+        // Xóa toàn bộ tồn kho tại kho đó
+        var rows = await _db.RenterInventories
+            .Where(ri => assetIds.Contains(ri.AssetId) && ri.WarehouseId == warehouseId)
+            .ToListAsync(ct);
+
+        if (rows.Any())
+        {
+            _db.RenterInventories.RemoveRange(rows);
+            await _db.SaveChangesAsync(ct);
+        }
+    }
 }

@@ -27,13 +27,15 @@ public class RentalContractsController : ControllerBase
     private readonly IRentalContractRepository _contractRepo;
     private readonly IWebHostEnvironment _env;
     private readonly ApplicationDbContext _db;
+    private readonly IRentalAreaRepository _rentalAreaRepo;
 
-    public RentalContractsController(IMediator mediator, IRentalContractRepository contractRepo, IWebHostEnvironment env, ApplicationDbContext db)
+    public RentalContractsController(IMediator mediator, IRentalContractRepository contractRepo, IWebHostEnvironment env, ApplicationDbContext db, IRentalAreaRepository rentalAreaRepo)
     {
         _mediator = mediator;
         _contractRepo = contractRepo;
         _env = env;
         _db = db;
+        _rentalAreaRepo = rentalAreaRepo;
     }
 
     private int GetUserId()
@@ -501,6 +503,91 @@ public class RentalContractsController : ControllerBase
     }
 
     /// <summary>
+    /// Owner phân / đổi khu cho hợp đồng.
+    /// Nếu body.RentalAreaId có giá trị → gán thẳng khu đó.
+    /// Nếu không → auto best-fit (zone nhỏ nhất đủ thể tích, còn trống).
+    /// Cho phép gọi nhiều lần để đổi khu.
+    /// </summary>
+    [HttpPost("{id}/assign-area")]
+    public async Task<IActionResult> AssignRentalArea(int id, [FromBody] AssignAreaRequest? body = null)
+    {
+        try
+        {
+            var ownerId = GetUserId();
+
+            // Lấy hợp đồng + request liên kết
+            var contract = await _db.Contracts
+                .Include(c => c.Warehouse)
+                .Include(c => c.Request)
+                .FirstOrDefaultAsync(c => c.ContractId == id);
+
+            if (contract == null)
+                return NotFound(new { message = "Hợp đồng không tồn tại." });
+
+            // Chỉ chủ kho mới được phân khu
+            if (contract.Warehouse?.OwnerId != ownerId)
+                return StatusCode(403, new { message = "Bạn không phải chủ kho này." });
+
+            if (contract.Request == null)
+                return BadRequest(new { message = "Hợp đồng không có yêu cầu thuê liên kết." });
+
+            var needed = contract.Request.RequestedArea;
+            var currentAreaId = contract.Request.RentalAreaId; // khu hiện tại (nếu đã có)
+
+            // Lấy tất cả zone có occupancy
+            var allAreas = await _rentalAreaRepo
+                .GetWithOccupancyByWarehouseIdAsync(contract.WarehouseId, CancellationToken.None);
+
+            // Zone này có "trống" với ngữ cảnh hiện tại không?
+            // (khu đang gán cho chính hợp đồng này thì coi như trống để có thể reassign sang khu khác)
+            bool IsAvailableForThis(WMS.Domain.Entities.RentalArea a) =>
+                !a.IsOccupied || a.Id == currentAreaId;
+
+            WMS.Domain.Entities.RentalArea? candidate;
+
+            if (body?.RentalAreaId.HasValue == true)
+            {
+                // ── Gán thẳng khu do owner chỉ định ──────────────────────
+                candidate = allAreas.FirstOrDefault(a => a.Id == body.RentalAreaId.Value);
+                if (candidate == null)
+                    return BadRequest(new { message = "Ô khu không tồn tại trong kho này." });
+
+                if (!IsAvailableForThis(candidate))
+                    return BadRequest(new { message = $"Ô khu '{candidate.Name}' đang được thuê bởi hợp đồng khác." });
+            }
+            else
+            {
+                // ── Auto best-fit ──────────────────────────────────────────
+                candidate = allAreas
+                    .Where(a => IsAvailableForThis(a) && a.Size >= needed)
+                    .OrderBy(a => a.Size)
+                    .FirstOrDefault();
+
+                if (candidate == null)
+                    return BadRequest(new { message = $"Không có ô khu trống nào đủ {needed} m³. Vui lòng thêm ô khu mới hoặc giãn ra sau." });
+            }
+
+            // Gán / Đổi khu cho request
+            contract.Request.RentalAreaId = candidate.Id;
+            contract.Request.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+
+            var action = currentAreaId == null ? "Đã phân" : "Đã đổi sang";
+            return Ok(new
+            {
+                message = $"{action} '{candidate.Name}' ({candidate.Size} m³) cho hợp đồng này.",
+                rentalAreaId = candidate.Id,
+                name = candidate.Name,
+                size = candidate.Size
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Lỗi hệ thống", error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Extend contract (creates extension payment)
     /// </summary>
     [HttpPost("{id}/extend")]
@@ -603,4 +690,10 @@ public class DeclineContractDto
 public class ExtendContractRequest
 {
     public int ExtensionMonths { get; set; }
+}
+
+public class AssignAreaRequest
+{
+    /// <summary>Nếu có giá trị → gán khu cụ thể này. Nếu null → auto best-fit.</summary>
+    public int? RentalAreaId { get; set; }
 }

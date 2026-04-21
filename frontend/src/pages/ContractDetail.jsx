@@ -2,11 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
+import api from "../services/axiosClient";
 import ContractSigningModal from "../components/ContractSigningModal";
 import TerminateContractModal from "../components/TerminateContractModal";
 import SigningHistoryTimeline from "../components/SigningHistoryTimeline";
 import AuditLogList from "../components/AuditLogList";
 import ExpiryCountdown from "../components/ExpiryCountdown";
+
 
 const statusConfig = {
   DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
@@ -15,7 +17,7 @@ const statusConfig = {
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
   SIGNED:     { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
   PENDING_PAYMENT: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ thanh toán" },
-  PENDING_PAYMENT_CONFIRMATION: { bg: "#dbeafe", color: "#2563eb", label: "Chờ chủ kho xác nhận thanh toán" },
+  PENDING_PAYMENT_CONFIRMATION: { bg: "#dbeafe", color: "#2563eb", label: "Chờ xác nhận từ chủ kho" },
   PAYMENT_FAILED: { bg: "#fee2e2", color: "#dc2626", label: "Thanh toán thất bại" },
   ACTIVE:     { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
   COMPLETED:  { bg: "#e0e7ff", color: "#6366f1", label: "Đã hoàn thành" },
@@ -141,6 +143,14 @@ const ContractDetail = () => {
   const [terminationFee, setTerminationFee] = useState('');
   const [hasPendingPayment, setHasPendingPayment] = useState(false);
 
+  // Floor plan state
+  const [warehouseAreas, setWarehouseAreas] = useState([]);
+  const [warehouseInfo, setWarehouseInfo] = useState(null);
+  const [floorPlanHovered, setFloorPlanHovered] = useState(null);
+  const [assigningArea, setAssigningArea] = useState(false);
+  const [assignMsg, setAssignMsg] = useState(null);
+  const [editingZone, setEditingZone] = useState(false); // chế độ chọn khu khác
+
   const reloadContract = () => {
     setRefreshKey(k => k + 1);
   };
@@ -255,11 +265,11 @@ const ContractDetail = () => {
           paymentService.getPaymentsByContract(id)
             .then(payments => {
               if (Array.isArray(payments)) {
-                const submitted = payments.find(p =>
-                  p.paymentType === "DEPOSIT" &&
-                  (p.status === "PENDING" || p.status === "RETRY_PENDING" || p.status === "SUBMITTED")
-                );
-                setHasPendingPayment(!!submitted);
+                // Trường hợp 1: Thanh toán tiền mặt đã gửi, chờ chủ kho xác nhận
+                const cashPending = payments.some(p => p.paymentMethod === "CASH" && p.status === "PENDING_CONFIRMATION");
+                // Trường hợp 2: Thanh toán online đã hoàn tất (ngân hàng xác nhận) nhưng contract chưa update
+                const onlineCompleted = payments.some(p => p.paymentMethod !== "CASH" && p.status === "COMPLETED");
+                setHasPendingPayment(cashPending || onlineCompleted);
               }
             })
             .catch(() => {}); // silently ignore
@@ -274,6 +284,17 @@ const ContractDetail = () => {
       })
       .finally(() => setLoading(false));
   }, [id, refreshKey]);
+
+  // Fetch warehouse areas for floor plan after contract loads
+  useEffect(() => {
+    if (!contract?.warehouseId) return;
+    api.get(`/RentalAreas/warehouse/${contract.warehouseId}`)
+      .then(res => setWarehouseAreas(res.data || []))
+      .catch(() => {});
+    api.get(`/Warehouse/${contract.warehouseId}`)
+      .then(res => setWarehouseInfo(res.data))
+      .catch(() => {});
+  }, [contract?.warehouseId]);
 
   // Fetch signing history
   const [signingCurrentUserId, setSigningCurrentUserId] = useState(null);
@@ -530,6 +551,294 @@ const ContractDetail = () => {
           <InfoRow label="Thể tích thuê" value={`${contract.requestedArea || 0} m³`} />
         </Section>
       </div>
+
+      {/* Sơ đồ mặt bằng ô khu */}
+      {warehouseAreas.length > 0 && (() => {
+        const whWidth  = parseFloat(warehouseInfo?.width  ?? warehouseInfo?.Width  ?? 0) || 0;
+        const whLength = parseFloat(warehouseInfo?.length ?? warehouseInfo?.Length ?? 0) || 0;
+        const MAX_W = 460; const MAX_H = 340;
+        const scale = whWidth > 0 && whLength > 0
+          ? Math.min(MAX_W / whWidth, MAX_H / whLength)
+          : 1;
+        const CANVAS_W = whWidth  > 0 ? Math.round(whWidth  * scale) : MAX_W;
+        const CANVAS_H = whLength > 0 ? Math.round(whLength * scale) : MAX_H;
+
+        // Định nghĩa màu sắc cho từng zone
+        const getZoneStyle = (a) => {
+          const isThisContract = a.activeContractId === contract.contractId;
+          const isHov = floorPlanHovered === a.id;
+          if (isThisContract) return {
+            bg: isHov ? '#fbbf24' : '#fde68a',
+            border: '2.5px solid #d97706',
+            textColor: '#92400e',
+            badge: '★ Khu của bạn',
+            badgeBg: '#fef3c7',
+          };
+          if (a.isOccupied) return {
+            bg: isHov ? '#fca5a5' : '#fecaca',
+            border: '2px dashed #ef4444',
+            textColor: '#991b1b',
+            badge: 'Đang thuê',
+            badgeBg: '#fee2e2',
+          };
+          return {
+            bg: isHov ? '#93c5fd' : '#bfdbfe',
+            border: '2px dashed #3b82f6',
+            textColor: '#1e3a8a',
+            badge: 'Còn trống',
+            badgeBg: '#dcfce7',
+          };
+        };
+
+        // Zone này có thuê khu chưa?
+        const hasAssignedZone = warehouseAreas.some(a => a.activeContractId === contract.contractId);
+
+        return (
+          <div style={{ backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.04)', border: '1px solid #eef1f6', marginBottom: '1rem',
+            animation: 'cardFadeIn 0.4s ease 0.18s both' }}>
+            <div style={{ height: 3, background: 'linear-gradient(90deg, #0ea5e9, #0ea5e944, transparent)' }} />
+            <div style={{ padding: '20px 24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h2 style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0ea5e9', margin: 0,
+                  textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Sơ đồ mặt bằng ô khu
+                </h2>
+                {whWidth > 0 && whLength > 0 && (
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
+                    {whWidth}m × {whLength}m
+                  </span>
+                )}
+              </div>
+
+              {/* Legend */}
+              <div style={{ display: 'flex', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fde68a', border: '1.5px solid #d97706' }} />
+                  <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Khu của bạn</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fecaca', border: '1.5px solid #ef4444' }} />
+                  <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Đang thuê (khác)</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#bfdbfe', border: '1.5px solid #3b82f6' }} />
+                  <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Còn trống</span>
+                </div>
+              </div>
+
+              {/* Banner trạng thái phân khu + nút hành động */}
+              {contract.isCurrentUserOwner && (
+                <div style={{ marginBottom: 14 }}>
+                  {!hasAssignedZone ? (
+                    /* --- Chưa phân khu --- */
+                    <div style={{ padding: '10px 14px', background: '#fefce8', border: '1px solid #fde047',
+                      borderRadius: 10, fontSize: '0.82rem', color: '#854d0e', fontWeight: 500,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                      <span>Chủ kho chưa phân công vị trí khu cụ thể cho hợp đồng này.</span>
+                      <button
+                        disabled={assigningArea}
+                        onClick={async () => {
+                          setAssigningArea(true); setAssignMsg(null);
+                          try {
+                            const res = await rentalService.assignRentalArea(contract.contractId);
+                            setAssignMsg({ type: 'success', text: res.message });
+                            const areasRes = await api.get(`/RentalAreas/warehouse/${contract.warehouseId}`);
+                            setWarehouseAreas(areasRes.data || []);
+                          } catch (err) {
+                            setAssignMsg({ type: 'error', text: err.response?.data?.message || 'Không thể phân khu.' });
+                          } finally { setAssigningArea(false); }
+                        }}
+                        style={{
+                          padding: '7px 16px', background: assigningArea ? '#e2e8f0' : 'linear-gradient(135deg,#f59e0b,#d97706)',
+                          color: assigningArea ? '#94a3b8' : '#fff', border: 'none', borderRadius: 8,
+                          fontWeight: 700, fontSize: '0.8rem', cursor: assigningArea ? 'wait' : 'pointer',
+                          whiteSpace: 'nowrap', transition: 'all 0.2s', flexShrink: 0,
+                        }}
+                      >
+                        {assigningArea ? 'Đang phân...' : 'Tự động phân khu'}
+                      </button>
+                    </div>
+                  ) : editingZone ? (
+                    /* --- Đang chọn khu mới --- */
+                    <div style={{ padding: '10px 14px', background: '#eff6ff', border: '1.5px solid #3b82f6',
+                      borderRadius: 10, fontSize: '0.82rem', color: '#1e40af', fontWeight: 500,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                      <span>→ Bấm vào ô khu xanh hoặc những ô trống bên dưới để đổi sang khu đó.</span>
+                      <button
+                        onClick={() => { setEditingZone(false); setAssignMsg(null); }}
+                        style={{
+                          padding: '6px 14px', background: '#e2e8f0', color: '#475569',
+                          border: 'none', borderRadius: 8, fontWeight: 700, fontSize: '0.8rem',
+                          cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                        }}
+                      >
+                        Hủy
+                      </button>
+                    </div>
+                  ) : (
+                    /* --- Đã có khu, hiện nút Đổi khu --- */
+                    <div style={{ padding: '10px 14px', background: '#fffbeb', border: '1px solid #fde68a',
+                      borderRadius: 10, fontSize: '0.82rem', color: '#92400e', fontWeight: 500,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                      <span>★ Đã phân khu — chủ kho có thể đổi sang ô khu khác nếu cần.</span>
+                      <button
+                        onClick={() => { setEditingZone(true); setAssignMsg(null); }}
+                        style={{
+                          padding: '7px 16px', background: 'linear-gradient(135deg,#0ea5e9,#0284c7)',
+                          color: '#fff', border: 'none', borderRadius: 8, fontWeight: 700,
+                          fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                          boxShadow: '0 2px 8px rgba(14,165,233,0.35)', flexShrink: 0, transition: 'all 0.2s',
+                        }}
+                      >
+                        Đổi khu
+                      </button>
+                    </div>
+                  )}
+                  {assignMsg && (
+                    <div style={{
+                      marginTop: 8, padding: '8px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600,
+                      background: assignMsg.type === 'success' ? '#dcfce7' : '#fee2e2',
+                      color: assignMsg.type === 'success' ? '#15803d' : '#dc2626',
+                      border: `1px solid ${assignMsg.type === 'success' ? '#86efac' : '#fca5a5'}`,
+                    }}>
+                      {assignMsg.text}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Banner cho renter khi chưa phân khu */}
+              {!contract.isCurrentUserOwner && !hasAssignedZone && (
+                <div style={{ padding: '10px 14px', background: '#fefce8', border: '1px solid #fde047',
+                  borderRadius: 10, marginBottom: 14, fontSize: '0.82rem', color: '#854d0e', fontWeight: 500 }}>
+                  Chủ kho chưa phân công vị trí khu cụ thể cho hợp đồng này.
+                </div>
+              )}
+
+              {/* Canvas */}
+              <div style={{ maxWidth: '100%', overflowX: 'auto', paddingBottom: 8, display: 'flex', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', margin: '0 auto' }}>
+                  {whLength > 0 && (
+                    <div style={{ writingMode: 'vertical-lr', transform: 'rotate(180deg)',
+                      fontSize: '0.68rem', fontWeight: 700, color: '#334155', marginRight: 6, whiteSpace: 'nowrap' }}>
+                      ↕ Dài: {whLength} m
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    {whWidth > 0 && whLength > 0 && (
+                      <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155', marginBottom: 4 }}>
+                        ← Ngang: {whWidth} m →
+                      </div>
+                    )}
+                    <div style={{
+                      position: 'relative', width: CANVAS_W, height: CANVAS_H, flexShrink: 0,
+                      background: '#f0f7ff', border: '2px solid #3b82f6', borderRadius: 10,
+                      overflow: 'visible', boxShadow: '0 4px 20px rgba(59,130,246,0.1)',
+                      backgroundImage: 'linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px)',
+                      backgroundSize: `${Math.max(scale * 5, 10)}px ${Math.max(scale * 5, 10)}px`,
+                    }}>
+                      {warehouseAreas.map(a => {
+                      const pw = Math.max((a.width  || 1) * scale, 4);
+                      const ph = Math.max((a.length || 1) * scale, 4);
+                      const px = (a.positionX || 0) * scale;
+                      const py = (a.positionY || 0) * scale;
+                      const zs = getZoneStyle(a);
+                      const isThisContract = a.activeContractId === contract.contractId;
+                      const isHov = floorPlanHovered === a.id;
+                      const isPortrait = pw < 50 && ph >= 60;
+                      // Trong edit mode: zone còn trống và zone hiện tại đều có thể chọn
+                      const isClickable = editingZone && contract.isCurrentUserOwner
+                        && (!a.isOccupied || isThisContract) && !assigningArea;
+
+                      const handleZoneClick = async () => {
+                        if (!isClickable) return;
+                        if (isThisContract) return; // đang là khu hiện tại → bỏ qua
+                        setAssigningArea(true); setAssignMsg(null);
+                        try {
+                          const res = await rentalService.assignRentalArea(contract.contractId, a.id);
+                          setAssignMsg({ type: 'success', text: res.message });
+                          const areasRes = await api.get(`/RentalAreas/warehouse/${contract.warehouseId}`);
+                          setWarehouseAreas(areasRes.data || []);
+                          setEditingZone(false);
+                        } catch (err) {
+                          setAssignMsg({ type: 'error', text: err.response?.data?.message || 'Không thể đổi khu.' });
+                        } finally { setAssigningArea(false); }
+                      };
+
+                      return (
+                        <div key={a.id}
+                          onMouseEnter={() => setFloorPlanHovered(a.id)}
+                          onMouseLeave={() => setFloorPlanHovered(null)}
+                          onClick={handleZoneClick}
+                          style={{
+                            position: 'absolute', left: px, top: py, width: pw, height: ph,
+                            background: zs.bg, border: zs.border,
+                            boxSizing: 'border-box', borderRadius: 4,
+                            overflow: isHov ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column',
+                            justifyContent: 'center', alignItems: 'center', padding: '2px', textAlign: 'center',
+                            transition: 'background 0.18s, transform 0.12s',
+                            boxShadow: isThisContract ? '0 0 0 2px #f59e0b, 0 4px 12px rgba(245,158,11,0.4)' : 'none',
+                            zIndex: isThisContract ? 2 : 1,
+                            cursor: isClickable && !isThisContract ? 'pointer' : 'default',
+                            transform: isClickable && isHov && !isThisContract ? 'scale(1.03)' : 'scale(1)',
+                            outline: isClickable && isHov && !isThisContract ? '2.5px solid #0ea5e9' : 'none',
+                          }}
+                        >
+                          <div style={{ fontWeight: 800, color: zs.textColor, fontSize: '0.75rem', lineHeight: 1.2, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', writingMode: isPortrait ? 'vertical-rl' : 'horizontal-tb', transform: isPortrait ? 'rotate(180deg)' : 'none' }}>
+                            {isThisContract ? (isPortrait ? '★' : '★ ') : ''}{a.name}
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: zs.textColor, marginTop: 2, fontWeight: 700, display: pw < 50 || ph < 50 ? 'none' : 'block' }}>{a.size} m³</div>
+                          <div style={{ fontSize: '0.6rem', color: zs.textColor, marginTop: 2, display: pw < 50 || ph < 60 ? 'none' : 'block' }}>{a.width}m × {a.length}m</div>
+                          {isHov && !isThisContract && isClickable && (
+                            <div style={{
+                              position: 'absolute',
+                              top: (pw < 60 || ph < 50) ? '50%' : undefined,
+                              bottom: (pw < 60 || ph < 50) ? undefined : 6,
+                              left: '50%', transform: (pw < 60 || ph < 50) ? 'translate(-50%, -50%)' : 'translateX(-50%)',
+                              fontSize: '0.65rem', fontWeight: 700,
+                              color: '#fff', background: '#0ea5e9', border: '1px solid #0284c7',
+                              borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none'
+                            }}>
+                              Chọn khu này
+                            </div>
+                          )}
+                          {isHov && !isClickable && (
+                            <div style={{
+                              position: 'absolute',
+                              top: (pw < 60 || ph < 50) ? '50%' : undefined,
+                              bottom: (pw < 60 || ph < 50) ? undefined : 6,
+                              left: '50%', transform: (pw < 60 || ph < 50) ? 'translate(-50%, -50%)' : 'translateX(-50%)',
+                              fontSize: '0.65rem', fontWeight: 700,
+                              color: zs.textColor, background: zs.badgeBg, border: `1px solid ${zs.textColor}40`,
+                              borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none'
+                            }}>
+                              {zs.badge}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ width: 0, height: 0, borderLeft: '7px solid transparent',
+                      borderRight: '7px solid transparent', borderBottom: '9px solid #f59e0b' }} />
+                    <div style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: '#fff',
+                      fontWeight: 800, fontSize: CANVAS_W < 120 ? '0.55rem' : '0.65rem', letterSpacing: '0.04em',
+                      padding: CANVAS_W < 120 ? '4px 8px' : '5px 16px', borderRadius: 6, boxShadow: '0 3px 8px rgba(245,158,11,0.3)',
+                      maxWidth: Math.max(CANVAS_W, 50), textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.2 }}>
+                      {CANVAS_W < 90 ? 'CỔNG' : 'CỔNG CHÍNH VÀO KHO'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+      })()}
 
       {/* Thời hạn hợp đồng */}
       <div style={{ animation: "cardFadeIn 0.4s ease 0.2s both" }}>

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axiosClient from '../../services/axiosClient';
 import authService from '../../services/authService';
+import { ReceiptPreviewModal } from '../../components/InventoryReceiptPDF';
+import SignatureCanvas from '../../components/SignatureCanvas';
+import { useRef } from 'react';
 
 const INBOUND_COLOR  = '#10b981';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -28,6 +31,8 @@ const StatusBadge = ({ status }) => {
 /* ── Approve Modal (gọn ─ capacity info đã có bên Detail) ─────────── */
 const ApproveModal = ({ req, onClose, onApprove, loading }) => {
   const [notes, setNotes] = useState('');
+  const [error, setError] = useState('');
+  const signatureCanvasRef = useRef(null);
   if (!req) return null;
   const accent    = req.type === 'INBOUND' ? INBOUND_COLOR : OUTBOUND_COLOR;
   const typeLabel = req.type === 'INBOUND' ? 'nhập kho' : 'xuất kho';
@@ -35,26 +40,35 @@ const ApproveModal = ({ req, onClose, onApprove, loading }) => {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:500, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:'#dcfce7', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem' }}>✓</div>
-          <div>
-            <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Duyệt yêu cầu {typeLabel}</h2>
-            <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>#{req.invReqId} · {req.warehouseName}</p>
-          </div>
+        <div style={{ marginBottom:20 }}>
+          <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Duyệt yêu cầu {typeLabel}</h2>
+          <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>#{req.invReqId} · {req.warehouseName}</p>
         </div>
 
         <div style={{ background:'#f0fdf4', borderRadius:10, padding:'10px 14px', marginBottom:16, fontSize:'0.82rem', color:'#166534', fontWeight:600 }}>
-          ℹ️ Xác nhận duyệt yêu cầu. Để xem chi tiết sức chứa hợp đồng, hãy xem chi tiết phiếu trước.
+          Xác nhận duyệt yêu cầu. Để xem chi tiết sức chứa hợp đồng, hãy xem chi tiết phiếu trước.
         </div>
 
         {/* Items summary */}
         <div style={{ background:'#f8fafc', borderRadius:12, padding:'14px 16px', marginBottom:16 }}>
-          <p style={{ margin:'0 0 8px', fontSize:'0.69rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-            Danh sách hàng hóa
-          </p>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:8 }}>
+            <p style={{ margin:0, fontSize:'0.69rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+              Danh sách hàng hóa (ước tính)
+            </p>
+            {req.type === 'INBOUND' && req.totalEstimatedVolume > 0 && (
+              <span style={{ fontSize:'0.75rem', fontWeight:700, color:'#4f46e5', background:'#eef2ff', padding:'2px 8px', borderRadius:6, border:'1px solid #c7d2fe' }}>
+                Tổng: ~{req.totalEstimatedVolume.toFixed(2)} m³
+              </span>
+            )}
+          </div>
           {(req.items || []).map((item, i) => (
-            <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.85rem', marginBottom:4 }}>
-              <span style={{ fontWeight:600, color:'#1e293b' }}>{item.itemName}</span>
+            <div key={i} style={{ display:'flex', justifyContent:'space-between', fontSize:'0.85rem', marginBottom:5 }}>
+              <div style={{ display:'flex', flexDirection:'column' }}>
+                <span style={{ fontWeight:600, color:'#1e293b' }}>{item.itemName}</span>
+                {item.estimatedVolume > 0 && (
+                  <span style={{ fontSize:'0.72rem', color:'#64748b' }}>~{item.estimatedVolume} m³</span>
+                )}
+              </div>
               <span style={{ color:accent, fontWeight:700 }}>{item.quantity?.toLocaleString()} {item.unit}</span>
             </div>
           ))}
@@ -71,19 +85,41 @@ const ApproveModal = ({ req, onClose, onApprove, loading }) => {
             onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
         </div>
 
+        <div style={{ marginBottom:20 }}>
+          <label style={{ display:'block', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>
+            Chữ ký xác nhận duyệt <span style={{ color:'#dc2626' }}>*</span>
+          </label>
+          <div style={{ border: '1.5px dashed #cbd5e1', borderRadius: '10px', overflow: 'hidden', background: '#f8fafc', marginBottom: 6 }}>
+            <SignatureCanvas ref={signatureCanvasRef} canvasProps={{width: 436, height: 160}} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {error ? <span style={{ fontSize:'0.75rem', color:'#dc2626', fontWeight: 600 }}>{error}</span> : <span />}
+            <button onClick={() => { signatureCanvasRef.current?.clear(); setError(''); }} style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+              Xóa làm lại
+            </button>
+          </div>
+        </div>
+
         <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
           <button onClick={onClose} disabled={loading}
             style={{ padding:'10px 22px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', cursor:'pointer', fontWeight:600, fontSize:'0.875rem', color:'#64748b' }}>
             Hủy
           </button>
-          <button onClick={() => onApprove(req.invReqId, 'approve', notes)} disabled={loading}
+          <button onClick={() => {
+              if (!signatureCanvasRef.current || signatureCanvasRef.current.isEmpty()) {
+                setError('Vui lòng ký xác nhận trước khi duyệt.');
+                return;
+              }
+              const signatureBase64 = signatureCanvasRef.current.toBase64();
+              onApprove(req.invReqId, 'approve', notes, signatureBase64);
+            }} disabled={loading}
             style={{ padding:'10px 24px', borderRadius:10, border:'none',
               background: loading ? '#e2e8f0' : 'linear-gradient(135deg,#22c55e,#16a34a)',
               color: loading ? '#94a3b8' : '#fff', cursor: loading ? 'not-allowed' : 'pointer',
               fontWeight:700, fontSize:'0.875rem', display:'flex', alignItems:'center', gap:8,
               boxShadow: loading ? 'none' : '0 4px 14px rgba(34,197,94,0.4)' }}>
             {loading && <span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }}/>}
-            {loading ? 'Đang xử lý...' : '✓ Duyệt yêu cầu'}
+            {loading ? 'Đang xử lý...' : 'Duyệt yêu cầu'}
           </button>
         </div>
       </div>
@@ -100,12 +136,9 @@ const RejectModal = ({ req, onClose, onReject, loading }) => {
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, padding:32, width:'100%', maxWidth:480, boxShadow:'0 24px 60px rgba(0,0,0,0.2)' }} onClick={e=>e.stopPropagation()}>
-        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-          <div style={{ width:48, height:48, borderRadius:14, background:'#fee2e2', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.4rem' }}>✕</div>
-          <div>
-            <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Từ chối yêu cầu {typeLabel}</h2>
-            <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>#{req.invReqId} · {req.warehouseName}</p>
-          </div>
+        <div style={{ marginBottom:20 }}>
+          <h2 style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#0f172a' }}>Từ chối yêu cầu {typeLabel}</h2>
+          <p style={{ margin:'2px 0 0', fontSize:'0.82rem', color:'#64748b' }}>#{req.invReqId} · {req.warehouseName}</p>
         </div>
 
         <div style={{ marginBottom:20 }}>
@@ -132,7 +165,7 @@ const RejectModal = ({ req, onClose, onReject, loading }) => {
               fontWeight:700, fontSize:'0.875rem', display:'flex', alignItems:'center', gap:8,
               boxShadow: loading || !reason ? 'none' : '0 4px 14px rgba(239,68,68,0.4)' }}>
             {loading && <span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }}/>}
-            {loading ? 'Đang xử lý...' : '✕ Xác nhận từ chối'}
+            {loading ? 'Đang xử lý...' : 'Xác nhận từ chối'}
           </button>
         </div>
       </div>
@@ -144,6 +177,7 @@ const RejectModal = ({ req, onClose, onReject, loading }) => {
 const DetailModal = ({ req, onClose }) => {
   const [capacity, setCapacity]       = useState(null);
   const [loadingCap, setLoadingCap]   = useState(false);
+  const [pdfOpen, setPdfOpen]         = useState(false);
 
   useEffect(() => {
     if (!req || req.type !== 'INBOUND') { setCapacity(null); return; }
@@ -173,7 +207,16 @@ const DetailModal = ({ req, onClose }) => {
             <span style={{ fontWeight:800, color:accent, fontSize:'1rem' }}>{req.type==='INBOUND'?'Nhập kho':'Xuất kho'} · #{req.invReqId}</span>
             <StatusBadge status={req.status}/>
           </div>
-          <button onClick={onClose} style={{ background:'#f1f5f9', border:'none', cursor:'pointer', padding:6, borderRadius:8, fontSize:'1.1rem' }}>×</button>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            {req.type === 'INBOUND' && (
+              <button onClick={() => setPdfOpen(true)} style={{
+                background: '#1e293b', border: 'none', cursor: 'pointer',
+                padding: '6px 12px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, color: '#fff',
+                fontFamily: 'Inter, sans-serif'
+              }}>Xem Phiếu Nhập Kho</button>
+            )}
+            <button onClick={onClose} style={{ background:'#f1f5f9', border:'none', cursor:'pointer', padding:'6px 10px', borderRadius:8, fontSize:'1rem', fontWeight:700, color:'#475569' }}>×</button>
+          </div>
         </div>
 
         <div style={{ padding:'18px 26px' }}>
@@ -187,7 +230,7 @@ const DetailModal = ({ req, onClose }) => {
 
           {req.notes && (
             <div style={{ background:'#f8fafc', borderRadius:10, padding:'10px 14px', marginBottom:14, fontSize:'0.83rem', color:'#475569' }}>
-              📝 {req.notes}
+              {req.notes}
             </div>
           )}
 
@@ -195,7 +238,7 @@ const DetailModal = ({ req, onClose }) => {
           {req.type === 'INBOUND' && (
             <div style={{ background:'#f8fafc', borderRadius:12, padding:'14px 16px', marginBottom:16, border:'1px solid #e2e8f0' }}>
               <p style={{ margin:'0 0 10px', fontSize:'0.69rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-                📋 Sức chứa hợp đồng của người thuê này
+                SỨC CHỨA HỢP ĐỒNG CỦA NGƯỜI THUÊ NÀY
               </p>
               {loadingCap ? (
                 <p style={{ margin:0, fontSize:'0.82rem', color:'#94a3b8' }}>Đang tải thông tin hợp đồng...</p>
@@ -229,32 +272,42 @@ const DetailModal = ({ req, onClose }) => {
 
                   {afterPct > 100 && (
                     <div style={{ marginTop:8, padding:'8px 12px', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, fontSize:'0.78rem', color:'#dc2626', fontWeight:600 }}>
-                      ⚠️ Nếu duyệt, người thuê sẽ vượt giới hạn ước tính ({afterPct}%). Hàng nhỏ/nhẹ vẫn có thể OK.
+                      Nếu duyệt, người thuê sẽ vượt giới hạn ước tính ({afterPct}%). Hàng nhỏ/nhẹ vẫn có thể OK.
                     </div>
                   )}
                   {afterPct > 80 && afterPct <= 100 && (
                     <div style={{ marginTop:8, padding:'8px 12px', background:'#fffbeb', border:'1px solid #fde68a', borderRadius:8, fontSize:'0.78rem', color:'#b45309', fontWeight:600 }}>
-                      ⚠️ Gần đầy sức chứa ước tính ({afterPct}%). Xem xét kỹ trước khi duyệt.
+                      Gần đầy sức chứa ước tính ({afterPct}%). Xem xét kỹ trước khi duyệt.
                     </div>
                   )}
                 </>
               ) : (
-                <p style={{ margin:0, fontSize:'0.82rem', color:'#ef4444', fontWeight:600 }}>⚠️ Không tìm thấy hợp đồng hiệu lực của người thuê này trong kho này.</p>
+                <p style={{ margin:0, fontSize:'0.82rem', color:'#ef4444', fontWeight:600 }}>Không tìm thấy hợp đồng hiệu lực của người thuê này trong kho này.</p>
               )}
             </div>
           )}
 
           {/* Danh sách hàng hóa */}
-          <p style={{ margin:'0 0 10px', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-            Danh sách hàng hóa ({(req.items||[]).length} mặt hàng)
-          </p>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:10 }}>
+            <p style={{ margin:0, fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
+              Danh sách hàng hóa ({(req.items||[]).length} mặt hàng)
+            </p>
+            {req.type === 'INBOUND' && req.totalEstimatedVolume > 0 && (
+              <span style={{ fontSize:'0.75rem', fontWeight:700, color:'#4f46e5', background:'#eef2ff', padding:'3px 10px', borderRadius:8, border:'1px solid #c7d2fe' }}>
+                Tổng thể tích ước tính: ~{req.totalEstimatedVolume.toFixed(2)} m³
+              </span>
+            )}
+          </div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {(req.items||[]).map((item,i)=>(
               <div key={i} style={{ border:'1px solid #e2e8f0', borderRadius:10, padding:'12px 16px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
                   <p style={{ margin:0, fontWeight:700, fontSize:'0.88rem', color:'#1e293b' }}>{item.itemName}</p>
-                  {item.weight != null && <p style={{ margin:'3px 0 0', fontSize:'0.75rem', color:'#64748b' }}>Trọng lượng: <span style={{fontWeight:600}}>{item.weight} kg</span></p>}
-                  {item.description && <p style={{ margin:'3px 0 0', fontSize:'0.75rem', color:'#94a3b8' }}>{item.description}</p>}
+                  <div style={{ display:'flex', gap:10, marginTop:3 }}>
+                    {item.estimatedVolume > 0 && <p style={{ margin:0, fontSize:'0.75rem', color:'#6366f1', fontWeight:600 }}>Thể tích: ~{item.estimatedVolume} m³</p>}
+                    {item.weight != null && <p style={{ margin:0, fontSize:'0.75rem', color:'#64748b' }}>Trọng lượng: <span style={{fontWeight:600}}>{item.weight} kg</span></p>}
+                  </div>
+                  {item.description && <p style={{ margin:'4px 0 0', fontSize:'0.75rem', color:'#94a3b8' }}>{item.description}</p>}
                 </div>
                 <span style={{ fontWeight:700, color:accent, fontSize:'0.9rem' }}>{item.quantity?.toLocaleString()} <span style={{ color:'#94a3b8', fontWeight:400, fontSize:'0.78rem' }}>{item.unit}</span></span>
               </div>
@@ -285,6 +338,12 @@ const DetailModal = ({ req, onClose }) => {
           )}
         </div>
       </div>
+      {pdfOpen && (
+        <ReceiptPreviewModal
+          data={req}
+          onClose={() => setPdfOpen(false)}
+        />
+      )}
     </div>
   );
 };
@@ -349,11 +408,13 @@ const ManagerInventoryRequests = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchBadgeCounts(); }, [fetchBadgeCounts]);
 
-  const handleAction = async (id, action, noteOrReason) => {
+  const handleAction = async (id, action, noteOrReason, signatureBase64) => {
     setActionLoading(true);
     try {
       if (action === 'approve') {
-        await axiosClient.post(`/InventoryRequests/${id}/approve`, { notes: noteOrReason });
+        const payload = { notes: noteOrReason };
+        if (signatureBase64) payload.managerSignatureBase64 = signatureBase64;
+        await axiosClient.post(`/InventoryRequests/${id}/approve`, payload);
         showToast(`✅ Đã duyệt yêu cầu #${id}! Nhân viên sẽ tự động nhận nhiệm vụ.`);
         setApproveReq(null);
       } else {

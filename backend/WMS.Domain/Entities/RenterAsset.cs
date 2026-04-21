@@ -21,6 +21,9 @@ public partial class RenterAsset
     /// <summary>Khối lượng / đơn vị (kg) — tuỳ chọn</summary>
     public decimal? WeightPerUnit { get; set; }
 
+    /// <summary>Thể tích / đơn vị (m³) — tuỳ chọn, dùng khi tính ước lượng m³ cho yêu cầu nhập kho.</summary>
+    public decimal? VolumePerUnit { get; set; }
+
     public string? Description { get; set; }
 
     public DateTime CreatedAt { get; set; }
