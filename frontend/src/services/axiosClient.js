@@ -19,12 +19,16 @@ axiosClient.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            // Token expired or invalid
-            localStorage.removeItem("token");
-            localStorage.removeItem("user");
-            
-            // Redirect to login page
-            window.location.href = "/auth";
+            // Do not redirect if the request is a login attempt
+            const originalUrl = error.config?.url || '';
+            if (!originalUrl.includes('/auth/login')) {
+                // Token expired or invalid
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                
+                // Redirect to login page
+                window.location.href = "/auth";
+            }
         }
         
         if (error.response?.status === 400 || error.response?.status === 500) {
