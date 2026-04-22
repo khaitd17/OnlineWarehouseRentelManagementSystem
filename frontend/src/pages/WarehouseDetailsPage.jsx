@@ -172,6 +172,9 @@ const WarehouseDetailsPage = () => {
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [ratingMsg, setRatingMsg] = useState(null);
   const [showThankPopup, setShowThankPopup] = useState(false);
+  const [currentRatingPage, setCurrentRatingPage] = useState(1);
+  const [ratingFilter, setRatingFilter] = useState('ALL');
+  const RATINGS_PER_PAGE = 5;
   const isLoggedIn = !!localStorage.getItem('token');
   const currentUser = authService.getCurrentUser();
   // [PERMISSION FIX] Kiểm tra warehouseContext cho kho hiện tại thay vì JWT system role
@@ -721,59 +724,140 @@ const WarehouseDetailsPage = () => {
                     </div>
                   </div>
 
-                  {/* Review Cards */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {ratingsData.ratings.slice(0, 5).map(r => (
-                      <div key={r.ratingId} style={{ padding: '1.2rem 1.5rem', backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #f1f5f9', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', transition: 'box-shadow 0.2s' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1rem' }}>
-                              {(r.renterName || 'U')[0]}
-                            </div>
-                            <div>
-                              <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem' }}>{r.renterName || 'Người thuê'}</div>
-                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}</div>
-                            </div>
-                          </div>
-                          <div style={{ display: 'flex', gap: '1px' }}>
-                            {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '1.2rem', color: s <= r.star ? '#f59e0b' : '#e2e8f0' }}>★</span>)}
-                          </div>
-                        </div>
-                        {r.comment && <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: 1.6, margin: '0 0 8px 0' }}>{r.comment}</p>}
-                        {r.ownerReply ? (
-                          <div style={{ marginTop: '10px', padding: '12px 16px', backgroundColor: '#f0fdf4', borderRadius: '10px', borderLeft: '3px solid #22c55e' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#16a34a', marginBottom: '4px' }}>💬 Phản hồi từ chủ kho</div>
-                            <p style={{ fontSize: '0.85rem', color: '#15803d', margin: 0, lineHeight: 1.5 }}>{r.ownerReply}</p>
-                          </div>
-                        ) : (
-                          isOwner && (
-                            <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-                              <input 
-                                type="text" 
-                                placeholder="Viết phản hồi của bạn..." 
-                                value={replyText[r.ratingId] || ''}
-                                onChange={(e) => setReplyText({ ...replyText, [r.ratingId]: e.target.value })}
-                                style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
-                                disabled={replyLoading}
-                              />
-                              <button 
-                                onClick={() => handleReplySubmit(r.ratingId)}
-                                disabled={!replyText[r.ratingId] || replyLoading}
-                                style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: (!replyText[r.ratingId] || replyLoading) ? 'not-allowed' : 'pointer', opacity: (!replyText[r.ratingId] || replyLoading) ? 0.6 : 1 }}
-                              >
-                                Phản hồi
-                              </button>
-                            </div>
-                          )
-                        )}
-                      </div>
+                  {/* Filter Controls */}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1.2rem' }}>
+                    {[
+                      { val: 'ALL', label: 'Tất cả' },
+                      { val: 5, label: '5 Sao' },
+                      { val: 4, label: '4 Sao' },
+                      { val: 3, label: '3 Sao' },
+                      { val: 2, label: '2 Sao' },
+                      { val: 1, label: '1 Sao' },
+                      { val: 'HAS_COMMENT', label: 'Có bình luận' },
+                      { val: 'HAS_REPLY', label: 'Đã phản hồi' }
+                    ].map(f => (
+                      <button
+                        key={f.val}
+                        onClick={() => { setRatingFilter(f.val); setCurrentRatingPage(1); }}
+                        style={{
+                          padding: '6px 14px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
+                          border: ratingFilter === f.val ? '1px solid #0ea5e9' : '1px solid #cbd5e1',
+                          background: ratingFilter === f.val ? '#e0f2fe' : '#fff',
+                          color: ratingFilter === f.val ? '#0369a1' : '#475569',
+                          boxShadow: ratingFilter === f.val ? '0 2px 6px rgba(14,165,233,0.15)' : 'none'
+                        }}
+                      >
+                        {f.label}
+                      </button>
                     ))}
                   </div>
-                  {ratingsData.totalCount > 5 && (
-                    <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                      <span style={{ color: '#0095c7', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer' }}>Xem tất cả {ratingsData.totalCount} đánh giá ›</span>
-                    </div>
-                  )}
+
+                  {/* Review Cards */}
+                  {(() => {
+                    const filteredRatings = ratingsData.ratings.filter(r => {
+                      if (ratingFilter === 'ALL') return true;
+                      if (ratingFilter === 'HAS_REPLY') return r.ownerReply && r.ownerReply.trim() !== '';
+                      if (ratingFilter === 'HAS_COMMENT') return r.comment && r.comment.trim() !== '';
+                      if (typeof ratingFilter === 'number') return r.star === ratingFilter;
+                      return true;
+                    });
+                    const totalFilteredPages = Math.ceil(filteredRatings.length / RATINGS_PER_PAGE);
+
+                    return (
+                      <>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          {filteredRatings.length === 0 ? (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem', border: '1px dashed #cbd5e1', borderRadius: '12px' }}>
+                              Không có đánh giá nào khớp với bộ lọc này.
+                            </div>
+                          ) : (
+                            filteredRatings.slice((currentRatingPage - 1) * RATINGS_PER_PAGE, currentRatingPage * RATINGS_PER_PAGE).map(r => (
+                              <div key={r.ratingId} style={{ padding: '1.2rem 1.5rem', backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #f1f5f9', boxShadow: '0 2px 8px rgba(0,0,0,0.03)', transition: 'box-shadow 0.2s' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1rem' }}>
+                                      {(r.renterName || 'U')[0]}
+                                    </div>
+                                    <div>
+                                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.95rem' }}>{r.renterName || 'Người thuê'}</div>
+                                      <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}</div>
+                                    </div>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '1px' }}>
+                                    {[1,2,3,4,5].map(s => <span key={s} style={{ fontSize: '1.2rem', color: s <= r.star ? '#f59e0b' : '#e2e8f0' }}>★</span>)}
+                                  </div>
+                                </div>
+                                {r.comment && <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: 1.6, margin: '0 0 8px 0' }}>{r.comment}</p>}
+                                {r.ownerReply ? (
+                                  <div style={{ marginTop: '10px', padding: '12px 16px', backgroundColor: '#f0fdf4', borderRadius: '10px', borderLeft: '3px solid #22c55e' }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#16a34a', marginBottom: '4px' }}>💬 Phản hồi từ chủ kho</div>
+                                    <p style={{ fontSize: '0.85rem', color: '#15803d', margin: 0, lineHeight: 1.5 }}>{r.ownerReply}</p>
+                                  </div>
+                                ) : (
+                                  isOwner && (
+                                    <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+                                      <input 
+                                        type="text" 
+                                        placeholder="Viết phản hồi của bạn..." 
+                                        value={replyText[r.ratingId] || ''}
+                                        onChange={(e) => setReplyText({ ...replyText, [r.ratingId]: e.target.value })}
+                                        style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                                        disabled={replyLoading}
+                                      />
+                                      <button 
+                                        onClick={() => handleReplySubmit(r.ratingId)}
+                                        disabled={!replyText[r.ratingId] || replyLoading}
+                                        style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: (!replyText[r.ratingId] || replyLoading) ? 'not-allowed' : 'pointer', opacity: (!replyText[r.ratingId] || replyLoading) ? 0.6 : 1 }}
+                                      >
+                                        Phản hồi
+                                      </button>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        
+                        {/* Styled Pagination Controls */}
+                        {totalFilteredPages > 1 && (
+                          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '1.5rem' }}>
+                            <button 
+                              onClick={() => setCurrentRatingPage(p => Math.max(1, p - 1))}
+                              disabled={currentRatingPage === 1}
+                              style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: currentRatingPage === 1 ? '#f8fafc' : '#fff', color: currentRatingPage === 1 ? '#cbd5e1' : '#475569', cursor: currentRatingPage === 1 ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                            >
+                              ‹ Lùi
+                            </button>
+                            
+                            {Array.from({ length: totalFilteredPages }, (_, i) => i + 1).map(pageNum => (
+                              <button
+                                key={pageNum}
+                                onClick={() => setCurrentRatingPage(pageNum)}
+                                style={{ 
+                                  width: '32px', height: '32px', borderRadius: '8px', border: pageNum === currentRatingPage ? '1px solid #0095c7' : '1px solid #e2e8f0', 
+                                  background: pageNum === currentRatingPage ? '#f0f9ff' : '#fff', 
+                                  color: pageNum === currentRatingPage ? '#0369a1' : '#64748b', 
+                                  cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.2s',
+                                  boxShadow: pageNum === currentRatingPage ? '0 0 0 1px #0095c7' : '0 1px 2px rgba(0,0,0,0.05)'
+                                }}
+                              >
+                                {pageNum}
+                              </button>
+                            ))}
+
+                            <button 
+                              onClick={() => setCurrentRatingPage(p => Math.min(totalFilteredPages, p + 1))}
+                              disabled={currentRatingPage === totalFilteredPages}
+                              style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: currentRatingPage === totalFilteredPages ? '#f8fafc' : '#fff', color: currentRatingPage === totalFilteredPages ? '#cbd5e1' : '#475569', cursor: currentRatingPage === totalFilteredPages ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: '0.9rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                            >
+                              Tiếp ›
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               ) : (
                 <div style={{ padding: '2rem', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9' }}>
