@@ -1864,6 +1864,32 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("warehouse_id");
 
+                    b.Property<int?>("BaseRentalAreaId")
+                        .HasColumnType("int")
+                        .HasColumnName("base_rental_area_id");
+
+                    b.Property<bool>("IsCustomArea")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_custom_area");
+
+                    b.Property<double?>("ProposedLength")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_length");
+
+                    b.Property<double?>("ProposedPositionX")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_position_x");
+
+                    b.Property<double?>("ProposedPositionY")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_position_y");
+
+                    b.Property<double?>("ProposedWidth")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_width");
+
                     b.HasKey("RequestId")
                         .HasName("PK__rental_r__18D3B90F92B6C93A");
 

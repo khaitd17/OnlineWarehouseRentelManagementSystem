@@ -10,29 +10,27 @@ namespace WMS.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "manager_signature_base64",
-                table: "inventory_requests",
-                type: "nvarchar(max)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "staff_signature_base64",
-                table: "inventory_requests",
-                type: "nvarchar(max)",
-                nullable: true);
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'manager_signature_base64')
+                    ALTER TABLE [inventory_requests] ADD [manager_signature_base64] nvarchar(max) NULL;
+            ");
+            migrationBuilder.Sql(@"
+                IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'staff_signature_base64')
+                    ALTER TABLE [inventory_requests] ADD [staff_signature_base64] nvarchar(max) NULL;
+            ");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "manager_signature_base64",
-                table: "inventory_requests");
-
-            migrationBuilder.DropColumn(
-                name: "staff_signature_base64",
-                table: "inventory_requests");
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'manager_signature_base64')
+                    ALTER TABLE [inventory_requests] DROP COLUMN [manager_signature_base64];
+            ");
+            migrationBuilder.Sql(@"
+                IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('inventory_requests') AND name = 'staff_signature_base64')
+                    ALTER TABLE [inventory_requests] DROP COLUMN [staff_signature_base64];
+            ");
         }
     }
 }

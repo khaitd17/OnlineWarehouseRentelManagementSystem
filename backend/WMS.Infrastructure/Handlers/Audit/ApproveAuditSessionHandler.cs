@@ -24,17 +24,11 @@ public class ApproveAuditSessionHandler : IRequestHandler<ApproveAuditSessionCom
         if (session == null)
             return ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê.");
 
-        // Chỉ chủ kho (OwnerId) hoặc điều phối viên (OPERATOR) mới được duyệt phiên kiểm kê.
+        // Chỉ chủ kho (OwnerId) mới được duyệt phiên kiểm kê.
         bool isOwner = session.Warehouse.OwnerId == request.UserId;
-        bool isOperator = await _db.WarehouseMemberships
-            .Include(m => m.Role)
-            .AnyAsync(m => m.UserId == request.UserId
-                && m.WarehouseId == session.WarehouseId
-                && m.IsActive
-                && m.Role.Code == "OPERATOR", cancellationToken);
 
-        if (!isOwner && !isOperator)
-            return ApiResponse<bool>.ErrorResponse("Chỉ chủ kho hoặc điều phối viên của kho mới có thể duyệt phiên kiểm kê.");
+        if (!isOwner)
+            return ApiResponse<bool>.ErrorResponse("Chỉ chủ kho mới có thể duyệt phiên kiểm kê.");
 
         if (session.Status != "PENDING_APPROVAL" && session.Status != "APPROVED")
             return ApiResponse<bool>.ErrorResponse($"Không thể duyệt phiên kiểm kê ở trạng thái '{session.Status}'.");
@@ -56,10 +50,9 @@ public class ApproveAuditSessionHandler : IRequestHandler<ApproveAuditSessionCom
 
         if (!string.IsNullOrWhiteSpace(request.Notes))
         {
-            var approverLabel = isOwner ? "Chủ kho" : "Điều phối viên";
             session.Notes = string.IsNullOrWhiteSpace(session.Notes)
-                ? $"{approverLabel}: {request.Notes}"
-                : session.Notes + "\n" + $"{approverLabel}: {request.Notes}";
+                ? $"Chủ kho: {request.Notes}"
+                : session.Notes + "\n" + $"Chủ kho: {request.Notes}";
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -87,15 +80,9 @@ public class RejectAuditSessionHandler : IRequestHandler<RejectAuditSessionComma
             return ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê.");
 
         bool isRejectOwner = session.Warehouse.OwnerId == request.UserId;
-        bool isRejectOperator = await _db.WarehouseMemberships
-            .Include(m => m.Role)
-            .AnyAsync(m => m.UserId == request.UserId
-                && m.WarehouseId == session.WarehouseId
-                && m.IsActive
-                && m.Role.Code == "OPERATOR", cancellationToken);
 
-        if (!isRejectOwner && !isRejectOperator)
-            return ApiResponse<bool>.ErrorResponse("Chỉ chủ kho hoặc điều phối viên của kho mới có thể từ chối phiên kiểm kê.");
+        if (!isRejectOwner)
+            return ApiResponse<bool>.ErrorResponse("Chỉ chủ kho mới có thể từ chối phiên kiểm kê.");
 
         if (session.Status != "PENDING_APPROVAL")
             return ApiResponse<bool>.ErrorResponse($"Không thể từ chối phiên kiểm kê ở trạng thái '{session.Status}'.");
@@ -104,10 +91,9 @@ public class RejectAuditSessionHandler : IRequestHandler<RejectAuditSessionComma
 
         if (!string.IsNullOrWhiteSpace(request.Reason))
         {
-            var rejecterLabel = isRejectOwner ? "Chủ kho" : "Điều phối viên";
             session.Notes = string.IsNullOrWhiteSpace(session.Notes)
-                ? $"{rejecterLabel}: Lý do từ chối: {request.Reason}"
-                : session.Notes + $"\n{rejecterLabel}: Lý do từ chối: {request.Reason}";
+                ? $"Chủ kho: Lý do từ chối: {request.Reason}"
+                : session.Notes + $"\nChủ kho: Lý do từ chối: {request.Reason}";
         }
 
         await _db.SaveChangesAsync(cancellationToken);
