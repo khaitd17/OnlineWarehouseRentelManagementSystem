@@ -564,13 +564,26 @@ const ContractDetail = () => {
         const getZoneStyle = (a) => {
           const isThisContract = a.activeContractId === contract.contractId;
           const isHov = floorPlanHovered === a.id;
-          if (isThisContract) return {
-            bg: isHov ? '#fbbf24' : '#fde68a',
-            border: '2.5px solid #d97706',
-            textColor: '#92400e',
-            badge: '★ Khu của bạn',
-            badgeBg: '#fef3c7',
-          };
+          if (isThisContract) {
+             if (contract.isCurrentUserRenter) {
+               return {
+                 bg: isHov ? '#fbbf24' : '#fde68a',
+                 border: '2.5px solid #d97706',
+                 textColor: '#92400e',
+                 badge: '★ Khu của bạn',
+                 badgeBg: '#fef3c7',
+               };
+             } else {
+               // For Owner viewing this contract, show it as 'Đang thuê' with slightly more visible border (solid instead of dashed) 
+               return {
+                 bg: isHov ? '#fca5a5' : '#fecaca',
+                 border: '2.5px solid #ef4444',
+                 textColor: '#991b1b',
+                 badge: 'Đang thuê',
+                 badgeBg: '#fee2e2',
+               };
+             }
+          }
           if (a.isOccupied) return {
             bg: isHov ? '#fca5a5' : '#fecaca',
             border: '2px dashed #ef4444',
@@ -610,23 +623,32 @@ const ContractDetail = () => {
 
               {/* Legend */}
               <div style={{ display: 'flex', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fde68a', border: '1.5px solid #d97706' }} />
-                  <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Khu của bạn</span>
-                </div>
+                {contract.isCurrentUserRenter && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fde68a', border: '1.5px solid #d97706' }} />
+                    <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Khu của bạn</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fecaca', border: '1.5px solid #ef4444' }} />
-                  <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Đang thuê (khác)</span>
+                  <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>
+                    {contract.isCurrentUserRenter ? 'Đang thuê (khác)' : 'Đang thuê'}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 12, height: 12, borderRadius: 3, background: '#bfdbfe', border: '1.5px solid #3b82f6' }} />
                   <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Còn trống</span>
                 </div>
-
+                {contract.isCustomArea && contract.proposedWidth && contract.status !== 'ACTIVE' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fef9c3', border: '1.5px dashed #ca8a04' }} />
+                    <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Vị trí đề xuất</span>
+                  </div>
+                )}
               </div>
 
               {/* Banner khi chưa phân khu (không tính custom area) */}
-              {!contract.isCustomArea && !hasAssignedZone ? (
+              {!contract.isCustomArea && !hasAssignedZone && contract.status !== 'ACTIVE' && contract.status !== 'EXPIRED' && contract.status !== 'CLOSED' ? (
                 <div style={{
                   marginBottom: 14, padding: '10px 14px',
                   background: '#fefce8', border: '1px solid #fde047',
@@ -635,6 +657,17 @@ const ContractDetail = () => {
                   Chủ kho chưa phân công vị trí khu cụ thể cho hợp đồng này.
                 </div>
               ) : null}
+
+              {/* Banner custom area chưa được chủ kho xác nhận */}
+              {contract.isCustomArea && contract.proposedWidth && !hasAssignedZone && contract.status !== 'ACTIVE' && contract.status !== 'EXPIRED' && contract.status !== 'CLOSED' && (
+                <div style={{
+                  marginBottom: 14, padding: '10px 14px',
+                  background: '#fefce8', border: '1px solid #fde047',
+                  borderRadius: 10, fontSize: '0.82rem', color: '#854d0e', fontWeight: 500,
+                }}>
+                  Vị trí bạn đề xuất đang chờ chủ kho phân khu chính thức.
+                </div>
+              )}
 
               {/* Canvas */}
               <div style={{ maxWidth: '100%', overflowX: 'auto', paddingBottom: 8, display: 'flex', justifyContent: 'center' }}>
@@ -710,7 +743,77 @@ const ContractDetail = () => {
                         </div>
                       );
                     })}
-                  </div>
+
+                      {/* Vị trí đề xuất (custom area) */}
+                      {contract.isCustomArea && contract.proposedWidth && contract.proposedLength && (() => {
+                        const cpw = Math.max(contract.proposedWidth  * scale, 8);
+                        const cph = Math.max(contract.proposedLength * scale, 8);
+                        const cpx = (contract.proposedPositionX || 0) * scale;
+                        const cpy = (contract.proposedPositionY || 0) * scale;
+                        const volM3 = Math.round(contract.proposedWidth * contract.proposedLength * 5);
+                        let styleBg = 'rgba(254,249,195,0.85)';
+                        let styleBorder = '2.5px dashed #ca8a04';
+                        let styleBoxShadow = '0 0 0 2px #fde04780, 0 4px 12px rgba(202,138,4,0.25)';
+                        let titleText = 'Vị trí đề xuất';
+                        let textColor = '#92400e';
+                        let isAnimated = true;
+
+                        if (contract.status === 'ACTIVE') {
+                            isAnimated = false;
+                            if (contract.isCurrentUserRenter) {
+                                styleBg = '#fef08a';
+                                styleBorder = '2.5px solid #ca8a04';
+                                styleBoxShadow = '0 0 0 2px #fde04780, 0 4px 12px rgba(202,138,4,0.3)';
+                                titleText = 'Khu của bạn';
+                            } else {
+                                styleBg = '#fecaca';
+                                styleBorder = '2.5px dashed #ef4444';
+                                styleBoxShadow = 'none';
+                                titleText = 'Đang thuê';
+                                textColor = '#991b1b';
+                            }
+                        }
+
+                        return (
+                          <div
+                            title={`${titleText}: X=${contract.proposedPositionX}m, Y=${contract.proposedPositionY}m, ${contract.proposedWidth}m × ${contract.proposedLength}m`}
+                            style={{
+                              position: 'absolute',
+                              left: cpx, top: cpy, width: cpw, height: cph,
+                              background: styleBg,
+                              border: styleBorder,
+                              boxSizing: 'border-box', borderRadius: 4,
+                              display: 'flex', flexDirection: 'column',
+                              justifyContent: 'center', alignItems: 'center',
+                              padding: '2px', textAlign: 'center',
+                              zIndex: 3,
+                              overflow: 'hidden',
+                              boxShadow: styleBoxShadow,
+                              animation: isAnimated ? 'proposedZonePulse 2s ease-in-out infinite' : 'none',
+                              cursor: 'default',
+                            }}
+                          >
+                            {isAnimated && (
+                              <style>{`
+                                @keyframes proposedZonePulse {
+                                  0%, 100% { box-shadow: 0 0 0 2px #fde04780, 0 4px 12px rgba(202,138,4,0.25); }
+                                  50% { box-shadow: 0 0 0 4px #fde047aa, 0 4px 18px rgba(202,138,4,0.4); }
+                                }
+                              `}</style>
+                            )}
+                            <div style={{ fontWeight: 800, color: textColor, fontSize: '0.72rem', lineHeight: 1.1, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', writingMode: (cpw < 40 && cph >= 50) ? 'vertical-rl' : 'horizontal-tb', transform: (cpw < 40 && cph >= 50) ? 'rotate(180deg)' : 'none' }}>
+                                {titleText}
+                            </div>
+                            <div style={{ fontSize: '0.62rem', color: textColor, fontWeight: 700, marginTop: 1, display: cpw < 30 || cph < 35 ? 'none' : 'block', lineHeight: 1.1 }}>
+                                {contract.proposedWidth}m × {contract.proposedLength}m
+                            </div>
+                            <div style={{ fontSize: '0.62rem', color: textColor, fontWeight: 700, display: cpw < 30 || cph < 25 ? 'none' : 'block', lineHeight: 1.1 }}>
+                                {volM3} m³
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div style={{ width: 0, height: 0, borderLeft: '7px solid transparent',
                       borderRight: '7px solid transparent', borderBottom: '9px solid #f59e0b' }} />

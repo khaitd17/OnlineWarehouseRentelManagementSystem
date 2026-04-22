@@ -165,6 +165,30 @@ public class RentalAreaRepository : IRentalAreaRepository
             resultAreas.Add(area);
         }
 
+        // 3. Independent custom areas (BaseRentalAreaId == null)
+        var independentCustoms = occupied
+            .Where(x => x.IsCustomArea && x.BaseRentalAreaId == null)
+            .ToList();
+
+        foreach(var custom in independentCustoms)
+        {
+             var customArea = new RentalArea
+             {
+                 Id = -(custom.ContractId * 10000), // unique negative ID to differentiate from split zones
+                 WarehouseId = warehouseId,
+                 Name = "Khu đã thuê",
+                 PositionX = custom.ProposedPositionX ?? 0,
+                 PositionY = custom.ProposedPositionY ?? 0,
+                 Width = custom.ProposedWidth,
+                 Length = custom.ProposedLength,
+                 Size = (custom.ProposedWidth ?? 0) * (custom.ProposedLength ?? 0) * 5.0, // Assuming 5m height
+                 IsOccupied = true,
+                 ActiveContractId = custom.ContractId,
+                 Description = "Khu vực do người thuê yêu cầu thiết kế"
+             };
+             resultAreas.Add(customArea);
+        }
+
         return resultAreas;
     }
 

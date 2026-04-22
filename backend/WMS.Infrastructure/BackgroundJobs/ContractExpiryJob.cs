@@ -25,16 +25,18 @@ public class ContractExpiryJob
         var now = DateTime.UtcNow;
         
         // Use raw SQL to avoid column mapping issues
+        var expiredLimit = DateTime.UtcNow.AddHours(-48);
         var sql = @"
-            UPDATE rental_contracts 
+            UPDATE contracts 
             SET status = @CancelledStatus, updated_at = @Now 
             WHERE status = @PendingStatus 
-            AND owner_signature_expiry IS NOT NULL 
-            AND owner_signature_expiry < @Now";
+            AND updated_at IS NOT NULL 
+            AND updated_at < @ExpiredLimit";
             
         var affected = await _db.Database.ExecuteSqlRawAsync(sql, 
             new Microsoft.Data.SqlClient.SqlParameter("@CancelledStatus", RentalContractStatus.Cancelled),
             new Microsoft.Data.SqlClient.SqlParameter("@PendingStatus", RentalContractStatus.PendingOwnerSignature),
+            new Microsoft.Data.SqlClient.SqlParameter("@ExpiredLimit", expiredLimit),
             new Microsoft.Data.SqlClient.SqlParameter("@Now", now));
 
         _logger.LogInformation("Cancelled {Count} expired owner signature contracts", affected);
@@ -47,16 +49,18 @@ public class ContractExpiryJob
     {
         var now = DateTime.UtcNow;
         
+        var expiredLimit = DateTime.UtcNow.AddHours(-48);
         var sql = @"
-            UPDATE rental_contracts 
+            UPDATE contracts 
             SET status = @CancelledStatus, updated_at = @Now 
             WHERE status = @PendingStatus 
-            AND RenterSignatureExpiry IS NOT NULL 
-            AND RenterSignatureExpiry < @Now";
+            AND updated_at IS NOT NULL 
+            AND updated_at < @ExpiredLimit";
             
         var affected = await _db.Database.ExecuteSqlRawAsync(sql, 
             new Microsoft.Data.SqlClient.SqlParameter("@CancelledStatus", RentalContractStatus.Cancelled),
             new Microsoft.Data.SqlClient.SqlParameter("@PendingStatus", RentalContractStatus.PendingRenterSignature),
+            new Microsoft.Data.SqlClient.SqlParameter("@ExpiredLimit", expiredLimit),
             new Microsoft.Data.SqlClient.SqlParameter("@Now", now));
 
         _logger.LogInformation("Cancelled {Count} expired renter signature contracts", affected);
@@ -69,16 +73,18 @@ public class ContractExpiryJob
     {
         var now = DateTime.UtcNow;
         
+        var expiredLimit = DateTime.UtcNow.AddHours(-48);
         var sql = @"
-            UPDATE rental_contracts 
+            UPDATE contracts 
             SET status = @CancelledStatus, updated_at = @Now 
             WHERE status = @PendingStatus 
-            AND PaymentExpiry IS NOT NULL 
-            AND PaymentExpiry < @Now";
+            AND updated_at IS NOT NULL 
+            AND updated_at < @ExpiredLimit";
             
         var affected = await _db.Database.ExecuteSqlRawAsync(sql, 
             new Microsoft.Data.SqlClient.SqlParameter("@CancelledStatus", RentalContractStatus.Cancelled),
             new Microsoft.Data.SqlClient.SqlParameter("@PendingStatus", RentalContractStatus.PendingPayment),
+            new Microsoft.Data.SqlClient.SqlParameter("@ExpiredLimit", expiredLimit),
             new Microsoft.Data.SqlClient.SqlParameter("@Now", now));
 
         _logger.LogInformation("Cancelled {Count} expired payment contracts", affected);
@@ -120,7 +126,7 @@ public class ContractExpiryJob
             // Update status with raw SQL
             var contractIds = string.Join(",", expiredContractIds.Select(c => c.ContractId));
             var sql = $@"
-                UPDATE rental_contracts 
+                UPDATE contracts 
                 SET status = @CompletedStatus, updated_at = @Now 
                 WHERE contract_id IN ({contractIds})";
                 
@@ -196,7 +202,7 @@ public class ContractExpiryJob
         var overdueDate = DateTime.UtcNow.AddDays(-7);
         
         var sql = @"
-            UPDATE rental_contracts 
+            UPDATE contracts 
             SET status = @OverdueStatus, updated_at = @Now 
             WHERE status = @CompletedStatus 
             AND updated_at IS NOT NULL 
