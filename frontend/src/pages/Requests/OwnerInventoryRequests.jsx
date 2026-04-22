@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import inventoryService from '../../services/inventoryService';
 import { getMyWarehouses } from '../../services/warehouseService';
+import axiosClient from '../../services/axiosClient';
 import { ReceiptPreviewModal } from '../../components/InventoryReceiptPDF';
 
 /* ──────────────────────────────────────────────────────────────
@@ -179,7 +180,18 @@ const TrackingTimeline = ({ req }) => {
 ────────────────────────────────────────────────────────────── */
 const DetailModal = ({ req, onClose }) => {
   const [pdfOpen, setPdfOpen] = React.useState(false);
+  const [fullReq, setFullReq] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!req) return;
+    setFullReq(null);
+    axiosClient.get(`/InventoryRequests/${req.invReqId}`)
+      .then(r => setFullReq(r.data))
+      .catch(() => setFullReq(req));
+  }, [req?.invReqId]);
+
   if (!req) return null;
+  const displayReq = fullReq || req;
   return (
     <div style={{
       position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
@@ -251,7 +263,7 @@ const DetailModal = ({ req, onClose }) => {
 
         {pdfOpen && (
           <ReceiptPreviewModal
-            data={req}
+            data={displayReq}
             onClose={() => setPdfOpen(false)}
           />
         )}
@@ -611,7 +623,7 @@ const OwnerInventoryRequests = () => {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                {['Mã YC', 'Kho bãi', 'Người thuê', 'Số mặt hàng', 'Trạng thái', 'Ngày tạo', 'Thao tác'].map(h => (
+                {['Mã yêu cầu', 'Kho hàng', 'Người thuê', 'Số lượng', 'Trạng thái', 'Ngày tạo', 'Thao tác'].map(h => (
                   <th key={h} style={{
                     padding: '14px 20px', textAlign: 'left',
                     fontSize: '0.75rem', fontWeight: 700, color: '#64748b',

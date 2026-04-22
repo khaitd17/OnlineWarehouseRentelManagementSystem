@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axiosClient from '../../services/axiosClient';
 import { getMyWarehouses } from '../../services/warehouseService';
+import { ReceiptPreviewModal } from '../../components/InventoryReceiptPDF';
 
 /* ── Helpers ─────────────────────────────────────────── */
 const fmtDT = (iso) => {
@@ -39,6 +40,8 @@ const TransactionHistory = () => {
   const [page,      setPage]      = useState(1);
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
+  const [pdfReq,    setPdfReq]    = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(null);
 
   /* warehouse list for dropdown */
   const [warehouses, setWarehouses] = useState([]);
@@ -97,6 +100,18 @@ const TransactionHistory = () => {
 
   /* ── Pagination helpers ── */
   const goTo = (pg) => { if (pg >= 1 && pg <= totalPages) fetchData(pg); };
+
+  const fetchAndShowPdf = async (invReqId) => {
+    setPdfLoading(invReqId);
+    try {
+      const res = await axiosClient.get(`/InventoryRequests/${invReqId}`);
+      setPdfReq(res.data);
+    } catch {
+      // ignore
+    } finally {
+      setPdfLoading(null);
+    }
+  };
 
   const pageNumbers = (() => {
     const nums = [];
@@ -213,19 +228,20 @@ const TransactionHistory = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Mã giao dịch</th>
+                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Mã yêu cầu</th>
                   <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Loại</th>
                   <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Kho hàng</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Tên mặt hàng</th>
+                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Mặt hàng</th>
                   <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Số lượng</th>
-                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Ngày giờ</th>
+                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider ">Ngày tạo</th>
                   <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider">Người thực hiện</th>
+                  <th className="px-6 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider text-center">Phiếu</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
+                    <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
                       <div className="flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined text-4xl animate-spin text-[#00b2d6]">progress_activity</span>
                         <span className="text-sm font-medium">Đang tải dữ liệu...</span>
@@ -234,7 +250,7 @@ const TransactionHistory = () => {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined text-4xl text-red-400">error</span>
                         <span className="text-sm font-medium text-red-500">{error}</span>
@@ -247,7 +263,7 @@ const TransactionHistory = () => {
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center text-slate-400">
+                    <td colSpan={8} className="px-6 py-16 text-center text-slate-400">
                       <div className="flex flex-col items-center gap-3">
                         <span className="material-symbols-outlined text-5xl text-slate-300">inventory_2</span>
                         <span className="text-sm font-medium">Không có giao dịch nào phù hợp.</span>
@@ -260,7 +276,7 @@ const TransactionHistory = () => {
                     return (
                       <tr key={row.transactionId} className="hover:bg-slate-50 transition-colors group">
                         <td className="px-6 py-4 font-mono text-xs text-[#00b2d6] font-semibold">
-                          #{String(row.transactionId).padStart(5, '0')}
+                          #{row.invReqId || row.transactionId}
                         </td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${
@@ -294,6 +310,18 @@ const TransactionHistory = () => {
                             </div>
                             <span className="text-sm text-slate-700 truncate max-w-[120px]">{row.performedByName || `#${row.performedBy}`}</span>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {isInbound && row.invReqId && (
+                            <button
+                              onClick={() => fetchAndShowPdf(row.invReqId)}
+                              disabled={pdfLoading === row.invReqId}
+                              style={{ padding: '4px 10px', border: '1.5px solid #bfdbfe', background: '#eff6ff', borderRadius: 6, cursor: 'pointer', color: '#1d4ed8', fontSize: '0.78rem', fontWeight: 700, whiteSpace: 'nowrap', opacity: pdfLoading === row.invReqId ? 0.6 : 1 }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#dbeafe'}
+                              onMouseLeave={e => e.currentTarget.style.background = '#eff6ff'}>
+                              {pdfLoading === row.invReqId ? 'Đang tải...' : 'Xem phiếu'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -385,6 +413,7 @@ const TransactionHistory = () => {
         </div>
 
       </div>
+      {pdfReq && <ReceiptPreviewModal data={pdfReq} onClose={() => setPdfReq(null)} />}
     </div>
   );
 };

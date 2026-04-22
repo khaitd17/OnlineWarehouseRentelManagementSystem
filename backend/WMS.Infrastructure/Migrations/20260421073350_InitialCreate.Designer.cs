@@ -12,8 +12,8 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260420175747_AddRenterSignatureToInventoryRequest")]
-    partial class AddRenterSignatureToInventoryRequest
+    [Migration("20260421073350_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1019,6 +1019,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("document_urls");
 
+                    b.Property<string>("ManagerSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("manager_signature_base64");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("notes");
@@ -1033,6 +1037,10 @@ namespace WMS.Infrastructure.Migrations
 
                     b.Property<DateTime?>("ScheduledDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("StaffSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("staff_signature_base64");
 
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
@@ -1940,7 +1948,8 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("unit");
 
                     b.Property<decimal?>("VolumePerUnit")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("volume_per_unit");
 
                     b.Property<decimal?>("WeightPerUnit")
                         .HasColumnType("decimal(10, 2)")

@@ -33,8 +33,6 @@ public class GetSystemReportsHandler : IRequestHandler<GetSystemReportsQuery, Ap
         var pendingWarehouses = await _db.Warehouses.CountAsync(w => w.Status == "PENDING" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken);
         var hiddenWarehouses = await _db.Warehouses.CountAsync(w => w.Status == "HIDDEN" && w.CreatedAt >= fromDate && w.CreatedAt <= toDate, cancellationToken);
 
-        // ── Subscription & Financial Stats ──
-        // Use LEFT JOIN (DefaultIfEmpty) so we don't crash when subscription_packages is empty/missing
         List<PackageRevenueDto> revenueByPackage = new();
         List<MonthlyRevenueDto> monthlyRevenue = new();
         decimal totalRevenue = 0;

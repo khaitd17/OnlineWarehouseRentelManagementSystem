@@ -922,10 +922,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
 
-                    b.Property<decimal?>("EstimatedVolume")
-                        .HasColumnType("decimal(10, 3)")
-                        .HasColumnName("EstimatedVolume");
-
                     b.Property<int>("InvReqId")
                         .HasColumnType("int")
                         .HasColumnName("inv_req_id");
@@ -949,14 +945,6 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<int?>("VerifiedQuantity")
                         .HasColumnType("int")
                         .HasColumnName("verified_quantity");
-
-                    b.Property<decimal?>("VerifiedVolume")
-                        .HasColumnType("decimal(10, 3)")
-                        .HasColumnName("VerifiedVolume");
-
-                    b.Property<decimal?>("VerifiedWeight")
-                        .HasColumnType("decimal(10, 3)")
-                        .HasColumnName("VerifiedWeight");
 
                     b.Property<string>("VerifyNote")
                         .HasMaxLength(500)
@@ -1016,6 +1004,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("document_urls");
 
+                    b.Property<string>("ManagerSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("manager_signature_base64");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("notes");
@@ -1023,10 +1015,6 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<int>("RenterId")
                         .HasColumnType("int")
                         .HasColumnName("renter_id");
-
-                    b.Property<string>("RenterSignatureBase64")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("renter_signature_base64");
 
                     b.Property<DateTime?>("ScheduledDate")
                         .HasColumnType("datetime2");
@@ -1937,7 +1925,8 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("unit");
 
                     b.Property<decimal?>("VolumePerUnit")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("volume_per_unit");
 
                     b.Property<decimal?>("WeightPerUnit")
                         .HasColumnType("decimal(10, 2)")
@@ -3300,7 +3289,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("skill_id");
 
-                    b.ToTable("warehouse_membership_skills");
+                    b.ToTable("warehouse_membership_skills", (string)null);
                 });
 
             modelBuilder.Entity("warehouse_membership_zones", b =>
@@ -3315,7 +3304,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("zone_id");
 
-                    b.ToTable("warehouse_membership_zones");
+                    b.ToTable("warehouse_membership_zones", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.AiAnalysisSession", b =>

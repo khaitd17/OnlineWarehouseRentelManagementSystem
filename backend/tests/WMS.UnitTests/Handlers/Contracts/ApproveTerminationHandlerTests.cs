@@ -14,6 +14,8 @@ public class ApproveTerminationHandlerTests
     private readonly Mock<IWarehouseRepository> _mockWarehouseRepository;
     private readonly Mock<INotificationRepository> _mockNotificationRepository;
     private readonly Mock<INotificationSender> _mockNotificationSender;
+    private readonly Mock<IRenterAssetRepository> _mockAssetRepository;
+    private readonly Mock<IRentalRequestRepository> _mockRentalRequestRepository;
     private readonly ApproveTerminationHandler _handler;
 
     public ApproveTerminationHandlerTests()
@@ -22,12 +24,16 @@ public class ApproveTerminationHandlerTests
         _mockWarehouseRepository = new Mock<IWarehouseRepository>();
         _mockNotificationRepository = new Mock<INotificationRepository>();
         _mockNotificationSender = new Mock<INotificationSender>();
+        _mockAssetRepository = new Mock<IRenterAssetRepository>();
+        _mockRentalRequestRepository = new Mock<IRentalRequestRepository>();
 
         _handler = new ApproveTerminationHandler(
             _mockContractRepository.Object,
             _mockWarehouseRepository.Object,
             _mockNotificationRepository.Object,
-            _mockNotificationSender.Object
+            _mockNotificationSender.Object,
+            _mockAssetRepository.Object,
+            _mockRentalRequestRepository.Object
         );
     }
 

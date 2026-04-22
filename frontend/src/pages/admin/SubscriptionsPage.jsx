@@ -34,7 +34,7 @@ export default function SubscriptionsPage() {
   // =====================
   const [packages, setPackages] = useState([]);
   const [pkgLoading, setPkgLoading] = useState(true);
-  const defaultPkgModal = { open: false, isEdit: false, loading: false, packageId: null, name: "", price: 0, durationMonths: 1, description: "", isActive: true };
+  const defaultPkgModal = { open: false, isEdit: false, loading: false, packageId: null, name: "", originalName: "", price: 0, durationMonths: 1, description: "", isActive: true, activeSubCount: 0 };
   const [pkgModal, setPkgModal] = useState(defaultPkgModal);
   const [pkgConfirm, setPkgConfirm] = useState({ open: false, id: null, message: "", loading: false });
 
@@ -141,14 +141,23 @@ export default function SubscriptionsPage() {
   // PACKAGE HANDLERS
   // =====================
   const openPkgCreate = () => {
-    setPkgModal({ ...defaultPkgModal, open: true, isEdit: false });
+    setPkgModal({ ...defaultPkgModal, open: true, isEdit: false, originalName: "" });
   };
-  const openPkgEdit = (pkg) => {
+  const openPkgEdit = async (pkg) => {
     setPkgModal({
       open: true, isEdit: true, loading: false,
-      packageId: pkg.packageId, name: pkg.name, price: pkg.price,
-      durationMonths: pkg.durationMonths, description: pkg.description || "", isActive: pkg.isActive
+      packageId: pkg.packageId, name: pkg.name, originalName: pkg.name, price: pkg.price,
+      durationMonths: pkg.durationMonths, description: pkg.description || "", isActive: pkg.isActive,
+      activeSubCount: 0,
     });
+    // Fetch active subscription count for this package
+    try {
+      const res = await adminService.getSubscriptions({ plan: pkg.name, status: "Active", pageSize: 1 });
+      if (res.data.success) {
+        const count = res.data.data?.totalCount ?? 0;
+        setPkgModal(p => ({ ...p, activeSubCount: count }));
+      }
+    } catch { /* ignore */ }
   };
   const handleSavePkg = async () => {
     if (!pkgModal.name || pkgModal.price < 0 || pkgModal.durationMonths < 1) {
@@ -419,6 +428,16 @@ export default function SubscriptionsPage() {
             <div style={{ marginBottom: 15 }}>
               <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: 6 }}>Tên gói</label>
               <input value={pkgModal.name} onChange={e => setPkgModal(p => ({ ...p, name: e.target.value }))} placeholder="Ví dụ: Premium" style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.9rem" }} />
+              {pkgModal.isEdit && pkgModal.name !== pkgModal.originalName && pkgModal.activeSubCount > 0 && (
+                <div style={{ marginTop: 6, padding: "8px 12px", borderRadius: 8, background: "#fef3c7", border: "1px solid #f59e0b", fontSize: "0.78rem", color: "#92400e" }}>
+                  ⚠️ Đổi tên sẽ tự động cập nhật <strong>{pkgModal.activeSubCount}</strong> đăng ký đang dùng gói "<strong>{pkgModal.originalName}</strong>".
+                </div>
+              )}
+              {pkgModal.isEdit && pkgModal.name !== pkgModal.originalName && pkgModal.activeSubCount === 0 && (
+                <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 8, background: "#f0fdf4", border: "1px solid #86efac", fontSize: "0.78rem", color: "#166534" }}>
+                  ✓ Không có đăng ký nào đang dùng gói này.
+                </div>
+              )}
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 15 }}>

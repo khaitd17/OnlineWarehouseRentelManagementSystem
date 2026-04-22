@@ -28,4 +28,13 @@ public class RentalRequestDto
     public int? RentalAreaId { get; set; }
     public string? RentalAreaName { get; set; }
     public double? RentalAreaSize { get; set; }
+
+    // ── Custom Area (renter self-arranged) ────────────────────────────────
+    public bool IsCustomArea { get; set; }
+    public double? ProposedPositionX { get; set; }
+    public double? ProposedPositionY { get; set; }
+    public double? ProposedWidth { get; set; }
+    public double? ProposedLength { get; set; }
+    public int? BaseRentalAreaId { get; set; }
+    // ─────────────────────────────────────────────────────────────────────
 }

@@ -105,7 +105,7 @@ const ContractPaymentSelection = () => {
           : isExtensionPayment
             ? ((extensionInfo?.proposedMonthlyPayment || 0) * (extensionInfo?.durationMonths || 0))
             : (contract.depositAmount || contract.monthlyPayment),
-        paymentType: isTerminationPayment ? "PENALTY" : isExtensionPayment ? "EXTENSION" : "DEPOSIT"
+        paymentType: isTerminationPayment ? "PENALTY" : isExtensionPayment ? "EXTENSION" : (contract.depositAmount ? "DEPOSIT" : "MONTHLY")
       });
 
       setCashPaymentSuccess(true);

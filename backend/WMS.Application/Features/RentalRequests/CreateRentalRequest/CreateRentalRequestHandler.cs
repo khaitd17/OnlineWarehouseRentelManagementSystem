@@ -74,6 +74,17 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         );
         rentalRequest.RentalAreaId = request.RentalAreaId;
 
+        // Persist custom-area data if the renter drew their own zone
+        if (request.IsCustomArea)
+        {
+            rentalRequest.IsCustomArea      = true;
+            rentalRequest.ProposedPositionX = request.ProposedPositionX;
+            rentalRequest.ProposedPositionY = request.ProposedPositionY;
+            rentalRequest.ProposedWidth     = request.ProposedWidth;
+            rentalRequest.ProposedLength    = request.ProposedLength;
+            rentalRequest.BaseRentalAreaId  = request.BaseRentalAreaId;
+        }
+
         var requestId = await _rentalRequestRepository.AddAsync(rentalRequest);
 
         // Get renter info for notification

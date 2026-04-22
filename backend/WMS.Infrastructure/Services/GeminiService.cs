@@ -21,7 +21,7 @@ public class GeminiService : IGeminiService
         _http = httpClientFactory.CreateClient("Gemini");
         _apiKey = configuration["GeminiSettings:ApiKey"]
                   ?? throw new InvalidOperationException("GeminiSettings:ApiKey is not configured.");
-        _model = configuration["GeminiSettings:Model"] ?? "gemini-1.5-flash";
+        _model = configuration["GeminiSettings:Model"] ?? "gemini-2.5-flash";
     }
 
     public async Task<GeminiAnalysisResult> AnalyzeItemsAsync(
@@ -123,7 +123,9 @@ public class GeminiService : IGeminiService
             generationConfig = new
             {
                 temperature = 0.05,
-                maxOutputTokens = imageCount > 2 ? 8192 : 4096
+                // gemini-2.5-flash hỗ trợ tối đa 65536 output token. Đặt cao để tránh JSON bị cắt cụt.
+                maxOutputTokens = 65536,
+                responseMimeType = "application/json"
             }
         };
 
@@ -138,12 +140,13 @@ public class GeminiService : IGeminiService
         int[]     delaysMs   = [2000, 5000, 10000]; // 2s, 5s, 10s
 
         // Mỗi tuple là (modelName, apiVersion)
-        // Lưu ý: Các ảnh bắt buộc phải truyền vào model hỗ trợ Vision (1.5-flash hoặc 1.5-pro)
+        // Lưu ý: gemini-1.5-flash và gemini-1.5-pro đã bị Google deprecated và xóa khỏi v1.
+        // Chỉ sử dụng các model đang được hỗ trợ (gemini-2.5 trở lên).
         (string model, string apiVer)[] modelChain =
         [
-            ("gemini-1.5-flash", "v1beta"), // Model an toàn nhất, tỷ lệ thành công cao nhất
-            ("gemini-1.5-pro", "v1beta"),   // Nếu flash lỗi thử pro
-            ("gemini-1.5-flash", "v1"),     // Fallback cuối cùng ở bản v1 stable
+            (_model,              "v1beta"), // Model được cấu hình trong appsettings (ưu tiên cao nhất)
+            ("gemini-2.5-flash",  "v1beta"), // Fallback sang gemini-2.5-flash trên v1beta
+            ("gemini-2.5-flash",  "v1"),     // Fallback sang gemini-2.5-flash trên v1 stable
         ];
 
         HttpResponseMessage response = null!;
@@ -208,6 +211,15 @@ public class GeminiService : IGeminiService
         {
             using var doc = JsonDocument.Parse(responseBody);
 
+            // Kiểm tra finishReason – nếu la MAX_TOKENS thì JSON có thể bị truncate
+            var finishReason = doc.RootElement
+                .TryGetProperty("candidates", out var cands) && cands.GetArrayLength() > 0
+                ? (cands[0].TryGetProperty("finishReason", out var fr) ? fr.GetString() : "STOP")
+                : "STOP";
+
+            if (finishReason == "MAX_TOKENS")
+                Console.WriteLine("[GeminiService] ⚠️ finishReason=MAX_TOKENS → JSON có thể bị cắt cụt. Nên tăng maxOutputTokens.");
+
             // Lấy text từ candidates[0].content.parts[0].text
             var text = doc
                 .RootElement
@@ -227,6 +239,9 @@ public class GeminiService : IGeminiService
                 if (lastFence >= 0) jsonText = jsonText[..lastFence];
                 jsonText = jsonText.Trim();
             }
+
+            // Nếu vẫn bị truncate: tự sửa JSON bị cắt cụt để parse được phần đã có
+            jsonText = RepairTruncatedJson(jsonText);
 
             // Parse JSON kết quả phân tích
             using var resultDoc = JsonDocument.Parse(jsonText);
@@ -285,8 +300,62 @@ public class GeminiService : IGeminiService
         }
         catch (JsonException ex)
         {
+            Console.WriteLine($"[Gemini JSON Error] Raw Response: {responseBody}");
             throw new InvalidOperationException(
                 $"Không thể parse kết quả từ Gemini AI. Chi tiết: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Cố gắng sửa JSON bị cắt cụt (do vượt maxOutputTokens) để vẫn parse được phần đã có.
+    /// Áp dụng các chiến lược: đóng array, đóng object, thiếu dấu hỏi nháy, ...
+    /// </summary>
+    private static string RepairTruncatedJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return "{}";
+
+        // Thử parse luôn – nếu được thì không cần sửa
+        try { JsonDocument.Parse(json); return json; } catch { /* tiếp tục repair */ }
+
+        Console.WriteLine("[GeminiService] JSON bị truncate, đang thử tự sửa...");
+
+        var sb = new System.Text.StringBuilder(json.TrimEnd());
+
+        // Xóa dấu phẩy thừa ở cuối
+        while (sb.Length > 0 && sb[sb.Length - 1] == ',')
+            sb.Remove(sb.Length - 1, 1);
+
+        // Đếm số bracket/brace mở chưa đóng
+        int openBraces  = 0;
+        int openBrackets = 0;
+        bool inString   = false;
+        bool escaped    = false;
+
+        foreach (char c in sb.ToString())
+        {
+            if (escaped) { escaped = false; continue; }
+            if (c == '\\' && inString) { escaped = true; continue; }
+            if (c == '"') { inString = !inString; continue; }
+            if (inString) continue;
+            if (c == '{') openBraces++;
+            else if (c == '}') openBraces--;
+            else if (c == '[') openBrackets++;
+            else if (c == ']') openBrackets--;
+        }
+
+        // Nếu đang trong string – đóng string trước
+        if (inString) sb.Append('"');
+
+        // Đóng các bracket/brace chưa đóng
+        for (int i = 0; i < openBrackets; i++) sb.Append(']');
+        for (int i = 0; i < openBraces;   i++) sb.Append('}');
+
+        var repaired = sb.ToString();
+
+        // Kiểm tra lần 2 sau khi sửa
+        try { JsonDocument.Parse(repaired); return repaired; } catch { /* fallback */ }
+
+        // Fallback cuối cùng: trả về JSON rỗng để không crash toàn bộ
+        return "{ \"items\": [], \"totalEstimatedVolumeM3\": 0, \"suggestedWarehouseType\": \"Kho thường\", \"specialNotes\": \"AI không thể phân tích đầy đủ — ảnh có quá nhiều đồ vật.\", \"confidence\": 0.3 }";
     }
 }

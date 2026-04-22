@@ -86,9 +86,9 @@ const ExpiryCountdown = ({
     <div className={`expiry-countdown rounded-lg p-4 ${colorClass} ${className}`}>
       <div className="text-center mb-2 font-medium">
         {isExpired ? (
-          <span className="text-red-600">⚠️ Đã hết hạn</span>
+          <span className="text-red-600">Đã hết hạn</span>
         ) : (
-          <span>⏱️ Thời gian còn lại</span>
+          <span>Thời gian còn lại</span>
         )}
       </div>
       
@@ -106,7 +106,7 @@ const ExpiryCountdown = ({
 
       {isWarning && !isExpired && (
         <div className="text-center mt-2 text-sm">
-          {isCritical ? '⚠️ Sắp hết hạn! Vui lòng hoàn tất ngay.' : '⚠️ Sắp hết hạn!'}
+          {isCritical ? 'Sắp hết hạn! Vui lòng hoàn tất ngay.' : 'Sắp hết hạn!'}
         </div>
       )}
     </div>

@@ -11,6 +11,7 @@ public record ConfirmInventoryRequestCommand : IRequest<InventoryRequestDto>
     public int StaffId { get; init; }
     public string? Notes { get; init; }
     public string? Role { get; init; }
+    public string? StaffSignatureBase64 { get; init; }
 }
 
 public class ConfirmInventoryRequestHandler
@@ -128,6 +129,11 @@ public class ConfirmInventoryRequestHandler
         // 5. Update request status to COMPLETED
         req.Status      = "COMPLETED";
         req.UpdatedAt   = DateTime.Now;
+        if (!string.IsNullOrEmpty(cmd.StaffSignatureBase64))
+            req.StaffSignatureBase64 = cmd.StaffSignatureBase64;
+        // Ghi lại staff thực hiện nếu chưa được giao (tự nhận việc)
+        if (!req.AssignedStaffId.HasValue)
+            req.AssignedStaffId = cmd.StaffId;
         await _repo.UpdateAsync(req, cancellationToken);
 
         // Đóng UnitTask bước tiếp nhận hàng. Bước putaway/dispatch là màn hình riêng biệt.

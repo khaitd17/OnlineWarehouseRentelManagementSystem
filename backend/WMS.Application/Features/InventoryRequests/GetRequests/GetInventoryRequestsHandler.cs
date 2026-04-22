@@ -36,15 +36,15 @@ public class GetInventoryRequestsHandler
 
             "OPERATOR" => await _repo.GetForStaffAsync(              // vận hành toàn kho
                 q.Type.ToUpper(), q.Status?.ToUpper(), q.WarehouseId,
-                q.Page, q.PageSize, cancellationToken),
+                q.Page, q.PageSize, false, cancellationToken),
 
             "MANAGER"  => await _repo.GetForStaffAsync(              // duyệt / từ chối
                 q.Type.ToUpper(), q.Status?.ToUpper(), q.WarehouseId,
-                q.Page, q.PageSize, cancellationToken),
+                q.Page, q.PageSize, false, cancellationToken),
 
             "STAFF"    => await _repo.GetForStaffAsync(              // thực hiện
                 q.Type.ToUpper(), q.Status?.ToUpper(), q.WarehouseId,
-                q.Page, q.PageSize, cancellationToken),
+                q.Page, q.PageSize, true, cancellationToken),
 
             "RENTER"   => await _repo.GetForRenterAsync(             // của chính mình
                 q.UserId, q.Type.ToUpper(), q.Status?.ToUpper(),

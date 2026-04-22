@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import inventoryService from "../../services/inventoryService";
+import axiosClient from "../../services/axiosClient";
+import { ReceiptPreviewModal } from "../../components/InventoryReceiptPDF";
 
 const INBOUND_COLOR = '#0ea5e9';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -48,6 +50,8 @@ function TabPanel({ type }) {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [conf, setConf] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  const [pdfReq, setPdfReq] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState(
     location.state?.created && location.state?.type === type
       ? (type === "INBOUND" ? "✅ Yêu cầu nhập kho đã được tạo!" : "✅ Yêu cầu xuất kho đã được tạo!")
@@ -83,14 +87,18 @@ function TabPanel({ type }) {
     setConf(null);
   };
 
-  const exportCSV = () => {
-    const rows = [["ID", "Kho", "Mặt hàng", "SL", "Trạng thái", "Ngày tạo"],
-      ...filtered.map(r => [`#${r.invReqId}`, r.warehouseName || "", r.items?.[0]?.itemName || "",
-        r.items?.reduce((s, i) => s + i.quantity, 0) || 0, STATUS_MAP[r.status]?.label || r.status,
-        fmtDate(r.createdAt)])];
-    const a = document.createElement("a"); a.href = "data:text/csv;charset=utf-8," + encodeURIComponent(rows.map(r => r.join(",")).join("\n"));
-    a.download = type === "INBOUND" ? "nhap-kho.csv" : "xuat-kho.csv"; a.click();
+  const fetchAndShowPdf = async (row) => {
+    setPdfLoading(row.invReqId);
+    try {
+      const res = await axiosClient.get(`/InventoryRequests/${row.invReqId}`);
+      setPdfReq(res.data || row);
+    } catch {
+      setPdfReq(row);
+    } finally {
+      setPdfLoading(null);
+    }
   };
+
 
   const card = { background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", boxShadow: "0 2px 12px rgba(0,0,0,0.04)" };
 
@@ -124,9 +132,7 @@ function TabPanel({ type }) {
         </div>
         {/* Actions */}
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={exportCSV} style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", color: "#64748b" }}>
-            Xuất CSV
-          </button>
+
           <Link to={`/create-inventory?tab=${type === "INBOUND" ? "inbound" : "outbound"}`}
             style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 16px", borderRadius: 10, background: `linear-gradient(135deg,${accent},${accent}cc)`, color: "#fff", fontWeight: 700, fontSize: "0.875rem", textDecoration: "none", boxShadow: `0 4px 14px ${accent}35` }}>
             Tạo yêu cầu mới
@@ -167,7 +173,7 @@ function TabPanel({ type }) {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#f8fafc" }}>
-                {[["ID", "60px"], ["Kho hàng", "150px"], ["Mặt hàng", "auto"], ["Số lượng", "100px", "right"], ["Trạng thái", "120px"], ["Ngày tạo", "110px"], ["", "80px", "center"]].map(([h, w, align], i) => (
+                {[["Mã yêu cầu", "90px"], ["Kho hàng", "150px"], ["Mặt hàng", "auto"], ["Số lượng", "100px", "right"], ["Trạng thái", "120px"], ["Ngày tạo", "110px"], ["", "120px", "center"]].map(([h, w, align], i) => (
                   <th key={i} style={{ padding: "11px 14px", textAlign: align || "left", fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.06em", whiteSpace: "nowrap", width: w }}>
                     {h}
                   </th>
@@ -217,14 +223,26 @@ function TabPanel({ type }) {
                       <td style={{ padding: "13px 14px", color: "#64748b", fontSize: "0.83rem" }}>{fmtDate(row.createdAt)}</td>
                       {/* Actions */}
                       <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                        {row.status === "PENDING" && (
-                          <button title="Hủy yêu cầu" onClick={() => setConf({ id: row.invReqId })}
-                            style={{ padding: "4px 10px", width: "auto", height: "auto", border: "1.5px solid #fecaca", background: "#fef2f2", borderRadius: 6, cursor: "pointer", color: "#dc2626", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                            Hủy
-                          </button>
-                        )}
+                        <div style={{ display:'flex', gap:6, justifyContent:'center', alignItems:'center' }}>
+                          {row.status === "COMPLETED" && (
+                            <button
+                              onClick={() => fetchAndShowPdf(row)}
+                              disabled={pdfLoading === row.invReqId}
+                              style={{ padding: "4px 10px", border: "1.5px solid #bfdbfe", background: "#eff6ff", borderRadius: 6, cursor: "pointer", color: "#1d4ed8", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap", opacity: pdfLoading === row.invReqId ? 0.6 : 1 }}
+                              onMouseEnter={e => { e.currentTarget.style.background = "#dbeafe"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = "#eff6ff"; }}>
+                              {pdfLoading === row.invReqId ? "Đang tải..." : "Xem phiếu"}
+                            </button>
+                          )}
+                          {row.status === "PENDING" && (
+                            <button title="Hủy yêu cầu" onClick={() => setConf({ id: row.invReqId })}
+                              style={{ padding: "4px 10px", width: "auto", height: "auto", border: "1.5px solid #fecaca", background: "#fef2f2", borderRadius: 6, cursor: "pointer", color: "#dc2626", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                              Hủy
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                     {/* Expanded items */}
@@ -259,6 +277,7 @@ function TabPanel({ type }) {
       </div>
 
       {conf && <Confirm msg={`Xóa yêu cầu #${conf.id}? Hành động này không thể hoàn tác.`} onOk={() => doDelete(conf.id)} onCancel={() => setConf(null)} />}
+      {pdfReq && <ReceiptPreviewModal data={pdfReq} onClose={() => setPdfReq(null)} />}
     </div>
   );
 }

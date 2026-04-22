@@ -280,15 +280,10 @@ function buildMenu(systemRole, warehouses) {
     if (hasChecker) {
       items.push({
         icon: "inventory_2",
-        label: "Phiếu nhập/xuất kho",
+        label: "Xác nhận nhập/xuất kho",
         path: "/staff-inventory-requests-staff",
         section: "KHO",
         badgeKey: "pendingAssignedCount",
-      });
-      items.push({
-        icon: "swap_horiz",
-        label: "Xác nhận nhập/xuất kho",
-        path: "/confirm-movement",
       });
     }
     if (hasChecker || hasInvOp) {
