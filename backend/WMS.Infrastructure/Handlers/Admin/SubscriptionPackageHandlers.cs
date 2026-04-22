@@ -79,6 +79,10 @@ public class UpdateSubscriptionPackageHandler : IRequestHandler<UpdateSubscripti
         if (nameChanged && await _db.SubscriptionPackages.AnyAsync(p => p.Name == request.Name, cancellationToken))
             return ApiResponse<bool>.ErrorResponse("Gói cước với tên này đã tồn tại.");
 
+        bool hasSubscribers = await _db.Subscriptions.AnyAsync(s => s.Plan == package.Name, cancellationToken);
+        if (hasSubscribers && request.Price != package.Price)
+            return ApiResponse<bool>.ErrorResponse("Không thể thay đổi giá gói cước khi đã có người đăng ký. Hãy tạo gói mới nếu muốn thay đổi giá.");
+
         // Cascade update all subscriptions that stored the old package name
         if (nameChanged)
         {
