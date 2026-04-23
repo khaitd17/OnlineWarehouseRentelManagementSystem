@@ -1016,6 +1016,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("document_urls");
 
+                    b.Property<string>("ManagerSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("manager_signature_base64");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("notes");
