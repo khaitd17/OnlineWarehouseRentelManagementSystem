@@ -388,6 +388,7 @@ namespace WMS.Infrastructure.Migrations
                     notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     renter_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     manager_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    staff_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     document_urls = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
@@ -784,6 +785,12 @@ namespace WMS.Infrastructure.Migrations
                     reviewed_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     rejection_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     contract_image_url = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    is_custom_area = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    proposed_position_x = table.Column<double>(type: "float", nullable: true),
+                    proposed_position_y = table.Column<double>(type: "float", nullable: true),
+                    proposed_width = table.Column<double>(type: "float", nullable: true),
+                    proposed_length = table.Column<double>(type: "float", nullable: true),
+                    base_rental_area_id = table.Column<int>(type: "int", nullable: true),
                     cancellation_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     cancelled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     cancelled_by = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true)
