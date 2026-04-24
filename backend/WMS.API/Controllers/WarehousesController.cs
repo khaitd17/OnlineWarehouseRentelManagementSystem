@@ -168,7 +168,31 @@ public class WarehouseController : ControllerBase
 
         await _mediator.Send(command);
 
-        return Ok();
+        return Ok(new { message = "Tải giấy tờ lên thành công" });
+    }
+
+    [HttpGet("{id}/documents")]
+    public async Task<IActionResult> GetDocuments(int id)
+    {
+        var repo = HttpContext.RequestServices.GetRequiredService<WMS.Domain.Interfaces.IWarehouseDocumentRepository>();
+        var docs = await repo.GetByWarehouseIdAsync(id, HttpContext.RequestAborted);
+        return Ok(docs.Select(d => new
+        {
+            d.DocumentId,
+            d.DocumentType,
+            d.DocumentUrl,
+            d.Status,
+            d.CreatedAt
+        }));
+    }
+
+    [HttpDelete("documents/{docId}")]
+    public async Task<IActionResult> DeleteDocument(int docId)
+    {
+        var repo = HttpContext.RequestServices.GetRequiredService<WMS.Domain.Interfaces.IWarehouseDocumentRepository>();
+        var result = await repo.DeleteAsync(docId, HttpContext.RequestAborted);
+        if (!result) return NotFound();
+        return Ok(new { message = "Xóa giấy tờ thành công" });
     }
 
     [HttpPatch("{id}/submit")]

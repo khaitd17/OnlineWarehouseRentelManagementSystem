@@ -682,6 +682,77 @@ const OwnerWarehouseDetailPage = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Legal documents gallery */}
+              {warehouse.documents && warehouse.documents.length > 0 && (
+                <div style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
+                    <span className="material-symbols-outlined" style={{ color: "#0284c7" }}>description</span>
+                    <h4 style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>Giấy tờ pháp lý ({warehouse.documents.length})</h4>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                    {warehouse.documents.map(doc => {
+                      const rawUrl = doc.documentUrl || doc.DocumentUrl;
+                      const docUrl = rawUrl?.startsWith("http") ? rawUrl : `http://localhost:5276${rawUrl?.startsWith("/") ? rawUrl : "/" + rawUrl}`;
+                      const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(docUrl);
+                      const isPdf = /\.pdf$/i.test(docUrl);
+                      const docLabels = {
+                        BUSINESS_LICENSE: "Giấy phép kinh doanh",
+                        WAREHOUSE_CERT: "GCN quyền sử dụng kho",
+                        FIRE_SAFETY: "PCCC",
+                        OTHER: "Tài liệu khác",
+                      };
+                      const label = docLabels[doc.documentType] || doc.documentType || "Giấy tờ";
+                      return (
+                        <div key={doc.documentId} style={{
+                          borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden",
+                          background: "#fafafa"
+                        }}>
+                          {isImage ? (
+                            <a href={docUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
+                              <img
+                                src={docUrl}
+                                alt={label}
+                                style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
+                                onError={e => { e.target.style.display = "none"; }}
+                              />
+                            </a>
+                          ) : isPdf ? (
+                            <a
+                              href={docUrl} target="_blank" rel="noopener noreferrer"
+                              style={{
+                                height: 120, display: "flex", flexDirection: "column",
+                                alignItems: "center", justifyContent: "center", gap: 6,
+                                background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
+                                textDecoration: "none"
+                              }}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: 36, color: "#2563eb" }}>picture_as_pdf</span>
+                              <span style={{ fontSize: "0.78rem", color: "#2563eb", fontWeight: 600 }}>Xem PDF</span>
+                            </a>
+                          ) : (
+                            <a
+                              href={docUrl} target="_blank" rel="noopener noreferrer"
+                              style={{
+                                height: 120, display: "flex", alignItems: "center", justifyContent: "center",
+                                background: "#f1f5f9", textDecoration: "none"
+                              }}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: 36, color: "#64748b" }}>insert_drive_file</span>
+                            </a>
+                          )}
+                          <div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b" }}>{label}</span>
+                            <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                              {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("vi-VN") : ""}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

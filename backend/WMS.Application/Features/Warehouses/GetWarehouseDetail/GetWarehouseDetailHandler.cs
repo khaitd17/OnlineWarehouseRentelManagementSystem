@@ -63,6 +63,15 @@ public class GetWarehouseDetailHandler
                 Url = x.MediaUrl
             }).ToList(),
             DocumentStatus = docStatus,
+            Documents = (warehouse.WarehouseDocuments ?? new List<Domain.Entities.WarehouseDocument>())
+                .Select(d => new WarehouseDocumentDto
+                {
+                    DocumentId = d.DocumentId,
+                    DocumentType = d.DocumentType,
+                    DocumentUrl = d.DocumentUrl,
+                    Status = d.Status,
+                    CreatedAt = d.CreatedAt
+                }).ToList(),
             OwnerName = owner?.FullName,
             OwnerPhone = owner?.Phone,
             OwnerAvatarUrl = owner?.AvatarUrl

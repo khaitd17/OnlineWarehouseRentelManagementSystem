@@ -44,6 +44,8 @@ public class WarehouseDetailDto
 
     public string? DocumentStatus { get; set; }
 
+    public List<WarehouseDocumentDto> Documents { get; set; } = new();
+
     public string? OwnerName { get; set; }
     public string? OwnerPhone { get; set; }
     public string? OwnerAvatarUrl { get; set; }
