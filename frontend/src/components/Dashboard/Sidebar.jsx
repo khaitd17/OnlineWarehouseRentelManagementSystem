@@ -177,6 +177,11 @@ function buildMenu(systemRole, warehouses) {
       label: "Yêu cầu thuê kho",
       path: "/pending-rental-requests",
     });
+    items.push({
+      icon: "event_repeat",
+      label: "Duyệt gia hạn hợp đồng",
+      path: "/contract-extensions",
+    });
   }
 
   // ── YÊU CẦU / KHO section ─────────────────────────────────
