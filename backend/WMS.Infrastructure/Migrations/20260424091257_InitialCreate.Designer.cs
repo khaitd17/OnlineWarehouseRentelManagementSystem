@@ -12,7 +12,7 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260422132329_InitialCreate")]
+    [Migration("20260424091257_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -1038,6 +1038,10 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<DateTime?>("ScheduledDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("StaffSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("staff_signature_base64");
+
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
@@ -1806,6 +1810,10 @@ namespace WMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
 
+                    b.Property<int?>("BaseRentalAreaId")
+                        .HasColumnType("int")
+                        .HasColumnName("base_rental_area_id");
+
                     b.Property<string>("CancellationReason")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("cancellation_reason");
@@ -1834,9 +1842,31 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("duration_months");
 
+                    b.Property<bool>("IsCustomArea")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_custom_area");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("notes");
+
+                    b.Property<double?>("ProposedLength")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_length");
+
+                    b.Property<double?>("ProposedPositionX")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_position_x");
+
+                    b.Property<double?>("ProposedPositionY")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_position_y");
+
+                    b.Property<double?>("ProposedWidth")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_width");
 
                     b.Property<string>("RejectionReason")
                         .HasColumnType("nvarchar(max)")
@@ -1944,7 +1974,8 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("unit");
 
                     b.Property<decimal?>("VolumePerUnit")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("volume_per_unit");
 
                     b.Property<decimal?>("WeightPerUnit")
                         .HasColumnType("decimal(10, 2)")
