@@ -36,10 +36,7 @@ public class RentalAreaRepository : IRentalAreaRepository
 
     private static readonly HashSet<string> OccupiedStatuses = new(StringComparer.OrdinalIgnoreCase)
     {
-        "ACTIVE", "PENDING_PAYMENT", "SIGNED",
-        "PENDING_OWNER_SIGNATURE", "PENDING_RENTER_SIGNATURE",
-        "PENDING_SIGNATURE", "DRAFT",
-        "PENDING_TERMINATION", "PENDING_CLOSE"
+        "ACTIVE"
     };
 
     public async Task<List<RentalArea>> GetWithOccupancyByWarehouseIdAsync(int warehouseId, CancellationToken cancellationToken)
@@ -62,7 +59,13 @@ public class RentalAreaRepository : IRentalAreaRepository
                     r.ProposedPositionX,
                     r.ProposedPositionY,
                     r.ProposedWidth,
-                    r.ProposedLength
+                    r.ProposedLength,
+                    // Extension zone (L-shape)
+                    r.HasExtensionZone,
+                    r.ExtensionPositionX,
+                    r.ExtensionPositionY,
+                    r.ExtensionWidth,
+                    r.ExtensionLength
                 })
             .ToListAsync(cancellationToken);
 
@@ -170,23 +173,57 @@ public class RentalAreaRepository : IRentalAreaRepository
             .Where(x => x.IsCustomArea && x.BaseRentalAreaId == null)
             .ToList();
 
-        foreach(var custom in independentCustoms)
+        if (independentCustoms.Any())
         {
-             var customArea = new RentalArea
-             {
-                 Id = -(custom.ContractId * 10000), // unique negative ID to differentiate from split zones
-                 WarehouseId = warehouseId,
-                 Name = "Khu đã thuê",
-                 PositionX = custom.ProposedPositionX ?? 0,
-                 PositionY = custom.ProposedPositionY ?? 0,
-                 Width = custom.ProposedWidth,
-                 Length = custom.ProposedLength,
-                 Size = (custom.ProposedWidth ?? 0) * (custom.ProposedLength ?? 0) * 5.0, // Assuming 5m height
-                 IsOccupied = true,
-                 ActiveContractId = custom.ContractId,
-                 Description = "Khu vực do người thuê yêu cầu thiết kế"
-             };
-             resultAreas.Add(customArea);
+            // Compute actual warehouse height instead of hardcoding
+            var wh = await _context.Warehouses
+                .Where(w => w.WarehouseId == warehouseId)
+                .Select(w => new { w.Width, w.Length, w.TotalArea })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            double whHeight = (wh != null && (wh.Width ?? 0) > 0 && (wh.Length ?? 0) > 0 && wh.TotalArea > 0)
+                ? wh.TotalArea / ((wh.Width ?? 1) * (wh.Length ?? 1))
+                : 4.0;
+
+            foreach (var custom in independentCustoms)
+            {
+                // Primary zone
+                var customArea = new RentalArea
+                {
+                    Id = -(custom.ContractId * 10000),
+                    WarehouseId = warehouseId,
+                    Name = "Khu đã thuê",
+                    PositionX = custom.ProposedPositionX ?? 0,
+                    PositionY = custom.ProposedPositionY ?? 0,
+                    Width = custom.ProposedWidth,
+                    Length = custom.ProposedLength,
+                    Size = (custom.ProposedWidth ?? 0) * (custom.ProposedLength ?? 0) * whHeight,
+                    IsOccupied = true,
+                    ActiveContractId = custom.ContractId,
+                    Description = "Khu vực do chủ kho sắp xếp"
+                };
+                resultAreas.Add(customArea);
+
+                // Extension zone (L-shape second rectangle)
+                if (custom.HasExtensionZone && (custom.ExtensionWidth ?? 0) > 0 && (custom.ExtensionLength ?? 0) > 0)
+                {
+                    var extArea = new RentalArea
+                    {
+                        Id = -(custom.ContractId * 10000 + 1),
+                        WarehouseId = warehouseId,
+                        Name = "Khu đã thuê (mở rộng)",
+                        PositionX = custom.ExtensionPositionX ?? 0,
+                        PositionY = custom.ExtensionPositionY ?? 0,
+                        Width = custom.ExtensionWidth,
+                        Length = custom.ExtensionLength,
+                        Size = (custom.ExtensionWidth ?? 0) * (custom.ExtensionLength ?? 0) * whHeight,
+                        IsOccupied = true,
+                        ActiveContractId = custom.ContractId,
+                        Description = "Phần mở rộng L-shape"
+                    };
+                    resultAreas.Add(extArea);
+                }
+            }
         }
 
         return resultAreas;

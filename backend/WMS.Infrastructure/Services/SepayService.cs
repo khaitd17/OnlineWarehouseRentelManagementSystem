@@ -131,6 +131,19 @@ public class SepayService : ISepayService
                     contract.Status = RentalContractStatus.Active;
                     contract.UpdatedAt = DateTime.UtcNow;
 
+                    // Deduct area from warehouse now that contract is ACTIVE
+                    var rentalRequest = await _db.RentalRequests.FindAsync(contract.RequestId);
+                    if (rentalRequest != null)
+                    {
+                        var wh = await _db.Warehouses.FindAsync(contract.WarehouseId);
+                        if (wh != null)
+                        {
+                            wh.AvailableArea -= rentalRequest.RequestedArea;
+                            _logger.LogInformation("Deducted {Area}m³ from warehouse {WhId} via webhook. New available: {Available}m³",
+                                rentalRequest.RequestedArea, wh.WarehouseId, wh.AvailableArea);
+                        }
+                    }
+
                     // Grant RENTER membership in the warehouse so the renter can use warehouse features
                     await EnsureRenterMembershipAsync(contract.RenterId, contract.WarehouseId);
                 }

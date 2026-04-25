@@ -67,6 +67,12 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
             ProposedWidth = rentalRequest?.ProposedWidth,
             ProposedLength = rentalRequest?.ProposedLength,
             BaseRentalAreaId = rentalRequest?.BaseRentalAreaId,
+            // Extension zone (L-shape)
+            HasExtensionZone   = rentalRequest?.HasExtensionZone ?? false,
+            ExtensionPositionX = rentalRequest?.ExtensionPositionX,
+            ExtensionPositionY = rentalRequest?.ExtensionPositionY,
+            ExtensionWidth     = rentalRequest?.ExtensionWidth,
+            ExtensionLength    = rentalRequest?.ExtensionLength,
             StartDate = contract.StartDate,
             EndDate = contract.EndDate,
             MonthlyPayment = contract.MonthlyPayment,

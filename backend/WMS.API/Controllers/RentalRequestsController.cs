@@ -11,6 +11,7 @@ using WMS.Application.Features.RentalRequests.ApproveRentalRequest;
 using WMS.Application.Features.RentalRequests.RejectRentalRequest;
 using WMS.Application.Features.RentalRequests.CancelRentalRequest;
 using WMS.Application.Features.RentalRequests.SendRentalRequest;
+using WMS.Domain.Interfaces;
 
 namespace WMS.API.Controllers;
 
@@ -20,10 +21,17 @@ namespace WMS.API.Controllers;
 public class RentalRequestsController : ControllerBase
 {
     private readonly IMediator _mediator;
+    private readonly IWarehouseRepository _warehouseRepository;
+    private readonly IRentalRequestRepository _rentalRequestRepository;
 
-    public RentalRequestsController(IMediator mediator)
+    public RentalRequestsController(
+        IMediator mediator,
+        IWarehouseRepository warehouseRepository,
+        IRentalRequestRepository rentalRequestRepository)
     {
         _mediator = mediator;
+        _warehouseRepository = warehouseRepository;
+        _rentalRequestRepository = rentalRequestRepository;
     }
 
     private int GetUserId()
@@ -292,5 +300,65 @@ public class RentalRequestsController : ControllerBase
     public class CancelRequestDto
     {
         public string? Reason { get; set; }
+    }
+
+    /// <summary>
+    /// Assign or update zone on a rental request (Owner only, post-approval)
+    /// </summary>
+    [HttpPost("{id}/assign-zone")]
+    public async Task<IActionResult> AssignZone(int id, [FromBody] AssignZoneDto dto)
+    {
+        try
+        {
+            var ownerId = GetUserId();
+            var rentalRequest = await _mediator.Send(
+                new GetRentalRequestByIdQuery { RequestId = id });
+
+            if (rentalRequest == null)
+                return NotFound(new { message = "Rental request not found" });
+
+            // Verify owner
+            var warehouse = await _warehouseRepository.GetByIdAsync(
+                rentalRequest.WarehouseId, HttpContext.RequestAborted);
+            if (warehouse == null || warehouse.OwnerId != ownerId)
+                return Forbid("Only warehouse owner can assign zones");
+
+            // Update zone data on the rental request directly
+            var entity = await _rentalRequestRepository.GetByIdAsync(id);
+            if (entity == null)
+                return NotFound(new { message = "Rental request not found" });
+
+            entity.IsCustomArea = true;
+            entity.ProposedPositionX = dto.PositionX;
+            entity.ProposedPositionY = dto.PositionY;
+            entity.ProposedWidth = dto.Width;
+            entity.ProposedLength = dto.Length;
+            entity.BaseRentalAreaId = dto.BaseAreaId;
+
+            await _rentalRequestRepository.UpdateAsync(entity);
+
+            return Ok(new
+            {
+                message = "Zone assigned successfully",
+                isCustomArea = true,
+                positionX = dto.PositionX,
+                positionY = dto.PositionY,
+                width = dto.Width,
+                length = dto.Length,
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    public class AssignZoneDto
+    {
+        public double? PositionX { get; set; }
+        public double? PositionY { get; set; }
+        public double? Width { get; set; }
+        public double? Length { get; set; }
+        public int? BaseAreaId { get; set; }
     }
 }

@@ -47,6 +47,11 @@ const rentalService = {
     return response.data;
   },
 
+  assignZone: async (requestId, zoneData) => {
+    const response = await axiosClient.post(`/rental-requests/${requestId}/assign-zone`, zoneData);
+    return response.data;
+  },
+
   // ── Contract APIs ──────────────────────────────────────────────
   getMyContracts: async () => {
     const response = await axiosClient.get("/rental-contracts/my-contracts");

@@ -17,6 +17,7 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
     private readonly IStaffMembershipRepository _membershipRepo;
     private readonly ILogger<ConfirmCashPaymentHandler> _logger;
     private readonly IContractExtensionRepository _extensionRepo;
+    private readonly IRentalRequestRepository _rentalRequestRepo;
 
     public ConfirmCashPaymentHandler(
         IRentalPaymentRepository paymentRepo,
@@ -26,7 +27,8 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
         INotificationSender notificationSender,
         IStaffMembershipRepository membershipRepo,
         ILogger<ConfirmCashPaymentHandler> logger,
-        IContractExtensionRepository extensionRepo)
+        IContractExtensionRepository extensionRepo,
+        IRentalRequestRepository rentalRequestRepo)
     {
         _paymentRepo = paymentRepo;
         _contractRepo = contractRepo;
@@ -36,6 +38,7 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
         _membershipRepo = membershipRepo;
         _logger = logger;
         _extensionRepo = extensionRepo;
+        _rentalRequestRepo = rentalRequestRepo;
     }
 
     public async Task<ConfirmCashPaymentResult> Handle(ConfirmCashPaymentCommand request, CancellationToken cancellationToken)
@@ -103,12 +106,18 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
                 // Activate contract when paying deposit/monthly
                 contract.ActivateAfterPayment();
                 await _contractRepo.UpdateAsync(contract);
+
+                // Deduct area from warehouse now that contract is ACTIVE
+                await DeductWarehouseAreaAsync(contract, warehouse);
             }
             else
             {
                 // Backward-compatible fallback for legacy flows
                 contract.ForceActivate();
                 await _contractRepo.UpdateAsync(contract);
+
+                // Deduct area from warehouse now that contract is ACTIVE
+                await DeductWarehouseAreaAsync(contract, warehouse);
             }
 
             await _paymentRepo.UpdateAsync(payment);
@@ -238,6 +247,26 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
             // Log but don't fail the payment confirmation
             _logger.LogWarning(ex, "Failed to create RENTER membership for user {RenterId} in warehouse {WarehouseId}. Error: {Error}",
                 renterId, warehouseId, ex.Message);
+        }
+    }
+
+    private async Task DeductWarehouseAreaAsync(WMS.Domain.Entities.RentalContract contract, WMS.Domain.Entities.Warehouse? warehouse)
+    {
+        try
+        {
+            var rentalRequest = await _rentalRequestRepo.GetByIdAsync(contract.RentalRequestId);
+            if (rentalRequest == null || warehouse == null) return;
+
+            warehouse.AvailableArea -= rentalRequest.RequestedArea;
+            await _warehouseRepo.UpdateAsync(warehouse, CancellationToken.None);
+
+            _logger.LogInformation(
+                "Deducted {Area}m³ from warehouse {WarehouseId}. New available: {Available}m³",
+                rentalRequest.RequestedArea, warehouse.WarehouseId, warehouse.AvailableArea);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to deduct warehouse area for contract {ContractId}", contract.ContractId);
         }
     }
 }
