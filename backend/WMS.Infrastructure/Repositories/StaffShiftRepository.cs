@@ -350,6 +350,30 @@ public class StaffShiftRepository : IStaffShiftRepository
             .ToListAsync(ct);
     }
 
+    public async Task<int> CreateWarehouseShiftAsync(
+        int warehouseId, string name, string startTime, string endTime,
+        CancellationToken ct = default)
+    {
+        var entity = new WMS.Domain.Entities.WarehouseShift
+        {
+            WarehouseId = warehouseId,
+            Name        = name,
+            StartTime   = startTime,
+            EndTime     = endTime,
+        };
+        _db.WarehouseShifts.Add(entity);
+        await _db.SaveChangesAsync(ct);
+        return entity.Id;
+    }
+
+    public async Task DeleteWarehouseShiftAsync(int id, CancellationToken ct = default)
+    {
+        var entity = await _db.WarehouseShifts.FindAsync(new object[] { id }, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy ca làm việc.");
+        _db.WarehouseShifts.Remove(entity);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task<GenerateScheduleSummary> GenerateScheduleAsync(
         int warehouseId,
         DateOnly from,

@@ -279,6 +279,13 @@ function buildMenu(systemRole, warehouses) {
       path: "/task-scheduling",
     });
   }
+  if (hasOperator) {
+    items.push({
+      icon: "add_alarm",
+      label: "Quản lý ca làm",
+      path: "/create-shift",
+    });
+  }
 
   // ── STAFF skills section ─────────────────────────────────────
   if (hasStaff) {
