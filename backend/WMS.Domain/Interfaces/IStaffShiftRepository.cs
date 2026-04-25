@@ -7,6 +7,8 @@ public interface IStaffShiftRepository
     Task<List<StaffScheduleDto>> GetStaffScheduleAsync(int warehouseId, int callerId, DateOnly from, DateOnly to, CancellationToken ct = default);
     Task<StaffScheduleDto?> GetMyScheduleAsync(int userId, int warehouseId, DateOnly from, DateOnly to, CancellationToken ct = default);
     Task<List<WarehouseShiftLookupDto>> GetWarehouseShiftsAsync(int warehouseId, CancellationToken ct = default);
+    Task<int> CreateWarehouseShiftAsync(int warehouseId, string name, string startTime, string endTime, CancellationToken ct = default);
+    Task DeleteWarehouseShiftAsync(int id, CancellationToken ct = default);
     Task<GenerateScheduleSummary> GenerateScheduleAsync(int warehouseId, DateOnly from, DateOnly to, CancellationToken ct = default);
 
     // Lay shift theo ID de dung trong check-in / check-out

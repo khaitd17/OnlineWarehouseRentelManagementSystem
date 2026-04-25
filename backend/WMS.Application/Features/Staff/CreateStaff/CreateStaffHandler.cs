@@ -53,24 +53,7 @@ namespace WMS.Application.Features.Staff.CreateStaff
                 throw new UnauthorizedAccessException(
                     "Manager chỉ được phép tạo nhân viên có role STAFF.");
 
-            // ── 2. Khi tạo MANAGER mới: kiểm tra overlap skill với các manager hiện tại ──
-            if (targetRole == "MANAGER" && callerRole == "OPERATOR")
-            {
-                var existingManagers = await _membershipRepository.GetActiveManagersInWarehouseAsync(
-                    request.WarehouseId, cancellationToken);
-
-                foreach (var mgr in existingManagers)
-                {
-                    bool skillsOverlap = request.IsAllSkill
-                        || mgr.IsAllSkill
-                        || request.SkillIds.Intersect(mgr.SkillIds).Any();
-
-                    if (skillsOverlap)
-                        throw new InvalidOperationException(
-                            $"Phạm vi skill bị trùng với manager '{mgr.FullName}'. " +
-                            "Vui lòng chọn skill không trùng với manager hiện tại.");
-                }
-            }
+            // ── 2. (Đã bỏ kiểm tra overlap skill giữa các manager — nhiều manager có thể trùng skill) ──
 
             // ── 3. Kiểm tra scope của MANAGER khi gán skill cho STAFF ─────────
             if (callerRole == "MANAGER")

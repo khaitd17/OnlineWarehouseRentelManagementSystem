@@ -15,6 +15,7 @@ import CreateStaff from "../pages/CreateStaff";
 import ListStaff from "../pages/ListStaff";
 import TaskSchedulingPage from "../pages/TaskSchedulingPage";
 import ShiftSchedulingPage from "../pages/ShiftSchedulingPage";
+import CreateShiftPage from "../pages/CreateShiftPage";
 import MySchedulePage from "../pages/MySchedulePage";
 import ForgotPage from "../pages/ForgotPage";
 import ResetPasswordPage from "../pages/ResetPasswordPage";
@@ -181,6 +182,13 @@ function AppRoutes() {
           </Route>
         </Route>
 
+
+        {/* ── OPERATOR ONLY: Quản lý ca làm ── */}
+        <Route element={<RoleBasedRoute allowedRoles={['OPERATOR']} />}>
+          <Route element={<DashboardLayout />}>
+            <Route path="/create-shift" element={<CreateShiftPage />} />
+          </Route>
+        </Route>
 
         {/* ── OPERATOR / MANAGER: quản lý nhân sự kho (OWNER thuần không thấy) ── */}
         <Route element={<RoleBasedRoute allowedRoles={['OPERATOR', 'MANAGER']} />}>

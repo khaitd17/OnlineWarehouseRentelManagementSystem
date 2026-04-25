@@ -62,13 +62,23 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
         var warehouseId = await _repository.CreateAsync(warehouse, cancellationToken);
 
         // Tạo membership OWNER cho chủ kho
-        // DB có unique index IX_warehouse_memberships_user_id_warehouse_id (user_id, warehouse_id)
-        // → chỉ được 1 membership/user/kho. OWNER role bao gồm toàn quyền thương mại + vận hành.
+        // Unique index: IX_warehouse_memberships_user_warehouse_role (user_id, warehouse_id, warehouse_role_id)
+        // → cùng user có thể có nhiều membership trong 1 kho miễn khác role (OWNER + OPERATOR là hợp lệ)
         await _membershipRepository.CreateMembershipAsync(new CreateMembershipDto
         {
             UserId      = request.OwnerId,
             WarehouseId = warehouseId,
             RoleCode    = "OWNER",
+            IsAllSkill  = true,
+            SkillIds    = new List<int>(),
+        }, cancellationToken);
+
+        // Tạo membership OPERATOR cho chủ kho — giúp họ truy cập màn quản lý nhân sự/ca làm
+        await _membershipRepository.CreateMembershipAsync(new CreateMembershipDto
+        {
+            UserId      = request.OwnerId,
+            WarehouseId = warehouseId,
+            RoleCode    = "OPERATOR",
             IsAllSkill  = true,
             SkillIds    = new List<int>(),
         }, cancellationToken);
