@@ -33,5 +33,13 @@ public class CreateRentalRequestCommand : IRequest<int>
     /// Used by the activation handler to shrink the source area.
     /// </summary>
     public int? BaseRentalAreaId { get; set; }
-    // ─────────────────────────────────────────────────────────────────────
+
+    // ── Extension Zone (L-shaped layout) ───────────────────────────────────
+    /// <summary>True when a secondary extension rectangle supplements the primary custom zone.</summary>
+    public bool HasExtensionZone { get; set; } = false;
+    public double? ExtensionPositionX { get; set; }
+    public double? ExtensionPositionY { get; set; }
+    public double? ExtensionWidth { get; set; }
+    public double? ExtensionLength { get; set; }
+    // ──────────────────────────────────────────────────────────────────────
 }

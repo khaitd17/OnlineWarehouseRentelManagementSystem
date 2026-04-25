@@ -62,6 +62,28 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
                 if (existingContract != null)
                 {
                     Console.WriteLine($"[DEBUG] Existing contract found - ContractId: {existingContract.ContractId}");
+
+                    // Still update zone data if owner is assigning/updating a zone
+                    if (request.AssignedWidth.HasValue && request.AssignedLength.HasValue)
+                    {
+                        rentalRequest.IsCustomArea = true;
+                        rentalRequest.ProposedPositionX = request.AssignedPositionX;
+                        rentalRequest.ProposedPositionY = request.AssignedPositionY;
+                        rentalRequest.ProposedWidth = request.AssignedWidth;
+                        rentalRequest.ProposedLength = request.AssignedLength;
+                        rentalRequest.BaseRentalAreaId = request.AssignedBaseAreaId;
+                        if (request.AssignedHasExtensionZone)
+                        {
+                            rentalRequest.HasExtensionZone   = true;
+                            rentalRequest.ExtensionPositionX = request.AssignedExtensionPositionX;
+                            rentalRequest.ExtensionPositionY = request.AssignedExtensionPositionY;
+                            rentalRequest.ExtensionWidth     = request.AssignedExtensionWidth;
+                            rentalRequest.ExtensionLength    = request.AssignedExtensionLength;
+                        }
+                        await _rentalRequestRepository.UpdateAsync(rentalRequest);
+                        Console.WriteLine($"[DEBUG] Updated zone on already-approved request: ({request.AssignedPositionX}, {request.AssignedPositionY}) {request.AssignedWidth}x{request.AssignedLength}");
+                    }
+
                     return existingContract.ContractId;
                 }
                 // Contract doesn't exist yet (very rare edge case) — fall through to create it
@@ -76,6 +98,27 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
             {
                 Console.WriteLine($"[DEBUG] Approving request...");
                 rentalRequest.Approve(request.ReviewerId, request.ContractImageUrl);
+
+                // Owner assigns zone (always allowed - overrides renter's proposed zone if needed)
+                if (request.AssignedWidth.HasValue && request.AssignedLength.HasValue)
+                {
+                    rentalRequest.IsCustomArea = true;
+                    rentalRequest.ProposedPositionX = request.AssignedPositionX;
+                    rentalRequest.ProposedPositionY = request.AssignedPositionY;
+                    rentalRequest.ProposedWidth = request.AssignedWidth;
+                    rentalRequest.ProposedLength = request.AssignedLength;
+                    rentalRequest.BaseRentalAreaId = request.AssignedBaseAreaId;
+                    if (request.AssignedHasExtensionZone)
+                    {
+                        rentalRequest.HasExtensionZone   = true;
+                        rentalRequest.ExtensionPositionX = request.AssignedExtensionPositionX;
+                        rentalRequest.ExtensionPositionY = request.AssignedExtensionPositionY;
+                        rentalRequest.ExtensionWidth     = request.AssignedExtensionWidth;
+                        rentalRequest.ExtensionLength    = request.AssignedExtensionLength;
+                    }
+                    Console.WriteLine($"[DEBUG] Owner assigned zone: ({request.AssignedPositionX}, {request.AssignedPositionY}) {request.AssignedWidth}x{request.AssignedLength}");
+                }
+
                 await _rentalRequestRepository.UpdateAsync(rentalRequest);
                 Console.WriteLine($"[DEBUG] Request approved - New status: {rentalRequest.Status}");
             }
@@ -97,21 +140,8 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
             var contractId = await _contractRepository.AddAsync(contract);
             Console.WriteLine($"[DEBUG] Contract saved to DB - ContractId: {contractId}");
 
-            // Deduct approved area from warehouse available area (only if not already deducted)
-            if (!wasAlreadyApproved)
-            {
-                Console.WriteLine($"[DEBUG] Deducting area - Before: {warehouse.AvailableArea}, Requested: {rentalRequest.RequestedArea}");
-                warehouse.AvailableArea -= rentalRequest.RequestedArea;
-                await _warehouseRepository.UpdateAsync(warehouse, cancellationToken);
-                Console.WriteLine($"[DEBUG] Area deducted - After: {warehouse.AvailableArea}");
-            }
-
-            // Update the domain contract object with the generated ID for later use
-            var contractIdProp = typeof(RentalContract).GetProperty("ContractId");
-            contractIdProp?.SetValue(contract, contractId);
-
-            // Note: PDF generation and notification will happen after owner signs the contract
-            // Contract is created with status PENDING_OWNER_SIGNATURE
+            // Note: AvailableArea is NOT deducted here — it will be deducted when the
+            // contract becomes ACTIVE (after signing + payment confirmation).
 
             Console.WriteLine($"[DEBUG] ApproveRentalRequest completed successfully - ContractId: {contractId}");
             return contractId;

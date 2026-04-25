@@ -48,7 +48,12 @@ public class CreateSubscriptionPackageHandler : IRequestHandler<CreateSubscripti
             Price = request.Price,
             Description = request.Description,
             DurationMonths = request.DurationMonths,
-            IsActive = request.IsActive
+            IsActive = request.IsActive,
+            MaxWarehouses = request.MaxWarehouses,
+            MaxStaffPerWarehouse = request.MaxStaffPerWarehouse,
+            MaxZonesPerWarehouse = request.MaxZonesPerWarehouse,
+            MaxTotalArea = request.MaxTotalArea,
+            AllowEquipmentManagement = request.AllowEquipmentManagement
         };
 
         _db.SubscriptionPackages.Add(package);
@@ -98,6 +103,11 @@ public class UpdateSubscriptionPackageHandler : IRequestHandler<UpdateSubscripti
         package.Description = request.Description;
         package.DurationMonths = request.DurationMonths;
         package.IsActive = request.IsActive;
+        package.MaxWarehouses = request.MaxWarehouses;
+        package.MaxStaffPerWarehouse = request.MaxStaffPerWarehouse;
+        package.MaxZonesPerWarehouse = request.MaxZonesPerWarehouse;
+        package.MaxTotalArea = request.MaxTotalArea;
+        package.AllowEquipmentManagement = request.AllowEquipmentManagement;
         package.UpdatedAt = System.DateTime.UtcNow;
 
         await _db.SaveChangesAsync(cancellationToken);

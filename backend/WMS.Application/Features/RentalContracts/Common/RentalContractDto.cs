@@ -38,6 +38,12 @@ public class RentalContractDto
     public double? ProposedWidth { get; set; }
     public double? ProposedLength { get; set; }
     public int? BaseRentalAreaId { get; set; }
+    // Extension zone (L-shape)
+    public bool HasExtensionZone { get; set; }
+    public double? ExtensionPositionX { get; set; }
+    public double? ExtensionPositionY { get; set; }
+    public double? ExtensionWidth { get; set; }
+    public double? ExtensionLength { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsCurrentUserRenter { get; set; }
     public bool IsCurrentUserOwner { get; set; }

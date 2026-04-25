@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace WMS.Domain.Entities;
 
@@ -59,6 +60,27 @@ public partial class RentalRequest
     /// this holds the ID of that source area so we can shrink it on activation.
     /// </summary>
     public int? BaseRentalAreaId { get; set; }
+
+    // ── Extension Zone (L-shaped layout: primary + extension) ──────────────
+    /// <summary>True when a second extension rectangle supplements the primary zone.</summary>
+    [Column("has_extension_zone")]
+    public bool HasExtensionZone { get; set; } = false;
+
+    /// <summary>X offset (metres) of the extension zone from warehouse origin.</summary>
+    [Column("extension_position_x")]
+    public double? ExtensionPositionX { get; set; }
+
+    /// <summary>Y offset (metres) of the extension zone from warehouse origin.</summary>
+    [Column("extension_position_y")]
+    public double? ExtensionPositionY { get; set; }
+
+    /// <summary>Width (metres) of the extension zone.</summary>
+    [Column("extension_width")]
+    public double? ExtensionWidth { get; set; }
+
+    /// <summary>Length/depth (metres) of the extension zone.</summary>
+    [Column("extension_length")]
+    public double? ExtensionLength { get; set; }
     // ──────────────────────────────────────────────────────────────────────
 
     // NEW - Cancel tracking

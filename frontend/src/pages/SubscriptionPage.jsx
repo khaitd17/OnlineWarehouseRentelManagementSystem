@@ -220,20 +220,6 @@ const SubscriptionPage = () => {
                                <CheckCircleOutlined style={{ color: '#10b981' }} />
                                <span><strong>{pkg.maxStaffPerWarehouse}</strong> nhân viên / mỗi kho</span>
                             </li>
-                            <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                               <CheckCircleOutlined style={{ color: '#10b981' }} />
-                               <span><strong>{pkg.maxZonesPerWarehouse}</strong> khu vực (Zones) / kho</span>
-                            </li>
-                            <li style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                               <CheckCircleOutlined style={{ color: '#10b981' }} />
-                               <span>Tổng thể tích: <strong>{Number(pkg.maxTotalArea).toLocaleString('vi-VN')}</strong> m³</span>
-                            </li>
-                            <li style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: pkg.allowEquipmentManagement ? 1 : 0.5 }}>
-                               <span className="material-symbols-outlined" style={{ fontSize: '16px', color: pkg.allowEquipmentManagement ? '#10b981' : '#94a3b8' }}>
-                                 {pkg.allowEquipmentManagement ? 'check_circle' : 'block'}
-                               </span>
-                               <span style={{ textDecoration: pkg.allowEquipmentManagement ? 'none' : 'line-through' }}>Quản lý thiết bị vòng đời</span>
-                            </li>
                           </ul>
                         </div>
             

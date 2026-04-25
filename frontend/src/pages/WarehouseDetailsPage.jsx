@@ -369,6 +369,15 @@ const WarehouseDetailsPage = () => {
         payload.proposedWidth     = ca.width;
         payload.proposedLength    = ca.length;
         payload.baseRentalAreaId  = ca.baseAreaId || null;
+
+        // L-shaped extension zone
+        if (ca.extensionZone) {
+          payload.hasExtensionZone       = true;
+          payload.extensionPositionX     = ca.extensionZone.posX;
+          payload.extensionPositionY     = ca.extensionZone.posY;
+          payload.extensionWidth         = ca.extensionZone.width;
+          payload.extensionLength        = ca.extensionZone.length;
+        }
       }
 
       await rentalService.createRentalRequest(payload);
@@ -395,14 +404,8 @@ const WarehouseDetailsPage = () => {
     if (startDate < today) { setSubmitMsg({ type: 'error', text: 'Ngày bắt đầu phải từ hôm nay trở đi.' }); return; }
     if (!duration || duration < 1 || duration > 60) { setSubmitMsg({ type: 'error', text: 'Thời hạn thuê từ 1 đến 60 tháng.' }); return; }
 
-    // If warehouse has available areas → show area selection modal
-    const availableAreas = areas.filter(a => !a.isOccupied);
-    if (availableAreas.length > 0) {
-      setShowAreaModal(true);
-    } else {
-      // No areas defined → direct submit with manual volume
-      doSubmitRequest(null);
-    }
+    // Always show area selection modal - renter can pick an area, draw custom, or let owner decide
+    setShowAreaModal(true);
   };
 
   const Badge = ({ children, color = "#0095c7" }) => (
@@ -992,6 +995,7 @@ const WarehouseDetailsPage = () => {
             {/* ── Area Selection Modal ── */}
             {showAreaModal && (() => {
               const enteredVol = parseFloat(formData.requestedArea) || 0;
+              const availableAreas = areas.filter(a => !a.isOccupied);
               // Sort: available first (best-fit), then occupied at bottom
               const sortedAreas = [...areas].sort((a, b) => {
                 if (a.isOccupied && !b.isOccupied) return 1;
@@ -1002,7 +1006,6 @@ const WarehouseDetailsPage = () => {
                 if (!aFits && bFits) return 1;
                 return Math.abs(a.size - enteredVol) - Math.abs(b.size - enteredVol);
               });
-              const availableCount = areas.filter(a => !a.isOccupied).length;
               return (
                 <div style={{
                   position: 'fixed', inset: 0, zIndex: 9999,
@@ -1012,126 +1015,112 @@ const WarehouseDetailsPage = () => {
                 }}>
                   <div style={{
                     background: '#fff', borderRadius: 20, padding: '2rem',
-                    maxWidth: 500, width: '92%',
+                    maxWidth: 520, width: '92%',
                     boxShadow: '0 24px 60px rgba(0,0,0,0.2)',
                     maxHeight: '85vh', overflowY: 'auto',
                   }}>
                     {/* Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Chọn ô khu thuê</h3>
+                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Chọn vị trí thuê</h3>
                         <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                          Bạn cần thuê <strong>{enteredVol} m³</strong> — Chọn ô khu còn trống hoặc Tự sắp xếp vị trí theo ý.
+                          Bạn cần thuê <strong>{enteredVol} m³</strong>.
                         </p>
                       </div>
                       <button onClick={() => setShowAreaModal(false)} style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#64748b', flexShrink: 0 }}>✕</button>
                     </div>
 
-                    {/* Area list — available + occupied */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: '1.4rem' }}>
-                      {sortedAreas.map(a => {
-                        const occupied = a.isOccupied;
-                        const estimatedPrice = warehouseData?.pricePerM2 ? (warehouseData.pricePerM2 * a.size) : null;
-                        const fits = !occupied && a.size >= enteredVol;
-
-                        if (occupied) {
-                          // ── Occupied: disabled card ──────────────────────────
-                          return (
-                            <div key={a.id} style={{
-                              padding: '14px 16px', borderRadius: 12,
-                              border: '1.5px solid #fecaca',
-                              background: '#fff7f7',
-                              opacity: 0.72,
-                              cursor: 'not-allowed',
-                              position: 'relative',
-                            }}>
-                              {/* Occupied badge */}
-                              <div style={{
-                                position: 'absolute', top: 10, right: 12,
-                                display: 'flex', alignItems: 'center', gap: 4,
-                              }}>
-                                <span style={{
-                                  fontSize: '0.72rem', fontWeight: 700,
-                                  color: '#b91c1c', background: '#fee2e2',
-                                  padding: '2px 8px', borderRadius: 6,
-                                }}>Đang có hợp đồng</span>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <span style={{ fontWeight: 700, color: '#6b7280', fontSize: '0.95rem' }}>{a.name}</span>
-                              </div>
-                              <div style={{ fontSize: '0.82rem', color: '#9ca3af' }}>{a.size} m³ · {a.width}m × {a.length}m</div>
-                              <div style={{ fontSize: '0.78rem', color: '#ef4444', marginTop: 4, fontStyle: 'italic' }}>
-                                Ô khu này đang được thuê bởi người khác, không thể chọn.
-                              </div>
-                            </div>
-                          );
-                        }
-
-                        // ── Available: clickable ─────────────────────────────
-                        return (
-                          <button
-                            key={a.id}
-                            onClick={() => { setSelectedArea(a); doSubmitRequest(a); }}
-                            style={{
-                              padding: '14px 16px', borderRadius: 12,
-                              border: fits ? '1.5px solid #86efac' : '1.5px solid #e2e8f0',
-                              background: fits ? '#f0fdf4' : '#f8fafc',
-                              cursor: 'pointer', textAlign: 'left',
-                              transition: 'all 0.15s', width: '100%',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = fits ? '#dcfce7' : '#f1f5f9'; e.currentTarget.style.borderColor = fits ? '#4ade80' : '#94a3b8'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = fits ? '#f0fdf4' : '#f8fafc'; e.currentTarget.style.borderColor = fits ? '#86efac' : '#e2e8f0'; }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{a.name}</span>
-                                  {fits && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0369a1', background: '#e0f2fe', padding: '1px 7px', borderRadius: 6 }}>Phù hợp</span>}
-                                </div>
-                                <div style={{ fontSize: '0.82rem', color: '#475569', marginTop: 2 }}>{a.size} m³ · {a.width}m × {a.length}m</div>
-                              </div>
-                              <div style={{ textAlign: 'right' }}>
-                                {estimatedPrice && (
-                                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#065f46' }}>
-                                    {Number(estimatedPrice).toLocaleString('vi-VN')} ₫/tháng
-                                  </div>
-                                )}
-                                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 8px', borderRadius: 6 }}>Còn trống</span>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {availableCount === 0 && (
-                      <div style={{ padding: '0.8rem 1rem', textAlign: 'center', color: '#dc2626', fontSize: '0.88rem', background: '#fff7f7', borderRadius: 10, border: '1px solid #fecaca', marginBottom: '1.2rem' }}>
-                        Hiện tất cả ô khu đều đang được thuê. Hãy Tự sắp xếp vị trí theo ý.
-                      </div>
-                    )}
+                    {/* ═══ PRIMARY: Gửi nhanh — Chủ kho sắp xếp ═══ */}
+                    <button
+                      onClick={() => { setShowAreaModal(false); doSubmitRequest(null); }}
+                      style={{
+                        width: '100%', padding: '16px 20px', borderRadius: 14,
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                        color: '#fff', fontWeight: 700, fontSize: '0.95rem',
+                        cursor: 'pointer', transition: 'all 0.18s',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                        boxShadow: '0 4px 18px rgba(14,165,233,0.35)',
+                        marginBottom: '6px',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(14,165,233,0.45)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 18px rgba(14,165,233,0.35)'; }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+                      Gửi yêu cầu nhanh — Chủ kho sẽ sắp xếp vị trí
+                    </button>
+                    <p style={{ textAlign: 'center', fontSize: '0.78rem', color: '#94a3b8', margin: '0 0 1.2rem', fontStyle: 'italic' }}>
+                      Cách nhanh nhất: Chủ kho sẽ chọn vị trí phù hợp cho bạn.
+                    </p>
 
                     {/* Divider */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1.2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '1rem' }}>
                       <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
-                      <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 600 }}>hoặc</span>
+                      <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>hoặc tự chọn vị trí</span>
                       <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
                     </div>
 
-                    {/* Self-arrange or skip */}
+                    {/* ═══ SECONDARY: Chọn ô khu có sẵn ═══ */}
+                    {availableAreas.length > 0 && (
+                      <>
+                        <p style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Chọn ô khu có sẵn</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: '1rem' }}>
+                          {sortedAreas.filter(a => !a.isOccupied).map(a => {
+                            const estimatedPrice = warehouseData?.pricePerM2 ? (warehouseData.pricePerM2 * a.size) : null;
+                            const fits = a.size >= enteredVol;
+                            return (
+                              <button
+                                key={a.id}
+                                onClick={() => { setSelectedArea(a); doSubmitRequest(a); }}
+                                style={{
+                                  padding: '12px 14px', borderRadius: 12,
+                                  border: fits ? '1.5px solid #86efac' : '1.5px solid #e2e8f0',
+                                  background: fits ? '#f0fdf4' : '#f8fafc',
+                                  cursor: 'pointer', textAlign: 'left',
+                                  transition: 'all 0.15s', width: '100%',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = fits ? '#dcfce7' : '#f1f5f9'; e.currentTarget.style.borderColor = fits ? '#4ade80' : '#94a3b8'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = fits ? '#f0fdf4' : '#f8fafc'; e.currentTarget.style.borderColor = fits ? '#86efac' : '#e2e8f0'; }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{a.name}</span>
+                                      {fits && <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#0369a1', background: '#e0f2fe', padding: '1px 7px', borderRadius: 6 }}>Phù hợp</span>}
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: 2 }}>{a.size} m³ · {a.width}m × {a.length}m</div>
+                                  </div>
+                                  <div style={{ textAlign: 'right' }}>
+                                    {estimatedPrice && (
+                                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#065f46' }}>
+                                        {Number(estimatedPrice).toLocaleString('vi-VN')} ₫/th
+                                      </div>
+                                    )}
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#16a34a', background: '#dcfce7', padding: '2px 7px', borderRadius: 6 }}>Còn trống</span>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+
+                    {/* ═══ TERTIARY: Tự vẽ khu (nâng cao) ═══ */}
                     <button
                       onClick={() => { setShowAreaModal(false); setShowCustomAreaModal(true); }}
                       style={{
-                        width: '100%', padding: '12px 20px', borderRadius: 12,
-                        border: '1.5px solid #6366f1', background: 'linear-gradient(135deg,#eef2ff,#e0e7ff)',
-                        color: '#4338ca', fontWeight: 700, fontSize: '0.92rem',
+                        width: '100%', padding: '11px 20px', borderRadius: 12,
+                        border: '1.5px solid #e2e8f0', background: '#f8fafc',
+                        color: '#64748b', fontWeight: 600, fontSize: '0.85rem',
                         cursor: 'pointer', transition: 'all 0.15s',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = '#e0e7ff'; e.currentTarget.style.borderColor = '#4338ca'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg,#eef2ff,#e0e7ff)'; e.currentTarget.style.borderColor = '#6366f1'; }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-                      Tự sắp xếp vị trí theo ý
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                      Tự chọn vị trí trên bản đồ (nâng cao)
                     </button>
                   </div>
                 </div>
@@ -1250,107 +1239,128 @@ const WarehouseDetailsPage = () => {
                 <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Thể tích còn trống: <strong>{warehouse.availableArea} m³</strong></p>
               </div>
 
-              {/* Feedback message */}
-              {submitMsg && (
+              {isOwner ? (
                 <div style={{
-                  padding: '10px 14px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 500,
-                  marginBottom: '1rem',
-                  backgroundColor: submitMsg.type === 'success' ? '#dcfce7' : '#fef2f2',
-                  color: submitMsg.type === 'success' ? '#16a34a' : '#dc2626',
-                  border: `1px solid ${submitMsg.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+                  padding: '20px',
+                  background: 'linear-gradient(to right, #f8fafc, #f1f5f9)',
+                  borderRadius: '14px',
+                  borderLeft: '4px solid #0ea5e9',
+                  borderTop: '1px solid #e2e8f0',
+                  borderRight: '1px solid #e2e8f0',
+                  borderBottom: '1px solid #e2e8f0',
+                  marginBottom: '1.5rem',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
                 }}>
-                  {submitMsg.text}
-                </div>
-              )}
-
-              {/* Form fields */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '1.2rem' }}>
-                {/* Selected area badge */}
-                {selectedArea && (
-                  <div style={{ padding: '10px 14px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #86efac', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ô khu đã chọn</div>
-                      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{selectedArea.name} — {selectedArea.size} m³</div>
-                    </div>
-                    <button onClick={() => setSelectedArea(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>✕</button>
+                  <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a', marginBottom: '6px' }}>Kho thuộc sở hữu của bạn</div>
+                  <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.6 }}>
+                    Bạn đang xem kho bãi này dưới tư cách là chủ sở hữu. Tính năng gửi yêu cầu thuê đã được ẩn đối với bạn.
                   </div>
-                )}
-                {!selectedArea && (
-                  <div style={fieldGroup}>
-                    <label style={fieldLabel}>THỂ TÍCH CẦN THUÊ (m³) *</label>
-                    <input
-                      type="number" name="requestedArea" min="1" step="0.1"
-                      placeholder={`Tối đa ${warehouse.availableArea} m³`}
-                      value={formData.requestedArea} onChange={handleInputChange}
-                      style={fieldInput}
-                    />
-                  </div>
-                )}
-                <div style={fieldGroup}>
-                  <label style={fieldLabel}>NGÀY BẮT ĐẦU *</label>
-                  <input
-                    type="date" name="startDate" min={todayStr}
-                    value={formData.startDate} onChange={handleInputChange}
-                    style={fieldInput}
-                  />
                 </div>
-                <div style={fieldGroup}>
-                  <label style={fieldLabel}>THỜI HẠN THUÊ (tháng) *</label>
-                  <input
-                    type="number" name="durationMonths" min="1" max="60"
-                    placeholder="VD: 6"
-                    value={formData.durationMonths} onChange={handleInputChange}
-                    style={fieldInput}
-                  />
-                </div>
-                <div style={fieldGroup}>
-                  <label style={fieldLabel}>GHI CHÚ</label>
-                  <textarea
-                    name="notes" rows="3"
-                    placeholder="Yêu cầu đặc biệt (nếu có)"
-                    value={formData.notes} onChange={handleInputChange}
-                    style={{ ...fieldInput, resize: 'vertical' }}
-                  />
-                </div>
-              </div>
-
-              {/* Submit button */}
-              {isLoggedIn ? (
+              ) : (
                 <>
-                  {!selectedArea && !formData.requestedArea && (
-                    <div style={{ fontSize: '0.78rem', color: '#94a3b8', textAlign: 'center', marginBottom: 8, fontStyle: 'italic' }}>
-                      Nhập thể tích cần thuê để tiếp tục
+                  {/* Feedback message */}
+                  {submitMsg && (
+                    <div style={{
+                      padding: '10px 14px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 500,
+                      marginBottom: '1rem',
+                      backgroundColor: submitMsg.type === 'success' ? '#dcfce7' : '#fef2f2',
+                      color: submitMsg.type === 'success' ? '#16a34a' : '#dc2626',
+                      border: `1px solid ${submitMsg.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+                    }}>
+                      {submitMsg.text}
                     </div>
                   )}
-                  <button
-                    onClick={handleSubmitRequest}
-                    disabled={submitting || (!selectedArea && (!formData.requestedArea || parseFloat(formData.requestedArea) <= 0))}
-                    style={{
-                      width: '100%',
-                      backgroundColor: submitting ? '#94a3b8'
-                        : (!selectedArea && (!formData.requestedArea || parseFloat(formData.requestedArea) <= 0)) ? '#cbd5e1'
-                        : '#0095c7',
-                      color: '#fff', padding: '14px', borderRadius: '8px',
-                      fontWeight: 700, fontSize: '1rem', border: 'none',
-                      cursor: (submitting || (!selectedArea && (!formData.requestedArea || parseFloat(formData.requestedArea) <= 0))) ? 'not-allowed' : 'pointer',
-                      marginBottom: '12px', transition: 'background-color 0.2s',
-                    }}
-                  >
-                    {submitting ? 'Đang gửi...' : 'Gửi yêu cầu thuê kho'}
-                  </button>
+
+                  {/* Form fields */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '1.2rem' }}>
+                    {/* Selected area badge */}
+                    {selectedArea && (
+                      <div style={{ padding: '10px 14px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #86efac', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ô khu đã chọn</div>
+                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{selectedArea.name} — {selectedArea.size} m³</div>
+                        </div>
+                        <button onClick={() => setSelectedArea(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>✕</button>
+                      </div>
+                    )}
+                    {!selectedArea && (
+                      <div style={fieldGroup}>
+                        <label style={fieldLabel}>THỂ TÍCH CẦN THUÊ (m³) *</label>
+                        <input
+                          type="number" name="requestedArea" min="1" step="0.1"
+                          placeholder={`Tối đa ${warehouse.availableArea} m³`}
+                          value={formData.requestedArea} onChange={handleInputChange}
+                          style={fieldInput}
+                        />
+                      </div>
+                    )}
+                    <div style={fieldGroup}>
+                      <label style={fieldLabel}>NGÀY BẮT ĐẦU *</label>
+                      <input
+                        type="date" name="startDate" min={todayStr}
+                        value={formData.startDate} onChange={handleInputChange}
+                        style={fieldInput}
+                      />
+                    </div>
+                    <div style={fieldGroup}>
+                      <label style={fieldLabel}>THỜI HẠN THUÊ (tháng) *</label>
+                      <input
+                        type="number" name="durationMonths" min="1" max="60"
+                        placeholder="VD: 6"
+                        value={formData.durationMonths} onChange={handleInputChange}
+                        style={fieldInput}
+                      />
+                    </div>
+                    <div style={fieldGroup}>
+                      <label style={fieldLabel}>GHI CHÚ</label>
+                      <textarea
+                        name="notes" rows="3"
+                        placeholder="Yêu cầu đặc biệt (nếu có)"
+                        value={formData.notes} onChange={handleInputChange}
+                        style={{ ...fieldInput, resize: 'vertical' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit button */}
+                  {isLoggedIn ? (
+                    <>
+                      {!selectedArea && !formData.requestedArea && (
+                        <div style={{ fontSize: '0.78rem', color: '#94a3b8', textAlign: 'center', marginBottom: 8, fontStyle: 'italic' }}>
+                          Nhập thể tích cần thuê để tiếp tục
+                        </div>
+                      )}
+                      <button
+                        onClick={handleSubmitRequest}
+                        disabled={submitting || (!selectedArea && (!formData.requestedArea || parseFloat(formData.requestedArea) <= 0))}
+                        style={{
+                          width: '100%',
+                          backgroundColor: submitting ? '#94a3b8'
+                            : (!selectedArea && (!formData.requestedArea || parseFloat(formData.requestedArea) <= 0)) ? '#cbd5e1'
+                            : '#0095c7',
+                          color: '#fff', padding: '14px', borderRadius: '8px',
+                          fontWeight: 700, fontSize: '1rem', border: 'none',
+                          cursor: (submitting || (!selectedArea && (!formData.requestedArea || parseFloat(formData.requestedArea) <= 0))) ? 'not-allowed' : 'pointer',
+                          marginBottom: '12px', transition: 'background-color 0.2s',
+                        }}
+                      >
+                        {submitting ? 'Đang gửi...' : 'Gửi yêu cầu thuê kho'}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => navigate('/auth')}
+                      style={{
+                        width: '100%', backgroundColor: '#0095c7', color: '#fff',
+                        padding: '14px', borderRadius: '8px', fontWeight: 700,
+                        fontSize: '1rem', border: 'none', cursor: 'pointer',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      Đăng nhập để gửi yêu cầu
+                    </button>
+                  )}
                 </>
-              ) : (
-                <button
-                  onClick={() => navigate('/auth')}
-                  style={{
-                    width: '100%', backgroundColor: '#0095c7', color: '#fff',
-                    padding: '14px', borderRadius: '8px', fontWeight: 700,
-                    fontSize: '1rem', border: 'none', cursor: 'pointer',
-                    marginBottom: '12px',
-                  }}
-                >
-                  Đăng nhập để gửi yêu cầu
-                </button>
               )}
 
               {/* Owner info */}

@@ -13,4 +13,18 @@ public class ApproveRentalRequestCommand : IRequest<int>
     public DateTime? StartDate { get; set; }
     public int? DurationMonths { get; set; }
     // Note: OwnerSignatureBase64 removed - owner signs via separate endpoint after contract creation
+
+    // ── Owner-assigned zone (when renter did not pick a zone) ──
+    public double? AssignedPositionX { get; set; }
+    public double? AssignedPositionY { get; set; }
+    public double? AssignedWidth { get; set; }
+    public double? AssignedLength { get; set; }
+    public int? AssignedBaseAreaId { get; set; }
+
+    // ── Extension zone (L-shaped: owner assigns primary + extension) ──
+    public bool AssignedHasExtensionZone { get; set; } = false;
+    public double? AssignedExtensionPositionX { get; set; }
+    public double? AssignedExtensionPositionY { get; set; }
+    public double? AssignedExtensionWidth { get; set; }
+    public double? AssignedExtensionLength { get; set; }
 }

@@ -16,6 +16,8 @@ public class GetPaymentStatusHandlerTests
     private readonly Mock<ISepayService> _sepayServiceMock = new();
     private readonly Mock<ILogger<GetPaymentStatusHandler>> _loggerMock = new();
     private readonly Mock<IContractExtensionRepository> _extensionRepoMock = new();
+    private readonly Mock<IWarehouseRepository> _warehouseRepoMock = new();
+    private readonly Mock<IRentalRequestRepository> _rentalRequestRepoMock = new();
 
     private GetPaymentStatusHandler CreateHandler()
     {
@@ -24,7 +26,9 @@ public class GetPaymentStatusHandlerTests
             _contractRepoMock.Object,
             _sepayServiceMock.Object,
             _loggerMock.Object,
-            _extensionRepoMock.Object);
+            _extensionRepoMock.Object,
+            _warehouseRepoMock.Object,
+            _rentalRequestRepoMock.Object);
     }
 
     [Fact]

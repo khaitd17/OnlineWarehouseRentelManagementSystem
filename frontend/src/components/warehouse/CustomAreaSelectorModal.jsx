@@ -44,6 +44,8 @@ export default function CustomAreaSelectorModal({
   areas,
   requestedM3,
   onConfirm,
+  isOwnerMode = false,
+  initialZone = null,
 }) {
   /* warehouse dimensions */
   const whW = parseFloat(warehouseData?.width  ?? warehouseData?.Width  ?? 0) || 20;
@@ -57,18 +59,46 @@ export default function CustomAreaSelectorModal({
   /* helper: zone footprint m² → m³ */
   const toM3 = (w, l) => parseFloat((w * l * whHeight).toFixed(1));
 
+  /* floor area (m²) needed to match requestedM3 exactly — works in both owner & renter mode */
+  const neededM2 = (requestedM3 > 0 && whHeight > 0)
+    ? requestedM3 / whHeight
+    : null;
+
+  /* auto-compute length so that w × l == neededM2 */
+  const autoLength = (w) => neededM2 ? clamp(snap(neededM2 / w), MIN_ZONE_M, whL) : null;
+
   /* canvas pixel size */
   const canvasW = m2px(whW);
   const canvasH = m2px(whL);
 
   /* mode: 'choose' | 'draw' */
-  const [mode, setMode] = useState('choose');
+  const [mode, setMode] = useState(() => {
+    if (initialZone && !initialZone.baseAreaId) return 'draw';
+    return 'choose';
+  });
 
   /* selected existing zone (mode=choose) */
-  const [selectedAreaId, setSelectedAreaId] = useState(null);
+  const [selectedAreaId, setSelectedAreaId] = useState(initialZone?.baseAreaId || null);
 
   /* custom zone (mode=draw) – in metres */
-  const [customZone, setCustomZone] = useState(null); // { x, y, w, l }
+  const [customZone, setCustomZone] = useState(() => {
+    if (initialZone && !initialZone.baseAreaId) {
+      return { x: initialZone.posX, y: initialZone.posY, w: initialZone.width, l: initialZone.length };
+    }
+    return null;
+  });
+
+  /* extension zone – the extra piece that makes up an L-shape (mode=draw only) */
+  const [zoneExtension, setZoneExtension] = useState(() => {
+    // Restore extension zone when modal is reopened (e.g. "Xem lại")
+    const ez = initialZone?.extensionZone;
+    if (ez) return { x: ez.posX, y: ez.posY, w: ez.width, l: ez.length };
+    return null;
+  });
+
+  /* whenever the primary zone changes, clear any extension (user must re-run auto-adjust) */
+  const clearExtension = () => setZoneExtension(null);
+
 
   /* drag/resize state */
   const dragRef  = useRef(null); // { type: 'move'|'se', startX, startY, startZone }
@@ -79,19 +109,91 @@ export default function CustomAreaSelectorModal({
   /* ── derived area for the "chosen existing" zone (editable) ─── */
   // When user selects an existing zone we clone its dims (in metres) into state
   // so they can resize it to match requestedM3.
-  const [editZone, setEditZone] = useState(null); // { x, y, w, l }
+  const [editZone, setEditZone] = useState(() => {
+    if (initialZone && initialZone.baseAreaId) {
+      return { x: initialZone.posX, y: initialZone.posY, w: initialZone.width, l: initialZone.length };
+    }
+    return null;
+  });
 
   const selectArea = (a) => {
     if (a.isOccupied) return;
     setSelectedAreaId(a.id);
     setCustomZone(null);
-    setEditZone({
-      x: parseFloat(a.positionX || 0),
-      y: parseFloat(a.positionY || 0),
-      w: parseFloat(a.width  || 5),
-      l: parseFloat(a.length || 5),
-    });
+    const aW = parseFloat(a.width  || 5);
+    const aL = parseFloat(a.length || 5);
+    if (neededM2) {
+      // Auto-size: keep area width, compute length to hit exactly requestedM3
+      const targetL = clamp(snap(neededM2 / aW), MIN_ZONE_M, aL);
+      setEditZone({
+        x: parseFloat(a.positionX || 0),
+        y: parseFloat(a.positionY || 0),
+        w: aW,
+        l: targetL,
+      });
+    } else {
+      setEditZone({
+        x: parseFloat(a.positionX || 0),
+        y: parseFloat(a.positionY || 0),
+        w: aW,
+        l: aL,
+      });
+    }
     setMode('choose');
+  };
+
+  /* ── Cross-area overlap detection ─────────────────────────────── */
+  const rectsOverlap = (ax, ay, aw, al, bx, by, bw, bl) =>
+    ax < bx + bw && ax + aw > bx && ay < by + bl && ay + al > by;
+
+  const getOverlappingFreeAreas = (zone, excludeId = null) => {
+    if (!zone) return [];
+    return areas.filter(a => {
+      if (a.isOccupied) return false;
+      if (a.id === excludeId) return false;
+      return rectsOverlap(
+        zone.x, zone.y, zone.w, zone.l,
+        parseFloat(a.positionX || 0), parseFloat(a.positionY || 0),
+        parseFloat(a.width || 0), parseFloat(a.length || 0)
+      );
+    });
+  };
+
+  /* Occupied areas that the custom drawn zone overlaps (must block) */
+  const getOverlappingOccupiedAreas = (zone) => {
+    if (!zone) return [];
+    return areas.filter(a => {
+      if (!a.isOccupied) return false;
+      return rectsOverlap(
+        zone.x, zone.y, zone.w, zone.l,
+        parseFloat(a.positionX || 0), parseFloat(a.positionY || 0),
+        parseFloat(a.width || 0), parseFloat(a.length || 0)
+      );
+    });
+  };
+
+  /* Quick helper: does zone overlap ANY occupied area? */
+  const overlapsOccupied = (zone) => getOverlappingOccupiedAreas(zone).length > 0;
+
+  /* ── CANVAS CLICK handler for choose mode (click empty space) ── */
+  const handleCanvasClick = (e) => {
+    if (mode !== 'choose') return;
+    // Only trigger if clicking directly on canvas background, not on a child area
+    if (e.target !== canvasRef.current) return;
+    if (!neededM2) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const clickX = px2m(e.clientX - rect.left);
+    const clickY = px2m(e.clientY - rect.top);
+    // Compute squarish zone: round W UP to next 0.5m so W×L >= neededM2 exactly
+    const rawSide = Math.sqrt(neededM2);
+    const snapUp = (m) => Math.ceil(m * 2) / 2;
+    const zW = clamp(snapUp(rawSide), MIN_ZONE_M, whW);
+    // Exact L so that zW × zL = neededM2 (no snap, 2-decimal precision)
+    const zL = clamp(parseFloat((neededM2 / zW).toFixed(2)), MIN_ZONE_M, whL);
+    const zx = clamp(snap(clickX - zW / 2), 0, whW - zW);
+    const zy = clamp(snap(clickY - zL / 2), 0, whL - zL);
+    setSelectedAreaId(null);
+    setEditZone({ x: zx, y: zy, w: zW, l: zL });
   };
 
   /* ── CANVAS MOUSE handlers for custom zone drawing ──────────────  */
@@ -122,7 +224,8 @@ export default function CustomAreaSelectorModal({
         return;
       }
     }
-    // Begin new draw
+    // Begin new draw — clear extension
+    clearExtension();
     setDrawStart({ x: mx, y: my });
     setDrawing(true);
     setCustomZone(null);
@@ -142,23 +245,28 @@ export default function CustomAreaSelectorModal({
       const dx = mx - d.startX;
       const dy = my - d.startY;
       if (d.type === 'move') {
-        setCustomZone({
+        const candidate = {
           ...d.startZone,
           x: clamp(snap(d.startZone.x + px2m(dx)), 0, whW - d.startZone.w),
           y: clamp(snap(d.startZone.y + px2m(dy)), 0, whL - d.startZone.l),
-        });
+        };
+        // Block move if it would overlap an occupied area
+        if (!overlapsOccupied(candidate)) { setCustomZone(candidate); clearExtension(); }
       } else if (d.type === 'se') {
         const newW = clamp(snap(d.startZone.w + px2m(dx)), MIN_ZONE_M, whW - d.startZone.x);
         const newL = clamp(snap(d.startZone.l + px2m(dy)), MIN_ZONE_M, whL - d.startZone.y);
-        setCustomZone({ ...d.startZone, w: newW, l: newL });
+        const candidate = { ...d.startZone, w: newW, l: newL };
+        // Block resize if it would overlap an occupied area
+        if (!overlapsOccupied(candidate)) { setCustomZone(candidate); clearExtension(); }
       }
       return;
     }
 
     if (!drawing || !drawStart) return;
+    // Free draw: both width and height controlled by mouse drag
     const x0 = Math.min(drawStart.x, mx);
-    const y0 = Math.min(drawStart.y, my);
     const x1 = Math.max(drawStart.x, mx);
+    const y0 = Math.min(drawStart.y, my);
     const y1 = Math.max(drawStart.y, my);
     setCustomZone({
       x: clamp(snap(px2m(x0)), 0, whW),
@@ -206,13 +314,17 @@ export default function CustomAreaSelectorModal({
         y: clamp(snap(d.startZone.y + px2m(dy)), 0, whL - d.startZone.l),
       }));
     } else if (d.type === 'se') {
-      setEditZone(prev => ({
-        ...prev,
-        w: clamp(snap(d.startZone.w + px2m(dx)), MIN_ZONE_M, whW - d.startZone.x),
-        l: clamp(snap(d.startZone.l + px2m(dy)), MIN_ZONE_M, whL - d.startZone.y),
-      }));
+      const newW = clamp(snap(d.startZone.w + px2m(dx)), MIN_ZONE_M, whW - d.startZone.x);
+      if (neededM2) {
+        // Volume-locked: SE handle adjusts width, length auto-computes
+        const newL = clamp(snap(neededM2 / newW), MIN_ZONE_M, whL - d.startZone.y);
+        setEditZone(prev => ({ ...prev, w: newW, l: newL }));
+      } else {
+        const newL = clamp(snap(d.startZone.l + px2m(dy)), MIN_ZONE_M, whL - d.startZone.y);
+        setEditZone(prev => ({ ...prev, w: newW, l: newL }));
+      }
     }
-  }, [whW, whL]);
+  }, [whW, whL, isOwnerMode, neededM2]);
 
   const editMouseUp = useCallback(() => {
     editDragRef.current = null;
@@ -224,14 +336,29 @@ export default function CustomAreaSelectorModal({
   const activeZone = mode === 'choose' ? editZone : customZone;
   const activeM3   = activeZone ? toM3(activeZone.w, activeZone.l) : 0;
 
+  // Free areas the zone overlaps (excluding the selected base area)
+  const overlappingAreas = getOverlappingFreeAreas(
+    activeZone,
+    mode === 'choose' ? selectedAreaId : null
+  );
+
+  // Occupied areas the custom zone overlaps — must block confirmation
+  const occupiedOverlaps = mode === 'draw' ? getOverlappingOccupiedAreas(customZone) : [];
+  const hasOccupiedConflict = occupiedOverlaps.length > 0;
+
   const handleConfirm = () => {
-    if (!activeZone) return;
+    if (!activeZone || hasOccupiedConflict) return;
     onConfirm({
-      posX       : activeZone.x,
-      posY       : activeZone.y,
-      width      : activeZone.w,
-      length     : activeZone.l,
-      baseAreaId : mode === 'choose' ? selectedAreaId : null,
+      posX              : activeZone.x,
+      posY              : activeZone.y,
+      width             : activeZone.w,
+      length            : activeZone.l,
+      baseAreaId        : mode === 'choose' ? selectedAreaId : null,
+      overlappingAreaIds: overlappingAreas.map(a => a.id),
+      // L-shaped extension zone (draw mode only)
+      extensionZone: (mode === 'draw' && zoneExtension)
+        ? { posX: zoneExtension.x, posY: zoneExtension.y, width: zoneExtension.w, length: zoneExtension.l }
+        : null,
     });
   };
 
@@ -262,10 +389,10 @@ export default function CustomAreaSelectorModal({
         }}>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
-              Tự sắp xếp vị trí thuê
+              {isOwnerMode ? 'Chỉ định vị trí cho khách thuê' : 'Tự sắp xếp vị trí thuê'}
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
-              Bạn cần thuê <strong style={{ color: '#0ea5e9' }}>{requestedM3} m³</strong>.
+              {isOwnerMode ? 'Khách yêu cầu' : 'Bạn cần thuê'} <strong style={{ color: '#0ea5e9' }}>{requestedM3} m³</strong>.
               {activeZone ? (
                 <>
                   {' '}Vùng đang chọn:{' '}
@@ -320,13 +447,14 @@ export default function CustomAreaSelectorModal({
               onMouseDown={mode === 'draw' ? canvasMouseDown : undefined}
               onMouseMove={mode === 'draw' ? canvasMouseMove : undefined}
               onMouseUp={mode === 'draw' ? canvasMouseUp : undefined}
+              onClick={mode === 'choose' ? handleCanvasClick : undefined}
               style={{
                 position: 'relative',
                 width: canvasW, height: canvasH,
                 background: '#f0f7ff',
                 border: '2.5px solid #3b82f6', borderRadius: 10,
-                overflow: 'hidden',
-                cursor: mode === 'draw' ? 'crosshair' : 'default',
+                overflow: 'visible',
+                cursor: mode === 'choose' ? 'crosshair' : (mode === 'draw' ? 'crosshair' : 'default'),
                 backgroundImage: `
                   linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px),
                   linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px)
@@ -337,9 +465,13 @@ export default function CustomAreaSelectorModal({
             >
               {/* existing areas */}
               {areas.map(a => {
-                const isOcc = a.isOccupied;
-                const isSel = a.id === selectedAreaId;
-                const c = isSel ? COLORS.selected : (isOcc ? COLORS.occupied : COLORS.free);
+                const isOcc  = a.isOccupied;
+                const isSel  = a.id === selectedAreaId;
+                const isOver = !isSel && overlappingAreas.some(o => o.id === a.id);
+                const c = isSel  ? COLORS.selected
+                        : isOver ? { bg: 'rgba(253,186,116,0.85)', border: '#f97316', text: '#9a3412' }
+                        : isOcc  ? COLORS.occupied
+                        :          COLORS.free;
                 const pw = m2px(parseFloat(a.width  || 5));
                 const ph = m2px(parseFloat(a.length || 5));
                 const px = m2px(parseFloat(a.positionX || 0));
@@ -350,15 +482,20 @@ export default function CustomAreaSelectorModal({
                     onClick={() => mode === 'choose' && selectArea(a)}
                     style={{
                       position: 'absolute', left: px, top: py, width: pw, height: ph,
-                      background: c.bg, border: `2px dashed ${c.border}`,
+                      background: (mode === 'draw' && isOcc) ? 'repeating-linear-gradient(45deg,rgba(254,202,202,0.9),rgba(254,202,202,0.9) 6px,rgba(254,226,226,0.6) 6px,rgba(254,226,226,0.6) 12px)' : c.bg,
+                      border: `2px ${(mode === 'draw' && isOcc) ? 'solid' : 'dashed'} ${c.border}`,
                       borderRadius: 4, boxSizing: 'border-box',
                       display: 'flex', flexDirection: 'column',
                       alignItems: 'center', justifyContent: 'center',
                       cursor: isOcc ? 'not-allowed' : (mode === 'choose' ? 'pointer' : 'default'),
                       transition: 'background 0.15s',
                       overflow: 'hidden',
+                      zIndex: (mode === 'draw' && isOcc) ? 15 : undefined,
                     }}
                   >
+                    {isOver && (
+                      <span style={{ fontSize: '0.6rem', marginBottom: 2, opacity: 0.85, fontWeight: 700, color: c.text }}>✂ SẼ BỊ CẮT</span>
+                    )}
                     {isOcc && (
                       <span style={{ fontSize: '1rem', marginBottom: 2, opacity: 0.7 }}>🔒</span>
                     )}
@@ -408,35 +545,82 @@ export default function CustomAreaSelectorModal({
                 </div>
               )}
 
-              {/* custom drawn zone */}
-              {mode === 'draw' && customZone && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: m2px(customZone.x), top: m2px(customZone.y),
-                    width: m2px(customZone.w), height: m2px(customZone.l),
-                    border: '2.5px solid #f59e0b', background: 'rgba(253,230,138,0.6)',
-                    borderRadius: 6, boxSizing: 'border-box',
-                    cursor: 'move', zIndex: 10,
-                  }}
-                >
-                  {/* SE handle */}
-                  <div style={{
-                    position: 'absolute', right: -6, bottom: -6,
-                    width: 14, height: 14, background: '#f59e0b',
-                    borderRadius: 3, cursor: 'se-resize', zIndex: 11,
-                  }} />
-                  <span style={{
-                    position: 'absolute', top: '50%', left: '50%',
-                    transform: 'translate(-50%,-50%)',
-                    fontSize: '0.68rem', fontWeight: 800, color: '#92400e',
-                    whiteSpace: 'nowrap', pointerEvents: 'none',
-                  }}>
-                    {customZone.w}m×{customZone.l}m<br />
-                    {toM3(customZone.w, customZone.l)} m³
-                  </span>
-                </div>
-              )}
+              {/* custom drawn zone — render as SVG L-shape if extension present & adjacent */}
+              {mode === 'draw' && customZone && (() => {
+                const p = {
+                  x: m2px(customZone.x), y: m2px(customZone.y),
+                  w: m2px(customZone.w), l: m2px(customZone.l),
+                };
+                const e = zoneExtension ? {
+                  x: m2px(zoneExtension.x), y: m2px(zoneExtension.y),
+                  w: m2px(zoneExtension.w), l: m2px(zoneExtension.l),
+                } : null;
+
+                // Detect adjacency direction (3px tolerance for rounding)
+                const EPS = 3;
+                let lPoints = null;
+                if (e) {
+                  // extension to the RIGHT of primary, within primary's height
+                  if (Math.abs(e.x - (p.x + p.w)) < EPS && e.y >= p.y - EPS && e.y + e.l <= p.y + p.l + EPS)
+                    lPoints = `${p.x},${p.y} ${p.x+p.w},${p.y} ${p.x+p.w},${e.y} ${e.x+e.w},${e.y} ${e.x+e.w},${e.y+e.l} ${p.x+p.w},${e.y+e.l} ${p.x+p.w},${p.y+p.l} ${p.x},${p.y+p.l}`;
+                  // extension to the LEFT of primary
+                  else if (Math.abs(e.x + e.w - p.x) < EPS && e.y >= p.y - EPS && e.y + e.l <= p.y + p.l + EPS)
+                    lPoints = `${e.x},${e.y} ${p.x},${e.y} ${p.x},${p.y} ${p.x+p.w},${p.y} ${p.x+p.w},${p.y+p.l} ${p.x},${p.y+p.l} ${p.x},${e.y+e.l} ${e.x},${e.y+e.l}`;
+                  // extension BELOW primary, within primary's width
+                  else if (Math.abs(e.y - (p.y + p.l)) < EPS && e.x >= p.x - EPS && e.x + e.w <= p.x + p.w + EPS)
+                    lPoints = `${p.x},${p.y} ${p.x+p.w},${p.y} ${p.x+p.w},${p.y+p.l} ${e.x+e.w},${p.y+p.l} ${e.x+e.w},${e.y+e.l} ${e.x},${e.y+e.l} ${e.x},${p.y+p.l} ${p.x},${p.y+p.l}`;
+                  // extension ABOVE primary
+                  else if (Math.abs(e.y + e.l - p.y) < EPS && e.x >= p.x - EPS && e.x + e.w <= p.x + p.w + EPS)
+                    lPoints = `${e.x},${e.y} ${e.x+e.w},${e.y} ${e.x+e.w},${p.y} ${p.x+p.w},${p.y} ${p.x+p.w},${p.y+p.l} ${p.x},${p.y+p.l} ${p.x},${p.y} ${e.x},${e.y}`;
+                }
+
+                if (lPoints) {
+                  // Draw as single SVG L-shape polygon
+                  const totalM3 = parseFloat(((customZone.w * customZone.l + zoneExtension.w * zoneExtension.l) * whHeight).toFixed(1));
+                  return (
+                    <>
+                      {/* Single seamless L-shape */}
+                      <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10, overflow: 'visible' }}>
+                        <polygon points={lPoints} fill="rgba(253,230,138,0.75)" stroke="#f59e0b" strokeWidth="2.5" strokeLinejoin="round" />
+                      </svg>
+                      {/* Invisible drag/resize div over primary zone */}
+                      <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.w, height: p.l, background: 'transparent', cursor: 'move', zIndex: 11 }}>
+                        <div style={{ position: 'absolute', right: -6, bottom: -6, width: 14, height: 14, background: '#f59e0b', borderRadius: 3, cursor: 'se-resize', zIndex: 12 }} />
+                        <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max-content', fontSize: '0.65rem', fontWeight: 800, color: '#92400e', whiteSpace: 'nowrap', pointerEvents: 'none', textAlign: 'center', lineHeight: 1.4, background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, backdropFilter: 'blur(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                          {customZone.w}m×{customZone.l}m<br />
+                          <span style={{ color: '#166534' }}>Tổng: {totalM3} m³</span>
+                        </div>
+                      </div>
+                      {/* Extension label */}
+                      <div style={{ position: 'absolute', left: e.x, top: e.y, width: e.w, height: e.l, zIndex: 11, pointerEvents: 'none' }}>
+                        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max-content', fontSize: '0.62rem', fontWeight: 800, color: '#92400e', whiteSpace: 'nowrap', pointerEvents: 'none', background: 'rgba(255,255,255,0.95)', padding: '2px 6px', borderRadius: 4, backdropFilter: 'blur(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                          +{zoneExtension.w}m×{zoneExtension.l}m
+                        </div>
+                      </div>
+                    </>
+                  );
+                }
+
+                // Not adjacent or no extension — render separate boxes
+                return (
+                  <>
+                    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.w, height: p.l, border: '2.5px solid #f59e0b', background: 'rgba(253,230,138,0.6)', borderRadius: 6, boxSizing: 'border-box', cursor: 'move', zIndex: 10 }}>
+                      <div style={{ position: 'absolute', right: -6, bottom: -6, width: 14, height: 14, background: '#f59e0b', borderRadius: 3, cursor: 'se-resize', zIndex: 11 }} />
+                      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max-content', fontSize: '0.68rem', fontWeight: 800, color: '#92400e', whiteSpace: 'nowrap', pointerEvents: 'none', textAlign: 'center', background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, backdropFilter: 'blur(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                        {customZone.w}m×{customZone.l}m<br />{toM3(customZone.w, customZone.l)} m³
+                      </div>
+                    </div>
+                    {e && (
+                      <div style={{ position: 'absolute', left: e.x, top: e.y, width: e.w, height: e.l, border: '2.5px solid #f59e0b', background: 'rgba(253,230,138,0.6)', borderRadius: 6, boxSizing: 'border-box', zIndex: 10, pointerEvents: 'none' }}>
+                        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max-content', fontSize: '0.63rem', fontWeight: 800, color: '#92400e', whiteSpace: 'nowrap', pointerEvents: 'none', textAlign: 'center', background: 'rgba(255,255,255,0.95)', padding: '2px 6px', borderRadius: 4, backdropFilter: 'blur(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                          +{zoneExtension.w}m×{zoneExtension.l}m<br />+{toM3(zoneExtension.w, zoneExtension.l)} m³
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
             </div>
 
             {/* Legend */}
@@ -444,8 +628,8 @@ export default function CustomAreaSelectorModal({
               {[
                 { color: '#bfdbfe', border: '#3b82f6', label: 'Còn trống' },
                 { color: '#fecaca', border: '#ef4444', label: 'Đang thuê' },
-                { color: '#a7f3d0', border: '#10b981', label: 'Vùng bạn chọn' },
-                { color: '#fde68a', border: '#f59e0b', label: 'Vùng tự vẽ' },
+                { color: '#a7f3d0', border: '#10b981', label: isOwnerMode ? 'Vùng chỉ định' : 'Vùng bạn chọn' },
+                { color: '#fde68a', border: '#f59e0b', label: isOwnerMode ? 'Vùng vẽ mới' : 'Vùng tự vẽ' },
               ].map(item => (
                 <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                   <div style={{ width: 13, height: 13, borderRadius: 3, background: item.color, border: `1.5px solid ${item.border}` }} />
@@ -466,40 +650,155 @@ export default function CustomAreaSelectorModal({
                   <Row label="Rộng"    value={`${activeZone.w} m`} />
                   <Row label="Dài"     value={`${activeZone.l} m`} />
                   <Row label="Chiều cao kho" value={`${whHeight.toFixed(1)} m`} />
-                  <Row label="Thể tích" value={`${activeM3} m³`} />
-                  <Row label="Vị trí X" value={`${activeZone.x} m`} />
-                  <Row label="Vị trí Y" value={`${activeZone.y} m`} />
-                  {mode === 'choose' && selectedExisting && (
-                    <Row label="Dựa trên" value={selectedExisting.name} />
+                  {(() => {
+                    const totalM3 = (mode === 'draw' && zoneExtension && customZone)
+                      ? parseFloat(((customZone.w * customZone.l + zoneExtension.w * zoneExtension.l) * whHeight).toFixed(1))
+                      : activeM3;
+                    const isMet = totalM3 >= requestedM3;
+                    return (
+                      <>
+                        <Row label="Thể tích" value={<span style={{ color: isMet ? '#16a34a' : '#d97706', fontWeight: 700 }}>{totalM3} m³</span>} />
+                        {mode === 'choose' && selectedExisting && (
+                          <Row label="Dựa trên" value={selectedExisting.name} />
+                        )}
+                        <div style={{
+                          marginTop: 10, padding: '8px 10px', borderRadius: 8,
+                          background: isMet ? '#dcfce7' : '#fef9c3',
+                          color: isMet ? '#166534' : '#854d0e',
+                          fontSize: '0.78rem', fontWeight: 700,
+                        }}>
+                          {isMet
+                            ? `✓ Đủ thể tích: ${totalM3} m³ / ${requestedM3} m³`
+                            : `⚠ Thể tích chọn: ${totalM3} m³ / yêu cầu ${requestedM3} m³`}
+                        </div>
+                      </>
+                    );
+                  })()}
+                  {mode === 'draw' && !hasOccupiedConflict && activeM3 < requestedM3 && !zoneExtension && neededM2 && customZone && (
+                    <button
+                      onClick={() => {
+                        const ceilM2 = (v) => Math.ceil(v * 100) / 100;
+                        const primaryM2 = customZone.w * customZone.l;
+
+                        // Strategy 1: extend L (keep W, same position)
+                        const exactL = ceilM2(neededM2 / customZone.w);
+                        const clampedL = clamp(exactL, MIN_ZONE_M, whL - customZone.y);
+                        const candidateL = { ...customZone, l: clampedL };
+                        const volL = parseFloat((candidateL.w * candidateL.l * whHeight).toFixed(1));
+                        if (volL >= requestedM3 && !overlapsOccupied(candidateL)) {
+                          setCustomZone(candidateL); clearExtension(); return;
+                        }
+
+                        // Strategy 2: extend W (keep L, same position)
+                        const exactW = ceilM2(neededM2 / customZone.l);
+                        const clampedW = clamp(exactW, MIN_ZONE_M, whW - customZone.x);
+                        const candidateW = { ...customZone, w: clampedW };
+                        const volW = parseFloat((candidateW.w * candidateW.l * whHeight).toFixed(1));
+                        if (volW >= requestedM3 && !overlapsOccupied(candidateW)) {
+                          setCustomZone(candidateW); clearExtension(); return;
+                        }
+
+                        // Strategy 3: keep primary zone as-is, find extension piece for remaining m³
+                        const remainingM2 = ceilM2(neededM2 - primaryM2);
+                        if (remainingM2 <= 0) return;
+                        const STEP = 0.5;
+                        // "isPrimaryOrOccupied" — candidate must not overlap primary zone OR occupied areas
+                        const overlapsEither = (cand) => {
+                          if (overlapsOccupied(cand)) return true;
+                          // overlap with primary zone?
+                          const ax = cand.x, ay = cand.y, aw = cand.w, al = cand.l;
+                          const bx = customZone.x, by = customZone.y, bw = customZone.w, bl = customZone.l;
+                          return ax < bx + bw && ax + aw > bx && ay < by + bl && ay + al > by;
+                        };
+                        for (let w = whW; w >= MIN_ZONE_M; w = parseFloat((w - STEP).toFixed(1))) {
+                          const l = ceilM2(remainingM2 / w);
+                          if (l > whL) continue;
+                          for (let y = 0; y <= whL - l + 0.01; y = parseFloat((y + STEP).toFixed(1))) {
+                            for (let x = 0; x <= whW - w + 0.01; x = parseFloat((x + STEP).toFixed(1))) {
+                              const cand = { x, y, w, l };
+                              if (!overlapsEither(cand)) {
+                                setZoneExtension(cand); return;
+                              }
+                            }
+                          }
+                        }
+                      }}
+                      style={{
+                        marginTop: 6, width: '100%',
+                        padding: '7px 10px', borderRadius: 8, border: 'none',
+                        background: 'linear-gradient(135deg,#f59e0b,#d97706)',
+                        color: '#fff', fontWeight: 700, fontSize: '0.78rem',
+                        cursor: 'pointer', transition: 'opacity 0.15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
+                      onMouseLeave={e => e.currentTarget.style.opacity='1'}
+                    >
+                      Tự động căn chỉnh đạt {requestedM3} m³
+                    </button>
                   )}
-                  <div style={{
-                    marginTop: 10, padding: '8px 10px', borderRadius: 8,
-                    background: activeM3 >= requestedM3 ? '#dcfce7' : '#fef9c3',
-                    color: activeM3 >= requestedM3 ? '#166534' : '#854d0e',
-                    fontSize: '0.78rem', fontWeight: 700,
-                  }}>
-                    {activeM3 >= requestedM3
-                      ? '✓ Đủ thể tích yêu cầu'
-                      : `⚠ Thể tích chọn: ${activeM3} m³ / cần ${requestedM3} m³`}
-                  </div>
+                  {/* Show combined volume when extension is active */}
+                  {mode === 'draw' && zoneExtension && customZone && (
+                    <div style={{
+                      marginTop: 6, padding: '6px 10px', borderRadius: 8,
+                      background: '#ecfdf5', border: '1.5px solid #86efac',
+                      fontSize: '0.75rem', color: '#166534', fontWeight: 700,
+                    }}>
+                      ✓ Tổng thể tích (L-shape): {parseFloat(((customZone.w * customZone.l + zoneExtension.w * zoneExtension.l) * whHeight).toFixed(1))} m³
+                    </div>
+                  )}
+
+                  {/* Occupied area conflict — hard block */}
+                  {hasOccupiedConflict && (
+                    <div style={{
+                      marginTop: 8, padding: '8px 10px', borderRadius: 8,
+                      background: '#fef2f2', border: '1.5px solid #fca5a5',
+                      fontSize: '0.75rem', color: '#b91c1c',
+                    }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>🚫 Đang chồng khu đã thuê:</div>
+                      {occupiedOverlaps.map(a => (
+                        <div key={a.id} style={{ fontWeight: 600 }}>• {a.name}</div>
+                      ))}
+                      <div style={{ marginTop: 4, fontStyle: 'italic' }}>
+                        Vui lòng vẽ lại trong vùng chưa có ai thuê.
+                      </div>
+                    </div>
+                  )}
+                  {/* Cross free-area overlap warning */}
+                  {!hasOccupiedConflict && overlappingAreas.length > 0 && (
+                    <div style={{
+                      marginTop: 8, padding: '8px 10px', borderRadius: 8,
+                      background: '#fff7ed', border: '1px solid #fed7aa',
+                      fontSize: '0.75rem', color: '#9a3412',
+                    }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>✂ Lấn sang khu khác:</div>
+                      {overlappingAreas.map(a => (
+                        <div key={a.id} style={{ fontWeight: 600 }}>• {a.name} ({a.size ?? (a.width * a.length)} m²)</div>
+                      ))}
+                      <div style={{ marginTop: 4, color: '#c2410c', fontStyle: 'italic' }}>
+                        Khu bị lấn sẽ được cắt nhỏ khi xác nhận.
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: 0 }}>
-                  {mode === 'draw' ? 'Kéo chuột trên bản đồ để vẽ.' : 'Bấm vào một khu còn trống.'}
+                  {mode === 'draw'
+                    ? (isOwnerMode ? 'Kéo ngang để định chiều rộng — chiều dài tự tính.' : 'Kéo chuột trên bản đồ để vẽ.')
+                    : 'Bấm vào một khu còn trống.'}
                 </p>
               )}
             </div>
 
             <button
-              disabled={!activeZone}
+              disabled={!activeZone || hasOccupiedConflict}
               onClick={handleConfirm}
               style={{
                 padding: '12px 0', borderRadius: 12, border: 'none',
-                background: activeZone ? 'linear-gradient(135deg,#0ea5e9,#0284c7)' : '#e2e8f0',
-                color: activeZone ? '#fff' : '#94a3b8',
+                background: (!activeZone || hasOccupiedConflict) ? '#e2e8f0' : 'linear-gradient(135deg,#0ea5e9,#0284c7)',
+                color: (!activeZone || hasOccupiedConflict) ? '#94a3b8' : '#fff',
                 fontWeight: 700, fontSize: '0.92rem',
-                cursor: activeZone ? 'pointer' : 'not-allowed',
-                boxShadow: activeZone ? '0 4px 14px rgba(14,165,233,0.4)' : 'none',
+                cursor: (!activeZone || hasOccupiedConflict) ? 'not-allowed' : 'pointer',
+                boxShadow: (!activeZone || hasOccupiedConflict) ? 'none' : '0 4px 14px rgba(14,165,233,0.4)',
                 transition: 'all 0.2s',
               }}
             >

@@ -83,6 +83,16 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
             rentalRequest.ProposedWidth     = request.ProposedWidth;
             rentalRequest.ProposedLength    = request.ProposedLength;
             rentalRequest.BaseRentalAreaId  = request.BaseRentalAreaId;
+
+            // L-shaped extension zone
+            if (request.HasExtensionZone)
+            {
+                rentalRequest.HasExtensionZone    = true;
+                rentalRequest.ExtensionPositionX  = request.ExtensionPositionX;
+                rentalRequest.ExtensionPositionY  = request.ExtensionPositionY;
+                rentalRequest.ExtensionWidth      = request.ExtensionWidth;
+                rentalRequest.ExtensionLength     = request.ExtensionLength;
+            }
         }
 
         var requestId = await _rentalRequestRepository.AddAsync(rentalRequest);
