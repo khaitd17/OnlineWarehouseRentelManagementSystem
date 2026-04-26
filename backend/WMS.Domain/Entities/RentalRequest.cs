@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
+using WMS.Domain.Exceptions;
 
 namespace WMS.Domain.Entities;
 
@@ -125,7 +126,7 @@ public partial class RentalRequest
     public void Approve(int reviewerId, string? contractImageUrl = null)
     {
         if (Status != "PENDING")
-            throw new InvalidOperationException($"Cannot approve request with status {Status}");
+            throw new InvalidStateException($"Cannot approve request with status {Status}");
 
         Status = "APPROVED";
         ReviewedBy = reviewerId;
@@ -136,7 +137,7 @@ public partial class RentalRequest
     public void Reject(int reviewerId, string rejectionReason)
     {
         if (Status != "PENDING")
-            throw new InvalidOperationException($"Cannot reject request with status {Status}");
+            throw new InvalidStateException($"Cannot reject request with status {Status}");
 
         if (string.IsNullOrWhiteSpace(rejectionReason))
             throw new ArgumentException("Rejection reason is required", nameof(rejectionReason));
