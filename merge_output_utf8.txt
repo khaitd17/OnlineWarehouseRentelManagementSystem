@@ -1,8 +1,0 @@
-﻿Auto-merging backend/WMS.Infrastructure/Migrations/20260420175747_AddRenterSignatureToInventoryRequest.Designer.cs
-CONFLICT (rename/rename): backend/WMS.Infrastructure/Migrations/20260420175747_AddRenterSignatureToInventoryRequest.Designer.cs renamed to backend/WMS.Infrastructure/Migrations/20260421170358_AddCustomAreaToRentalRequest.Designer.cs in HEAD and to backend/WMS.Infrastructure/Migrations/20260421073350_InitialCreate.Designer.cs in origin/main.
-Auto-merging backend/WMS.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs
-CONFLICT (content): Merge conflict in backend/WMS.Infrastructure/Migrations/ApplicationDbContextModelSnapshot.cs
-Auto-merging backend/WMS.Infrastructure/Persistence/ApplicationDbContext.cs
-Auto-merging backend/tests/WMS.UnitTests/Handlers/Contracts/ApproveTerminationHandlerTests.cs
-CONFLICT (content): Merge conflict in backend/tests/WMS.UnitTests/Handlers/Contracts/ApproveTerminationHandlerTests.cs
-Automatic merge failed; fix conflicts and then commit the result.
