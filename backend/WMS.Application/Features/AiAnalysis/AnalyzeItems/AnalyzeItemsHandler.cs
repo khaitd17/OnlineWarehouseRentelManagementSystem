@@ -114,19 +114,28 @@ public class AnalyzeItemsHandler : IRequestHandler<AnalyzeItemsCommand, AnalyzeI
         }
         catch { /* Bỏ qua nếu lỗi, vẫn trả kho */ }
 
-        // Sắp xếp: ưu tiên khớp type → rating → price
+        // Sắp xếp: ưu tiên khoảng cách (nếu có Lat/Lng) -> khớp type -> rating
         var suggestedWarehouses = suitable
-            .OrderByDescending(w =>
+            .Select(w => new {
+                Warehouse = w,
+                DistanceKm = (request.Lat.HasValue && request.Lng.HasValue && w.Lat.HasValue && w.Lng.HasValue)
+                    ? (double?)GetDistance(request.Lat.Value, request.Lng.Value, w.Lat.Value, w.Lng.Value)
+                    : null
+            })
+            .OrderBy(x => request.Lat.HasValue ? (x.DistanceKm.HasValue ? 0 : 1) : 0) // Nếu user truyền tọa độ, ưu tiên kho có tọa độ
+            .ThenBy(x => request.Lat.HasValue ? (x.DistanceKm ?? double.MaxValue) : 0) // Kho gần nhất lên trước
+            .ThenByDescending(x =>
             {
-                var typeMatch = w.WarehouseType != null &&
-                    w.WarehouseType.Contains(geminiResult.SuggestedWarehouseType,
+                var typeMatch = x.Warehouse.WarehouseType != null &&
+                    x.Warehouse.WarehouseType.Contains(geminiResult.SuggestedWarehouseType,
                         StringComparison.OrdinalIgnoreCase) ? 2 : 0;
-                ratingMap.TryGetValue(w.WarehouseId, out var r);
+                ratingMap.TryGetValue(x.Warehouse.WarehouseId, out var r);
                 return typeMatch + (r.count > 0 ? r.avg : 0);
             })
             .Take(5)
-            .Select(w =>
+            .Select(x =>
             {
+                var w = x.Warehouse;
                 ratingMap.TryGetValue(w.WarehouseId, out var rStats);
                 var typeMatches = w.WarehouseType != null &&
                     w.WarehouseType.Contains(geminiResult.SuggestedWarehouseType,
@@ -152,6 +161,7 @@ public class AnalyzeItemsHandler : IRequestHandler<AnalyzeItemsCommand, AnalyzeI
                     ImageUrl: w.Images.FirstOrDefault()?.MediaUrl,
                     Lat: w.Lat,
                     Lng: w.Lng,
+                    DistanceKm: x.DistanceKm.HasValue ? Math.Round(x.DistanceKm.Value, 2) : null,
                     MatchReason: reason
                 );
             })
@@ -169,4 +179,18 @@ public class AnalyzeItemsHandler : IRequestHandler<AnalyzeItemsCommand, AnalyzeI
             SuggestedWarehouses: suggestedWarehouses
         );
     }
+
+    private static double GetDistance(double lat1, double lon1, double lat2, double lon2)
+    {
+        var r = 6371; // km
+        var dLat = ToRadians(lat2 - lat1);
+        var dLon = ToRadians(lon2 - lon1);
+        var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                Math.Cos(ToRadians(lat1)) * Math.Cos(ToRadians(lat2)) *
+                Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+        var c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+        return r * c;
+    }
+
+    private static double ToRadians(double angle) => Math.PI * angle / 180.0;
 }

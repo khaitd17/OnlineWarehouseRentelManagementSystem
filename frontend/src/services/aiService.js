@@ -8,11 +8,13 @@ const aiService = {
    * @param {string|null} district - Quận/huyện ưa thích (tùy chọn)
    * @returns Promise<AnalyzeItemsResult>
    */
-  analyzeItems: (images, province = null, district = null) => {
+  analyzeItems: (images, province = null, district = null, lat = null, lng = null) => {
     const formData = new FormData();
     images.forEach((img) => formData.append("images", img));
     if (province) formData.append("province", province);
     if (district) formData.append("district", district);
+    if (lat !== null) formData.append("lat", lat);
+    if (lng !== null) formData.append("lng", lng);
 
     return axiosClient.post("/ai/analyze-items", formData, {
       headers: { "Content-Type": "multipart/form-data" },

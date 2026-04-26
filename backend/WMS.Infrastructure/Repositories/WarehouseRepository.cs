@@ -34,6 +34,8 @@ public class WarehouseRepository : IWarehouseRepository
             Is24HoursAccess = warehouse.Is24HoursAccess,
             OpenTime = warehouse.OpenTime,
             CloseTime = warehouse.CloseTime,
+            MainDoorDirection = warehouse.MainDoorDirection,
+            PricePerM2 = warehouse.PricePerM2,
             Status = warehouse.Status,
             CreatedAt = warehouse.CreatedAt
         };
@@ -229,6 +231,27 @@ public async Task<Warehouse?> GetByIdAsync(
             .ToListAsync(cancellationToken);
         foreach (var equipment in equipments)
             equipment.Status = "DELETED";
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RestoreAsync(int warehouseId, CancellationToken cancellationToken)
+    {
+        var entity = await _context.Warehouses
+            .FirstOrDefaultAsync(w => w.WarehouseId == warehouseId, cancellationToken);
+            
+        if (entity == null || entity.Status != "DELETED") return;
+
+        // Khôi phục lại trạng thái. Nếu đã có ApprovedAt thì là kho đã từng duyệt -> APPROVED, nếu chưa thì PENDING
+        entity.Status = entity.ApprovedAt.HasValue ? "APPROVED" : "PENDING";
+        
+        // Khôi phục equipments
+        var equipments = await _context.Equipments
+            .Where(e => e.WarehouseId == warehouseId && e.Status == "DELETED")
+            .ToListAsync(cancellationToken);
+            
+        foreach (var equipment in equipments)
+            equipment.Status = "AVAILABLE"; // hoặc trạng thái mặc định của equipment
 
         await _context.SaveChangesAsync(cancellationToken);
     }

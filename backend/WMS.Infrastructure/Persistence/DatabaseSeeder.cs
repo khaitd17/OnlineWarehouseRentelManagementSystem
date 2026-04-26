@@ -11,6 +11,22 @@ namespace WMS.Infrastructure.Persistence
         public static void Seed(ApplicationDbContext context)
         {
             // ══════════════════════════════════════════════════
+            // PATCH: Xoá unique index cũ (user_id, warehouse_id) nếu tồn tại
+            // Index cũ ngăn 1 user có 2 role khác nhau trong cùng 1 kho (OWNER + OPERATOR)
+            // EF Core đã define đúng: IX_warehouse_memberships_user_warehouse_role (user_id, warehouse_id, warehouse_role_id)
+            // ══════════════════════════════════════════════════
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_warehouse_memberships_user_id_warehouse_id' AND object_id = OBJECT_ID('warehouse_memberships'))
+                    BEGIN
+                        DROP INDEX IX_warehouse_memberships_user_id_warehouse_id ON warehouse_memberships;
+                    END
+                ");
+            }
+            catch { /* Bỏ qua nếu bảng chưa tồn tại */ }
+
+            // ══════════════════════════════════════════════════
             // 0. SUBSCRIPTION PACKAGES
             // ══════════════════════════════════════════════════
             var packages = new[]

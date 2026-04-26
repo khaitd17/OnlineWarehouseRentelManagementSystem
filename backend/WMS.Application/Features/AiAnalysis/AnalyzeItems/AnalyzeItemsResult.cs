@@ -40,5 +40,6 @@ public record SuggestedWarehouseDto(
     string? ImageUrl,
     double? Lat,
     double? Lng,
+    double? DistanceKm,
     string MatchReason   // Lý do AI gợi ý kho này
 );

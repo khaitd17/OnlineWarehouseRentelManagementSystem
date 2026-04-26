@@ -222,10 +222,19 @@ export default function AiItemAnalyzerPage() {
   const [previews, setPreviews] = useState([]);
   const [province, setProvince] = useState("");
   const [district, setDistrict] = useState("");
+  const [userLat, setUserLat] = useState(null);
+  const [userLng, setUserLng] = useState(null);
+  const [loadingLocation, setLoadingLocation] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [quota, setQuota] = useState(null);
+  
+  // History state
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [expandedSessionId, setExpandedSessionId] = useState(null);
 
   // Load quota on mount
   useEffect(() => {
@@ -261,12 +270,59 @@ export default function AiItemAnalyzerPage() {
   const onDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
   const onDragLeave = () => setIsDragging(false);
 
+  const handleOpenHistory = async () => {
+    setShowHistory(true);
+    setLoadingHistory(true);
+    try {
+      const res = await aiService.getMySessions();
+      setHistory(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Trình duyệt không hỗ trợ lấy vị trí.");
+      return;
+    }
+    setLoadingLocation(true);
+    setError(null);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLat(latitude);
+        setUserLng(longitude);
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+          const data = await res.json();
+          if (data && data.address) {
+            const city = data.address.city || data.address.state || data.address.province || "";
+            const dist = data.address.county || data.address.district || data.address.suburb || "";
+            if (city) setProvince(city);
+            if (dist) setDistrict(dist);
+          }
+        } catch (err) {
+          console.error("Reverse geocoding failed", err);
+        } finally {
+          setLoadingLocation(false);
+        }
+      },
+      (error) => {
+        setError("Không thể lấy vị trí. Vui lòng cho phép quyền truy cập vị trí.");
+        setLoadingLocation(false);
+      }
+    );
+  };
+
   const handleAnalyze = async () => {
     if (files.length === 0) { setError("Vui lòng chọn ít nhất 1 ảnh."); return; }
     if (quota && quota.remaining === 0) { setError(`Bạn đã dùng hết ${quota.dailyLimit} lượt hôm nay. Thử lại ngày mai!`); return; }
     setLoading(true); setError(null); setResult(null);
     try {
-      const res = await aiService.analyzeItems(files, province || null, district || null);
+      const res = await aiService.analyzeItems(files, province || null, district || null, userLat, userLng);
       setResult(res.data);
       setQuota(prev => prev ? { ...prev, remaining: prev.remaining - 1, usedToday: prev.usedToday + 1 } : null);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -402,8 +458,8 @@ export default function AiItemAnalyzerPage() {
 
         {/* ── Quota bar ── */}
         {quota && (
-          <div style={{ ...styles.card, padding: "16px 24px", marginBottom: 24 }}>
-            <div style={styles.quotaBar}>
+          <div style={{ ...styles.card, padding: "16px 24px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
+            <div style={{ ...styles.quotaBar, flex: 1, marginBottom: 0, minWidth: 250 }}>
               <span style={{ fontSize: 13, color: "#94a3b8", whiteSpace: "nowrap" }}>
                 Lượt AI hôm nay:
               </span>
@@ -414,6 +470,24 @@ export default function AiItemAnalyzerPage() {
                 {quota.remaining}/{quota.dailyLimit} còn lại
               </span>
             </div>
+            <button
+              onClick={handleOpenHistory}
+              style={{
+                background: "rgba(99,102,241,0.15)",
+                border: "1px solid rgba(99,102,241,0.3)",
+                color: "#a78bfa",
+                padding: "8px 16px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              Lịch sử phân tích
+            </button>
           </div>
         )}
 
@@ -589,11 +663,27 @@ export default function AiItemAnalyzerPage() {
                       className="wh-card"
                       style={styles.whCard}
                     >
-                      {wh.imageUrl ? (
-                        <img src={wh.imageUrl} alt={wh.name} style={styles.whImg} onError={e => e.target.style.display='none'} />
-                      ) : (
-                        <div style={styles.whImgPlaceholder}><WarehouseIcon /></div>
+                      {wh.imageUrl && (
+                        <img 
+                          src={wh.imageUrl.startsWith('http') ? wh.imageUrl : `http://localhost:5000${wh.imageUrl}`} 
+                          alt={wh.name} 
+                          style={styles.whImg} 
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            if (e.target.nextSibling) {
+                              e.target.nextSibling.style.display = 'flex';
+                            }
+                          }} 
+                        />
                       )}
+                      <div 
+                        style={{
+                          ...styles.whImgPlaceholder, 
+                          display: wh.imageUrl ? 'none' : 'flex'
+                        }}
+                      >
+                        <WarehouseIcon />
+                      </div>
                       <div style={styles.whInfo}>
                         <div style={styles.whName}>{wh.name}</div>
                         <div style={styles.whAddress}>{wh.address}</div>
@@ -602,6 +692,7 @@ export default function AiItemAnalyzerPage() {
                           <span style={styles.tag("none")}>{wh.availableArea} m³</span>
                           {wh.availableVolume && <span style={styles.tag("green")}>{wh.availableVolume} m³ trống</span>}
                           {wh.is24HoursAccess && <span style={styles.tag("green")}>24/7</span>}
+                          {wh.distanceKm !== null && wh.distanceKm !== undefined && <span style={styles.tag("purple")}>Cách bạn {wh.distanceKm} km</span>}
                           {wh.pricePerM2 && <span style={styles.tag("none")}>{Number(wh.pricePerM2).toLocaleString("vi-VN")} ₫/m³</span>}
                         </div>
                         <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
@@ -692,8 +783,26 @@ export default function AiItemAnalyzerPage() {
             )}
 
             {/* Location filter */}
-            <div style={{ ...styles.cardTitle, marginTop: 24, marginBottom: 16, fontSize: 15 }}>
-                            Bước 2: Vị trí ưa thích <span style={{ fontSize: 13, color: "#64748b", fontWeight: 400 }}>(tùy chọn)</span>
+            <div style={{ ...styles.cardTitle, marginTop: 24, marginBottom: 16, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>Bước 2: Vị trí ưa thích <span style={{ fontSize: 13, color: "#64748b", fontWeight: 400 }}>(tùy chọn)</span></div>
+              <button 
+                onClick={handleGetLocation} 
+                disabled={loadingLocation}
+                style={{
+                  background: "rgba(99,102,241,0.15)",
+                  border: "1px solid rgba(99,102,241,0.3)",
+                  color: "#a78bfa",
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  cursor: loadingLocation ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6
+                }}
+              >
+                {loadingLocation ? "Đang định vị..." : "Vị trí của tôi"}
+              </button>
             </div>
             <div style={styles.row}>
               <div style={styles.inputGroup}>
@@ -737,6 +846,93 @@ export default function AiItemAnalyzerPage() {
           </div>
         )}
       </div>
+
+      {/* ── History Modal ── */}
+      {showHistory && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(15,23,42,0.8)", backdropFilter: "blur(4px)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ ...styles.card, margin: 0, width: "100%", maxWidth: 700, maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "#e2e8f0" }}>Lịch sử phân tích</div>
+              <button onClick={() => setShowHistory(false)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 24, cursor: "pointer" }}>&times;</button>
+            </div>
+            <div style={{ overflowY: "auto", paddingRight: 8 }}>
+              {loadingHistory ? (
+                <div style={{ color: "#94a3b8", textAlign: "center", padding: "20px 0" }}>Đang tải lịch sử...</div>
+              ) : history.length === 0 ? (
+                <div style={{ color: "#94a3b8", textAlign: "center", padding: "20px 0" }}>Chưa có dữ liệu phân tích nào.</div>
+              ) : (
+                <table style={{ ...styles.table, fontSize: 13 }}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Thời gian</th>
+                      <th style={styles.th}>Thể tích</th>
+                      <th style={styles.th}>Loại kho gợi ý</th>
+                      <th style={styles.th}>Độ chính xác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map(item => (
+                      <React.Fragment key={item.sessionId}>
+                        <tr 
+                          onClick={() => setExpandedSessionId(prev => prev === item.sessionId ? null : item.sessionId)}
+                          style={{ cursor: "pointer", backgroundColor: expandedSessionId === item.sessionId ? "rgba(99,102,241,0.1)" : "transparent" }}
+                        >
+                          <td style={styles.td}>{new Date(item.analyzedAt).toLocaleString("vi-VN")}</td>
+                          <td style={{ ...styles.td, color: "#818cf8", fontWeight: 600 }}>{item.estimatedVolumeM3} m³</td>
+                          <td style={styles.td}>{item.suggestedType}</td>
+                          <td style={styles.td}><ConfidenceBadge value={item.confidence} /></td>
+                        </tr>
+                        {expandedSessionId === item.sessionId && item.resultJson && (
+                          <tr>
+                            <td colSpan="4" style={{ padding: "16px", backgroundColor: "rgba(15,23,42,0.5)", borderBottom: "1px solid rgba(148,163,184,0.05)" }}>
+                              <div style={{ fontSize: 13, color: "#cbd5e1" }}>
+                                <div style={{ fontWeight: 600, color: "#e2e8f0", marginBottom: 8 }}>Chi tiết đồ vật nhận diện:</div>
+                                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                                  <thead>
+                                    <tr>
+                                      <th style={{ textAlign: "left", padding: "4px 8px", color: "#94a3b8" }}>Tên đồ vật</th>
+                                      <th style={{ textAlign: "center", padding: "4px 8px", color: "#94a3b8" }}>Số lượng</th>
+                                      <th style={{ textAlign: "right", padding: "4px 8px", color: "#94a3b8" }}>Kích thước (m)</th>
+                                      <th style={{ textAlign: "right", padding: "4px 8px", color: "#94a3b8" }}>Thể tích/cái (m³)</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {(() => {
+                                      try {
+                                        const parsed = JSON.parse(item.resultJson);
+                                        const items = parsed.Items || parsed.items;
+                                        if (!items || items.length === 0) return <tr><td colSpan="4" style={{ padding: "4px 8px" }}>Không có chi tiết đồ vật</td></tr>;
+                                        return items.map((det, idx) => (
+                                          <tr key={idx}>
+                                            <td style={{ padding: "4px 8px", borderTop: "1px solid rgba(148,163,184,0.1)" }}>{det.Name || det.name}</td>
+                                            <td style={{ textAlign: "center", padding: "4px 8px", borderTop: "1px solid rgba(148,163,184,0.1)" }}>{det.Quantity ?? det.quantity}</td>
+                                            <td style={{ textAlign: "right", padding: "4px 8px", borderTop: "1px solid rgba(148,163,184,0.1)", color: "#94a3b8" }}>
+                                              {(det.WidthM ?? det.widthM)} x {(det.LengthM ?? det.lengthM)} x {(det.HeightM ?? det.heightM)}
+                                            </td>
+                                            <td style={{ textAlign: "right", padding: "4px 8px", borderTop: "1px solid rgba(148,163,184,0.1)", color: "#c4b5fd" }}>
+                                              {(det.EstimatedVolumeM3 ?? det.estimatedVolumeM3)?.toFixed(3)}
+                                            </td>
+                                          </tr>
+                                        ));
+                                      } catch (e) {
+                                        return <tr><td colSpan="4" style={{ padding: "4px 8px" }}>Không thể hiển thị chi tiết</td></tr>;
+                                      }
+                                    })()}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

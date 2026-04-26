@@ -19,6 +19,7 @@ public record PendingWarehouseDto(
     string? WarehouseType,
     double TotalArea,
     double AvailableArea,
+    decimal? PricePerM2,
     string? Status,
     DateTime? CreatedAt,
     int OwnerId,

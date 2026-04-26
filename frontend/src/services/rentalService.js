@@ -432,7 +432,7 @@ const rentalService = {
         text: 'Người dùng hủy',
         color: 'gray',
         icon: '❌',
-        description: 'Hợp đồng bị hủy bởi người nước ngoài'
+        description: 'Hợp đồng bị hủy bởi người dùng'
       },
       'CANCELLED_BY_OWNER': {
         text: 'Chủ kho hủy',

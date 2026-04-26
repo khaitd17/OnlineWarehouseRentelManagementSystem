@@ -32,7 +32,7 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
   // After owner assigns a zone, it is stored in ProposedPosition*/ProposedWidth/Length.
   // HasExtensionZone=true means the owner added an L-shape extension.
   // We always show whatever is in the proposed fields (owner-overwritten or renter-original).
-  const ownerAssigned = !!(request.hasExtensionZone || (request.isCustomArea && request.proposedWidth));
+  const ownerAssigned = !!(request.assignedPositionX != null || (request.hasExtensionZone && !request.isCustomArea));
 
   // Primary zone coords (always from proposedPosition* — owner overwrites these on assignment)
   const px = parseFloat(request.proposedPositionX) || 0;
@@ -91,9 +91,9 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
     );
   }
 
-  const titleLabel = ownerAssigned ? 'Khu vực chủ kho đã sắp xếp' : 'Vị trí người thuê đề xuất';
+  const titleLabel = ownerAssigned ? 'Khu vực chủ kho đã sắp xếp' : (request.isCustomArea ? 'Khu vực người thuê tự vẽ' : 'Vị trí người thuê đề xuất');
   const zoneColor  = ownerAssigned ? COLORS.assigned : COLORS.proposed;
-  const zoneLabel  = ownerAssigned ? 'Đã sắp xếp' : 'Vị trí đề xuất';
+  const zoneLabel  = ownerAssigned ? 'Đã sắp xếp' : (request.isCustomArea ? 'Người thuê tự vẽ' : 'Vị trí đề xuất');
 
   return (
     <div

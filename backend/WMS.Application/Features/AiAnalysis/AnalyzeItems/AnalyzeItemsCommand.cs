@@ -10,5 +10,7 @@ public record AnalyzeItemsCommand(
     int UserId,
     List<IFormFile> Images,
     string? PreferredProvince,
-    string? PreferredDistrict
+    string? PreferredDistrict,
+    double? Lat = null,
+    double? Lng = null
 ) : IRequest<AnalyzeItemsResult>;
