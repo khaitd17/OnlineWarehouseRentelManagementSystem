@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(sqlcmd -S localhost -d OWRMS -E -Q \"IF NOT EXISTS\\(SELECT 1 FROM [__EFMigrationsHistory] WHERE MigrationId='20260415103318_AddWarehouseType'\\) BEGIN INSERT INTO [__EFMigrationsHistory]\\([MigrationId],[ProductVersion]\\) VALUES\\(N'20260415103318_AddWarehouseType',N'9.0.0'\\); PRINT 'Migration recorded'; END ELSE PRINT 'Already recorded'\")"
-    ]
-  }
-}
