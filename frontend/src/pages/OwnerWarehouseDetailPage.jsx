@@ -27,14 +27,29 @@ const AREA_STATUS_BADGE = (isRented) => isRented
   : <span style={{ padding: "2px 10px", background: "#dcfce7", color: "#166534", borderRadius: "12px", fontSize: "0.78rem", fontWeight: 700 }}>Trống</span>;
 
 const CONTRACT_STATUS = {
-  ACTIVE:    { bg: "#dcfce7", color: "#166534", label: "Hiệu lực" },
-  PENDING:   { bg: "#fef9c3", color: "#854d0e", label: "Chờ ký" },
-  EXPIRED:   { bg: "#f1f5f9", color: "#64748b", label: "Hết hạn" },
-  CANCELLED: { bg: "#fee2e2", color: "#991b1b", label: "Đã hủy" },
+  ACTIVE:              { bg: "#dcfce7", color: "#166534", label: "Hiệu lực" },
+  PENDING:             { bg: "#fef9c3", color: "#854d0e", label: "Chờ ký" },
+  EXPIRED:             { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
+  CANCELLED:           { bg: "#fee2e2", color: "#991b1b", label: "Đã hủy" },
+  CANCELLED_BY_USER:   { bg: "#fee2e2", color: "#dc2626", label: "Người dùng hủy" },
+  CANCELLED_BY_OWNER:  { bg: "#fee2e2", color: "#dc2626", label: "Chủ kho hủy" },
+  CANCELLED_NO_PAYMENT:{ bg: "#f1f5f9", color: "#64748b", label: "Hủy - Không TT" },
+  TERMINATED:          { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
+  COMPLETED:           { bg: "#e0f2fe", color: "#0284c7", label: "Đã hoàn thành" },
+  CLOSED:              { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
+  DRAFT:               { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
+  SIGNED:              { bg: "#dbeafe", color: "#1e40af", label: "Đã ký" },
+  PENDING_PAYMENT:     { bg: "#fef3c7", color: "#d97706", label: "Chờ thanh toán" },
+  PENDING_OWNER_SIGNATURE:  { bg: "#dbeafe", color: "#1e40af", label: "Chờ chủ kho ký" },
+  PENDING_RENTER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ người thuê ký" },
+  PENDING_SIGNATURE:   { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
+  PENDING_TERMINATION: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ chấm dứt" },
+  PENDING_CLOSE:       { bg: "#fef3c7", color: "#f59e0b", label: "Chờ đóng" },
+  OVERDUE:             { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
 };
 
 const getContractBadge = (status) => {
-  const s = CONTRACT_STATUS[status?.toUpperCase()] || { bg: "#f1f5f9", color: "#475569", label: status };
+  const s = CONTRACT_STATUS[status?.toUpperCase()] || CONTRACT_STATUS[status] || { bg: "#f1f5f9", color: "#475569", label: status };
   return <span style={{ padding: "2px 10px", background: s.bg, color: s.color, borderRadius: "12px", fontSize: "0.78rem", fontWeight: 700 }}>{s.label}</span>;
 };
 
@@ -429,7 +444,7 @@ const OwnerWarehouseDetailPage = () => {
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", overflow: "hidden" }}>
             <div style={{ padding: "1.5rem", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>
-                📋 Danh sách Hợp đồng thuê ({contracts.length})
+                Danh sách Hợp đồng thuê ({contracts.length})
               </h3>
             </div>
             {contracts.length === 0 ? (

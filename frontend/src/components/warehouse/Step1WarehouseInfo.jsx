@@ -198,7 +198,7 @@ const Step1WarehouseInfo = ({ formData, handleChange, handleSubmit, setLatLng })
               cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap"
             }}
           >
-            📍 Vị trí của tôi
+            Vị trí của tôi
           </button>
         </div>
 
@@ -219,7 +219,7 @@ const Step1WarehouseInfo = ({ formData, handleChange, handleSubmit, setLatLng })
 
         {markerPos ? (
           <div style={{ fontSize: "0.8rem", color: "#16a34a", fontWeight: 600, marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
-            ✅ Đã đặt vị trí: {parseFloat(formData.lat).toFixed(6)}, {parseFloat(formData.lng).toFixed(6)}
+            Đã đặt vị trí: {parseFloat(formData.lat).toFixed(6)}, {parseFloat(formData.lng).toFixed(6)}
           </div>
         ) : (
           <div style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: 6 }}>

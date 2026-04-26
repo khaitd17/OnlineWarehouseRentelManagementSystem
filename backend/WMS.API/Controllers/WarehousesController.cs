@@ -260,6 +260,34 @@ public class WarehouseController : ControllerBase
         }
     }
 
+    [HttpPatch("{id}/restore")]
+    public async Task<IActionResult> RestoreWarehouse(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        try
+        {
+            await _mediator.Send(new WMS.Application.Features.Warehouses.RestoreWarehouse.RestoreWarehouseCommand
+            {
+                WarehouseId = id,
+                CallerId = int.Parse(userId)
+            });
+            return Ok(new { message = "Thu hồi kho thành công" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
     [HttpGet("occupancy-stats")]
     public async Task<IActionResult> GetOccupancyStats()
     {

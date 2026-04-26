@@ -42,6 +42,16 @@ const OwnerWarehouseList = () => {
     }
   };
 
+  const handleRestore = async (id) => {
+    try {
+      await api.patch(`/Warehouse/${id}/restore`);
+      showToast("Thu hồi kho thành công!", "success");
+      loadWarehouses();
+    } catch (err) {
+      showToast("Lỗi: " + (err.response?.data?.message || err.message), "error");
+    }
+  };
+
   useEffect(() => {
     loadWarehouses();
     loadSubscriptionStatus();
@@ -345,20 +355,35 @@ const OwnerWarehouseList = () => {
             {/* Actions Footer */}
             <div style={{ padding: "20px 24px", background: isDeleted ? "#fff5f5" : "#f8fafc", borderTop: "1px solid #e2e8f0", display: "flex", gap: "12px" }}>
               {isDeleted ? (
-                // Kho đã xóa → chỉ hiện nút Xóa vĩnh viễn
-                <button
-                  style={{
-                    flex: 1, padding: "10px",
-                    background: "linear-gradient(135deg,#ef4444,#dc2626)",
-                    border: "none", borderRadius: "10px",
-                    color: "#fff", fontWeight: 700, cursor: "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-                  }}
-                  onClick={() => setDeleteModal({ open: true, warehouseId: w.warehouseId, warehouseName: w.name, loading: false, isPermanent: true })}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>delete_forever</span>
-                  Xóa vĩnh viễn
-                </button>
+                // Kho đã xóa → hiện nút Xóa vĩnh viễn và Thu hồi
+                <>
+                  <button
+                    style={{
+                      flex: 1, padding: "10px",
+                      background: "linear-gradient(135deg,#0284c7,#0369a1)",
+                      border: "none", borderRadius: "10px",
+                      color: "#fff", fontWeight: 700, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                    }}
+                    onClick={() => handleRestore(w.warehouseId)}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>restore</span>
+                    Thu hồi
+                  </button>
+                  <button
+                    style={{
+                      flex: 1, padding: "10px",
+                      background: "linear-gradient(135deg,#ef4444,#dc2626)",
+                      border: "none", borderRadius: "10px",
+                      color: "#fff", fontWeight: 700, cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+                    }}
+                    onClick={() => setDeleteModal({ open: true, warehouseId: w.warehouseId, warehouseName: w.name, loading: false, isPermanent: true })}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>delete_forever</span>
+                    Xóa vĩnh viễn
+                  </button>
+                </>
               ) : isDraft ? (
                 // Kho DRAFT → Tiếp tục đăng ký + Xóa
                 <>

@@ -458,8 +458,8 @@ export default function AdminPendingWarehousesPage() {
                     </div>
                   )}
                   {(!wh.documents || wh.documents.length === 0) && (
-                    <div style={{ marginBottom: 20, padding: "12px 14px", background: "#fef2f2", borderRadius: 10, border: "1px solid #fecaca", fontSize: 13, color: "#dc2626" }}>
-                      Chưa có giấy tờ pháp lý nào được tải lên.
+                    <div style={{ marginBottom: 20, padding: "12px 14px", background: "#fffbeb", borderRadius: 10, border: "1px solid #fde68a", fontSize: 13, color: "#b45309" }}>
+                      Đang chờ cấp giấy tờ pháp lý — Chủ kho đã đánh dấu hồ sơ đang trong quá trình cấp phép.
                     </div>
                   )}
                 </>

@@ -811,6 +811,12 @@ const PendingRentalRequests = () => {
           rows="5"
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !actionLoading) {
+              e.preventDefault();
+              handleReject();
+            }
+          }}
           placeholder="Vui lòng nêu rõ lý do để người thuê hiểu..."
           style={{ ...modalInputStyle, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }}
         />
@@ -839,7 +845,7 @@ const PendingRentalRequests = () => {
             boxShadow: actionLoading ? "none" : "0 4px 14px rgba(220,38,38,0.35)",
           }}
         >
-          {actionLoading ? "Đang xử lý..." : (<><Icon name="block" size={15} color="#fff" />Xác nhận từ chối</>)}
+          {actionLoading ? "Đang xử lý..." : "Xác nhận từ chối"}
         </button>
       </div>
     </>

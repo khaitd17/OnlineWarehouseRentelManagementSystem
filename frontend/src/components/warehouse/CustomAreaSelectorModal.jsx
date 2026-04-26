@@ -253,8 +253,16 @@ export default function CustomAreaSelectorModal({
         // Block move if it would overlap an occupied area
         if (!overlapsOccupied(candidate)) { setCustomZone(candidate); clearExtension(); }
       } else if (d.type === 'se') {
-        const newW = clamp(snap(d.startZone.w + px2m(dx)), MIN_ZONE_M, whW - d.startZone.x);
-        const newL = clamp(snap(d.startZone.l + px2m(dy)), MIN_ZONE_M, whL - d.startZone.y);
+        let newW = clamp(snap(d.startZone.w + px2m(dx)), MIN_ZONE_M, whW - d.startZone.x);
+        let newL = clamp(snap(d.startZone.l + px2m(dy)), MIN_ZONE_M, whL - d.startZone.y);
+        
+        if (neededM2 && newW * newL > neededM2) {
+          newL = clamp(snap(neededM2 / newW), MIN_ZONE_M, whL - d.startZone.y);
+          if (newW * newL > neededM2) {
+            newW = clamp(snap(neededM2 / newL), MIN_ZONE_M, whW - d.startZone.x);
+          }
+        }
+        
         const candidate = { ...d.startZone, w: newW, l: newL };
         // Block resize if it would overlap an occupied area
         if (!overlapsOccupied(candidate)) { setCustomZone(candidate); clearExtension(); }
@@ -268,11 +276,22 @@ export default function CustomAreaSelectorModal({
     const x1 = Math.max(drawStart.x, mx);
     const y0 = Math.min(drawStart.y, my);
     const y1 = Math.max(drawStart.y, my);
+
+    let w = clamp(snap(px2m(x1 - x0)), MIN_ZONE_M, whW);
+    let l = clamp(snap(px2m(y1 - y0)), MIN_ZONE_M, whL);
+
+    if (neededM2 && w * l > neededM2) {
+      l = clamp(snap(neededM2 / w), MIN_ZONE_M, whL);
+      if (w * l > neededM2) {
+        w = clamp(snap(neededM2 / l), MIN_ZONE_M, whW);
+      }
+    }
+
     setCustomZone({
       x: clamp(snap(px2m(x0)), 0, whW),
       y: clamp(snap(px2m(y0)), 0, whL),
-      w: clamp(snap(px2m(x1 - x0)), MIN_ZONE_M, whW),
-      l: clamp(snap(px2m(y1 - y0)), MIN_ZONE_M, whL),
+      w,
+      l,
     });
   };
 
@@ -484,7 +503,7 @@ export default function CustomAreaSelectorModal({
                       position: 'absolute', left: px, top: py, width: pw, height: ph,
                       background: (mode === 'draw' && isOcc) ? 'repeating-linear-gradient(45deg,rgba(254,202,202,0.9),rgba(254,202,202,0.9) 6px,rgba(254,226,226,0.6) 6px,rgba(254,226,226,0.6) 12px)' : c.bg,
                       border: `2px ${(mode === 'draw' && isOcc) ? 'solid' : 'dashed'} ${c.border}`,
-                      borderRadius: 4, boxSizing: 'border-box',
+                      borderRadius: 8, boxSizing: 'border-box',
                       display: 'flex', flexDirection: 'column',
                       alignItems: 'center', justifyContent: 'center',
                       cursor: isOcc ? 'not-allowed' : (mode === 'choose' ? 'pointer' : 'default'),
@@ -518,7 +537,7 @@ export default function CustomAreaSelectorModal({
                     left: m2px(editZone.x), top: m2px(editZone.y),
                     width: m2px(editZone.w), height: m2px(editZone.l),
                     border: '2.5px solid #10b981',
-                    borderRadius: 6, boxSizing: 'border-box',
+                    borderRadius: 8, boxSizing: 'border-box',
                     background: 'rgba(167,243,208,0.5)',
                     cursor: 'move',
                     zIndex: 10,
@@ -530,7 +549,9 @@ export default function CustomAreaSelectorModal({
                     style={{
                       position: 'absolute', right: -6, bottom: -6,
                       width: 14, height: 14, background: '#10b981',
-                      borderRadius: 3, cursor: 'se-resize', zIndex: 11,
+                      borderRadius: '50%', border: '2px solid #fff',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                      cursor: 'se-resize', zIndex: 11,
                     }}
                   />
                   <span style={{
@@ -585,7 +606,13 @@ export default function CustomAreaSelectorModal({
                       </svg>
                       {/* Invisible drag/resize div over primary zone */}
                       <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.w, height: p.l, background: 'transparent', cursor: 'move', zIndex: 11 }}>
-                        <div style={{ position: 'absolute', right: -6, bottom: -6, width: 14, height: 14, background: '#f59e0b', borderRadius: 3, cursor: 'se-resize', zIndex: 12 }} />
+                        <div style={{ 
+                          position: 'absolute', right: -6, bottom: -6, 
+                          width: 14, height: 14, background: '#f59e0b', 
+                          borderRadius: '50%', border: '2px solid #fff', 
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.3)', 
+                          cursor: 'se-resize', zIndex: 12 
+                        }} />
                         <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max-content', fontSize: '0.65rem', fontWeight: 800, color: '#92400e', whiteSpace: 'nowrap', pointerEvents: 'none', textAlign: 'center', lineHeight: 1.4, background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, backdropFilter: 'blur(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
                           {customZone.w}m×{customZone.l}m<br />
                           <span style={{ color: '#166534' }}>Tổng: {totalM3} m³</span>
@@ -604,8 +631,14 @@ export default function CustomAreaSelectorModal({
                 // Not adjacent or no extension — render separate boxes
                 return (
                   <>
-                    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.w, height: p.l, border: '2.5px solid #f59e0b', background: 'rgba(253,230,138,0.6)', borderRadius: 6, boxSizing: 'border-box', cursor: 'move', zIndex: 10 }}>
-                      <div style={{ position: 'absolute', right: -6, bottom: -6, width: 14, height: 14, background: '#f59e0b', borderRadius: 3, cursor: 'se-resize', zIndex: 11 }} />
+                    <div style={{ position: 'absolute', left: p.x, top: p.y, width: p.w, height: p.l, border: '2.5px solid #f59e0b', background: 'rgba(253,230,138,0.6)', borderRadius: 8, boxSizing: 'border-box', cursor: 'move', zIndex: 10 }}>
+                      <div style={{ 
+                        position: 'absolute', right: -6, bottom: -6, 
+                        width: 14, height: 14, background: '#f59e0b', 
+                        borderRadius: '50%', border: '2px solid #fff', 
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.3)', 
+                        cursor: 'se-resize', zIndex: 11 
+                      }} />
                       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max-content', fontSize: '0.68rem', fontWeight: 800, color: '#92400e', whiteSpace: 'nowrap', pointerEvents: 'none', textAlign: 'center', background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, backdropFilter: 'blur(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
                         {customZone.w}m×{customZone.l}m<br />{toM3(customZone.w, customZone.l)} m³
                       </div>

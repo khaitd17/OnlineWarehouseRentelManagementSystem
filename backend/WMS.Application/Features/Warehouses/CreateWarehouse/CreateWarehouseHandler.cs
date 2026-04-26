@@ -74,14 +74,25 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
         }, cancellationToken);
 
         // Tạo membership OPERATOR cho chủ kho — giúp họ truy cập màn quản lý nhân sự/ca làm
-        await _membershipRepository.CreateMembershipAsync(new CreateMembershipDto
+        // Bọc trong try-catch vì DB có thể có unique index (user_id, warehouse_id) cũ
+        // không cho phép cùng user có 2 role khác nhau trong 1 kho
+        try
         {
-            UserId      = request.OwnerId,
-            WarehouseId = warehouseId,
-            RoleCode    = "OPERATOR",
-            IsAllSkill  = true,
-            SkillIds    = new List<int>(),
-        }, cancellationToken);
+            await _membershipRepository.CreateMembershipAsync(new CreateMembershipDto
+            {
+                UserId      = request.OwnerId,
+                WarehouseId = warehouseId,
+                RoleCode    = "OPERATOR",
+                IsAllSkill  = true,
+                SkillIds    = new List<int>(),
+            }, cancellationToken);
+        }
+        catch (Exception ex) when (ex.InnerException?.Message?.Contains("duplicate key") == true
+                                || ex.InnerException?.Message?.Contains("IX_warehouse_memberships") == true
+                                || ex.Message.Contains("đã có membership"))
+        {
+            // Bỏ qua — OWNER membership đủ để vận hành
+        }
 
         return warehouseId;
     }
