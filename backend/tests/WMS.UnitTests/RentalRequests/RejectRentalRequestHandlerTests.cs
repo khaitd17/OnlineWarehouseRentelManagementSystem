@@ -4,6 +4,7 @@ using WMS.Application.Features.RentalRequests.RejectRentalRequest;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
+using WMS.Domain.Exceptions;
 
 namespace WMS.UnitTests.RentalRequests;
 
@@ -84,7 +85,7 @@ public class RejectRentalRequestHandlerTests
         var command = BuildCommand();
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<NotFoundException>(
             () => _handler.Handle(command, CancellationToken.None));
 
         Assert.Equal("Rental request not found", ex.Message);
@@ -114,7 +115,7 @@ public class RejectRentalRequestHandlerTests
         var command = BuildCommand(requestId: rentalRequest.RequestId);
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<NotFoundException>(
             () => _handler.Handle(command, CancellationToken.None));
 
         Assert.Equal("Warehouse not found", ex.Message);
@@ -143,7 +144,7 @@ public class RejectRentalRequestHandlerTests
         var command = BuildCommand(reviewerId: reviewerId);
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        var ex = await Assert.ThrowsAsync<UnauthorizedException>(
             () => _handler.Handle(command, CancellationToken.None));
 
         Assert.Equal("Only warehouse owner can reject requests", ex.Message);

@@ -1,4 +1,5 @@
 using MediatR;
+using WMS.Domain.Exceptions;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
@@ -38,10 +39,10 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
             throw new InvalidOperationException("Warehouse not found");
 
         if (warehouse.Status != "APPROVED")
-            throw new InvalidOperationException("Warehouse is not available for rental");
+            throw new InvalidWarehouseStateException("Warehouse is not available for rental");
 
         if (warehouse.AvailableArea < request.RequestedArea)
-            throw new InvalidOperationException($"Warehouse does not have enough available area. Available: {warehouse.AvailableArea}, Requested: {request.RequestedArea}");
+            throw new NotEnoughAreaException($"Warehouse does not have enough available area. Available: {warehouse.AvailableArea}, Requested: {request.RequestedArea}");
 
         // If specific area is requested, check equipment status
         if (request.RentalAreaId.HasValue)
@@ -53,15 +54,13 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
             {
                 // Strict mode: Fail request if equipment is broken/maintenance
                 throw new InvalidOperationException($"Cannot rent this area because it contains equipment that is BROKEN or in MAINTENANCE. ({brokenOrMaintenance.Count} items)");
-                
-                // Note: Flexible mode would just be a warning in the response, but this is a command (Action)
             }
         }
 
         // Check if user already has pending request for this warehouse
         var hasPending = await _rentalRequestRepository.HasPendingRequestAsync(request.RenterId, request.WarehouseId);
         if (hasPending)
-            throw new InvalidOperationException("Bạn đã có yêu cầu thuê đang chờ xử lý với kho này.");
+            throw new DuplicateRequestException("Bạn đã có yêu cầu thuê đang chờ xử lý với kho này.");
 
         // Create rental request
         var rentalRequest = RentalRequest.Create(

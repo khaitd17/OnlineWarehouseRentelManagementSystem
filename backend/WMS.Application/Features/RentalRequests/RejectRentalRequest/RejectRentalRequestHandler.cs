@@ -1,4 +1,5 @@
 using MediatR;
+using WMS.Domain.Exceptions;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
@@ -29,15 +30,15 @@ public class RejectRentalRequestHandler : IRequestHandler<RejectRentalRequestCom
         // Get rental request
         var rentalRequest = await _rentalRequestRepository.GetByIdAsync(request.RequestId);
         if (rentalRequest == null)
-            throw new InvalidOperationException("Rental request not found");
+            throw new NotFoundException("Rental request not found");
 
         // Verify reviewer is the warehouse owner
         var warehouse = await _warehouseRepository.GetByIdAsync(rentalRequest.WarehouseId, cancellationToken);
         if (warehouse == null)
-            throw new InvalidOperationException("Warehouse not found");
+            throw new NotFoundException("Warehouse not found");
 
         if (warehouse.OwnerId != request.ReviewerId)
-            throw new UnauthorizedAccessException("Only warehouse owner can reject requests");
+            throw new UnauthorizedException("Only warehouse owner can reject requests");
 
         // Reject rental request (domain method)
         rentalRequest.Reject(request.ReviewerId, request.RejectionReason);
