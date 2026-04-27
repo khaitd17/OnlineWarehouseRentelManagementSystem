@@ -17,6 +17,25 @@ public class CreateRentalAreaHandler : IRequestHandler<CreateRentalAreaCommand, 
 
     public async Task<int> Handle(CreateRentalAreaCommand request, CancellationToken cancellationToken)
     {
+        // ── Module 1: Rental Area Validation ─────────────────────────────────
+        if (string.IsNullOrWhiteSpace(request.Name))
+            throw new ArgumentException("Tên khu vực không được để trống.");
+        if (request.Name.Trim().Length < 2 || request.Name.Trim().Length > 100)
+            throw new ArgumentException("Tên khu vực phải từ 2 đến 100 ký tự.");
+
+        if (request.Size <= 0)
+            throw new ArgumentException("Kích thước khu vực phải lớn hơn 0.");
+
+        if (request.Width.HasValue && request.Width.Value <= 0)
+            throw new ArgumentException("Chiều rộng khu vực phải lớn hơn 0.");
+        if (request.Length.HasValue && request.Length.Value <= 0)
+            throw new ArgumentException("Chiều dài khu vực phải lớn hơn 0.");
+        if (request.PositionX.HasValue && request.PositionX.Value < 0)
+            throw new ArgumentException("Vị trí X không được âm.");
+        if (request.PositionY.HasValue && request.PositionY.Value < 0)
+            throw new ArgumentException("Vị trí Y không được âm.");
+        // ───────────────────────────────────────────────────────────────
+
         var warehouse = await _warehouseRepository.GetByIdAsync(request.WarehouseId, cancellationToken);
         if (warehouse == null)
         {

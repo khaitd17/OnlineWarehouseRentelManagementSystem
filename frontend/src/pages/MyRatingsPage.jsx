@@ -57,6 +57,18 @@ const MyRatingsPage = () => {
   };
 
   const handleUpdate = async () => {
+    // Validate comment bắt buộc
+    if (!editForm.comment || !editForm.comment.trim()) {
+      setMsg({ type: 'error', text: 'Vui lòng nhập nhận xét trước khi lưu.' });
+      setTimeout(() => setMsg(null), 4000);
+      return;
+    }
+    // Validate max 500 ký tự
+    if (editForm.comment.trim().length > 500) {
+      setMsg({ type: 'error', text: 'Nhận xét không được vượt quá 500 ký tự.' });
+      setTimeout(() => setMsg(null), 4000);
+      return;
+    }
     try {
       await ratingService.updateRating(editingId, editForm);
       setMsg({ type: 'success', text: 'Cập nhật thành công!' });
@@ -95,6 +107,18 @@ const MyRatingsPage = () => {
   };
 
   const handleCreateRating = async () => {
+    // Validate comment bắt buộc
+    if (!createForm.comment || !createForm.comment.trim()) {
+      setMsg({ type: 'error', text: 'Vui lòng nhập nhận xét trước khi gửi đánh giá.' });
+      setTimeout(() => setMsg(null), 4000);
+      return;
+    }
+    // Validate max 500 ký tự
+    if (createForm.comment.trim().length > 500) {
+      setMsg({ type: 'error', text: 'Nhận xét không được vượt quá 500 ký tự.' });
+      setTimeout(() => setMsg(null), 4000);
+      return;
+    }
     setCreateSubmitting(true);
     try {
       await ratingService.createRating({
@@ -271,16 +295,22 @@ const MyRatingsPage = () => {
 
                     {/* Comment */}
                     <div style={{ marginBottom: '14px' }}>
-                      <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Nhận xét (tùy chọn)</label>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Nhận xét <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
                       <textarea
                         value={createForm.comment}
                         onChange={e => setCreateForm(f => ({ ...f, comment: e.target.value }))}
                         rows={3}
-                        placeholder="Chia sẻ trải nghiệm thuê kho của bạn..."
+                        maxLength={500}
+                        placeholder="Chia sẻ trải nghiệm thuê kho của bạn... (bắt buộc)"
                         style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1.5px solid #e2e8f0', resize: 'vertical', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', color: '#0f172a', lineHeight: 1.6, fontFamily: 'inherit', backgroundColor: '#fff' }}
                         onFocus={e => { e.target.style.borderColor = '#f59e0b'; e.target.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.12)'; }}
-                        onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+                        onBlur={e => { e.target.style.borderColor = (!createForm.comment || !createForm.comment.trim()) ? '#ef4444' : '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
                       />
+                      <div style={{ textAlign: 'right', fontSize: '0.75rem', color: (createForm.comment?.length || 0) > 480 ? '#ef4444' : '#94a3b8', fontWeight: 500, marginTop: '3px' }}>
+                        {createForm.comment?.length || 0}/500
+                      </div>
                     </div>
 
                     {/* Buttons */}
@@ -374,9 +404,12 @@ const MyRatingsPage = () => {
                     <div style={{ marginBottom: '16px' }}>
                       <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        Nhận xét (tùy chọn)
+                        Nhận xét <span style={{ color: '#ef4444' }}>*</span>
                       </label>
-                      <textarea value={editForm.comment} onChange={e => setEditForm(f => ({ ...f, comment: e.target.value }))} rows={4} placeholder="Chia sẻ trải nghiệm thuê kho của bạn..." style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', resize: 'vertical', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box', color: '#0f172a', lineHeight: 1.6, fontFamily: 'inherit', backgroundColor: '#fff' }} onFocus={e => { e.target.style.borderColor = '#f59e0b'; e.target.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.12)'; }} onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }} />
+                      <textarea value={editForm.comment} onChange={e => setEditForm(f => ({ ...f, comment: e.target.value }))} rows={4} maxLength={500} placeholder="Chia sẻ trải nghiệm thuê kho của bạn... (bắt buộc)" style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', resize: 'vertical', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box', color: '#0f172a', lineHeight: 1.6, fontFamily: 'inherit', backgroundColor: '#fff' }} onFocus={e => { e.target.style.borderColor = '#f59e0b'; e.target.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.12)'; }} onBlur={e => { e.target.style.borderColor = (!editForm.comment || !editForm.comment.trim()) ? '#ef4444' : '#e2e8f0'; e.target.style.boxShadow = 'none'; }} />
+                      <div style={{ textAlign: 'right', fontSize: '0.75rem', color: (editForm.comment?.length || 0) > 480 ? '#ef4444' : '#94a3b8', fontWeight: 500, marginTop: '3px' }}>
+                        {editForm.comment?.length || 0}/500
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '10px' }}>

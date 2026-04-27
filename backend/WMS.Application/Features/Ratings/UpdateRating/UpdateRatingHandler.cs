@@ -24,6 +24,14 @@ public class UpdateRatingHandler : IRequestHandler<UpdateRatingCommand, bool>
         if (request.Star < 1 || request.Star > 5)
             throw new InvalidOperationException("Số sao phải từ 1 đến 5.");
 
+        // Validate comment is required
+        if (string.IsNullOrWhiteSpace(request.Comment))
+            throw new ArgumentException("Vui lòng nhập nhận xét trước khi lưu đánh giá.");
+
+        // Validate comment max length (Module 4)
+        if (request.Comment!.Trim().Length > 500)
+            throw new ArgumentException("Nhận xét không được vượt quá 500 ký tự.");
+
         rating.Star = request.Star;
         rating.Comment = request.Comment;
         rating.UpdatedAt = DateTime.UtcNow;
