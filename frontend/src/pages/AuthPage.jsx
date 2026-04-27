@@ -445,12 +445,12 @@ const AuthPage = () => {
         const googleUser = await googleRes.json();
         await authService.googleLogin({ email: googleUser.email, fullName: googleUser.name, googleId: googleUser.sub, avatarUrl: googleUser.picture });
         window.dispatchEvent(new Event('authChange'));
-        const ctx = authService.getWarehouseContext();
-        const warehouseRoles = (ctx?.warehouses || []).map(w => (w.role || '').toUpperCase());
-        if (warehouseRoles.some(r => r === 'STAFF' || r === 'MANAGER')) navigate('/staff-dashboard');
-        else if (warehouseRoles.some(r => r === 'RENTER')) navigate('/renter-dashboard');
-        else if (warehouseRoles.some(r => r === 'OWNER' || r === 'OPERATOR')) navigate('/dashboard');
-        else { const user = authService.getCurrentUser(); if ((user?.role || user?.roleName || '').toUpperCase() === 'ADMIN') navigate('/admin'); else navigate('/'); }
+        const user = authService.getCurrentUser();
+        if ((user?.role || user?.roleName || '').toUpperCase() === 'ADMIN') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       } catch { setError('Đăng nhập Google thất bại. Vui lòng thử lại.'); }
       finally { setGoogleLoading(false); }
     },
@@ -510,12 +510,12 @@ const AuthPage = () => {
     setLoading(true); setError('');
     try {
       const redirectAfterAuth = () => {
-        const ctx = authService.getWarehouseContext();
-        const warehouseRoles = (ctx?.warehouses || []).map(w => (w.role || '').toUpperCase());
-        if (warehouseRoles.some(r => r === 'STAFF' || r === 'MANAGER')) navigate('/staff-dashboard');
-        else if (warehouseRoles.some(r => r === 'RENTER')) navigate('/renter-dashboard');
-        else if (warehouseRoles.some(r => r === 'OWNER' || r === 'OPERATOR')) navigate('/dashboard');
-        else { const user = authService.getCurrentUser(); if ((user?.role || user?.roleName || '').toUpperCase() === 'ADMIN') navigate('/admin'); else navigate('/'); }
+        const user = authService.getCurrentUser();
+        if ((user?.role || user?.roleName || '').toUpperCase() === 'ADMIN') {
+          navigate('/admin');
+        } else {
+          navigate('/');
+        }
       };
       if (isLogin) {
         await authService.login(formData.email, formData.password);

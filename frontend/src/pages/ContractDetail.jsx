@@ -8,6 +8,7 @@ import TerminateContractModal from "../components/TerminateContractModal";
 import SigningHistoryTimeline from "../components/SigningHistoryTimeline";
 import AuditLogList from "../components/AuditLogList";
 import ExpiryCountdown from "../components/ExpiryCountdown";
+import CustomAreaSelectorModal from "../components/warehouse/CustomAreaSelectorModal";
 
 
 const statusConfig = {
@@ -146,6 +147,10 @@ const ContractDetail = () => {
   // Floor plan state
   const [warehouseAreas, setWarehouseAreas] = useState([]);
   const [warehouseInfo, setWarehouseInfo] = useState(null);
+
+  // Zone assignment state
+  const [showZoneModal, setShowZoneModal] = useState(false);
+  const [savingZone, setSavingZone] = useState(false);
   const [floorPlanHovered, setFloorPlanHovered] = useState(null);
 
   const reloadContract = () => {
@@ -564,13 +569,44 @@ const ContractDetail = () => {
         const getZoneStyle = (a) => {
           const isThisContract = a.activeContractId === contract.contractId;
           const isHov = floorPlanHovered === a.id;
-          if (isThisContract) return {
-            bg: isHov ? '#fbbf24' : '#fde68a',
-            border: '2.5px solid #d97706',
-            textColor: '#92400e',
-            badge: '★ Khu của bạn',
-            badgeBg: '#fef3c7',
-          };
+          if (isThisContract) {
+            // Nếu hợp đồng có custom zone (do chủ kho vẽ) và chưa ACTIVE
+            if (contract.isCustomArea && contract.proposedWidth && contract.status !== 'ACTIVE') {
+              if (contract.isCurrentUserRenter) {
+                return {
+                  bg: isHov ? '#fbbf24' : '#fde68a',
+                  border: '2.5px dashed #d97706',
+                  textColor: '#92400e',
+                  badge: 'Khu của bạn',
+                  badgeBg: '#fef3c7',
+                };
+              }
+              return {
+                bg: 'rgba(254,249,195,0.95)',
+                border: '2.5px dashed #ca8a04',
+                textColor: '#92400e',
+                badge: 'Vị trí được sắp xếp',
+                badgeBg: '#fef9c3',
+              };
+            }
+            if (contract.isCurrentUserRenter) {
+              return {
+                bg: isHov ? '#fbbf24' : '#fde68a',
+                border: '2.5px solid #d97706',
+                textColor: '#92400e',
+                badge: '★ Khu của bạn',
+                badgeBg: '#fef3c7',
+              };
+            } else {
+              return {
+                bg: isHov ? '#d8b4fe' : '#e9d5ff',
+                border: '2.5px solid #a855f7',
+                textColor: '#6b21a8',
+                badge: '★ Hợp đồng này',
+                badgeBg: '#faf5ff',
+              };
+            }
+          }
           if (a.isOccupied) return {
             bg: isHov ? '#fca5a5' : '#fecaca',
             border: '2px dashed #ef4444',
@@ -610,31 +646,77 @@ const ContractDetail = () => {
 
               {/* Legend */}
               <div style={{ display: 'flex', gap: 14, marginBottom: 14, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fde68a', border: '1.5px solid #d97706' }} />
-                  <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Khu của bạn</span>
-                </div>
+                {contract.isCurrentUserRenter && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fde68a', border: '1.5px solid #d97706' }} />
+                    <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Khu của bạn</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fecaca', border: '1.5px solid #ef4444' }} />
-                  <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Đang thuê (khác)</span>
+                  <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>
+                    {contract.isCurrentUserRenter ? 'Đang thuê (khác)' : 'Đang thuê'}
+                  </span>
                 </div>
+                {!contract.isCurrentUserRenter && hasAssignedZone && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: '#e9d5ff', border: '1.5px solid #a855f7' }} />
+                    <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Hợp đồng này</span>
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <div style={{ width: 12, height: 12, borderRadius: 3, background: '#bfdbfe', border: '1.5px solid #3b82f6' }} />
                   <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>Còn trống</span>
                 </div>
-
+                {contract.isCustomArea && contract.proposedWidth && contract.status !== 'ACTIVE' && contract.isCurrentUserOwner && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 12, height: 12, borderRadius: 3, background: '#fef9c3', border: '1.5px dashed #ca8a04' }} />
+                    <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>
+                      Vị trí được sắp xếp
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Banner khi chưa phân khu (không tính custom area) */}
-              {!contract.isCustomArea && !hasAssignedZone ? (
+              {!contract.isCustomArea && !hasAssignedZone && contract.status !== 'ACTIVE' && contract.status !== 'EXPIRED' && contract.status !== 'CLOSED' ? (
                 <div style={{
                   marginBottom: 14, padding: '10px 14px',
                   background: '#fefce8', border: '1px solid #fde047',
                   borderRadius: 10, fontSize: '0.82rem', color: '#854d0e', fontWeight: 500,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
-                  Chủ kho chưa phân công vị trí khu cụ thể cho hợp đồng này.
+                  <span>Chủ kho chưa phân công vị trí khu cụ thể cho hợp đồng này.</span>
+                  {contract.isCurrentUserOwner && (
+                    <button
+                      onClick={() => setShowZoneModal(true)}
+                      style={{
+                        padding: '6px 14px', borderRadius: 8, border: 'none',
+                        background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                        color: '#fff', fontSize: '0.78rem', fontWeight: 700,
+                        cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 12,
+                        boxShadow: '0 2px 8px rgba(245,158,11,0.3)',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={e => { e.target.style.transform = 'translateY(-1px)'; e.target.style.boxShadow = '0 4px 12px rgba(245,158,11,0.4)'; }}
+                      onMouseLeave={e => { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 8px rgba(245,158,11,0.3)'; }}
+                    >
+                      📐 Phân khu vị trí
+                    </button>
+                  )}
                 </div>
               ) : null}
+
+              {/* Banner: chủ kho đã sắp xếp vị trí */}
+              {contract.isCustomArea && contract.proposedWidth && !hasAssignedZone && contract.status !== 'ACTIVE' && contract.status !== 'EXPIRED' && contract.status !== 'CLOSED' && contract.isCurrentUserOwner && (
+                <div style={{
+                  marginBottom: 14, padding: '10px 14px',
+                  background: '#f0fdf4', border: '1px solid #86efac',
+                  borderRadius: 10, fontSize: '0.82rem', color: '#166534', fontWeight: 500,
+                }}>
+                  ✅ Đã phân khu vị trí cho hợp đồng này.
+                </div>
+              )}
 
               {/* Canvas */}
               <div style={{ maxWidth: '100%', overflowX: 'auto', paddingBottom: 8, display: 'flex', justifyContent: 'center' }}>
@@ -659,58 +741,312 @@ const ContractDetail = () => {
                       backgroundImage: 'linear-gradient(rgba(59,130,246,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.07) 1px, transparent 1px)',
                       backgroundSize: `${Math.max(scale * 5, 10)}px ${Math.max(scale * 5, 10)}px`,
                     }}>
-                      {warehouseAreas.map(a => {
-                      let pw = Math.max((a.width  || 1) * scale, 4);
-                      let ph = Math.max((a.length || 1) * scale, 4);
-                      let px = (a.positionX || 0) * scale;
-                      let py = (a.positionY || 0) * scale;
-                      let size = a.size;
-                      let name = a.name;
+                      {/* Render warehouse areas — split base area if custom zone overlaps */}
+                      {(() => {
+                        // If there's a custom zone on a base area, split that base area into A (assigned) + B (remainder)
+                        const cz = contract.isCustomArea && contract.proposedWidth && contract.proposedLength && contract.baseRentalAreaId ? {
+                          posX: contract.proposedPositionX || 0,
+                          posY: contract.proposedPositionY || 0,
+                          w: contract.proposedWidth,
+                          l: contract.proposedLength,
+                          baseAreaId: contract.baseRentalAreaId,
+                        } : null;
 
-                      const zs = getZoneStyle({ ...a, name, size });
-                      const isThisContract = a.activeContractId === contract.contractId;
-                      const isHov = floorPlanHovered === a.id;
-                      const isPortrait = pw < 50 && ph >= 60;
+                        // For independent custom zones (no baseAreaId), render directly on canvas
+                        const isIndependentCustom = contract.isCustomArea && contract.proposedWidth && contract.proposedLength && !contract.baseRentalAreaId;
+                        const elements = [];
 
-                      return (
-                        <div key={a.id}
-                          onMouseEnter={() => setFloorPlanHovered(a.id)}
-                          onMouseLeave={() => setFloorPlanHovered(null)}
-                          style={{
-                            position: 'absolute', left: px, top: py, width: pw, height: ph,
-                            background: zs.bg, border: zs.border,
-                            boxSizing: 'border-box', borderRadius: 4,
-                            overflow: isHov ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column',
-                            justifyContent: 'center', alignItems: 'center', padding: '2px', textAlign: 'center',
-                            transition: 'background 0.18s',
-                            boxShadow: isThisContract ? '0 0 0 2px #f59e0b, 0 4px 12px rgba(245,158,11,0.4)' : 'none',
-                            zIndex: isThisContract ? 2 : 1,
-                            cursor: 'default',
-                          }}
-                        >
-                          <div style={{ fontWeight: 800, color: zs.textColor, fontSize: '0.75rem', lineHeight: 1.2, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', writingMode: isPortrait ? 'vertical-rl' : 'horizontal-tb', transform: isPortrait ? 'rotate(180deg)' : 'none' }}>
-                            {isThisContract ? (isPortrait ? '★' : '★ ') : ''}{name}
-                          </div>
-                          <div style={{ fontSize: '0.65rem', color: zs.textColor, marginTop: 2, fontWeight: 700, display: pw < 50 || ph < 50 ? 'none' : 'block' }}>{size} m³</div>
-                          <div style={{ fontSize: '0.6rem', color: zs.textColor, marginTop: 2, display: pw < 50 || ph < 60 ? 'none' : 'block' }}>{Math.round(pw/scale*10)/10}m × {Math.round(ph/scale*10)/10}m</div>
-                          {isHov && (
-                            <div style={{
-                              position: 'absolute',
-                              top: (pw < 60 || ph < 50) ? '50%' : undefined,
-                              bottom: (pw < 60 || ph < 50) ? undefined : 6,
-                              left: '50%', transform: (pw < 60 || ph < 50) ? 'translate(-50%, -50%)' : 'translateX(-50%)',
-                              fontSize: '0.65rem', fontWeight: 700,
-                              color: zs.textColor, background: zs.badgeBg, border: `1px solid ${zs.textColor}40`,
-                              borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none'
-                            }}>
-                              {zs.badge}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                        warehouseAreas.forEach(a => {
+                          const aW = a.width || 1;
+                          const aL = a.length || 1;
+                          const aPX = a.positionX || 0;
+                          const aPY = a.positionY || 0;
+
+                          const isBaseArea = cz && (Number(a.id) === Number(cz.baseAreaId) || Number(a.rentalAreaId) === Number(cz.baseAreaId));
+
+                          if (isBaseArea && cz) {
+                            // ── Split: 1A = assigned zone, 1B = remainder ──────────────────
+                            // Determine which axis to split on (whichever has leftover)
+                            const assignedW = cz.w;
+                            const assignedL = cz.l;
+                            const remL = aL - (cz.posY - aPY) - assignedL; // space below assigned zone within base
+                            const remW = aW - (cz.posX - aPX) - assignedW; // space to right
+
+                            // ── Zone 1A: the assigned portion ────────────────────────────
+                            const aStyle = contract.status === 'ACTIVE'
+                              ? (contract.isCurrentUserRenter
+                                  ? { bg: '#fef08a', border: '2.5px solid #d97706', textColor: '#92400e', badge: 'Khu của bạn', badgeBg: '#fef3c7' }
+                                  : { bg: '#e9d5ff', border: '2.5px solid #a855f7', textColor: '#6b21a8', badge: '★ Hợp đồng này', badgeBg: '#faf5ff' })
+                              : (contract.isCurrentUserRenter
+                                  ? { bg: '#fde68a', border: '2.5px dashed #d97706', textColor: '#92400e', badge: 'Khu của bạn', badgeBg: '#fef3c7' }
+                                  : { bg: 'rgba(254,249,195,0.95)', border: '2.5px dashed #ca8a04', textColor: '#92400e', badge: 'Vị trí được sắp xếp', badgeBg: '#fef9c3' });
+
+                            const cpw1A = Math.max(assignedW * scale, 8);
+                            const cph1A = Math.max(assignedL * scale, 8);
+                            const cpx1A = cz.posX * scale;
+                            const cpy1A = cz.posY * scale;
+                            const vol1A = Math.round(assignedW * assignedL * 5);
+                            const isHov1A = floorPlanHovered === `${a.id}-A`;
+
+                            elements.push(
+                              <div key={`${a.id}-A`}
+                                onMouseEnter={() => setFloorPlanHovered(`${a.id}-A`)}
+                                onMouseLeave={() => setFloorPlanHovered(null)}
+                                style={{
+                                  position: 'absolute', left: cpx1A, top: cpy1A, width: cpw1A, height: cph1A,
+                                  background: aStyle.bg, border: aStyle.border,
+                                  boxSizing: 'border-box', borderRadius: 4,
+                                  display: 'flex', flexDirection: 'column',
+                                  justifyContent: 'center', alignItems: 'center',
+                                  padding: '2px', textAlign: 'center', zIndex: 3,
+                                  boxShadow: '0 0 0 2px #fde04780, 0 4px 12px rgba(202,138,4,0.25)',
+                                  overflow: isHov1A ? 'visible' : 'hidden',
+                                  animation: contract.status !== 'ACTIVE' ? 'proposedZonePulse 2s ease-in-out infinite' : 'none',
+                                  cursor: 'default',
+                                }}
+                              >
+                                {contract.status !== 'ACTIVE' && (
+                                  <style>{`
+                                    @keyframes proposedZonePulse {
+                                      0%, 100% { box-shadow: 0 0 0 2px #fde04780, 0 4px 12px rgba(202,138,4,0.25); }
+                                      50% { box-shadow: 0 0 0 4px #fde047aa, 0 4px 18px rgba(202,138,4,0.4); }
+                                    }
+                                  `}</style>
+                                )}
+                                <div style={{ fontWeight: 800, color: aStyle.textColor, fontSize: '0.72rem', lineHeight: 1.1, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {a.name}A
+                                </div>
+                                <div style={{ fontSize: '0.62rem', color: aStyle.textColor, fontWeight: 700, marginTop: 1, display: cpw1A < 30 || cph1A < 30 ? 'none' : 'block' }}>
+                                  {assignedW}m × {assignedL}m
+                                </div>
+                                <div style={{ fontSize: '0.62rem', color: aStyle.textColor, fontWeight: 700, display: cpw1A < 30 || cph1A < 25 ? 'none' : 'block' }}>
+                                  {vol1A} m³
+                                </div>
+                                {isHov1A && (
+                                  <div style={{
+                                    position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)',
+                                    fontSize: '0.65rem', fontWeight: 700, color: aStyle.textColor,
+                                    background: aStyle.badgeBg, border: `1px solid ${aStyle.textColor}40`,
+                                    borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none', zIndex: 10,
+                                  }}>
+                                    {aStyle.badge}
+                                  </div>
+                                )}
+                              </div>
+                            );
+
+                            // ── Zone 1B: the remainder (below assigned, same base area) ──
+                            if (remL > 0.5) {
+                              const cpw1B = Math.max(aW * scale, 8);
+                              const cph1B = Math.max(remL * scale, 4);
+                              const cpx1B = aPX * scale;
+                              const cpy1B = (cz.posY + assignedL) * scale;
+                              const vol1B = Math.round(aW * remL * 5);
+                              const isHov1B = floorPlanHovered === `${a.id}-B`;
+                              const bStyle = { bg: '#bfdbfe', border: '2px dashed #3b82f6', textColor: '#1e3a8a', badge: 'Còn trống', badgeBg: '#dcfce7' };
+
+                              elements.push(
+                                <div key={`${a.id}-B`}
+                                  onMouseEnter={() => setFloorPlanHovered(`${a.id}-B`)}
+                                  onMouseLeave={() => setFloorPlanHovered(null)}
+                                  style={{
+                                    position: 'absolute', left: cpx1B, top: cpy1B, width: cpw1B, height: cph1B,
+                                    background: isHov1B ? '#93c5fd' : bStyle.bg, border: bStyle.border,
+                                    boxSizing: 'border-box', borderRadius: 4, zIndex: 2,
+                                    display: 'flex', flexDirection: 'column',
+                                    justifyContent: 'center', alignItems: 'center',
+                                    padding: '2px', textAlign: 'center',
+                                    overflow: isHov1B ? 'visible' : 'hidden',
+                                    cursor: 'default',
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 800, color: bStyle.textColor, fontSize: '0.72rem', lineHeight: 1.1, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {a.name}B
+                                  </div>
+                                  <div style={{ fontSize: '0.62rem', color: bStyle.textColor, fontWeight: 700, marginTop: 1, display: cpw1B < 30 || cph1B < 30 ? 'none' : 'block' }}>
+                                    {aW}m × {Math.round(remL * 10) / 10}m
+                                  </div>
+                                  <div style={{ fontSize: '0.62rem', color: bStyle.textColor, fontWeight: 700, display: cpw1B < 30 || cph1B < 25 ? 'none' : 'block' }}>
+                                    {vol1B} m³
+                                  </div>
+                                  {isHov1B && (
+                                    <div style={{
+                                      position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)',
+                                      fontSize: '0.65rem', fontWeight: 700, color: bStyle.textColor,
+                                      background: bStyle.badgeBg, border: `1px solid ${bStyle.textColor}40`,
+                                      borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
+                                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none', zIndex: 10,
+                                    }}>
+                                      {bStyle.badge}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                          } else {
+                            // ── Normal area (no split) ────────────────────────────────────
+                            const pw = Math.max(aW * scale, 4);
+                            const ph = Math.max(aL * scale, 4);
+                            const px = aPX * scale;
+                            const py = aPY * scale;
+                            const zs = getZoneStyle({ ...a, name: a.name, size: a.size });
+                            const isThisContract = a.activeContractId === contract.contractId;
+                            const isHov = floorPlanHovered === a.id;
+                            const isPortrait = pw < 50 && ph >= 60;
+
+                            elements.push(
+                              <div key={a.id}
+                                onMouseEnter={() => setFloorPlanHovered(a.id)}
+                                onMouseLeave={() => setFloorPlanHovered(null)}
+                                style={{
+                                  position: 'absolute', left: px, top: py, width: pw, height: ph,
+                                  background: zs.bg, border: zs.border,
+                                  boxSizing: 'border-box', borderRadius: 4,
+                                  overflow: isHov ? 'visible' : 'hidden', display: 'flex', flexDirection: 'column',
+                                  justifyContent: 'center', alignItems: 'center', padding: '2px', textAlign: 'center',
+                                  transition: 'background 0.18s',
+                                  boxShadow: isThisContract ? '0 0 0 2px #f59e0b, 0 4px 12px rgba(245,158,11,0.4)' : 'none',
+                                  zIndex: isThisContract ? 2 : 1,
+                                  cursor: 'default',
+                                }}
+                              >
+                                <div style={{ fontWeight: 800, color: zs.textColor, fontSize: '0.75rem', lineHeight: 1.2, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', writingMode: isPortrait ? 'vertical-rl' : 'horizontal-tb', transform: isPortrait ? 'rotate(180deg)' : 'none' }}>
+                                  {isThisContract ? (isPortrait ? '★' : '★ ') : ''}{a.name}
+                                </div>
+                                <div style={{ fontSize: '0.65rem', color: zs.textColor, marginTop: 2, fontWeight: 700, display: pw < 50 || ph < 50 ? 'none' : 'block' }}>{a.size} m³</div>
+                                <div style={{ fontSize: '0.6rem', color: zs.textColor, marginTop: 2, display: pw < 50 || ph < 60 ? 'none' : 'block' }}>{Math.round(pw/scale*10)/10}m × {Math.round(ph/scale*10)/10}m</div>
+                                {isHov && (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: (pw < 60 || ph < 50) ? '50%' : undefined,
+                                    bottom: (pw < 60 || ph < 50) ? undefined : 6,
+                                    left: '50%', transform: (pw < 60 || ph < 50) ? 'translate(-50%, -50%)' : 'translateX(-50%)',
+                                    fontSize: '0.65rem', fontWeight: 700,
+                                    color: zs.textColor, background: zs.badgeBg, border: `1px solid ${zs.textColor}40`,
+                                    borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none'
+                                  }}>
+                                    {zs.badge}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                        });
+
+                        // ── Independent custom L-shape zone (no base area split) ─────────────────
+                        if (isIndependentCustom && contract.status !== 'ACTIVE') {
+                          const czPx = (contract.proposedPositionX || 0) * scale;
+                          const czPy = (contract.proposedPositionY || 0) * scale;
+                          const czPw = (contract.proposedWidth || 0) * scale;
+                          const czPl = (contract.proposedLength || 0) * scale;
+                          const zoneStyle = contract.isCurrentUserRenter
+                            ? { bg: 'rgba(253,230,138,0.75)', border: '#f59e0b', textColor: '#92400e', badge: 'Khu của bạn' }
+                            : { bg: 'rgba(253,230,138,0.75)', border: '#f59e0b', textColor: '#92400e', badge: 'Vị trí được sắp xếp' };
+
+                          const hasExtZone = contract.hasExtensionZone && contract.extensionWidth && contract.extensionLength;
+                          const ezX = (contract.extensionPositionX || 0) * scale;
+                          const ezY = (contract.extensionPositionY || 0) * scale;
+                          const ezW = (contract.extensionWidth || 0) * scale;
+                          const ezL = (contract.extensionLength || 0) * scale;
+
+                          // Build SVG L-shape polygon if zones are adjacent
+                          let lPoints = null;
+                          if (hasExtZone) {
+                            const p = { x: czPx, y: czPy, w: czPw, l: czPl };
+                            const e = { x: ezX, y: ezY, w: ezW, l: ezL };
+                            const EPS = 3;
+                            // extension to the RIGHT of primary, within primary's height
+                            if (Math.abs(e.x - (p.x + p.w)) < EPS && e.y >= p.y - EPS && e.y + e.l <= p.y + p.l + EPS)
+                              lPoints = `${p.x},${p.y} ${p.x+p.w},${p.y} ${p.x+p.w},${e.y} ${e.x+e.w},${e.y} ${e.x+e.w},${e.y+e.l} ${p.x+p.w},${e.y+e.l} ${p.x+p.w},${p.y+p.l} ${p.x},${p.y+p.l}`;
+                            // extension to the LEFT of primary
+                            else if (Math.abs(e.x + e.w - p.x) < EPS && e.y >= p.y - EPS && e.y + e.l <= p.y + p.l + EPS)
+                              lPoints = `${e.x},${e.y} ${p.x},${e.y} ${p.x},${p.y} ${p.x+p.w},${p.y} ${p.x+p.w},${p.y+p.l} ${p.x},${p.y+p.l} ${p.x},${e.y+e.l} ${e.x},${e.y+e.l}`;
+                            // extension BELOW primary, within primary's width
+                            else if (Math.abs(e.y - (p.y + p.l)) < EPS && e.x >= p.x - EPS && e.x + e.w <= p.x + p.w + EPS)
+                              lPoints = `${p.x},${p.y} ${p.x+p.w},${p.y} ${p.x+p.w},${p.y+p.l} ${e.x+e.w},${p.y+p.l} ${e.x+e.w},${e.y+e.l} ${e.x},${e.y+e.l} ${e.x},${p.y+p.l} ${p.x},${p.y+p.l}`;
+                            // extension ABOVE primary
+                            else if (Math.abs(e.y + e.l - p.y) < EPS && e.x >= p.x - EPS && e.x + e.w <= p.x + p.w + EPS)
+                              lPoints = `${e.x},${e.y} ${e.x+e.w},${e.y} ${e.x+e.w},${p.y} ${p.x+p.w},${p.y} ${p.x+p.w},${p.y+p.l} ${p.x},${p.y+p.l} ${p.x},${p.y} ${e.x},${e.y}`;
+                          }
+
+                          const isHovCustom = floorPlanHovered === 'custom-zone';
+
+                          elements.push(
+                            <React.Fragment key="independent-custom-zone">
+                              {lPoints ? (
+                                <>
+                                  <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 3, overflow: 'visible' }}>
+                                    <polygon 
+                                      points={lPoints} 
+                                      fill={zoneStyle.bg} 
+                                      stroke={zoneStyle.border} 
+                                      strokeWidth="2.5" 
+                                      strokeLinejoin="round"
+                                      pointerEvents="visible"
+                                      onMouseEnter={() => setFloorPlanHovered('custom-zone')}
+                                      onMouseLeave={() => setFloorPlanHovered(null)}
+                                      style={{ cursor: 'pointer' }}
+                                    />
+                                  </svg>
+                                  {/* Primary label */}
+                                  {isHovCustom && (
+                                    <div style={{ position: 'absolute', left: czPx, top: czPy, width: czPw, height: czPl, zIndex: 4, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: (czPx / scale) < 1.5 ? 'flex-start' : 'center' }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content' }}>
+                                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneStyle.textColor, whiteSpace: 'nowrap' }}>{zoneStyle.badge}</span>
+                                      <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{contract.proposedWidth}m × {contract.proposedLength}m</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {/* Extension label */}
+                                  {hasExtZone && isHovCustom && (
+                                    <div style={{ position: 'absolute', left: ezX, top: ezY, width: ezW, height: ezL, zIndex: 4, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <div style={{ background: 'rgba(255,255,255,0.95)', padding: '2px 6px', borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', border: '1px solid rgba(245,158,11,0.3)', width: 'max-content' }}>
+                                        <span style={{ fontSize: '0.6rem', fontWeight: 800, color: zoneStyle.textColor, whiteSpace: 'nowrap' }}>+{contract.extensionWidth}m × {contract.extensionLength}m</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  {/* Primary rectangle */}
+                                  <div 
+                                    onMouseEnter={() => setFloorPlanHovered('custom-zone')}
+                                    onMouseLeave={() => setFloorPlanHovered(null)}
+                                    style={{ position: 'absolute', left: czPx, top: czPy, width: Math.max(czPw, 4), height: Math.max(czPl, 4), background: zoneStyle.bg, border: `2.5px solid ${zoneStyle.border}`, borderRadius: 4, zIndex: 3, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: (czPx / scale) < 1.5 ? 'flex-start' : 'center', animation: 'proposedZonePulse 2s ease-in-out infinite', cursor: 'pointer' }}
+                                  >
+                                    {isHovCustom && (
+                                      <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content' }}>
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneStyle.textColor, whiteSpace: 'nowrap' }}>{zoneStyle.badge}</span>
+                                        <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{contract.proposedWidth}m × {contract.proposedLength}m</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {/* Extension rectangle */}
+                                  {hasExtZone && (
+                                    <div 
+                                      onMouseEnter={() => setFloorPlanHovered('custom-zone')}
+                                      onMouseLeave={() => setFloorPlanHovered(null)}
+                                      style={{ position: 'absolute', left: ezX, top: ezY, width: Math.max(ezW, 4), height: Math.max(ezL, 4), background: zoneStyle.bg, border: `2.5px solid ${zoneStyle.border}`, borderRadius: 4, zIndex: 3, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                                    >
+                                      {isHovCustom && (
+                                        <div style={{ background: 'rgba(255,255,255,0.95)', padding: '2px 6px', borderRadius: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.12)', border: '1px solid rgba(245,158,11,0.3)', width: 'max-content' }}>
+                                          <span style={{ fontSize: '0.6rem', fontWeight: 800, color: zoneStyle.textColor, whiteSpace: 'nowrap' }}>+{contract.extensionWidth}m × {contract.extensionLength}m</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </React.Fragment>
+                          );
+                        }
+                        // ─────────────────────────────────────────────────────────────────────────
+
+                        return elements;
+                      })()}
+                    </div>
                   <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <div style={{ width: 0, height: 0, borderLeft: '7px solid transparent',
                       borderRight: '7px solid transparent', borderBottom: '9px solid #f59e0b' }} />
@@ -1339,6 +1675,38 @@ const ContractDetail = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Zone assignment modal for owner */}
+      {showZoneModal && contract && warehouseInfo && (
+        <CustomAreaSelectorModal
+          open={showZoneModal}
+          onClose={() => setShowZoneModal(false)}
+          warehouseData={warehouseInfo}
+          areas={warehouseAreas}
+          requestedM3={contract.requestedArea || 0}
+          isOwnerMode={true}
+          onConfirm={async (zone) => {
+            setSavingZone(true);
+            try {
+              await rentalService.assignZone(contract.rentalRequestId, {
+                positionX: zone.posX,
+                positionY: zone.posY,
+                width: zone.width,
+                length: zone.length,
+                baseAreaId: zone.baseAreaId || null,
+              });
+              alert('Đã phân khu vị trí thành công!');
+              setShowZoneModal(false);
+              reloadContract();
+            } catch (err) {
+              console.error(err);
+              alert(err.response?.data?.message || 'Có lỗi khi phân khu vị trí');
+            } finally {
+              setSavingZone(false);
+            }
+          }}
+        />
       )}
 
     </div>

@@ -177,6 +177,11 @@ function buildMenu(systemRole, warehouses) {
       label: "Yêu cầu thuê kho",
       path: "/pending-rental-requests",
     });
+    items.push({
+      icon: "event_repeat",
+      label: "Duyệt gia hạn hợp đồng",
+      path: "/contract-extensions",
+    });
   }
 
   // ── YÊU CẦU / KHO section ─────────────────────────────────
@@ -272,6 +277,13 @@ function buildMenu(systemRole, warehouses) {
       icon: "calendar_month",
       label: "Lịch công việc",
       path: "/task-scheduling",
+    });
+  }
+  if (hasOperator) {
+    items.push({
+      icon: "add_alarm",
+      label: "Quản lý ca làm",
+      path: "/create-shift",
     });
   }
 

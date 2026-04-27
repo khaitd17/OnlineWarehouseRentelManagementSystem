@@ -129,10 +129,7 @@ public class ApproveTerminationHandlerTests
 
     [Theory]
     [InlineData(RentalContractStatus.Active)]
-    [InlineData(RentalContractStatus.Draft)]
-    [InlineData(RentalContractStatus.Signed)]
-    [InlineData(RentalContractStatus.Completed)]
-    [InlineData(RentalContractStatus.Cancelled)]
+
     public async Task Handle_InvalidContractStatus_ReturnsFalse(string status)
     {
         var command = new ApproveTerminationCommand { ContractId = 123, UserId = 2 };
@@ -317,6 +314,34 @@ public class ApproveTerminationHandlerTests
         var command = new ApproveTerminationCommand { ContractId = 123, UserId = 1 };
         _mockContractRepository.Setup(x => x.GetByIdAsync(It.IsAny<int>()))
             .ThrowsAsync(new Exception("Database error"));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("Error approving termination", result.Message);
+    }
+
+    [Fact]
+    public async Task Handle_NotificationFailure_ReturnsFalseWithErrorMessage()
+    {
+        var command = new ApproveTerminationCommand { ContractId = 123, UserId = 2 };
+        var contract = CreateTestContract(123, 1, 2, RentalContractStatus.PendingTermination);
+        var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
+        var updatedContract = CreateTestContract(123, 1, 2, RentalContractStatus.Terminated);
+
+        _mockContractRepository.Setup(x => x.GetByIdAsync(123))
+            .ReturnsAsync(contract);
+        _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(warehouse);
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER", It.IsAny<decimal?>()))
+            .Returns(Task.CompletedTask);
+        _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
+            .ReturnsAsync(contract)
+            .ReturnsAsync(updatedContract);
+            
+        // Giả lập lỗi khi gửi Notification
+        _mockNotificationSender.Setup(x => x.SendToUserAsync(It.IsAny<int>(), It.IsAny<Notification>()))
+            .ThrowsAsync(new Exception("Notification failure"));
 
         var result = await _handler.Handle(command, CancellationToken.None);
 

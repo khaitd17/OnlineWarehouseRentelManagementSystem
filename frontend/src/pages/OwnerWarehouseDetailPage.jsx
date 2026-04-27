@@ -27,14 +27,29 @@ const AREA_STATUS_BADGE = (isRented) => isRented
   : <span style={{ padding: "2px 10px", background: "#dcfce7", color: "#166534", borderRadius: "12px", fontSize: "0.78rem", fontWeight: 700 }}>Trống</span>;
 
 const CONTRACT_STATUS = {
-  ACTIVE:    { bg: "#dcfce7", color: "#166534", label: "Hiệu lực" },
-  PENDING:   { bg: "#fef9c3", color: "#854d0e", label: "Chờ ký" },
-  EXPIRED:   { bg: "#f1f5f9", color: "#64748b", label: "Hết hạn" },
-  CANCELLED: { bg: "#fee2e2", color: "#991b1b", label: "Đã hủy" },
+  ACTIVE:              { bg: "#dcfce7", color: "#166534", label: "Hiệu lực" },
+  PENDING:             { bg: "#fef9c3", color: "#854d0e", label: "Chờ ký" },
+  EXPIRED:             { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
+  CANCELLED:           { bg: "#fee2e2", color: "#991b1b", label: "Đã hủy" },
+  CANCELLED_BY_USER:   { bg: "#fee2e2", color: "#dc2626", label: "Người dùng hủy" },
+  CANCELLED_BY_OWNER:  { bg: "#fee2e2", color: "#dc2626", label: "Chủ kho hủy" },
+  CANCELLED_NO_PAYMENT:{ bg: "#f1f5f9", color: "#64748b", label: "Hủy - Không TT" },
+  TERMINATED:          { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
+  COMPLETED:           { bg: "#e0f2fe", color: "#0284c7", label: "Đã hoàn thành" },
+  CLOSED:              { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
+  DRAFT:               { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
+  SIGNED:              { bg: "#dbeafe", color: "#1e40af", label: "Đã ký" },
+  PENDING_PAYMENT:     { bg: "#fef3c7", color: "#d97706", label: "Chờ thanh toán" },
+  PENDING_OWNER_SIGNATURE:  { bg: "#dbeafe", color: "#1e40af", label: "Chờ chủ kho ký" },
+  PENDING_RENTER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ người thuê ký" },
+  PENDING_SIGNATURE:   { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
+  PENDING_TERMINATION: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ chấm dứt" },
+  PENDING_CLOSE:       { bg: "#fef3c7", color: "#f59e0b", label: "Chờ đóng" },
+  OVERDUE:             { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
 };
 
 const getContractBadge = (status) => {
-  const s = CONTRACT_STATUS[status?.toUpperCase()] || { bg: "#f1f5f9", color: "#475569", label: status };
+  const s = CONTRACT_STATUS[status?.toUpperCase()] || CONTRACT_STATUS[status] || { bg: "#f1f5f9", color: "#475569", label: status };
   return <span style={{ padding: "2px 10px", background: s.bg, color: s.color, borderRadius: "12px", fontSize: "0.78rem", fontWeight: 700 }}>{s.label}</span>;
 };
 
@@ -429,7 +444,7 @@ const OwnerWarehouseDetailPage = () => {
           <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e2e8f0", overflow: "hidden" }}>
             <div style={{ padding: "1.5rem", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>
-                📋 Danh sách Hợp đồng thuê ({contracts.length})
+                Danh sách Hợp đồng thuê ({contracts.length})
               </h3>
             </div>
             {contracts.length === 0 ? (
@@ -682,6 +697,77 @@ const OwnerWarehouseDetailPage = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Legal documents gallery */}
+              {warehouse.documents && warehouse.documents.length > 0 && (
+                <div style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", border: "1px solid #e2e8f0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "1rem" }}>
+                    <span className="material-symbols-outlined" style={{ color: "#0284c7" }}>description</span>
+                    <h4 style={{ margin: 0, fontWeight: 700, color: "#0f172a" }}>Giấy tờ pháp lý ({warehouse.documents.length})</h4>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                    {warehouse.documents.map(doc => {
+                      const rawUrl = doc.documentUrl || doc.DocumentUrl;
+                      const docUrl = rawUrl?.startsWith("http") ? rawUrl : `http://localhost:5276${rawUrl?.startsWith("/") ? rawUrl : "/" + rawUrl}`;
+                      const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(docUrl);
+                      const isPdf = /\.pdf$/i.test(docUrl);
+                      const docLabels = {
+                        BUSINESS_LICENSE: "Giấy phép kinh doanh",
+                        WAREHOUSE_CERT: "GCN quyền sử dụng kho",
+                        FIRE_SAFETY: "PCCC",
+                        OTHER: "Tài liệu khác",
+                      };
+                      const label = docLabels[doc.documentType] || doc.documentType || "Giấy tờ";
+                      return (
+                        <div key={doc.documentId} style={{
+                          borderRadius: 12, border: "1px solid #e2e8f0", overflow: "hidden",
+                          background: "#fafafa"
+                        }}>
+                          {isImage ? (
+                            <a href={docUrl} target="_blank" rel="noopener noreferrer" style={{ display: "block" }}>
+                              <img
+                                src={docUrl}
+                                alt={label}
+                                style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
+                                onError={e => { e.target.style.display = "none"; }}
+                              />
+                            </a>
+                          ) : isPdf ? (
+                            <a
+                              href={docUrl} target="_blank" rel="noopener noreferrer"
+                              style={{
+                                height: 120, display: "flex", flexDirection: "column",
+                                alignItems: "center", justifyContent: "center", gap: 6,
+                                background: "linear-gradient(135deg, #eff6ff, #dbeafe)",
+                                textDecoration: "none"
+                              }}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: 36, color: "#2563eb" }}>picture_as_pdf</span>
+                              <span style={{ fontSize: "0.78rem", color: "#2563eb", fontWeight: 600 }}>Xem PDF</span>
+                            </a>
+                          ) : (
+                            <a
+                              href={docUrl} target="_blank" rel="noopener noreferrer"
+                              style={{
+                                height: 120, display: "flex", alignItems: "center", justifyContent: "center",
+                                background: "#f1f5f9", textDecoration: "none"
+                              }}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: 36, color: "#64748b" }}>insert_drive_file</span>
+                            </a>
+                          )}
+                          <div style={{ padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b" }}>{label}</span>
+                            <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                              {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("vi-VN") : ""}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

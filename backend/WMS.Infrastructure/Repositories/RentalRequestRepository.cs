@@ -108,7 +108,13 @@ public class RentalRequestRepository : IRentalRequestRepository
             ProposedPositionY = request.ProposedPositionY,
             ProposedWidth = request.ProposedWidth,
             ProposedLength = request.ProposedLength,
-            BaseRentalAreaId = request.BaseRentalAreaId
+            BaseRentalAreaId = request.BaseRentalAreaId,
+            // Extension zone (L-shape)
+            HasExtensionZone = request.HasExtensionZone,
+            ExtensionPositionX = request.ExtensionPositionX,
+            ExtensionPositionY = request.ExtensionPositionY,
+            ExtensionWidth = request.ExtensionWidth,
+            ExtensionLength = request.ExtensionLength
         };
 
         _context.RentalRequests.Add(dbRequest);
@@ -132,6 +138,20 @@ public class RentalRequestRepository : IRentalRequestRepository
         dbRequest.CancelledAt = request.CancelledAt;
         dbRequest.CancelledBy = request.CancelledBy;
         dbRequest.UpdatedAt = DateTime.UtcNow;
+
+        // Zone assignment fields
+        dbRequest.IsCustomArea = request.IsCustomArea;
+        dbRequest.ProposedPositionX = request.ProposedPositionX;
+        dbRequest.ProposedPositionY = request.ProposedPositionY;
+        dbRequest.ProposedWidth = request.ProposedWidth;
+        dbRequest.ProposedLength = request.ProposedLength;
+        dbRequest.BaseRentalAreaId = request.BaseRentalAreaId;
+        // Extension zone (L-shape)
+        dbRequest.HasExtensionZone = request.HasExtensionZone;
+        dbRequest.ExtensionPositionX = request.ExtensionPositionX;
+        dbRequest.ExtensionPositionY = request.ExtensionPositionY;
+        dbRequest.ExtensionWidth = request.ExtensionWidth;
+        dbRequest.ExtensionLength = request.ExtensionLength;
 
         await _context.SaveChangesAsync();
     }
@@ -197,6 +217,19 @@ public class RentalRequestRepository : IRentalRequestRepository
         proposedWidthProp?.SetValue(domainRequest, dbRequest.ProposedWidth);
         proposedLengthProp?.SetValue(domainRequest, dbRequest.ProposedLength);
         baseRentalAreaIdProp?.SetValue(domainRequest, dbRequest.BaseRentalAreaId);
+
+        // Extension zone (L-shape)
+        var hasExtensionZoneProp = typeof(DomainRentalRequest).GetProperty("HasExtensionZone");
+        var extensionPositionXProp = typeof(DomainRentalRequest).GetProperty("ExtensionPositionX");
+        var extensionPositionYProp = typeof(DomainRentalRequest).GetProperty("ExtensionPositionY");
+        var extensionWidthProp = typeof(DomainRentalRequest).GetProperty("ExtensionWidth");
+        var extensionLengthProp = typeof(DomainRentalRequest).GetProperty("ExtensionLength");
+
+        hasExtensionZoneProp?.SetValue(domainRequest, dbRequest.HasExtensionZone);
+        extensionPositionXProp?.SetValue(domainRequest, dbRequest.ExtensionPositionX);
+        extensionPositionYProp?.SetValue(domainRequest, dbRequest.ExtensionPositionY);
+        extensionWidthProp?.SetValue(domainRequest, dbRequest.ExtensionWidth);
+        extensionLengthProp?.SetValue(domainRequest, dbRequest.ExtensionLength);
 
         return domainRequest;
     }

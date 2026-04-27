@@ -155,7 +155,6 @@ export default function AdminPendingWarehousesPage() {
               <thead>
                 <tr>
                   <th style={{ width: 55 }}>ID</th>
-                  <th style={{ width: 130 }}>LOẠI</th>
                   <th>Tên kho</th>
                   <th>Chủ kho</th>
                   <th>Địa chỉ</th>
@@ -176,30 +175,7 @@ export default function AdminPendingWarehousesPage() {
                         #{row.warehouseId.toString().padStart(4, "0")}
                       </span>
                     </td>
-                    {/* Submission type badge */}
-                    <td>
-                      {row.submissionType === "PRICE_UPDATE" ? (
-                        <span style={{
-                          display: "inline-flex", alignItems: "center", gap: 4,
-                          padding: "3px 10px", borderRadius: 20,
-                          background: "#fef3c7", color: "#92400e",
-                          fontSize: 12, fontWeight: 700, border: "1px solid #fde68a",
-                          whiteSpace: "nowrap",
-                        }}>
-                          Thay đổi giá
-                        </span>
-                      ) : (
-                        <span style={{
-                          display: "inline-flex", alignItems: "center", gap: 4,
-                          padding: "3px 10px", borderRadius: 20,
-                          background: "#dbeafe", color: "#1e40af",
-                          fontSize: 12, fontWeight: 700, border: "1px solid #bfdbfe",
-                          whiteSpace: "nowrap",
-                        }}>
-                          🆕 Kho mới
-                        </span>
-                      )}
-                    </td>
+
                     <td>
                       <button
                         onClick={() => openDetail(row)}
@@ -391,33 +367,7 @@ export default function AdminPendingWarehousesPage() {
                     </div>
                   </div>
 
-                  {/* ── Pending Change Note (PRICE_UPDATE submissions only) ── */}
-                  {wh.pendingChangeNote && (
-                    <div style={{
-                      display: "flex", alignItems: "flex-start", gap: 12,
-                      background: "linear-gradient(135deg,#fffbeb,#fef3c7)",
-                      border: "1.5px solid #f59e0b", borderRadius: 12,
-                      padding: "14px 16px", marginBottom: 18,
-                    }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: "50%", flexShrink: 0,
-                        background: "linear-gradient(135deg,#fde68a,#fbbf24)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 18,
-                      }}>⚠️</div>
-                      <div>
-                        <div style={{ fontWeight: 800, color: "#92400e", fontSize: 13, marginBottom: 4 }}>
-                          Yêu cầu thay đổi cần duyệt
-                        </div>
-                        <div style={{ color: "#78350f", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>
-                          {wh.pendingChangeNote}
-                        </div>
-                        <div style={{ fontSize: 11, color: "#b45309", marginTop: 4 }}>
-                          Chủ kho đã thay đổi thông tin kho đã được phê duyệt trước đó. Vui lòng xem xét và quyết định duyệt hoặc từ chối.
-                        </div>
-                      </div>
-                    </div>
-                  )}
+
 
                   {/* Description */}
                   {wh.description && (
@@ -508,8 +458,8 @@ export default function AdminPendingWarehousesPage() {
                     </div>
                   )}
                   {(!wh.documents || wh.documents.length === 0) && (
-                    <div style={{ marginBottom: 20, padding: "12px 14px", background: "#fef2f2", borderRadius: 10, border: "1px solid #fecaca", fontSize: 13, color: "#dc2626" }}>
-                      Chưa có giấy tờ pháp lý nào được tải lên.
+                    <div style={{ marginBottom: 20, padding: "12px 14px", background: "#fffbeb", borderRadius: 10, border: "1px solid #fde68a", fontSize: 13, color: "#b45309" }}>
+                      Đang chờ cấp giấy tờ pháp lý — Chủ kho đã đánh dấu hồ sơ đang trong quá trình cấp phép.
                     </div>
                   )}
                 </>

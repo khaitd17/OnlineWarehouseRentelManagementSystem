@@ -34,7 +34,9 @@ public class AiController : ControllerBase
     public async Task<IActionResult> AnalyzeItems(
         [FromForm] List<IFormFile> images,
         [FromForm] string? province = null,
-        [FromForm] string? district = null)
+        [FromForm] string? district = null,
+        [FromForm] double? lat = null,
+        [FromForm] double? lng = null)
     {
         // Lấy userId từ JWT
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -75,7 +77,9 @@ public class AiController : ControllerBase
                 UserId: userId,
                 Images: images,
                 PreferredProvince: province,
-                PreferredDistrict: district
+                PreferredDistrict: district,
+                Lat: lat,
+                Lng: lng
             ));
 
             return Ok(result);
@@ -129,7 +133,8 @@ public class AiController : ControllerBase
             s.EstimatedVolumeM3,
             s.SuggestedType,
             s.SpecialNotes,
-            s.Confidence
+            s.Confidence,
+            s.ResultJson
         });
 
         return Ok(result);

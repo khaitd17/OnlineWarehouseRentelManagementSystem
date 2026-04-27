@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using WMS.Application.Features.Shifts.CreateWarehouseShift;
+using WMS.Application.Features.Shifts.DeleteWarehouseShift;
 using WMS.Application.Features.Shifts.GenerateSchedule;
 using WMS.Application.Features.Shifts.GetMySchedule;
 using WMS.Application.Features.Shifts.GetShifts;
@@ -113,6 +115,49 @@ public class ScheduleController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("warehouse-shifts")]
+    public async Task<IActionResult> CreateWarehouseShift([FromBody] CreateWarehouseShiftRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.Name))
+            return BadRequest(new { message = "Tên ca không được để trống." });
+        if (string.IsNullOrWhiteSpace(req.StartTime) || string.IsNullOrWhiteSpace(req.EndTime))
+            return BadRequest(new { message = "Giờ vào và giờ ra là bắt buộc." });
+
+        try
+        {
+            var id = await _mediator.Send(new CreateWarehouseShiftCommand
+            {
+                WarehouseId = req.WarehouseId,
+                Name        = req.Name.Trim(),
+                StartTime   = req.StartTime,
+                EndTime     = req.EndTime,
+            }, ct);
+            return Ok(new { id, message = "Tạo ca thành công." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("warehouse-shifts/{id:int}")]
+    public async Task<IActionResult> DeleteWarehouseShift(int id, CancellationToken ct)
+    {
+        try
+        {
+            await _mediator.Send(new DeleteWarehouseShiftCommand { Id = id }, ct);
+            return Ok(new { message = "Đã xoá ca." });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Không tìm thấy ca làm việc." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
     [HttpPost("generate")]
     public async Task<IActionResult> GenerateSchedule([FromBody] GenerateRequest req, CancellationToken ct)
     {
@@ -141,3 +186,5 @@ public class ScheduleController : ControllerBase
 
 public record GenerateRequest(int WarehouseId, string From, string To);
 public record SaveShiftsRequest(List<UpsertShiftDto> Shifts);
+public record CreateWarehouseShiftRequest(int WarehouseId, string Name, string StartTime, string EndTime);
+

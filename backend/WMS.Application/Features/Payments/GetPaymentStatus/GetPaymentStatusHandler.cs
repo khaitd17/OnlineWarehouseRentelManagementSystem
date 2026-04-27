@@ -13,19 +13,25 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
     private readonly ISepayService _sepayService;
     private readonly ILogger<GetPaymentStatusHandler> _logger;
     private readonly IContractExtensionRepository _extensionRepo;
+    private readonly IWarehouseRepository _warehouseRepo;
+    private readonly IRentalRequestRepository _rentalRequestRepo;
 
     public GetPaymentStatusHandler(
         IRentalPaymentRepository paymentRepo,
         IRentalContractRepository contractRepo,
         ISepayService sepayService,
         ILogger<GetPaymentStatusHandler> logger,
-        IContractExtensionRepository extensionRepo)
+        IContractExtensionRepository extensionRepo,
+        IWarehouseRepository warehouseRepo,
+        IRentalRequestRepository rentalRequestRepo)
     {
         _paymentRepo = paymentRepo;
         _contractRepo = contractRepo;
         _sepayService = sepayService;
         _logger = logger;
         _extensionRepo = extensionRepo;
+        _warehouseRepo = warehouseRepo;
+        _rentalRequestRepo = rentalRequestRepo;
     }
 
     public async Task<PaymentStatusResult> Handle(GetPaymentStatusQuery request, CancellationToken cancellationToken)
@@ -226,6 +232,9 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
             contract.ActivateAfterPayment();
             await _contractRepo.UpdateAsync(contract);
 
+            // Deduct area from warehouse now that contract is truly ACTIVE
+            await DeductWarehouseAreaAsync(contract);
+
             _logger.LogInformation("Activated pending contract {ContractId} from payment status reconciliation", payment.ContractId);
             return;
         }
@@ -255,6 +264,29 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
             _logger.LogInformation(
                 "Finalized pending termination contract {ContractId} after completed penalty payment",
                 payment.ContractId);
+        }
+    }
+
+    private async Task DeductWarehouseAreaAsync(WMS.Domain.Entities.RentalContract contract)
+    {
+        try
+        {
+            var rentalRequest = await _rentalRequestRepo.GetByIdAsync(contract.RentalRequestId);
+            if (rentalRequest == null) return;
+
+            var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, CancellationToken.None);
+            if (warehouse == null) return;
+
+            warehouse.AvailableArea -= rentalRequest.RequestedArea;
+            await _warehouseRepo.UpdateAsync(warehouse, CancellationToken.None);
+
+            _logger.LogInformation(
+                "Deducted {Area}m³ from warehouse {WarehouseId}. New available: {Available}m³",
+                rentalRequest.RequestedArea, warehouse.WarehouseId, warehouse.AvailableArea);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to deduct warehouse area for contract {ContractId}", contract.ContractId);
         }
     }
 }

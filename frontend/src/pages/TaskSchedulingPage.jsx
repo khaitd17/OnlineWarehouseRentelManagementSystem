@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   getTasks,
   getMyWarehouses,
@@ -455,10 +455,6 @@ export default function TaskSchedulingPage() {
             <button onClick={nextWeek} style={btnBase}>Tuần sau &#8594;</button>
             <button onClick={goToday} style={{ ...btnBase, border:`1px solid ${C.accent}`, color:C.accent }}>Hôm nay</button>
             <button onClick={loadTasks} style={btnBase}>Làm mới</button>
-            <button onClick={() => setShowCreate(true)}
-              style={{ padding:"6px 16px", borderRadius:7, border:"none", background:C.accent, color:"#fff", cursor:"pointer", fontSize:12, fontWeight:700 }}>
-              + Tạo Task
-            </button>
           </div>
         </div>
       </div>

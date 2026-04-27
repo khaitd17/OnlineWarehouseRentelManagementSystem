@@ -287,8 +287,8 @@ const MyRentalRequests = () => {
                       { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
                       req.isCustomArea
                         ? {
-                            label: "Vị trí tự sắp xếp",
-                            value: `(${req.proposedPositionX}m, ${req.proposedPositionY}m) — ${req.proposedWidth}m × ${req.proposedLength}m`,
+                            label: (req.assignedPositionX != null) ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ",
+                            value: `${req.proposedWidth}m × ${req.proposedLength}m${req.hasExtensionZone ? ` + ${req.extensionWidth}m × ${req.extensionLength}m` : ''}`,
                             customZone: true,
                           }
                         : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null),

@@ -80,6 +80,15 @@ export const getWarehouseById = async (warehouseId) => {
   return response.data;
 };
 
+export const getWarehouseDocuments = async (warehouseId) => {
+  const response = await axiosClient.get(`/Warehouse/${warehouseId}/documents`);
+  return response.data;
+};
+
+export const deleteWarehouseDocument = async (documentId) => {
+  await axiosClient.delete(`/Warehouse/documents/${documentId}`);
+};
+
 // ── Default Export ──────────────────────────────────────────────
 const warehouseService = {
   getMyWarehouses,
@@ -87,6 +96,8 @@ const warehouseService = {
   createWarehouse,
   uploadWarehouseImage,
   uploadWarehouseDocument,
+  getWarehouseDocuments,
+  deleteWarehouseDocument,
   submitWarehouse,
   getOccupancyStats,
   getWarehouseById

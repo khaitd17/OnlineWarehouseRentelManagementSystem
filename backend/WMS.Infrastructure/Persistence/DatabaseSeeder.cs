@@ -11,6 +11,22 @@ namespace WMS.Infrastructure.Persistence
         public static void Seed(ApplicationDbContext context)
         {
             // ══════════════════════════════════════════════════
+            // PATCH: Xoá unique index cũ (user_id, warehouse_id) nếu tồn tại
+            // Index cũ ngăn 1 user có 2 role khác nhau trong cùng 1 kho (OWNER + OPERATOR)
+            // EF Core đã define đúng: IX_warehouse_memberships_user_warehouse_role (user_id, warehouse_id, warehouse_role_id)
+            // ══════════════════════════════════════════════════
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_warehouse_memberships_user_id_warehouse_id' AND object_id = OBJECT_ID('warehouse_memberships'))
+                    BEGIN
+                        DROP INDEX IX_warehouse_memberships_user_id_warehouse_id ON warehouse_memberships;
+                    END
+                ");
+            }
+            catch { /* Bỏ qua nếu bảng chưa tồn tại */ }
+
+            // ══════════════════════════════════════════════════
             // 0. SUBSCRIPTION PACKAGES
             // ══════════════════════════════════════════════════
             var packages = new[]
@@ -651,39 +667,45 @@ namespace WMS.Infrastructure.Persistence
                 );
                 context.SaveChanges();
 
-                // Inbound — renter2 nhập hàng vào kho 3 (pending)
-                var ir3 = new InventoryRequest
+                // Inbound — renter2 nhập hàng vào kho 3 (pending) — chỉ seed nếu warehouse3 tồn tại
+                if (warehouse3 != null)
                 {
-                    RenterId    = renterUser2.UserId,
-                    WarehouseId = warehouse3.WarehouseId,
-                    Type        = "INBOUND",
-                    Status      = "PENDING",
-                    CreatedAt   = now.AddDays(-2),
-                    Notes       = "Nhập 200 thùng gạo ST25",
-                };
-                context.InventoryRequests.Add(ir3);
-                context.SaveChanges();
-                context.InventoryItems.AddRange(
-                    new InventoryItem { InvReqId = ir3.InvReqId, ItemName = "Gạo ST25 (bao 50kg)", Quantity = 200, Unit = "Bao", Weight = 10000m, Description = "Gạo thơm Sóc Trăng" }
-                );
-                context.SaveChanges();
+                    var ir3 = new InventoryRequest
+                    {
+                        RenterId    = renterUser2.UserId,
+                        WarehouseId = warehouse3.WarehouseId,
+                        Type        = "INBOUND",
+                        Status      = "PENDING",
+                        CreatedAt   = now.AddDays(-2),
+                        Notes       = "Nhập 200 thùng gạo ST25",
+                    };
+                    context.InventoryRequests.Add(ir3);
+                    context.SaveChanges();
+                    context.InventoryItems.AddRange(
+                        new InventoryItem { InvReqId = ir3.InvReqId, ItemName = "Gạo ST25 (bao 50kg)", Quantity = 200, Unit = "Bao", Weight = 10000m, Description = "Gạo thơm Sóc Trăng" }
+                    );
+                    context.SaveChanges();
+                }
 
-                // Outbound — renter xuất hàng từ kho 2 (pending)
-                var ir4 = new InventoryRequest
+                // Outbound — renter xuất hàng từ kho 2 (pending) — chỉ seed nếu warehouse2 tồn tại
+                if (warehouse2 != null)
                 {
-                    RenterId    = renterUser.UserId,
-                    WarehouseId = warehouse2.WarehouseId,
-                    Type        = "OUTBOUND",
-                    Status      = "PENDING",
-                    CreatedAt   = now.AddDays(-1),
-                    Notes       = "Xuất container hàng thủy sản đi Nhật",
-                };
-                context.InventoryRequests.Add(ir4);
-                context.SaveChanges();
-                context.InventoryItems.AddRange(
-                    new InventoryItem { InvReqId = ir4.InvReqId, ItemName = "Container tôm đông lạnh", Quantity = 5, Unit = "Container", Weight = 50000m, Description = "Xuất khẩu Nhật Bản" }
-                );
-                context.SaveChanges();
+                    var ir4 = new InventoryRequest
+                    {
+                        RenterId    = renterUser.UserId,
+                        WarehouseId = warehouse2.WarehouseId,
+                        Type        = "OUTBOUND",
+                        Status      = "PENDING",
+                        CreatedAt   = now.AddDays(-1),
+                        Notes       = "Xuất container hàng thủy sản đi Nhật",
+                    };
+                    context.InventoryRequests.Add(ir4);
+                    context.SaveChanges();
+                    context.InventoryItems.AddRange(
+                        new InventoryItem { InvReqId = ir4.InvReqId, ItemName = "Container tôm đông lạnh", Quantity = 5, Unit = "Container", Weight = 50000m, Description = "Xuất khẩu Nhật Bản" }
+                    );
+                    context.SaveChanges();
+                }
             }
 
             // ══════════════════════════════════════════════════
@@ -1107,9 +1129,10 @@ namespace WMS.Infrastructure.Persistence
 
         private static WarehouseMembership EnsureMembership(ApplicationDbContext ctx, int userId, int warehouseId, int roleId, bool allSkill, bool allZone)
         {
-            // Đã có Unique Index trên (UserId, WarehouseId) nên 1 user chỉ có 1 membership trong 1 kho
+            // 1 user có thể có nhiều roles trong cùng 1 kho (VD: OWNER + OPERATOR)
+            // Query theo cả roleId để không bị skip khi gọi lần 2 với role khác
             var m = ctx.WarehouseMemberships
-                .FirstOrDefault(x => x.UserId == userId && x.WarehouseId == warehouseId);
+                .FirstOrDefault(x => x.UserId == userId && x.WarehouseId == warehouseId && x.WarehouseRoleId == roleId);
             if (m == null)
             {
                 m = new WarehouseMembership

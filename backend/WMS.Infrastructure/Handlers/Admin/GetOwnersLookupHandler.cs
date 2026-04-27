@@ -19,8 +19,7 @@ public class GetOwnersLookupHandler : IRequestHandler<GetOwnersLookupQuery, ApiR
     public async Task<ApiResponse<List<OwnerLookupDto>>> Handle(GetOwnersLookupQuery request, CancellationToken cancellationToken)
     {
         var owners = await _db.Users
-            .Include(u => u.Role)
-            .Where(u => u.Role.RoleName == "OWNER")
+            .Where(u => u.WarehouseMemberships.Any(m => m.Role.Code == "OWNER"))
             .Select(u => new OwnerLookupDto(
                 u.UserId,
                 u.FullName,

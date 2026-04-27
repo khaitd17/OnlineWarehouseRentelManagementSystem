@@ -84,6 +84,12 @@ public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IE
                 ProposedWidth     = r.ProposedWidth,
                 ProposedLength    = r.ProposedLength,
                 BaseRentalAreaId  = r.BaseRentalAreaId,
+                // Extension zone (L-shape)
+                HasExtensionZone  = r.HasExtensionZone,
+                ExtensionPositionX = r.ExtensionPositionX,
+                ExtensionPositionY = r.ExtensionPositionY,
+                ExtensionWidth    = r.ExtensionWidth,
+                ExtensionLength   = r.ExtensionLength,
             });
         }
         return result;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/axiosClient";
-import { uploadWarehouseImage } from "../services/warehouseService";
+import { uploadWarehouseImage, uploadWarehouseDocument, getWarehouseDocuments, deleteWarehouseDocument } from "../services/warehouseService";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import RentalAreaManagement from "../components/warehouse/RentalAreaManagement";
@@ -67,10 +67,27 @@ const EditWarehouse = () => {
   });
 
   const [uploadLoading, setUploadLoading] = useState(false);
-  // Track the original price to detect changes that require re-approval
-  const originalPricePerM2 = useRef(null);
+  const [documents, setDocuments] = useState([]);
+  const [docUploadLoading, setDocUploadLoading] = useState(false);
+  const [pendingDocDeletes, setPendingDocDeletes] = useState([]);
   // Cho phép sửa kích thước nếu dữ liệu ban đầu là 0 hoặc trống
   const [canEditDimensions, setCanEditDimensions] = useState(false);
+
+  const DOC_TYPE_LABELS = {
+    BUSINESS_LICENSE: "Giấy phép kinh doanh",
+    WAREHOUSE_CERT: "Giấy chứng nhận quyền sử dụng kho",
+    FIRE_SAFETY: "Chứng nhận phòng cháy chữa cháy",
+    OTHER: "Tài liệu bổ sung khác",
+  };
+
+  const loadDocuments = async () => {
+    try {
+      const docs = await getWarehouseDocuments(id);
+      setDocuments(docs);
+    } catch (err) {
+      console.error("Failed to load documents", err);
+    }
+  };
 
   const loadWarehouse = async () => {
 
@@ -114,8 +131,7 @@ const EditWarehouse = () => {
       totalArea: res.data.totalArea ?? res.data.TotalArea ?? "",
       pricePerM2: res.data.pricePerM2 ?? res.data.PricePerM2 ?? ""
     });
-    // Snapshot original price after load
-    originalPricePerM2.current = String(res.data.pricePerM2 ?? res.data.PricePerM2 ?? "");
+
 
     // Logic: Nếu cả Dài và Rộng đều chưa có (> 0) thì cho phép sửa. 
     // Nếu đã có dữ liệu (> 0) thì khóa lại.
@@ -130,6 +146,7 @@ const EditWarehouse = () => {
 
   useEffect(() => {
     loadWarehouse();
+    loadDocuments();
   }, []);
 
   const handleChange = (e) => {
@@ -240,6 +257,17 @@ const EditWarehouse = () => {
 
     try {
       await api.put(`/Warehouse/${id}`, payload);
+
+      // Execute pending document deletes
+      for (const docId of pendingDocDeletes) {
+        try {
+          await deleteWarehouseDocument(docId);
+        } catch (err) {
+          console.error("Failed to delete document", docId, err);
+        }
+      }
+      setPendingDocDeletes([]);
+
       alert("Cập nhật kho thành công!");
       navigate("/my-warehouses");
     } catch (err) {
@@ -519,35 +547,7 @@ const EditWarehouse = () => {
 
               {/* Giá thuê/m³ */}
               <div style={groupStyle}>
-                {/* Re-approval warning – shown only when APPROVED warehouse price changes */}
-                {(() => {
-                  const currentRaw = String(formData.pricePerM2 ?? "");
-                  const original   = String(originalPricePerM2.current ?? "");
-                  const show =
-                    formData.status?.toUpperCase() === "APPROVED" &&
-                    currentRaw !== "" &&
-                    currentRaw !== original;
-                  return show ? (
-                    <div style={{
-                      display: "flex", alignItems: "flex-start", gap: 10,
-                      background: "linear-gradient(135deg,#fffbeb,#fef3c7)",
-                      border: "1.5px solid #f59e0b", borderRadius: 14,
-                      padding: "12px 14px", marginBottom: 10,
-                    }}>
-                      <span className="material-symbols-outlined" style={{ color: "#d97706", fontSize: 22, flexShrink: 0, marginTop: 1 }}>warning</span>
-                      <div>
-                        <div style={{ fontWeight: 800, color: "#92400e", fontSize: "0.92rem", marginBottom: 3 }}>
-                          Thay đổi giá yêu cầu duyệt lại
-                        </div>
-                        <div style={{ color: "#b45309", fontSize: "0.82rem", lineHeight: 1.6 }}>
-                          Bạn đang thay đổi giá thuê của kho đã được phê duyệt. Sau khi lưu,
-                          kho sẽ chuyển về trạng thái <strong>"Chờ duyệt"</strong> và tạm thời
-                          ẩn khỏi kết quả tìm kiếm cho đến khi admin phê duyệt lại.
-                        </div>
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
+
                 <label style={labelStyle}>
                   Giá thuê/m³ (VNĐ/tháng) <span style={{ color: "#ef4444" }}>*</span>
                 </label>
@@ -659,6 +659,156 @@ const EditWarehouse = () => {
                   <option value="OTHER">Tài liệu bổ sung khác</option>
                   <option value="Chưa xác minh">Đang chờ cấp / Chưa bổ sung</option>
                 </select>
+
+                {/* Document Upload Section */}
+                <div style={{
+                  marginTop: "1rem", padding: "1.2rem", background: "#f8fafc",
+                  borderRadius: "16px", border: "1px solid #e2e8f0"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span className="material-symbols-outlined" style={{ color: "#0284c7", fontSize: "20px" }}>description</span>
+                      <span style={{ fontWeight: 700, color: "#334155", fontSize: "0.95rem" }}>Giấy tờ đã tải lên ({documents.filter(d => !pendingDocDeletes.includes(d.documentId || d.DocumentId)).length})</span>
+                    </div>
+                    <label style={{
+                      backgroundColor: "#eff6ff", color: "#0284c7", padding: "8px 16px", borderRadius: "10px",
+                      cursor: docUploadLoading ? "not-allowed" : "pointer", fontWeight: 700, fontSize: "0.85rem",
+                      display: "flex", alignItems: "center", gap: "6px",
+                      border: "1px solid #bfdbfe", transition: "all 0.2s",
+                      opacity: docUploadLoading ? 0.6 : 1
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>upload_file</span>
+                      {docUploadLoading ? "Đang tải..." : "Tải giấy tờ"}
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf"
+                        hidden
+                        disabled={docUploadLoading || !formData.legalStatus || formData.legalStatus === "Chưa xác minh"}
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files);
+                          if (files.length === 0) return;
+                          const docType = formData.legalStatus;
+                          if (!docType || docType === "Chưa xác minh") {
+                            alert("Vui lòng chọn loại giấy tờ pháp lý trước khi tải lên.");
+                            return;
+                          }
+                          setDocUploadLoading(true);
+                          try {
+                            for (const file of files) {
+                              await uploadWarehouseDocument(id, file, docType);
+                            }
+                            await loadDocuments();
+                            alert("Tải giấy tờ lên thành công!");
+                          } catch (err) {
+                            alert("Lỗi khi tải giấy tờ: " + (err.response?.data?.message || err.message));
+                          } finally {
+                            setDocUploadLoading(false);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {(!formData.legalStatus || formData.legalStatus === "Chưa xác minh") && (
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: "8px",
+                      padding: "10px 14px", background: "#fffbeb", border: "1px solid #fde68a",
+                      borderRadius: "10px", marginBottom: "12px"
+                    }}>
+                      <span className="material-symbols-outlined" style={{ color: "#d97706", fontSize: "18px" }}>info</span>
+                      <span style={{ fontSize: "0.82rem", color: "#92400e" }}>
+                        Chọn loại giấy tờ pháp lý ở trên trước khi tải ảnh giấy tờ lên.
+                      </span>
+                    </div>
+                  )}
+
+                  {documents.filter(d => !pendingDocDeletes.includes(d.documentId || d.DocumentId)).length === 0 ? (
+                    <div style={{
+                      textAlign: "center", padding: "2rem", color: "#94a3b8",
+                      background: "#fff", borderRadius: "12px", border: "1px dashed #cbd5e1"
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 40, display: "block", marginBottom: 8 }}>folder_open</span>
+                      <p style={{ margin: 0, fontSize: "0.9rem" }}>Chưa có giấy tờ nào được tải lên</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
+                      {documents.filter(d => !pendingDocDeletes.includes(d.documentId || d.DocumentId)).map(doc => {
+                        const rawUrl = doc.documentUrl || doc.DocumentUrl;
+                        const docUrl = rawUrl?.startsWith("http") ? rawUrl : `http://localhost:5276${rawUrl?.startsWith("/") ? rawUrl : "/" + rawUrl}`;
+                        const isImage = /\.(jpg|jpeg|png|webp|gif)$/i.test(docUrl);
+                        const isPdf = /\.pdf$/i.test(docUrl);
+                        return (
+                          <div key={doc.documentId || doc.DocumentId} style={{
+                            background: "#fff", borderRadius: "12px", border: "1px solid #e2e8f0",
+                            overflow: "hidden", position: "relative",
+                            boxShadow: "0 2px 6px rgba(0,0,0,0.04)"
+                          }}>
+                            {/* Preview */}
+                            {isImage ? (
+                              <a href={docUrl} target="_blank" rel="noopener noreferrer">
+                                <img
+                                  src={docUrl}
+                                  alt={doc.documentType || doc.DocumentType}
+                                  style={{ width: "100%", height: "140px", objectFit: "cover", display: "block" }}
+                                  onError={e => { e.target.style.display = "none"; }}
+                                />
+                              </a>
+                            ) : isPdf ? (
+                              <div style={{
+                                height: "140px", display: "flex", flexDirection: "column",
+                                alignItems: "center", justifyContent: "center",
+                                background: "linear-gradient(135deg, #eff6ff, #dbeafe)", gap: 6
+                              }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 40, color: "#2563eb" }}>picture_as_pdf</span>
+                                <a href={docUrl} target="_blank" rel="noopener noreferrer"
+                                  style={{ fontSize: "0.78rem", color: "#2563eb", fontWeight: 600 }}>
+                                  Xem PDF
+                                </a>
+                              </div>
+                            ) : (
+                              <div style={{
+                                height: "140px", display: "flex", alignItems: "center", justifyContent: "center",
+                                background: "#f1f5f9"
+                              }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: 40, color: "#94a3b8" }}>insert_drive_file</span>
+                              </div>
+                            )}
+                            {/* Info */}
+                            <div style={{ padding: "10px 12px" }}>
+                              <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>
+                                {DOC_TYPE_LABELS[doc.documentType || doc.DocumentType] || doc.documentType || doc.DocumentType}
+                              </div>
+                              <div style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                                {doc.createdAt ? new Date(doc.createdAt).toLocaleDateString("vi-VN") : ""}
+                              </div>
+                            </div>
+                            {/* Delete button */}
+                            <button
+                              onClick={() => {
+                                if (!window.confirm("Bạn có chắc muốn xóa giấy tờ này? (Sẽ xóa khi nhấn Lưu)")) return;
+                                const docId = doc.documentId || doc.DocumentId;
+                                setPendingDocDeletes(prev => [...prev, docId]);
+                              }}
+                              style={{
+                                position: "absolute", top: 6, right: 6,
+                                background: "rgba(239,68,68,0.9)", border: "none", borderRadius: "8px",
+                                width: "28px", height: "28px", cursor: "pointer", color: "#fff",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                boxShadow: "0 2px 6px rgba(239,68,68,0.4)",
+                                transition: "all 0.2s"
+                              }}
+                              title="Xóa giấy tờ"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>close</span>
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div style={groupStyle}>

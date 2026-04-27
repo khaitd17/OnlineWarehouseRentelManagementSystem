@@ -47,6 +47,11 @@ const rentalService = {
     return response.data;
   },
 
+  assignZone: async (requestId, zoneData) => {
+    const response = await axiosClient.post(`/rental-requests/${requestId}/assign-zone`, zoneData);
+    return response.data;
+  },
+
   // ── Contract APIs ──────────────────────────────────────────────
   getMyContracts: async () => {
     const response = await axiosClient.get("/rental-contracts/my-contracts");
@@ -427,7 +432,7 @@ const rentalService = {
         text: 'Người dùng hủy',
         color: 'gray',
         icon: '❌',
-        description: 'Hợp đồng bị hủy bởi người nước ngoài'
+        description: 'Hợp đồng bị hủy bởi người dùng'
       },
       'CANCELLED_BY_OWNER': {
         text: 'Chủ kho hủy',

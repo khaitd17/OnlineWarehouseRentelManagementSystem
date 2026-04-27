@@ -34,7 +34,7 @@ export default function SubscriptionsPage() {
   // =====================
   const [packages, setPackages] = useState([]);
   const [pkgLoading, setPkgLoading] = useState(true);
-  const defaultPkgModal = { open: false, isEdit: false, loading: false, packageId: null, name: "", originalName: "", price: 0, durationMonths: 1, description: "", isActive: true, activeSubCount: 0 };
+  const defaultPkgModal = { open: false, isEdit: false, loading: false, packageId: null, name: "", originalName: "", priceDisplay: "0", price: 0, durationMonths: 1, description: "", isActive: true, activeSubCount: 0, maxWarehouses: 1, maxStaffPerWarehouse: 5, maxZonesPerWarehouse: 3, maxTotalArea: 500, allowEquipmentManagement: false };
   const [pkgModal, setPkgModal] = useState(defaultPkgModal);
   const [pkgConfirm, setPkgConfirm] = useState({ open: false, id: null, message: "", loading: false });
 
@@ -146,9 +146,15 @@ export default function SubscriptionsPage() {
   const openPkgEdit = async (pkg) => {
     setPkgModal({
       open: true, isEdit: true, loading: false,
-      packageId: pkg.packageId, name: pkg.name, originalName: pkg.name, price: pkg.price,
+      packageId: pkg.packageId, name: pkg.name, originalName: pkg.name,
+      price: pkg.price, priceDisplay: Number(pkg.price).toLocaleString("vi-VN"),
       durationMonths: pkg.durationMonths, description: pkg.description || "", isActive: pkg.isActive,
       activeSubCount: 0,
+      maxWarehouses: pkg.maxWarehouses ?? 1,
+      maxStaffPerWarehouse: pkg.maxStaffPerWarehouse ?? 5,
+      maxZonesPerWarehouse: pkg.maxZonesPerWarehouse ?? 3,
+      maxTotalArea: pkg.maxTotalArea ?? 500,
+      allowEquipmentManagement: pkg.allowEquipmentManagement ?? false,
     });
     // Fetch active subscription count for this package
     try {
@@ -167,7 +173,12 @@ export default function SubscriptionsPage() {
     setPkgModal(p => ({ ...p, loading: true }));
     const payload = {
       name: pkgModal.name, price: pkgModal.price, durationMonths: pkgModal.durationMonths,
-      description: pkgModal.description, isActive: pkgModal.isActive
+      description: pkgModal.description, isActive: pkgModal.isActive,
+      maxWarehouses: pkgModal.maxWarehouses,
+      maxStaffPerWarehouse: pkgModal.maxStaffPerWarehouse,
+      maxZonesPerWarehouse: pkgModal.maxZonesPerWarehouse,
+      maxTotalArea: pkgModal.maxTotalArea,
+      allowEquipmentManagement: pkgModal.allowEquipmentManagement,
     };
     try {
       let res;
@@ -237,7 +248,6 @@ export default function SubscriptionsPage() {
     { key: "name", label: "Tên Gói", render: (v) => <span style={{ fontWeight: 600 }}>{v}</span> },
     { key: "price", label: "Giá", render: (v) => `${v.toLocaleString()} ₫` },
     { key: "durationMonths", label: "Thời hạn", render: (v) => `${v} tháng` },
-    { key: "description", label: "Mô tả", render: (v) => v || "—" },
     { key: "isActive", label: "Trạng thái", render: (v) => (
       <span style={{ color: v ? "#16a34a" : "#dc2626", fontWeight: 600, fontSize: "0.85rem", background: v ? "#dcfce7" : "#fee2e2", padding: "4px 8px", borderRadius: 20 }}>
         {v ? "Đang bán" : "Ngưng bán"}
@@ -443,7 +453,18 @@ export default function SubscriptionsPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 15 }}>
               <div>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: 6 }}>Giá (VNĐ)</label>
-                <input type="number" min="0" value={pkgModal.price} onChange={e => setPkgModal(p => ({ ...p, price: Number(e.target.value) }))} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.9rem" }} />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={pkgModal.priceDisplay}
+                  onChange={e => {
+                    const raw = e.target.value.replace(/\./g, "");
+                    if (!/^\d*$/.test(raw)) return;
+                    const num = raw === "" ? 0 : Number(raw);
+                    setPkgModal(p => ({ ...p, price: num, priceDisplay: num === 0 && raw === "" ? "" : num.toLocaleString("vi-VN") }));
+                  }}
+                  style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.9rem" }}
+                />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: 6 }}>Kỳ hạn (tháng)</label>
@@ -451,10 +472,26 @@ export default function SubscriptionsPage() {
               </div>
             </div>
 
+            {/* ── Giới hạn tính năng ── */}
             <div style={{ marginBottom: 15 }}>
-              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: 6 }}>Mô tả chi tiết</label>
-              <textarea value={pkgModal.description} onChange={e => setPkgModal(p => ({ ...p, description: e.target.value }))} rows={3} style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.9rem", resize: "none" }} />
+              <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#475569", marginBottom: 10 }}>Giới hạn tính năng (hiển thị trên trang đăng ký)</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 4, display: "block" }}>Số kho tối đa</label>
+                  <input type="number" min="1" value={pkgModal.maxWarehouses}
+                    onChange={e => setPkgModal(p => ({ ...p, maxWarehouses: Number(e.target.value) }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.85rem" }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: "0.75rem", color: "#64748b", marginBottom: 4, display: "block" }}>Nhân viên / kho</label>
+                  <input type="number" min="1" value={pkgModal.maxStaffPerWarehouse}
+                    onChange={e => setPkgModal(p => ({ ...p, maxStaffPerWarehouse: Number(e.target.value) }))}
+                    style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.85rem" }} />
+                </div>
+              </div>
             </div>
+
+
 
             <div style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 8 }}>
               <input type="checkbox" id="pkgActive" checked={pkgModal.isActive} onChange={e => setPkgModal(p => ({ ...p, isActive: e.target.checked }))} style={{ width: 16, height: 16, accentColor: "#4f46e5" }} />

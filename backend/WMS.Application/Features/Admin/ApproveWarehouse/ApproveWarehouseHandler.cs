@@ -1,24 +1,21 @@
 using MediatR;
-using Microsoft.EntityFrameworkCore;
 using WMS.Application.Common;
-using WMS.Application.Features.Admin.ApproveWarehouse;
-using WMS.Infrastructure.Persistence;
-using WMS.Domain.Entities;
+using WMS.Domain.Interfaces;
 
-namespace WMS.Infrastructure.Handlers.Admin;
+namespace WMS.Application.Features.Admin.ApproveWarehouse;
 
 public class ApproveWarehouseHandler : IRequestHandler<ApproveWarehouseCommand, ApiResponse<bool>>
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IWarehouseRepository _warehouseRepository;
 
-    public ApproveWarehouseHandler(ApplicationDbContext db)
+    public ApproveWarehouseHandler(IWarehouseRepository warehouseRepository)
     {
-        _db = db;
+        _warehouseRepository = warehouseRepository;
     }
 
     public async Task<ApiResponse<bool>> Handle(ApproveWarehouseCommand request, CancellationToken cancellationToken)
     {
-        var warehouse = await _db.Warehouses.FirstOrDefaultAsync(w => w.WarehouseId == request.WarehouseId, cancellationToken);
+        var warehouse = await _warehouseRepository.GetByIdAsync(request.WarehouseId, cancellationToken);
         if (warehouse == null)
         {
             return ApiResponse<bool>.ErrorResponse($"Không tìm thấy kho với ID {request.WarehouseId}.");
@@ -50,7 +47,7 @@ public class ApproveWarehouseHandler : IRequestHandler<ApproveWarehouseCommand, 
         }
 
         warehouse.UpdatedAt = DateTime.UtcNow;
-        await _db.SaveChangesAsync(cancellationToken);
+        await _warehouseRepository.UpdateAsync(warehouse, cancellationToken);
 
         var actionText = request.IsApproved ? "duyệt" : "từ chối";
         return ApiResponse<bool>.SuccessResponse(true, $"Kho đã được {actionText} thành công.");

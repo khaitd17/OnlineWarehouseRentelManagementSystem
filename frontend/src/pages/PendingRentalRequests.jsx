@@ -3,6 +3,7 @@ import rentalService from "../services/rentalService";
 import warehouseService from "../services/warehouseService";
 import SignatureCanvas from "../components/SignatureCanvas";
 import ProposedZonePreviewModal from "../components/warehouse/ProposedZonePreviewModal";
+import CustomAreaSelectorModal from "../components/warehouse/CustomAreaSelectorModal";
 import axiosClient from "../services/axiosClient";
 
 const statusColors = {
@@ -114,6 +115,11 @@ const PendingRentalRequests = () => {
   const [showSignatureStep, setShowSignatureStep] = useState(false);
   const signatureCanvasRef = useRef(null);
 
+  // Owner zone assignment
+  const [showZoneAssignment, setShowZoneAssignment] = useState(false);
+  const [zoneAssignmentData, setZoneAssignmentData] = useState(null); // warehouse data + areas for modal
+  const [assignedZone, setAssignedZone] = useState(null); // { posX, posY, width, length, baseAreaId }
+
   useEffect(() => {
     fetchRequests();
   }, [activeTab]);
@@ -175,6 +181,7 @@ const PendingRentalRequests = () => {
       });
       setContractImageFile(null);
       setContractImagePreview(null);
+      setAssignedZone(null); // Reset zone assignment
     } catch (err) {
       console.error("Error fetching warehouse:", err);
       alert("Không thể tải thông tin kho. Vui lòng thử lại.");
@@ -192,6 +199,9 @@ const PendingRentalRequests = () => {
     setContractImagePreview(null);
     setCreatedContractId(null);
     setShowSignatureStep(false);
+    setAssignedZone(null);
+    setShowZoneAssignment(false);
+    setZoneAssignmentData(null);
   };
 
   const handleFormChange = (field, value) => {
@@ -252,6 +262,24 @@ const PendingRentalRequests = () => {
         startDate: contractForm.startDate,
         durationMonths: parseInt(contractForm.durationMonths),
       };
+
+      // Include owner-assigned zone if set
+      if (assignedZone) {
+        payload.assignedPositionX = assignedZone.posX;
+        payload.assignedPositionY = assignedZone.posY;
+        payload.assignedWidth = assignedZone.width;
+        payload.assignedLength = assignedZone.length;
+        payload.assignedBaseAreaId = assignedZone.baseAreaId || null;
+
+        // L-shaped extension zone
+        if (assignedZone.extensionZone) {
+          payload.assignedHasExtensionZone     = true;
+          payload.assignedExtensionPositionX   = assignedZone.extensionZone.posX;
+          payload.assignedExtensionPositionY   = assignedZone.extensionZone.posY;
+          payload.assignedExtensionWidth       = assignedZone.extensionZone.width;
+          payload.assignedExtensionLength      = assignedZone.extensionZone.length;
+        }
+      }
 
       const result = await rentalService.approveRentalRequest(
         actionModal.request.requestId,
@@ -437,6 +465,162 @@ const PendingRentalRequests = () => {
           <ReadOnlyField label="Thể tích thuê" value={`${req.requestedArea} m³`} />
           <ReadOnlyField label="Địa chỉ" value={req.warehouseAddress} fullWidth />
         </ContractSection>
+
+        {/* ── Zone Assignment (Owner picks zone for renter) ── */}
+        <div style={{
+          marginBottom: "0.8rem",
+          borderRadius: "14px",
+          border: "1px solid #e8edf3",
+          overflow: "hidden",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.04)"
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0.6rem",
+            padding: "0.7rem 1rem",
+            background: "linear-gradient(135deg, #8b5cf614 0%, #8b5cf608 100%)",
+            borderBottom: "2px solid #8b5cf622",
+          }}>
+            <Icon name="location_on" size={17} color="#8b5cf6" />
+            <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#8b5cf6" }}>Chỉ định vị trí khu vực</span>
+          </div>
+          <div style={{ padding: "0.9rem 1rem", backgroundColor: "#fff" }}>
+            {req.isCustomArea ? (
+              /* Renter already proposed a custom zone */
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{
+                  flex: 1, padding: "10px 14px", borderRadius: 10,
+                  background: "#fffbeb", border: "1px solid #fde68a",
+                }}>
+                  <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#b45309", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Người thuê đã chọn vị trí</div>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#92400e" }}>
+                    {req.proposedWidth}m × {req.proposedLength}m{req.hasExtensionZone ? ` + ${req.extensionWidth}m × ${req.extensionLength}m` : ''}
+                  </div>
+                </div>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    openZonePreview(req);
+                  }}
+                  style={{
+                    padding: "8px 16px", borderRadius: 10, border: "none",
+                    background: "linear-gradient(135deg,#f59e0b,#d97706)",
+                    color: "#fff", fontWeight: 700, fontSize: "0.78rem",
+                    cursor: "pointer", whiteSpace: "nowrap",
+                    boxShadow: "0 2px 6px rgba(245,158,11,0.35)",
+                  }}
+                >
+                  Xem bản đồ ↗
+                </button>
+              </div>
+            ) : req.rentalAreaName ? (
+              /* Renter picked an existing area */
+              <div style={{
+                padding: "10px 14px", borderRadius: 10,
+                background: "#f0fdf4", border: "1px solid #86efac",
+              }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#15803d", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Ô khu đã chọn bởi người thuê</div>
+                <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#166534" }}>
+                  {req.rentalAreaName} — {req.rentalAreaSize} m³
+                </div>
+              </div>
+            ) : (
+              /* No zone chosen yet — Owner can assign */
+              <div>
+                {assignedZone ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{
+                      flex: 1, padding: "10px 14px", borderRadius: 10,
+                      background: "#f0fdf4", border: "1px solid #86efac",
+                    }}>
+                      <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#15803d", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+                        ✓ Vị trí đã chỉ định{assignedZone.extensionZone ? " (L-shape)" : ""}
+                      </div>
+                      <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#166534" }}>
+                        {assignedZone.width}m × {assignedZone.length}m
+                        {assignedZone.extensionZone && (
+                          <span style={{ display: "block", fontSize: "0.8rem", color: "#d97706", marginTop: 2 }}>
+                            + Mở rộng: {assignedZone.extensionZone.width}m × {assignedZone.extensionZone.length}m
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const [warehouse, areasRes] = await Promise.all([
+                            warehouseService.getWarehouseById(req.warehouseId),
+                            axiosClient.get(`/RentalAreas/warehouse/${req.warehouseId}`),
+                          ]);
+                          setZoneAssignmentData({
+                            warehouseData: warehouse,
+                            areas: areasRes.data || [],
+                            requestedM3: req.requestedArea,
+                          });
+                          setShowZoneAssignment(true);
+                        } catch (err) {
+                          console.error('Failed to load zone data:', err);
+                          alert('Không thể tải dữ liệu khu vực. Vui lòng thử lại.');
+                        }
+                      }}
+                      style={{
+                        padding: "6px 14px", borderRadius: 8, border: "1px solid #93c5fd",
+                        background: "#eff6ff", color: "#2563eb", fontWeight: 600,
+                        fontSize: "0.78rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                      }}
+                    >
+                      Xem lại
+                    </button>
+                    <button
+                      onClick={() => setAssignedZone(null)}
+                      style={{
+                        padding: "6px 14px", borderRadius: 8, border: "1px solid #fca5a5",
+                        background: "#fff", color: "#dc2626", fontWeight: 600,
+                        fontSize: "0.78rem", cursor: "pointer",
+                      }}
+                    >Xóa</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: 0, textAlign: "center" }}>
+                      Người thuê chưa chọn vị trí cụ thể. Bạn có thể chỉ định khu vực cho họ.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const [warehouse, areasRes] = await Promise.all([
+                            warehouseService.getWarehouseById(req.warehouseId),
+                            axiosClient.get(`/RentalAreas/warehouse/${req.warehouseId}`),
+                          ]);
+                          setZoneAssignmentData({
+                            warehouseData: warehouse,
+                            areas: areasRes.data || [],
+                            requestedM3: req.requestedArea,
+                          });
+                          setShowZoneAssignment(true);
+                        } catch (err) {
+                          console.error('Failed to load zone data:', err);
+                          alert('Không thể tải dữ liệu khu vực. Vui lòng thử lại.');
+                        }
+                      }}
+                      style={{
+                        padding: "10px 24px", borderRadius: 10, border: "none",
+                        background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+                        color: "#fff", fontWeight: 700, fontSize: "0.85rem",
+                        cursor: "pointer",
+                        boxShadow: "0 3px 12px rgba(139,92,246,0.35)",
+                        display: "flex", alignItems: "center", gap: 8,
+                      }}
+                    >
+                      <Icon name="map" size={16} color="#fff" />
+                      Chỉ định vị trí trên bản đồ
+                    </button>
+                    <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontStyle: "italic" }}>(Để bỏ qua, hợp đồng sẽ được tạo mà chưa chỉ định vị trí)</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* ── Contract duration ── */}
         <ContractSection title="Thời hạn hợp đồng" icon="calendar_month" accent="#059669">
@@ -627,6 +811,12 @@ const PendingRentalRequests = () => {
           rows="5"
           value={rejectReason}
           onChange={(e) => setRejectReason(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !actionLoading) {
+              e.preventDefault();
+              handleReject();
+            }
+          }}
           placeholder="Vui lòng nêu rõ lý do để người thuê hiểu..."
           style={{ ...modalInputStyle, resize: "vertical", lineHeight: 1.6, fontFamily: "inherit" }}
         />
@@ -655,7 +845,7 @@ const PendingRentalRequests = () => {
             boxShadow: actionLoading ? "none" : "0 4px 14px rgba(220,38,38,0.35)",
           }}
         >
-          {actionLoading ? "Đang xử lý..." : (<><Icon name="block" size={15} color="#fff" />Xác nhận từ chối</>)}
+          {actionLoading ? "Đang xử lý..." : "Xác nhận từ chối"}
         </button>
       </div>
     </>
@@ -862,25 +1052,32 @@ const PendingRentalRequests = () => {
                       { label: "Địa chỉ", value: req.warehouseAddress, wide: true },
                       { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
                       req.isCustomArea
-                        ? {
-                            label: "Khu vực người thuê tự vẽ",
-                            value: `(${req.proposedPositionX}m, ${req.proposedPositionY}m) — ${req.proposedWidth}m × ${req.proposedLength}m`,
-                            highlighted: true,
-                            customZone: true,
-                          }
+                        ? (() => {
+                            const ownerAssigned = req.assignedPositionX != null;
+                            const label = ownerAssigned ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ";
+                            const w = ownerAssigned ? req.assignedWidth : req.proposedWidth;
+                            const l = ownerAssigned ? req.assignedLength : req.proposedLength;
+                            return {
+                              label,
+                              value: `${w}m × ${l}m`,
+                              highlighted: ownerAssigned,
+                              customZone: !ownerAssigned,
+                              ownerZone: ownerAssigned,
+                            };
+                          })()
                         : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null),
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
                       { label: "Ngày bắt đầu", value: formatDate(req.startDate) },
                     ].filter(Boolean).map(item => (
                       <div key={item.label} style={{
                         padding: "8px 14px", borderRadius: 10,
-                        background: item.customZone ? "#fffbeb" : item.highlighted ? "#f0fdf4" : "#f8fafc",
-                        border: item.customZone ? "1px solid #fde68a" : item.highlighted ? "1px solid #86efac" : "1px solid #f1f5f9",
+                        background: item.ownerZone ? "#f0fdf4" : item.customZone ? "#fffbeb" : item.highlighted ? "#f0fdf4" : "#f8fafc",
+                        border: item.ownerZone ? "1px solid #86efac" : item.customZone ? "1px solid #fde68a" : item.highlighted ? "1px solid #86efac" : "1px solid #f1f5f9",
                         display: "flex", flexDirection: "column", gap: 4,
                         flex: "1 1 100%",
                       }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: item.customZone ? "#b45309" : item.highlighted ? "#15803d" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                          <span style={{ fontSize: "0.65rem", fontWeight: 700, color: item.ownerZone ? "#15803d" : item.customZone ? "#b45309" : item.highlighted ? "#15803d" : "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                             {item.label}
                           </span>
                           {item.customZone && (
@@ -898,7 +1095,7 @@ const PendingRentalRequests = () => {
                             </button>
                           )}
                         </div>
-                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: item.customZone ? "#92400e" : item.highlighted ? "#166534" : "#334155" }}>
+                        <span style={{ fontSize: "0.88rem", fontWeight: 600, color: item.ownerZone ? "#166534" : item.customZone ? "#92400e" : item.highlighted ? "#166534" : "#334155" }}>
                           {item.value}
                         </span>
                       </div>
@@ -1008,6 +1205,24 @@ const PendingRentalRequests = () => {
           request={zonePreview.request}
           warehouseData={zonePreview.warehouseData}
           areas={zonePreview.areas}
+        />
+      )}
+
+      {/* ── Owner Zone Assignment Modal ── */}
+      {showZoneAssignment && zoneAssignmentData && (
+        <CustomAreaSelectorModal
+          open={showZoneAssignment}
+          onClose={() => { setShowZoneAssignment(false); setZoneAssignmentData(null); }}
+          warehouseData={zoneAssignmentData.warehouseData}
+          areas={zoneAssignmentData.areas}
+          requestedM3={zoneAssignmentData.requestedM3}
+          isOwnerMode={true}
+          initialZone={assignedZone}
+          onConfirm={(ca) => {
+            setAssignedZone(ca); // ca includes extensionZone if L-shape
+            setShowZoneAssignment(false);
+            setZoneAssignmentData(null);
+          }}
         />
       )}
     </div>

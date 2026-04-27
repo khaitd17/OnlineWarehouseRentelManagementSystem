@@ -922,6 +922,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
 
+                    b.Property<decimal?>("EstimatedVolume")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("EstimatedVolume");
+
                     b.Property<int>("InvReqId")
                         .HasColumnType("int")
                         .HasColumnName("inv_req_id");
@@ -945,6 +949,14 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<int?>("VerifiedQuantity")
                         .HasColumnType("int")
                         .HasColumnName("verified_quantity");
+
+                    b.Property<decimal?>("VerifiedVolume")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("VerifiedVolume");
+
+                    b.Property<decimal?>("VerifiedWeight")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("VerifiedWeight");
 
                     b.Property<string>("VerifyNote")
                         .HasMaxLength(500)
@@ -1016,8 +1028,16 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("renter_id");
 
+                    b.Property<string>("RenterSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("renter_signature_base64");
+
                     b.Property<DateTime?>("ScheduledDate")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("StaffSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("staff_signature_base64");
 
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
@@ -1787,6 +1807,10 @@ namespace WMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RequestId"));
 
+                    b.Property<int?>("BaseRentalAreaId")
+                        .HasColumnType("int")
+                        .HasColumnName("base_rental_area_id");
+
                     b.Property<string>("CancellationReason")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("cancellation_reason");
@@ -1815,9 +1839,46 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("duration_months");
 
+                    b.Property<double?>("ExtensionLength")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("ExtensionPositionX")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("ExtensionPositionY")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("ExtensionWidth")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("HasExtensionZone")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsCustomArea")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_custom_area");
+
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("notes");
+
+                    b.Property<double?>("ProposedLength")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_length");
+
+                    b.Property<double?>("ProposedPositionX")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_position_x");
+
+                    b.Property<double?>("ProposedPositionY")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_position_y");
+
+                    b.Property<double?>("ProposedWidth")
+                        .HasColumnType("float")
+                        .HasColumnName("proposed_width");
 
                     b.Property<string>("RejectionReason")
                         .HasColumnType("nvarchar(max)")
@@ -3289,7 +3350,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("skill_id");
 
-                    b.ToTable("warehouse_membership_skills", (string)null);
+                    b.ToTable("warehouse_membership_skills");
                 });
 
             modelBuilder.Entity("warehouse_membership_zones", b =>
@@ -3304,7 +3365,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("zone_id");
 
-                    b.ToTable("warehouse_membership_zones", (string)null);
+                    b.ToTable("warehouse_membership_zones");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.AiAnalysisSession", b =>

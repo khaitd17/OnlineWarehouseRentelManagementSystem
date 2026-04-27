@@ -16,6 +16,7 @@ public class CreateRentalRequestValidator : AbstractValidator<CreateRentalReques
             .GreaterThan(0).WithMessage("Requested area must be greater than 0");
 
         RuleFor(x => x.StartDate)
+            .NotEmpty().WithMessage("Start date is required")
             .GreaterThanOrEqualTo(DateTime.Today).WithMessage("Start date must be in the future or today");
 
         RuleFor(x => x.DurationMonths)

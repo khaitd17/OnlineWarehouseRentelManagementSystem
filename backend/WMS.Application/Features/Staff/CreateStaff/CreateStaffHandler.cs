@@ -53,40 +53,28 @@ namespace WMS.Application.Features.Staff.CreateStaff
                 throw new UnauthorizedAccessException(
                     "Manager chỉ được phép tạo nhân viên có role STAFF.");
 
-            // ── 2. Khi tạo MANAGER mới: kiểm tra overlap skill với các manager hiện tại ──
-            if (targetRole == "MANAGER" && callerRole == "OPERATOR")
-            {
-                var existingManagers = await _membershipRepository.GetActiveManagersInWarehouseAsync(
-                    request.WarehouseId, cancellationToken);
-
-                foreach (var mgr in existingManagers)
-                {
-                    bool skillsOverlap = request.IsAllSkill
-                        || mgr.IsAllSkill
-                        || request.SkillIds.Intersect(mgr.SkillIds).Any();
-
-                    if (skillsOverlap)
-                        throw new InvalidOperationException(
-                            $"Phạm vi skill bị trùng với manager '{mgr.FullName}'. " +
-                            "Vui lòng chọn skill không trùng với manager hiện tại.");
-                }
-            }
+            // ── 2. (Đã bỏ kiểm tra overlap skill giữa các manager — nhiều manager có thể trùng skill) ──
 
             // ── 3. Kiểm tra scope của MANAGER khi gán skill cho STAFF ─────────
             if (callerRole == "MANAGER")
             {
-                // MANAGER không được phép gán isAllSkill cho nhân viên (chỉ OPERATOR mới có quyền này)
-                if (request.IsAllSkill)
+                bool callerHasAllSkill = callerMembership?.IsAllSkill == true;
+
+                // MANAGER chỉ được gán isAllSkill=true nếu bản thân có isAllSkill=true
+                // (phạm vi của mình bao gồm toàn bộ skill thì mới được cấp toàn bộ cho nhân viên)
+                if (request.IsAllSkill && !callerHasAllSkill)
                     throw new UnauthorizedAccessException(
-                        "Manager không được phép gán toàn bộ skill. Chỉ Operator mới có quyền này.");
+                        "Manager không được cấp quyền 'tất cả skill' khi phạm vi của bạn chỉ giới hạn một số skill nhất định.");
 
                 // MANAGER chỉ được gán skill trong phạm vi của mình
-                if (callerMembership != null && !callerMembership.IsAllSkill && request.SkillIds.Any())
+                // (nếu bản thân có isAllSkill=true → không giới hạn skillId nào)
+                if (!callerHasAllSkill && request.SkillIds.Any())
                 {
-                    var invalidSkills = request.SkillIds.Except(callerMembership.SkillIds).ToList();
+                    var managerSkillIds = callerMembership?.SkillIds ?? new List<int>();
+                    var invalidSkills   = request.SkillIds.Except(managerSkillIds).ToList();
                     if (invalidSkills.Any())
                         throw new UnauthorizedAccessException(
-                            $"Manager không có quyền gán skill có id: {string.Join(", ", invalidSkills)}.");
+                            $"Bạn đang gán skill nằm ngoài phạm vi quản lý của mình: id {string.Join(", ", invalidSkills)}.");
                 }
             }
 

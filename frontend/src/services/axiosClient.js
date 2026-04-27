@@ -32,10 +32,12 @@ axiosClient.interceptors.response.use(
         }
         
         if (error.response?.status === 400 || error.response?.status === 500) {
+            const originalUrl = error.config?.url || '';
+            const isAdminRoute = originalUrl.includes('/admin/');
             const message = error.response.data?.message || error.response.data || "";
             const msgStr = typeof message === 'string' ? message : JSON.stringify(message);
-            
-            if (msgStr.includes("giới hạn") || msgStr.includes("gói") || msgStr.includes("hết hạn") || msgStr.includes("nâng cấp")) {
+
+            if (!isAdminRoute && (msgStr.includes("giới hạn gói") || msgStr.includes("hết hạn") || msgStr.includes("nâng cấp gói"))) {
                 import('antd').then(({ Modal }) => {
                     Modal.warning({
                         title: 'Giới hạn Gói dịch vụ',

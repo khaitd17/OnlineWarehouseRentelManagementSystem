@@ -168,7 +168,31 @@ public class WarehouseController : ControllerBase
 
         await _mediator.Send(command);
 
-        return Ok();
+        return Ok(new { message = "Tải giấy tờ lên thành công" });
+    }
+
+    [HttpGet("{id}/documents")]
+    public async Task<IActionResult> GetDocuments(int id)
+    {
+        var repo = HttpContext.RequestServices.GetRequiredService<WMS.Domain.Interfaces.IWarehouseDocumentRepository>();
+        var docs = await repo.GetByWarehouseIdAsync(id, HttpContext.RequestAborted);
+        return Ok(docs.Select(d => new
+        {
+            d.DocumentId,
+            d.DocumentType,
+            d.DocumentUrl,
+            d.Status,
+            d.CreatedAt
+        }));
+    }
+
+    [HttpDelete("documents/{docId}")]
+    public async Task<IActionResult> DeleteDocument(int docId)
+    {
+        var repo = HttpContext.RequestServices.GetRequiredService<WMS.Domain.Interfaces.IWarehouseDocumentRepository>();
+        var result = await repo.DeleteAsync(docId, HttpContext.RequestAborted);
+        if (!result) return NotFound();
+        return Ok(new { message = "Xóa giấy tờ thành công" });
     }
 
     [HttpPatch("{id}/submit")]
@@ -225,6 +249,34 @@ public class WarehouseController : ControllerBase
                 CallerId = int.Parse(userId)
             });
             return Ok(new { message = "Xóa kho thành công" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
+    [HttpPatch("{id}/restore")]
+    public async Task<IActionResult> RestoreWarehouse(int id)
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        try
+        {
+            await _mediator.Send(new WMS.Application.Features.Warehouses.RestoreWarehouse.RestoreWarehouseCommand
+            {
+                WarehouseId = id,
+                CallerId = int.Parse(userId)
+            });
+            return Ok(new { message = "Thu hồi kho thành công" });
         }
         catch (UnauthorizedAccessException ex)
         {
