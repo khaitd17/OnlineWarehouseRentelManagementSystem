@@ -84,6 +84,17 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
             };
         }
 
+        // ── Module 5: Payment Validation ───────────────────────────────────
+        // Nếu từ chối: phải có lý do
+        if (!request.IsApproved)
+        {
+            if (string.IsNullOrWhiteSpace(request.RejectionReason))
+                return new ConfirmCashPaymentResult { Success = false, Message = "Vui lòng nhập lý do từ chối thanh toán." };
+            if (request.RejectionReason!.Trim().Length > 500)
+                return new ConfirmCashPaymentResult { Success = false, Message = "Lý do từ chối không được vượt quá 500 ký tự." };
+        }
+        // ───────────────────────────────────────────────────────────────────
+
         if (request.IsApproved)
         {
             // Complete the payment
@@ -257,7 +268,16 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
             var rentalRequest = await _rentalRequestRepo.GetByIdAsync(contract.RentalRequestId);
             if (rentalRequest == null || warehouse == null) return;
 
-            warehouse.AvailableArea -= rentalRequest.RequestedArea;
+            // Module 2/5: Guard - AvailableArea không được âm
+            var newAvailable = warehouse.AvailableArea - rentalRequest.RequestedArea;
+            if (newAvailable < 0)
+            {
+                _logger.LogWarning(
+                    "Deduct area would make AvailableArea negative for warehouse {WarehouseId}. Clamping to 0. Available={Available}, Requested={Requested}",
+                    warehouse.WarehouseId, warehouse.AvailableArea, rentalRequest.RequestedArea);
+                newAvailable = 0;
+            }
+            warehouse.AvailableArea = newAvailable;
             await _warehouseRepo.UpdateAsync(warehouse, CancellationToken.None);
 
             _logger.LogInformation(

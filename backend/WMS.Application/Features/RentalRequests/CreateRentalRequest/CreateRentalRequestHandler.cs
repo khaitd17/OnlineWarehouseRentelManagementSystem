@@ -33,6 +33,25 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
 
     public async Task<int> Handle(CreateRentalRequestCommand request, CancellationToken cancellationToken)
     {
+        // ── Module 2: Rental Request Business Validation ────────────────────────
+        // Ngày bắt đầu không được trong quá khứ
+        var today = DateTime.UtcNow.Date;
+        if (request.StartDate.Date < today)
+            throw new ArgumentException("Ngày bắt đầu thuê không được là ngày trong quá khứ.");
+
+        // Thời hạn thuê: 1 - 120 tháng
+        if (request.DurationMonths < 1 || request.DurationMonths > 120)
+            throw new ArgumentException("Thời hạn thuê phải từ 1 đến 120 tháng.");
+
+        // Diện tích yêu cầu phải dương
+        if (request.RequestedArea <= 0)
+            throw new ArgumentException("Diện tích yêu cầu phải lớn hơn 0.");
+
+        // Ghi chú không quá 1000 ký tự
+        if (!string.IsNullOrEmpty(request.Notes) && request.Notes.Length > 1000)
+            throw new ArgumentException("Ghi chú không được vượt quá 1000 ký tự.");
+        // ────────────────────────────────────────────────────────────────────
+
         // Validate warehouse exists and has enough available area
         var warehouse = await _warehouseRepository.GetByIdAsync(request.WarehouseId, cancellationToken);
         if (warehouse == null)

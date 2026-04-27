@@ -813,7 +813,7 @@ const HomePage = () => {
         <div className="hero-content">
           <div className="hero-badge">
             <span className="badge-dot" />
-            Nền tảng kho bãi #1 Việt Nam
+            Nền tảng kho bãi ở Việt Nam
           </div>
 
           <h1 className="hero-title">
@@ -984,7 +984,7 @@ const HomePage = () => {
                         alt={w.name}
                       />
                       <div className="wh-img-overlay" />
-                      <div className="wh-badge">⭐ Nổi bật</div>
+                      <div className="wh-badge">Nổi bật</div>
                     </div>
                     <div className="wh-body">
                       <h3 className="wh-title">{w.name}</h3>
