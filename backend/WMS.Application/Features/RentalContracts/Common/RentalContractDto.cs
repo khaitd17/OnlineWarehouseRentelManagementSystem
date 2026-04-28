@@ -33,6 +33,7 @@ public class RentalContractDto
     public double RequestedArea { get; set; }
     // Custom area fields
     public bool IsCustomArea { get; set; }
+    public bool IsOwnerAssigned { get; set; }
     public double? ProposedPositionX { get; set; }
     public double? ProposedPositionY { get; set; }
     public double? ProposedWidth { get; set; }

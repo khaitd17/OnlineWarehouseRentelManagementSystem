@@ -79,6 +79,7 @@ public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IE
                 RentalAreaSize = rentalAreaSize,
                 // Custom area
                 IsCustomArea      = r.IsCustomArea,
+                IsOwnerAssigned   = r.IsOwnerAssigned,
                 ProposedPositionX = r.ProposedPositionX,
                 ProposedPositionY = r.ProposedPositionY,
                 ProposedWidth     = r.ProposedWidth,

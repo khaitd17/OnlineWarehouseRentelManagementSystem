@@ -87,6 +87,7 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
                 RentalAreaSize = rentalAreaSize,
                 // Custom area
                 IsCustomArea      = r.IsCustomArea,
+                IsOwnerAssigned   = r.IsOwnerAssigned,
                 ProposedPositionX = r.ProposedPositionX,
                 ProposedPositionY = r.ProposedPositionY,
                 ProposedWidth     = r.ProposedWidth,

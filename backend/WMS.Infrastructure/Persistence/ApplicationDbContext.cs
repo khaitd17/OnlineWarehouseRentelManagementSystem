@@ -596,6 +596,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CancelledBy).HasMaxLength(20).HasColumnName("cancelled_by");
             // Custom area columns
             entity.Property(e => e.IsCustomArea).HasColumnName("is_custom_area").HasDefaultValue(false);
+            entity.Property(e => e.IsOwnerAssigned).HasColumnName("is_owner_assigned").HasDefaultValue(false);
             entity.Property(e => e.ProposedPositionX).HasColumnName("proposed_position_x").IsRequired(false);
             entity.Property(e => e.ProposedPositionY).HasColumnName("proposed_position_y").IsRequired(false);
             entity.Property(e => e.ProposedWidth).HasColumnName("proposed_width").IsRequired(false);

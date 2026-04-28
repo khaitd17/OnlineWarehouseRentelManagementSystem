@@ -143,8 +143,12 @@ export default function CustomAreaSelectorModal({
   };
 
   /* ── Cross-area overlap detection ─────────────────────────────── */
-  const rectsOverlap = (ax, ay, aw, al, bx, by, bw, bl) =>
-    ax < bx + bw && ax + aw > bx && ay < by + bl && ay + al > by;
+  // EPS: tolerance in metres — zones merely touching (sharing an edge) are NOT considered overlapping.
+  // This prevents float/snap precision from falsely blocking a zone that sits flush against an occupied area.
+  const OVERLAP_EPS = 0.05;
+
+  const rectsOverlap = (ax, ay, aw, al, bx, by, bw, bl, eps = 0) =>
+    ax + eps < bx + bw && ax + aw - eps > bx && ay + eps < by + bl && ay + al - eps > by;
 
   const getOverlappingFreeAreas = (zone, excludeId = null) => {
     if (!zone) return [];
@@ -159,21 +163,24 @@ export default function CustomAreaSelectorModal({
     });
   };
 
-  /* Occupied areas that the custom drawn zone overlaps (must block) */
-  const getOverlappingOccupiedAreas = (zone) => {
+  /* Occupied areas that the custom drawn zone overlaps (must block).
+   * In owner mode we use a tighter epsilon so that a zone flush against
+   * an occupied boundary is NOT treated as a conflict. */
+  const getOverlappingOccupiedAreas = (zone, eps = 0) => {
     if (!zone) return [];
     return areas.filter(a => {
       if (!a.isOccupied) return false;
       return rectsOverlap(
         zone.x, zone.y, zone.w, zone.l,
         parseFloat(a.positionX || 0), parseFloat(a.positionY || 0),
-        parseFloat(a.width || 0), parseFloat(a.length || 0)
+        parseFloat(a.width || 0), parseFloat(a.length || 0),
+        eps
       );
     });
   };
 
-  /* Quick helper: does zone overlap ANY occupied area? */
-  const overlapsOccupied = (zone) => getOverlappingOccupiedAreas(zone).length > 0;
+  /* Quick helper: does zone overlap ANY occupied area? Strict (eps=0) — no tolerance. */
+  const overlapsOccupied = (zone) => getOverlappingOccupiedAreas(zone, 0).length > 0;
 
   /* ── CANVAS CLICK handler for choose mode (click empty space) ── */
   const handleCanvasClick = (e) => {
@@ -287,12 +294,16 @@ export default function CustomAreaSelectorModal({
       }
     }
 
-    setCustomZone({
+    const candidate = {
       x: clamp(snap(px2m(x0)), 0, whW),
       y: clamp(snap(px2m(y0)), 0, whL),
       w,
       l,
-    });
+    };
+    // Block free draw if it would overlap an occupied area
+    if (!overlapsOccupied(candidate)) {
+      setCustomZone(candidate);
+    }
   };
 
   const canvasMouseUp = () => {
@@ -361,8 +372,11 @@ export default function CustomAreaSelectorModal({
     mode === 'choose' ? selectedAreaId : null
   );
 
-  // Occupied areas the custom zone overlaps — must block confirmation
-  const occupiedOverlaps = mode === 'draw' ? getOverlappingOccupiedAreas(customZone) : [];
+  // Occupied areas the active zone overlaps — strict check (eps=0): any real penetration blocks confirm.
+  // Check BOTH modes: 'draw' uses customZone, 'choose' uses editZone.
+  const occupiedOverlaps = mode === 'draw'
+    ? getOverlappingOccupiedAreas(customZone, 0)
+    : getOverlappingOccupiedAreas(editZone, 0);
   const hasOccupiedConflict = occupiedOverlaps.length > 0;
 
   const handleConfirm = () => {

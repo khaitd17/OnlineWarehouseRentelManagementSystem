@@ -44,6 +44,12 @@ public partial class RentalRequest
     /// </summary>
     public bool IsCustomArea { get; set; } = false;
 
+    /// <summary>
+    /// true if the zone was assigned by the warehouse owner during approval.
+    /// false means the renter proposed/drew the zone themselves.
+    /// </summary>
+    public bool IsOwnerAssigned { get; set; } = false;
+
     /// <summary>X offset (metres) from warehouse origin for the proposed zone.</summary>
     public double? ProposedPositionX { get; set; }
 

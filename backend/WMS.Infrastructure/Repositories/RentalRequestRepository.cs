@@ -141,6 +141,7 @@ public class RentalRequestRepository : IRentalRequestRepository
 
         // Zone assignment fields
         dbRequest.IsCustomArea = request.IsCustomArea;
+        dbRequest.IsOwnerAssigned = request.IsOwnerAssigned;
         dbRequest.ProposedPositionX = request.ProposedPositionX;
         dbRequest.ProposedPositionY = request.ProposedPositionY;
         dbRequest.ProposedWidth = request.ProposedWidth;
@@ -212,6 +213,8 @@ public class RentalRequestRepository : IRentalRequestRepository
         var baseRentalAreaIdProp = typeof(DomainRentalRequest).GetProperty("BaseRentalAreaId");
 
         isCustomAreaProp?.SetValue(domainRequest, dbRequest.IsCustomArea);
+        var isOwnerAssignedProp = typeof(DomainRentalRequest).GetProperty("IsOwnerAssigned");
+        isOwnerAssignedProp?.SetValue(domainRequest, dbRequest.IsOwnerAssigned);
         proposedPositionXProp?.SetValue(domainRequest, dbRequest.ProposedPositionX);
         proposedPositionYProp?.SetValue(domainRequest, dbRequest.ProposedPositionY);
         proposedWidthProp?.SetValue(domainRequest, dbRequest.ProposedWidth);
