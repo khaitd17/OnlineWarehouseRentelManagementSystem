@@ -317,9 +317,7 @@ function WeekTable({ monday, shifts, onRowClick, onRefresh }) {
           return (
             <tr
               key={key}
-              style={{ background: rowBg, borderBottom:'1px solid #e2e8f0', cursor: slot ? 'pointer' : 'default' }}
-              title={slot ? 'Nhan de xem chi tiet / diem danh' : ''}
-              onClick={() => slot && onRowClick(key, slot)}
+              style={{ background: rowBg, borderBottom:'1px solid #e2e8f0' }}
             >
               {/* Date — không có nút điểm danh nữa */}
               <td style={{ padding:'12px 14px', verticalAlign:'top' }}>
@@ -467,8 +465,7 @@ function MonthTable({ year, month, shifts, onRowClick }) {
             <tr
               key={key}
               style={{ background: isToday?'#eff6ff':i%2===0?'#fff':'#f8fafc',
-                borderBottom:'1px solid #e2e8f0', cursor: slot ? 'pointer' : 'default' }}
-              onClick={() => slot && onRowClick(key, slot)}
+                borderBottom:'1px solid #e2e8f0' }}
             >
               <td style={{ padding:'8px 12px', fontWeight: isToday?800:600, width:80,
                 color: isToday?'#3b82f6':isWeekend?'#dc2626':'#0f172a' }}>

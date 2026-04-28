@@ -311,7 +311,7 @@ function CreateTaskModal({ warehouseId, taskTypes, defaultDate, onClose, onCreat
       await createTask(warehouseId, {
         taskTypeId: Number(form.taskTypeId),
         note: form.note || null,
-        scheduledAt: new Date(`${form.scheduledAt}T${form.scheduledTime}:00`).toISOString(),
+        scheduledAt: `${form.scheduledAt}T${form.scheduledTime}:00`,
       });
       onCreated();
     } catch(ex) { setErr(ex.response?.data?.message || ex.message); }
@@ -455,6 +455,7 @@ export default function TaskSchedulingPage() {
             <button onClick={nextWeek} style={btnBase}>Tuần sau &#8594;</button>
             <button onClick={goToday} style={{ ...btnBase, border:`1px solid ${C.accent}`, color:C.accent }}>Hôm nay</button>
             <button onClick={loadTasks} style={btnBase}>Làm mới</button>
+            <button onClick={() => setShowCreate(true)} style={{ ...btnBase, background:C.accent, color:"#fff", border:`1px solid ${C.accent}` }}>+ Tạo task</button>
           </div>
         </div>
       </div>
@@ -574,7 +575,7 @@ export default function TaskSchedulingPage() {
         <CreateTaskModal
           warehouseId={whId}
           taskTypes={taskTypes}
-          defaultDate={isoDate(weekStart)}
+          defaultDate={todayISO}
           onClose={() => setShowCreate(false)}
           onCreated={() => { setShowCreate(false); loadTasks(); }}
         />

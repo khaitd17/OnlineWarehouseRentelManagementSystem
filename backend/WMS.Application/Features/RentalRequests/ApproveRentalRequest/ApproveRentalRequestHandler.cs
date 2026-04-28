@@ -61,7 +61,7 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
             if (request.DurationMonths < 1 || request.DurationMonths > 120)
                 throw new ArgumentException("Thời hạn hợp đồng phải từ 1 đến 120 tháng.");
             var approveToday = DateTime.UtcNow.Date;
-            if (request.StartDate.Date < approveToday)
+            if (request.StartDate.HasValue && request.StartDate.Value.Date < approveToday)
                 throw new ArgumentException("Ngày bắt đầu hợp đồng không được là ngày trong quá khứ.");
             if (!string.IsNullOrEmpty(request.Terms) && request.Terms.Length > 5000)
                 throw new ArgumentException("Nội dung điều khoản không được vượt quá 5000 ký tự.");
