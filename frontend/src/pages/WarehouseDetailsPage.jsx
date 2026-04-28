@@ -9,6 +9,7 @@ import CustomAreaSelectorModal from '../components/warehouse/CustomAreaSelectorM
 // ─── Floor Plan Blueprint ────────────────────────────────────────────────────
 const FloorPlanView = ({ areas, warehouseData }) => {
   const [hovered, setHovered] = useState(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   const whWidth  = parseFloat(warehouseData?.width  ?? warehouseData?.Width  ?? 0) || 0;
   const whLength = parseFloat(warehouseData?.length ?? warehouseData?.Length ?? 0) || 0;
@@ -16,26 +17,46 @@ const FloorPlanView = ({ areas, warehouseData }) => {
   // Fit both dimensions into a max 500×380px box
   const MAX_W = 500;
   const MAX_H = 380;
-  const scaleX = whWidth  > 0 ? Math.min(MAX_W / whWidth,  MAX_H / whLength) : 1;
+  const baseScale = whWidth  > 0 ? Math.min(MAX_W / whWidth,  MAX_H / whLength) : 1;
+  const scaleX = baseScale * zoomLevel;
   const scaleY = scaleX;
   const CANVAS_W = whWidth  > 0 ? Math.round(whWidth  * scaleX) : MAX_W;
   const CANVAS_H = whLength > 0 ? Math.round(whLength * scaleY) : MAX_H;
 
   return (
     <section>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
-          Sơ đồ mặt bằng ô khu
-        </h2>
-        {whWidth > 0 && whLength > 0 && (
-          <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>
-            {whWidth}m × {whLength}m
-          </span>
-        )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+        <div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: 0, marginBottom: '4px' }}>
+            Sơ đồ mặt bằng ô khu
+          </h2>
+          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
+            Di chuột vào từng ô để xem chi tiết. Tỉ lệ dựa theo kích thước thực tế.
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {whWidth > 0 && whLength > 0 && (
+            <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 600 }}>
+              {whWidth}m × {whLength}m
+            </span>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: 8, padding: '6px 12px', border: '1px solid #e2e8f0', gap: 8 }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Thu phóng:</span>
+            <input
+              type="range"
+              min="0.5"
+              max="3"
+              step="0.05"
+              value={zoomLevel}
+              onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+              style={{ cursor: 'pointer', width: 80, accentColor: '#0ea5e9' }}
+            />
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', minWidth: 38, textAlign: 'right' }}>
+              {Math.round(zoomLevel * 100)}%
+            </span>
+          </div>
+        </div>
       </div>
-      <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>
-        Di chuột vào từng ô để xem chi tiết. Tỉ lệ dựa theo kích thước thực tế.
-      </p>
 
       {/* Legend */}
       <div style={{ display: 'flex', gap: 16, marginBottom: 12, flexWrap: 'wrap' }}>

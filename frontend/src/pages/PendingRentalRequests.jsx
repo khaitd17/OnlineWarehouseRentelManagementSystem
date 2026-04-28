@@ -220,6 +220,13 @@ const PendingRentalRequests = () => {
   };
 
   const handleApprove = async () => {
+    // If contract was already created (user went back from signature step),
+    // just show the signature step again instead of calling API
+    if (createdContractId) {
+      setShowSignatureStep(true);
+      return;
+    }
+
     if (!contractForm.monthlyPayment || parseFloat(contractForm.monthlyPayment) <= 0) {
       alert("Vui lòng nhập giá thuê hàng tháng hợp lệ");
       return;
@@ -292,7 +299,7 @@ const PendingRentalRequests = () => {
     } catch (err) {
       console.error(err);
       alert(
-        err.response?.data?.message || err.message || "Có lỗi khi tạo hợp đồng"
+        err.response?.data?.error || err.response?.data?.message || err.message || "Có lỗi khi tạo hợp đồng"
       );
     } finally {
       setActionLoading(false);
@@ -350,6 +357,9 @@ const PendingRentalRequests = () => {
     const req = actionModal.request;
     const totalValue = calculateTotalValue(contractForm.monthlyPayment, contractForm.durationMonths);
     const endDate = calculateEndDate(contractForm.startDate, contractForm.durationMonths);
+
+    // A zone is valid if owner just assigned one, OR renter already had a proposal/selected an area
+    const hasValidZone = !!assignedZone || !!req.isCustomArea || !!req.rentalAreaName;
 
     // If showing signature step
     if (showSignatureStep) {
@@ -580,10 +590,22 @@ const PendingRentalRequests = () => {
                     >Xóa</button>
                   </div>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                    <p style={{ fontSize: "0.82rem", color: "#94a3b8", margin: 0, textAlign: "center" }}>
-                      Người thuê chưa chọn vị trí cụ thể. Bạn có thể chỉ định khu vực cho họ.
-                    </p>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+                    {/* ── Warning: zone is required ── */}
+                    <div style={{
+                      display: "flex", alignItems: "flex-start", gap: 8,
+                      padding: "10px 14px", borderRadius: 10,
+                      background: "#fff7ed", border: "1.5px solid #fed7aa",
+                      width: "100%", boxSizing: "border-box",
+                    }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: "#ea580c", flexShrink: 0, marginTop: 1 }}>warning</span>
+                      <div>
+                        <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#c2410c", marginBottom: 2 }}>Bắt buộc chỉ định vị trí</div>
+                        <div style={{ fontSize: "0.78rem", color: "#9a3412", lineHeight: 1.5 }}>
+                          Người thuê chưa chọn vị trí cụ thể. Bạn <strong>phải</strong> chỉ định khu vực trên bản đồ trước khi duyệt hợp đồng.
+                        </div>
+                      </div>
+                    </div>
                     <button
                       onClick={async () => {
                         try {
@@ -614,7 +636,6 @@ const PendingRentalRequests = () => {
                       <Icon name="map" size={16} color="#fff" />
                       Chỉ định vị trí trên bản đồ
                     </button>
-                    <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontStyle: "italic" }}>(Để bỏ qua, hợp đồng sẽ được tạo mà chưa chỉ định vị trí)</span>
                   </div>
                 )}
               </div>
@@ -756,16 +777,27 @@ const PendingRentalRequests = () => {
           >
             Hủy
           </button>
+          {!hasValidZone && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "0.5rem 0.9rem", borderRadius: 8,
+              background: "#fff7ed", border: "1px solid #fed7aa",
+              fontSize: "0.78rem", color: "#c2410c", fontWeight: 600,
+            }}>
+              Vui lòng chỉ định vị trí khu vực trước
+            </div>
+          )}
           <button
             onClick={handleApprove}
-            disabled={actionLoading}
+            disabled={actionLoading || !hasValidZone}
+            title={!hasValidZone ? "Bạn phải chỉ định vị trí khu vực thuê trước khi duyệt" : ""}
             style={{
               display: "flex", alignItems: "center", gap: "0.5rem",
               padding: "0.65rem 1.6rem", borderRadius: "10px", border: "none",
-              background: actionLoading ? "#94a3b8" : "linear-gradient(135deg, #2563eb, #1d4ed8)",
+              background: (actionLoading || !hasValidZone) ? "#94a3b8" : "linear-gradient(135deg, #2563eb, #1d4ed8)",
               color: "#fff", fontWeight: 700,
-              cursor: actionLoading ? "not-allowed" : "pointer", fontSize: "0.88rem",
-              boxShadow: actionLoading ? "none" : "0 4px 14px rgba(37,99,235,0.35)",
+              cursor: (actionLoading || !hasValidZone) ? "not-allowed" : "pointer", fontSize: "0.88rem",
+              boxShadow: (actionLoading || !hasValidZone) ? "none" : "0 4px 14px rgba(37,99,235,0.35)",
               transition: "all 0.15s",
             }}
           >
@@ -1053,10 +1085,10 @@ const PendingRentalRequests = () => {
                       { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
                       req.isCustomArea
                         ? (() => {
-                            const ownerAssigned = req.assignedPositionX != null;
+                            const ownerAssigned = !!req.isOwnerAssigned;
                             const label = ownerAssigned ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ";
-                            const w = ownerAssigned ? req.assignedWidth : req.proposedWidth;
-                            const l = ownerAssigned ? req.assignedLength : req.proposedLength;
+                            const w = req.proposedWidth;
+                            const l = req.proposedLength;
                             return {
                               label,
                               value: `${w}m × ${l}m`,

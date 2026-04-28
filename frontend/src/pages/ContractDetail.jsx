@@ -152,7 +152,7 @@ const ContractDetail = () => {
   const [showZoneModal, setShowZoneModal] = useState(false);
   const [savingZone, setSavingZone] = useState(false);
   const [floorPlanHovered, setFloorPlanHovered] = useState(null);
-
+  const [zoomLevel, setZoomLevel] = useState(1);
   const reloadContract = () => {
     setRefreshKey(k => k + 1);
   };
@@ -559,9 +559,10 @@ const ContractDetail = () => {
         const whWidth  = parseFloat(warehouseInfo?.width  ?? warehouseInfo?.Width  ?? 0) || 0;
         const whLength = parseFloat(warehouseInfo?.length ?? warehouseInfo?.Length ?? 0) || 0;
         const MAX_W = 460; const MAX_H = 340;
-        const scale = whWidth > 0 && whLength > 0
+        const baseScale = whWidth > 0 && whLength > 0
           ? Math.min(MAX_W / whWidth, MAX_H / whLength)
           : 1;
+        const scale = baseScale * zoomLevel;
         const CANVAS_W = whWidth  > 0 ? Math.round(whWidth  * scale) : MAX_W;
         const CANVAS_H = whLength > 0 ? Math.round(whLength * scale) : MAX_H;
 
@@ -637,11 +638,28 @@ const ContractDetail = () => {
                   textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   Sơ đồ mặt bằng ô khu
                 </h2>
-                {whWidth > 0 && whLength > 0 && (
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
-                    {whWidth}m × {whLength}m
-                  </span>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {whWidth > 0 && whLength > 0 && (
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
+                      {whWidth}m × {whLength}m
+                    </span>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: 8, padding: '6px 12px', border: '1px solid #e2e8f0', gap: 8 }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Thu phóng:</span>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="3"
+                      step="0.05"
+                      value={zoomLevel}
+                      onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+                      style={{ cursor: 'pointer', width: 80, accentColor: '#0ea5e9' }}
+                    />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', minWidth: 38, textAlign: 'right' }}>
+                      {Math.round(zoomLevel * 100)}%
+                    </span>
+                  </div>
+                </div>
               </div>
 
               {/* Legend */}
@@ -714,7 +732,7 @@ const ContractDetail = () => {
                   background: '#f0fdf4', border: '1px solid #86efac',
                   borderRadius: 10, fontSize: '0.82rem', color: '#166534', fontWeight: 500,
                 }}>
-                  ✅ Đã phân khu vị trí cho hợp đồng này.
+                  Đã phân khu vị trí cho hợp đồng này.
                 </div>
               )}
 
@@ -1337,21 +1355,22 @@ const ContractDetail = () => {
                 onClick={handleRequestClose}
                 disabled={processingApproval}
                 style={{
-                  padding: "0.7rem 1.2rem",
-                  borderRadius: "10px",
-                  border: "1px solid #16a34a",
-                  backgroundColor: "#fff",
-                  color: "#16a34a",
-                  fontWeight: 600,
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  border: "none",
+                  backgroundColor: "#10b981",
+                  color: "#fff",
+                  fontWeight: 700,
                   cursor: processingApproval ? "not-allowed" : "pointer",
-                  fontSize: "0.9rem",
-                  opacity: processingApproval ? 0.6 : 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
+                  fontSize: "0.88rem",
+                  opacity: processingApproval ? 0.7 : 1,
+                  boxShadow: "0 2px 8px rgba(16, 185, 129, 0.25)",
+                  transition: "all 0.2s ease",
+                  letterSpacing: "0.02em",
                 }}
+                onMouseEnter={e => { if (!processingApproval) { e.target.style.transform = "translateY(-1px)"; e.target.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.35)"; e.target.style.backgroundColor = "#059669"; } }}
+                onMouseLeave={e => { if (!processingApproval) { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = "0 2px 8px rgba(16, 185, 129, 0.25)"; e.target.style.backgroundColor = "#10b981"; } }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>check_circle</span>
                 Kết thúc hợp đồng
               </button>
             )}
@@ -1359,20 +1378,21 @@ const ContractDetail = () => {
               <button
                 onClick={() => setShowTerminateModal(true)}
                 style={{
-                  padding: "0.7rem 1.2rem",
-                  borderRadius: "10px",
-                  border: "1px solid #dc2626",
+                  padding: "10px 20px",
+                  borderRadius: "8px",
+                  border: "1px solid #fecaca",
                   backgroundColor: "#fff",
                   color: "#dc2626",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   cursor: "pointer",
-                  fontSize: "0.9rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
+                  fontSize: "0.88rem",
+                  boxShadow: "0 2px 8px rgba(220, 38, 38, 0.08)",
+                  transition: "all 0.2s ease",
+                  letterSpacing: "0.02em",
                 }}
+                onMouseEnter={e => { e.target.style.transform = "translateY(-1px)"; e.target.style.boxShadow = "0 4px 12px rgba(220, 38, 38, 0.15)"; e.target.style.backgroundColor = "#fef2f2"; }}
+                onMouseLeave={e => { e.target.style.transform = "translateY(0)"; e.target.style.boxShadow = "0 2px 8px rgba(220, 38, 38, 0.08)"; e.target.style.backgroundColor = "#fff"; }}
               >
-                <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>cancel</span>
                 Kết thúc sớm
               </button>
             )}
@@ -1494,7 +1514,6 @@ const ContractDetail = () => {
           border: "1px solid #bfdbfe",
           display: "flex", alignItems: "center", gap: 12,
         }}>
-          <span style={{ fontSize: "1.3rem" }}>⏳</span>
           <div>
             <div style={{ fontWeight: 700, color: "#1d4ed8", fontSize: "0.92rem", marginBottom: 3 }}>
               Đang chờ chủ kho xác nhận thanh toán
