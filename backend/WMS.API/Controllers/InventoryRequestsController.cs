@@ -1,3 +1,4 @@
+using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -130,9 +131,27 @@ public class InventoryRequestsController : ControllerBase
             var result = await _mediator.Send(fullCmd);
             return CreatedAtAction(nameof(GetById), new { id = result.InvReqId }, result);
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (ValidationException ex)
+        {
+            var errors = ex.Errors.Select(e => e.ErrorMessage).ToList();
+            return BadRequest(new { message = string.Join("; ", errors) });
+        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CreateInventoryRequest] Unhandled error: {ex}");
+            return StatusCode(500, new { message = $"Lỗi hệ thống: {ex.Message}" });
         }
     }
 

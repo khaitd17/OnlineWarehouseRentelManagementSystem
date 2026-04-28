@@ -53,6 +53,20 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
             if (warehouse.OwnerId != request.ReviewerId)
                 throw new UnauthorizedException("Only warehouse owner can approve requests");
 
+            // ── Module 2: Approve Request Business Validation ────────────────
+            if (request.MonthlyPayment <= 0)
+                throw new ArgumentException("Tiền thuê hàng tháng phải lớn hơn 0.");
+            if (request.DepositAmount < 0)
+                throw new ArgumentException("Tiền đặt cọc không được âm.");
+            if (request.DurationMonths < 1 || request.DurationMonths > 120)
+                throw new ArgumentException("Thời hạn hợp đồng phải từ 1 đến 120 tháng.");
+            var approveToday = DateTime.UtcNow.Date;
+            if (request.StartDate.Date < approveToday)
+                throw new ArgumentException("Ngày bắt đầu hợp đồng không được là ngày trong quá khứ.");
+            if (!string.IsNullOrEmpty(request.Terms) && request.Terms.Length > 5000)
+                throw new ArgumentException("Nội dung điều khoản không được vượt quá 5000 ký tự.");
+            // ───────────────────────────────────────────────────────────────────
+
             // Check if already approved or rejected
             if (rentalRequest.Status == "APPROVED" || rentalRequest.Status == "REJECTED")
             {

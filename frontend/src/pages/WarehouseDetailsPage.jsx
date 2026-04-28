@@ -259,6 +259,18 @@ const WarehouseDetailsPage = () => {
 
   const handleSubmitRating = async () => {
     if (!myContractForWarehouse) return;
+    // Frontend validation: comment bắt buộc
+    if (!ratingForm.comment || !ratingForm.comment.trim()) {
+      setRatingMsg({ type: 'error', text: 'Vui lòng nhập nhận xét trước khi gửi đánh giá.' });
+      setTimeout(() => setRatingMsg(null), 4000);
+      return;
+    }
+    // Validate max 500 ký tự
+    if (ratingForm.comment.trim().length > 500) {
+      setRatingMsg({ type: 'error', text: 'Nhận xét không được vượt quá 500 ký tự.' });
+      setTimeout(() => setRatingMsg(null), 4000);
+      return;
+    }
     setRatingSubmitting(true);
     try {
       await ratingService.createRating({
@@ -934,16 +946,30 @@ const WarehouseDetailsPage = () => {
 
                       {/* Comment */}
                       <div style={{ marginBottom: '16px' }}>
-                        <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Nhận xét (tùy chọn)</label>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          Nhận xét
+                          <span style={{ color: '#ef4444', fontSize: '0.75rem' }}>*</span>
+                        </label>
                         <textarea
                           value={ratingForm.comment}
                           onChange={e => setRatingForm(f => ({ ...f, comment: e.target.value }))}
                           rows={3}
-                          placeholder="Chia sẻ trải nghiệm thuê kho của bạn..."
-                          style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #e2e8f0', resize: 'vertical', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box', color: '#0f172a', lineHeight: 1.6, fontFamily: 'inherit' }}
+                          maxLength={500}
+                          placeholder="Chia sẻ trải nghiệm thuê kho của bạn... (bắt buộc)"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: `1.5px solid ${ratingMsg?.type === 'error' && (!ratingForm.comment || !ratingForm.comment.trim()) ? '#ef4444' : ratingForm.comment?.length > 480 ? '#f59e0b' : '#e2e8f0'}`, resize: 'vertical', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box', color: '#0f172a', lineHeight: 1.6, fontFamily: 'inherit' }}
                           onFocus={e => { e.target.style.borderColor = '#f59e0b'; e.target.style.boxShadow = '0 0 0 3px rgba(245,158,11,0.12)'; }}
-                          onBlur={e => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
+                          onBlur={e => { e.target.style.borderColor = (!ratingForm.comment || !ratingForm.comment.trim()) ? '#ef4444' : '#e2e8f0'; e.target.style.boxShadow = 'none'; }}
                         />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                          {ratingMsg?.type === 'error' && (!ratingForm.comment || !ratingForm.comment.trim()) && (
+                            <div style={{ fontSize: '0.78rem', color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span>⚠</span> Vui lòng nhập nhận xét trước khi gửi.
+                            </div>
+                          )}
+                          <div style={{ marginLeft: 'auto', fontSize: '0.75rem', color: (ratingForm.comment?.length || 0) > 480 ? '#ef4444' : '#94a3b8', fontWeight: 500 }}>
+                            {ratingForm.comment?.length || 0}/500
+                          </div>
+                        </div>
                       </div>
 
                       {/* Submit button */}

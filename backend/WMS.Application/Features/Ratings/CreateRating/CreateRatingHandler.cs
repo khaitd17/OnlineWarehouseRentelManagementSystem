@@ -19,6 +19,14 @@ public class CreateRatingHandler : IRequestHandler<CreateRatingCommand, int>
         if (request.Star < 1 || request.Star > 5)
             throw new ArgumentException("Số sao phải từ 1 đến 5.");
 
+        // Validate comment is required
+        if (string.IsNullOrWhiteSpace(request.Comment))
+            throw new ArgumentException("Vui lòng nhập nhận xét trước khi gửi đánh giá.");
+
+        // Validate comment max length (Module 4 - Max Length)
+        if (request.Comment!.Trim().Length > 500)
+            throw new ArgumentException("Nhận xét không được vượt quá 500 ký tự.");
+
         // Check duplicate: one rating per contract
         if (request.ContractId.HasValue)
         {
