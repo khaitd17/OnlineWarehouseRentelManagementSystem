@@ -17,13 +17,13 @@ public class GetTasksHandler : IRequestHandler<GetTasksQuery, List<TaskDto>>
 
     public async Task<List<TaskDto>> Handle(GetTasksQuery request, CancellationToken ct)
     {
-        var caller = await _membershipRepo.GetCallerMembershipAsync(request.CallerId, request.WarehouseId, ct)
-            ?? throw new UnauthorizedAccessException("Bạn không có quyền trong kho này.");
-
-        var allowedRoles = new[] { "MANAGER", "OPERATOR" };
-        if (!allowedRoles.Contains(caller.RoleCode))
-            throw new UnauthorizedAccessException("Chỉ Manager/Operator mới có quyền xem task.");
-
+        
+        bool IsManager  = await _membershipRepo.HasRoleAsync(request.CallerId, request.WarehouseId, "MANAGER",  ct);
+        bool IsOperator = await _membershipRepo.HasRoleAsync(request.CallerId, request.WarehouseId, "OPERATOR", ct);
+        if(!IsManager&&!IsOperator)
+        {
+            throw new UnauthorizedAccessException("Bạn không có quyền trong kho này.");
+        }
         return await _repo.GetTasksAsync(request.WarehouseId, request.StartDate, request.EndDate, isManualOnly: false, ct);
     }
 }
