@@ -62,6 +62,7 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
             RentalAreaId = rentalRequest?.RentalAreaId,
             RequestedArea = rentalRequest?.RequestedArea ?? 0,
             IsCustomArea = rentalRequest?.IsCustomArea ?? false,
+            IsOwnerAssigned = rentalRequest?.IsOwnerAssigned ?? false,
             ProposedPositionX = rentalRequest?.ProposedPositionX,
             ProposedPositionY = rentalRequest?.ProposedPositionY,
             ProposedWidth = rentalRequest?.ProposedWidth,

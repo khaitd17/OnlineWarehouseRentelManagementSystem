@@ -31,6 +31,7 @@ public class RentalRequestDto
 
     // Custom Area (renter self-arranged or owner-assigned)
     public bool IsCustomArea { get; set; }
+    public bool IsOwnerAssigned { get; set; }
     public double? ProposedPositionX { get; set; }
     public double? ProposedPositionY { get; set; }
     public double? ProposedWidth { get; set; }

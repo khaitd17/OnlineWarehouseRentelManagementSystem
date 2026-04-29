@@ -61,7 +61,7 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
             if (request.DurationMonths < 1 || request.DurationMonths > 120)
                 throw new ArgumentException("Thời hạn hợp đồng phải từ 1 đến 120 tháng.");
             var approveToday = DateTime.UtcNow.Date;
-            if (request.StartDate.Date < approveToday)
+            if (request.StartDate.HasValue && request.StartDate.Value.Date < approveToday)
                 throw new ArgumentException("Ngày bắt đầu hợp đồng không được là ngày trong quá khứ.");
             if (!string.IsNullOrEmpty(request.Terms) && request.Terms.Length > 5000)
                 throw new ArgumentException("Nội dung điều khoản không được vượt quá 5000 ký tự.");
@@ -77,6 +77,24 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
             if (warehouse.AvailableArea < rentalRequest.RequestedArea)
                 throw new NotEnoughAreaException("Warehouse no longer has enough available area");
 
+            // ── Module 3: Zone Assignment Validation ────────────────────────────
+            // Ensure a valid zone exists before creating a contract.
+            // A zone is considered valid if ANY of the following is true:
+            //   1. Owner is assigning a new custom zone right now (AssignedWidth + AssignedLength).
+            //   2. Renter already proposed a custom zone (ProposedWidth + ProposedLength).
+            //   3. Renter selected a full existing RentalArea (RentalAreaId is set).
+            bool ownerAssigningZone  = request.AssignedWidth.HasValue && request.AssignedLength.HasValue;
+            bool renterProposedZone  = rentalRequest.ProposedWidth.HasValue && rentalRequest.ProposedLength.HasValue;
+            bool renterSelectedArea  = rentalRequest.RentalAreaId.HasValue;
+
+            if (!ownerAssigningZone && !renterProposedZone && !renterSelectedArea)
+            {
+                throw new ArgumentException(
+                    "Vị trí khu vực thuê chưa được xác định. " +
+                    "Vui lòng chỉ định vị trí cho người thuê trên sơ đồ kho trước khi duyệt hợp đồng.");
+            }
+            // ───────────────────────────────────────────────────────────────────
+
             // Approve request
             Console.WriteLine($"[DEBUG] Approving request...");
             rentalRequest.Approve(request.ReviewerId, request.ContractImageUrl);
@@ -85,6 +103,7 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
             if (request.AssignedWidth.HasValue && request.AssignedLength.HasValue)
             {
                 rentalRequest.IsCustomArea = true;
+                rentalRequest.IsOwnerAssigned = true;
                 rentalRequest.ProposedPositionX = request.AssignedPositionX;
                 rentalRequest.ProposedPositionY = request.AssignedPositionY;
                 rentalRequest.ProposedWidth = request.AssignedWidth;

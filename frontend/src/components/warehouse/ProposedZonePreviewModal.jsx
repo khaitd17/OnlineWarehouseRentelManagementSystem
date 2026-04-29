@@ -2,7 +2,7 @@
  * ProposedZonePreviewModal
  *
  * Hiển thị bản đồ kho + vùng đã được chỉ định.
- * - Nếu chủ kho đã sắp xếp (assignedPositionX != null) → hiển thị vùng chủ kho (+ extension nếu có)
+ * - Nếu chủ kho đã sắp xếp (isOwnerAssigned=true) → hiển thị vùng chủ kho (+ extension nếu có)
  * - Nếu chưa có → hiển thị vùng người thuê đề xuất
  */
 import React from 'react';
@@ -32,7 +32,7 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
   // After owner assigns a zone, it is stored in ProposedPosition*/ProposedWidth/Length.
   // HasExtensionZone=true means the owner added an L-shape extension.
   // We always show whatever is in the proposed fields (owner-overwritten or renter-original).
-  const ownerAssigned = !!(request.assignedPositionX != null || (request.hasExtensionZone && !request.isCustomArea));
+  const ownerAssigned = !!request.isOwnerAssigned;
 
   // Primary zone coords (always from proposedPosition* — owner overwrites these on assignment)
   const px = parseFloat(request.proposedPositionX) || 0;
@@ -91,7 +91,7 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
     );
   }
 
-  const titleLabel = ownerAssigned ? 'Khu vực chủ kho đã sắp xếp' : (request.isCustomArea ? 'Khu vực người thuê tự vẽ' : 'Vị trí người thuê đề xuất');
+  const titleLabel = ownerAssigned ? 'Khu vực chủ kho đã sắp xếp' : 'Khu vực người thuê tự vẽ';
   const zoneColor  = ownerAssigned ? COLORS.assigned : COLORS.proposed;
   const zoneLabel  = ownerAssigned ? 'Đã sắp xếp' : (request.isCustomArea ? 'Người thuê tự vẽ' : 'Vị trí đề xuất');
 
