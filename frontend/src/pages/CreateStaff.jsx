@@ -454,7 +454,7 @@ export default function CreateStaff() {
       setWarehouseOptions(options);
       setWarehouseShifts(shifts || []);
     } catch (err) {
-      setError("Không thể tải thông tin kho: " + (err.response?.data?.message || err.message));
+      setError("Không thể tải thông tin kho: " + (err.response?.data?.message || 'Có lỗi xảy ra'));
     } finally { setLoadingWhOptions(false); }
   }, []);
 
@@ -505,7 +505,7 @@ export default function CreateStaff() {
       setSuccess(`Nhân viên đã được gán vào kho thành công! (User ID: ${result.staffUserId})`);
       setTimeout(() => navigate("/list-staff"), 2000);
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError(err.response?.data?.message || 'Có lỗi xảy ra');
     } finally { setSubmitting(false); }
   };
 

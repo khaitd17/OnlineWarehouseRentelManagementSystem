@@ -34,14 +34,34 @@ const WarehouseDetail = () => {
   }, [id]);
 
   const handleInputChange = (e) => {
+    const { name, value } = e.target;
+
+    // Prevent entering more than available volume
+    if (name === "requestedArea") {
+      const numValue = parseFloat(value);
+      if (numValue > warehouse?.availableArea) {
+        setFormData({
+          ...formData,
+          [name]: warehouse.availableArea.toString()
+        });
+        return;
+      }
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
   };
 
   const handleSaveRequest = async (e) => {
     e.preventDefault();
+
+    if (parseFloat(formData.requestedArea) > warehouse?.availableArea) {
+      alert(`Thể tích yêu cầu không được vượt quá thể tích còn trống (${warehouse.availableArea} m³).`);
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -77,7 +97,7 @@ const WarehouseDetail = () => {
       } else if (err.request) {
         message = "Không thể kết nối đến server. Kiểm tra backend đang chạy.";
       } else {
-        message = err.message;
+        message = 'Có lỗi xảy ra';
       }
       alert("Lỗi: " + message);
     } finally {

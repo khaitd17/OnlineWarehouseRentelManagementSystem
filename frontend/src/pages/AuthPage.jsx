@@ -541,7 +541,13 @@ const AuthPage = () => {
         setResendCooldown(60);
         setStep('otp');
       }
-    } catch (err) { setError(err.message || err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.'); }
+    } catch (err) { 
+      if (err.response?.status === 401) {
+        setError('Sai email hoặc mật khẩu.');
+      } else {
+        setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.'); 
+      }
+    }
     finally { setLoading(false); }
   };
 

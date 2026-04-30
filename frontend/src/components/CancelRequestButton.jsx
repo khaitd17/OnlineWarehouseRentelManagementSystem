@@ -97,6 +97,14 @@ const CancelRequestButton = ({
               <textarea
                 value={reason}
                 onChange={e => { setReason(e.target.value); setError(null); }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!isCancelling && reason.trim()) {
+                      handleCancel();
+                    }
+                  }
+                }}
                 placeholder="Nhập lý do hủy yêu cầu..."
                 rows={3}
                 style={{

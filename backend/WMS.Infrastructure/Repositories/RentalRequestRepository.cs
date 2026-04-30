@@ -114,7 +114,9 @@ public class RentalRequestRepository : IRentalRequestRepository
             ExtensionPositionX = request.ExtensionPositionX,
             ExtensionPositionY = request.ExtensionPositionY,
             ExtensionWidth = request.ExtensionWidth,
-            ExtensionLength = request.ExtensionLength
+            ExtensionLength = request.ExtensionLength,
+            // Multi-zone
+            AdditionalZonesJson = request.AdditionalZonesJson
         };
 
         _context.RentalRequests.Add(dbRequest);
@@ -153,6 +155,8 @@ public class RentalRequestRepository : IRentalRequestRepository
         dbRequest.ExtensionPositionY = request.ExtensionPositionY;
         dbRequest.ExtensionWidth = request.ExtensionWidth;
         dbRequest.ExtensionLength = request.ExtensionLength;
+        // Multi-zone
+        dbRequest.AdditionalZonesJson = request.AdditionalZonesJson;
 
         await _context.SaveChangesAsync();
     }
@@ -233,6 +237,10 @@ public class RentalRequestRepository : IRentalRequestRepository
         extensionPositionYProp?.SetValue(domainRequest, dbRequest.ExtensionPositionY);
         extensionWidthProp?.SetValue(domainRequest, dbRequest.ExtensionWidth);
         extensionLengthProp?.SetValue(domainRequest, dbRequest.ExtensionLength);
+
+        // Multi-zone
+        var additionalZonesJsonProp = typeof(DomainRentalRequest).GetProperty("AdditionalZonesJson");
+        additionalZonesJsonProp?.SetValue(domainRequest, dbRequest.AdditionalZonesJson);
 
         return domainRequest;
     }

@@ -360,7 +360,19 @@ const WarehouseDetailsPage = () => {
 
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    
+    // Prevent entering more than available volume
+    if (name === "requestedArea") {
+      const numValue = parseFloat(value);
+      if (numValue > warehouse?.availableArea) {
+        setFormData({ ...formData, [name]: warehouse.availableArea.toString() });
+        setSubmitMsg(null);
+        return;
+      }
+    }
+
+    setFormData({ ...formData, [name]: value });
     setSubmitMsg(null);
   };
 
@@ -410,6 +422,11 @@ const WarehouseDetailsPage = () => {
           payload.extensionPositionY     = ca.extensionZone.posY;
           payload.extensionWidth         = ca.extensionZone.width;
           payload.extensionLength        = ca.extensionZone.length;
+        }
+
+        // Multi-zone: additional non-adjacent rectangles
+        if (ca.additionalZones && ca.additionalZones.length > 0) {
+          payload.additionalZonesJson = JSON.stringify(ca.additionalZones);
         }
       }
 

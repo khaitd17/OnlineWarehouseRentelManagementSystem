@@ -45,6 +45,8 @@ public class RentalContractDto
     public double? ExtensionPositionY { get; set; }
     public double? ExtensionWidth { get; set; }
     public double? ExtensionLength { get; set; }
+    // Multi-zone
+    public string? AdditionalZonesJson { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsCurrentUserRenter { get; set; }
     public bool IsCurrentUserOwner { get; set; }

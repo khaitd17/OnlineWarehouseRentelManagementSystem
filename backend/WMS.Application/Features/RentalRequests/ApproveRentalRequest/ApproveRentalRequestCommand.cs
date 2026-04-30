@@ -27,4 +27,7 @@ public class ApproveRentalRequestCommand : IRequest<int>
     public double? AssignedExtensionPositionY { get; set; }
     public double? AssignedExtensionWidth { get; set; }
     public double? AssignedExtensionLength { get; set; }
+
+    // ── Multi-zone (additional non-adjacent rectangles) ──
+    public string? AssignedAdditionalZonesJson { get; set; }
 }

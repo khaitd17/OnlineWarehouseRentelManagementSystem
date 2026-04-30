@@ -47,9 +47,20 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
   const ew = parseFloat(request.extensionWidth)     || 0;
   const el = parseFloat(request.extensionLength)    || 0;
 
+  // Parse additional zones (multi-zone auto-placement)
+  let additionalZones = [];
+  try {
+    if (request.additionalZonesJson) {
+      additionalZones = JSON.parse(request.additionalZonesJson);
+    }
+  } catch (e) { /* ignore parse error */ }
+
   const primaryM3   = parseFloat((pw * pl * whHeight).toFixed(1));
   const extensionM3 = hasExt ? parseFloat((ew * el * whHeight).toFixed(1)) : 0;
-  const totalM3     = parseFloat((primaryM3 + extensionM3).toFixed(1));
+  const additionalM3 = additionalZones.reduce((sum, z) => sum + (z.w || 0) * (z.l || 0) * whHeight, 0);
+  const totalM3     = parseFloat((primaryM3 + extensionM3 + additionalM3).toFixed(1));
+  const isMultiZone = additionalZones.length > 0;
+  const zoneCount   = 1 + (hasExt ? 1 : 0) + additionalZones.length;
 
   const baseAreaId = request.baseRentalAreaId;
 
@@ -76,13 +87,16 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
   const lPoints = computeLPoints();
 
   const stats = [
-    { label: 'Rộng',         value: `${pw} m` },
-    { label: 'Dài',          value: `${pl} m` },
+    ...(!isMultiZone ? [
+      { label: 'Rộng',         value: `${pw} m` },
+      { label: 'Dài',          value: `${pl} m` },
+    ] : []),
     { label: 'Chiều cao kho',value: `${whHeight.toFixed(1)} m` },
-    hasExt
+    (hasExt || isMultiZone)
       ? { label: 'Thể tích tổng', value: `${totalM3} m³`, highlight: true }
       : { label: ownerAssigned ? 'Thể tích sắp xếp' : 'Thể tích đề xuất', value: `${primaryM3} m³`, highlight: true },
     { label: 'Thể tích yêu cầu', value: `${request.requestedArea} m³` },
+    isMultiZone ? { label: 'Số vùng', value: `${zoneCount} vùng` } : null,
   ].filter(Boolean);
 
   if (hasExt) {
@@ -93,7 +107,7 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
 
   const titleLabel = ownerAssigned ? 'Khu vực chủ kho đã sắp xếp' : 'Khu vực người thuê tự vẽ';
   const zoneColor  = ownerAssigned ? COLORS.assigned : COLORS.proposed;
-  const zoneLabel  = ownerAssigned ? 'Đã sắp xếp' : (request.isCustomArea ? 'Người thuê tự vẽ' : 'Vị trí đề xuất');
+  const zoneLabel  = ownerAssigned ? 'Đã sắp xếp' : isMultiZone ? 'Đã chọn' : (request.isCustomArea ? 'Người thuê tự vẽ' : 'Vị trí đề xuất');
 
   return (
     <div
@@ -171,7 +185,9 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
               {(areas || []).map(a => {
                 const isOcc  = a.isOccupied;
                 const isBase = a.id === baseAreaId;
-                const c = isBase ? COLORS.baseArea : (isOcc ? COLORS.occupied : COLORS.free);
+                // Check if this area is part of additionalZones (auto-selected)
+                const isAutoSelected = additionalZones.some(z => z.areaId && z.areaId === a.id);
+                const c = isAutoSelected ? COLORS.proposed : isBase ? COLORS.baseArea : (isOcc ? COLORS.occupied : COLORS.free);
                 return (
                   <div key={a.id} style={{
                     position: 'absolute',
@@ -179,13 +195,19 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
                     top:  m2px(parseFloat(a.positionY || 0)),
                     width:  m2px(parseFloat(a.width  || 5)),
                     height: m2px(parseFloat(a.length || 5)),
-                    background: c.bg, border: `2px dashed ${c.border}`,
+                    background: c.bg, border: `2px ${isAutoSelected ? 'solid' : 'dashed'} ${c.border}`,
                     borderRadius: 4, boxSizing: 'border-box',
                     display: 'flex', flexDirection: 'column',
                     alignItems: 'center', justifyContent: 'center',
                     overflow: 'hidden',
+                    zIndex: isAutoSelected ? 5 : 1,
                   }}>
-                    {isBase && (
+                    {isAutoSelected && (
+                      <span style={{ fontSize: '0.58rem', background: '#f59e0b', color: '#fff', fontWeight: 700, padding: '1px 5px', borderRadius: 4, marginBottom: 2, whiteSpace: 'nowrap' }}>
+                        Đã chọn
+                      </span>
+                    )}
+                    {isBase && !isAutoSelected && (
                       <span style={{ fontSize: '0.6rem', background: '#10b981', color: '#fff', fontWeight: 700, padding: '1px 5px', borderRadius: 4, marginBottom: 2, whiteSpace: 'nowrap' }}>
                         Cắt từ khu này
                       </span>
@@ -220,7 +242,7 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
                         />
                       </svg>
                       {/* Primary label */}
-                      <div style={{ position: 'absolute', left: m2px(px), top: m2px(py), width: m2px(pw), height: m2px(pl), zIndex: 11, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: px < 1.5 ? 'flex-start' : 'center', justifyContent: 'center' }}>
+                      <div style={{ position: 'absolute', left: m2px(px), top: m2px(py), width: m2px(pw), height: m2px(pl), zIndex: 11, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <div style={{ background: 'rgba(255,255,255,0.95)', padding: '6px 12px', borderRadius: 8, backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
                           <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneColor.text, whiteSpace: 'nowrap', lineHeight: 1.3 }}>{zoneLabel}</span>
                           <span style={{ fontSize: '0.62rem', color: zoneColor.text, opacity: 0.9 }}>{pw}m×{pl}m</span>
@@ -244,7 +266,7 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
                       animation: 'zonePulse 2s ease-in-out infinite',
                       zIndex: 10,
                       display: 'flex', flexDirection: 'column',
-                      alignItems: px < 1.5 ? 'flex-start' : 'center', justifyContent: 'center',
+                      alignItems: 'center', justifyContent: 'center',
                     }}>
                       <div style={{ background: 'rgba(255,255,255,0.95)', padding: '6px 12px', borderRadius: 8, backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneColor.text, whiteSpace: 'nowrap', lineHeight: 1.3 }}>{zoneLabel}</span>
@@ -271,6 +293,27 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
                   )}
                 </>
               )}
+
+              {/* Additional carved zones (non-area rectangles) */}
+              {additionalZones.filter(z => !z.areaId).map((z, i) => (
+                <div key={`addzone-${i}`} style={{
+                  position: 'absolute',
+                  left: m2px(z.x || 0), top: m2px(z.y || 0),
+                  width: m2px(z.w || 0), height: m2px(z.l || 0),
+                  background: COLORS.proposed.bg,
+                  border: `2.5px solid ${COLORS.proposed.border}`,
+                  borderRadius: 6, boxSizing: 'border-box',
+                  animation: 'zonePulse 2s ease-in-out infinite',
+                  zIndex: 10,
+                  display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 800, color: COLORS.proposed.text, whiteSpace: 'nowrap' }}>{z.w}m×{z.l}m</span>
+                    <span style={{ fontSize: '0.58rem', color: COLORS.proposed.text, opacity: 0.8 }}>{(z.w * z.l * whHeight).toFixed(0)} m³</span>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {/* Legend */}
