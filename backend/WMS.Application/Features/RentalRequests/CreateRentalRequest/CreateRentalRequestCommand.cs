@@ -42,4 +42,11 @@ public class CreateRentalRequestCommand : IRequest<int>
     public double? ExtensionWidth { get; set; }
     public double? ExtensionLength { get; set; }
     // ──────────────────────────────────────────────────────────────────────
+
+    // ── Multi-zone (additional non-adjacent rectangles as JSON array) ───
+    /// <summary>
+    /// JSON array of additional zone rectangles. Each element: { "x", "y", "w", "l", "areaId"? }
+    /// </summary>
+    public string? AdditionalZonesJson { get; set; }
+    // ──────────────────────────────────────────────────────────────────────
 }

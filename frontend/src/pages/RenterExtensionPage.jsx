@@ -38,7 +38,7 @@ const RenterExtensionPage = () => {
       setContracts(Array.isArray(contractsData) ? contractsData : []);
       setExtensions(Array.isArray(extensionsData) ? extensionsData : []);
     } catch (error) {
-      message.error('Không thể tải dữ liệu: ' + (error.message || 'Lỗi không xác định'));
+      message.error('Không thể tải dữ liệu: ' + ('Lỗi không xác định'));
     } finally {
       setLoading(false);
       setRefreshing(false);

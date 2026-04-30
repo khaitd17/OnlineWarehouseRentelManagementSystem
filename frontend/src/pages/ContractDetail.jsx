@@ -625,7 +625,7 @@ const ContractDetail = () => {
         };
 
         // Zone này có thuê khu chưa?
-        const hasAssignedZone = warehouseAreas.some(a => a.activeContractId === contract.contractId);
+        const hasAssignedZone = warehouseAreas.some(a => a.activeContractId === contract.contractId) || !!contract.additionalZonesJson;
 
         return (
           <div style={{ backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden',
@@ -774,6 +774,16 @@ const ContractDetail = () => {
                         const isIndependentCustom = contract.isCustomArea && contract.proposedWidth && contract.proposedLength && !contract.baseRentalAreaId;
                         const elements = [];
 
+                        // Parse additionalZonesJson for multi-zone rendering
+                        let additionalZones = [];
+                        try {
+                          if (contract.additionalZonesJson) {
+                            additionalZones = JSON.parse(contract.additionalZonesJson);
+                          }
+                        } catch(e) { /* ignore */ }
+                        const autoSelectedAreaIds = additionalZones.filter(z => z.areaId).map(z => z.areaId);
+                        const carvedZones = additionalZones.filter(z => !z.areaId);
+
                         warehouseAreas.forEach(a => {
                           const aW = a.width || 1;
                           const aL = a.length || 1;
@@ -831,24 +841,17 @@ const ContractDetail = () => {
                                     }
                                   `}</style>
                                 )}
-                                <div style={{ fontWeight: 800, color: aStyle.textColor, fontSize: '0.72rem', lineHeight: 1.1, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {a.name}A
-                                </div>
-                                <div style={{ fontSize: '0.62rem', color: aStyle.textColor, fontWeight: 700, marginTop: 1, display: cpw1A < 30 || cph1A < 30 ? 'none' : 'block' }}>
-                                  {assignedW}m × {assignedL}m
-                                </div>
-                                <div style={{ fontSize: '0.62rem', color: aStyle.textColor, fontWeight: 700, display: cpw1A < 30 || cph1A < 25 ? 'none' : 'block' }}>
-                                  {vol1A} m³
-                                </div>
                                 {isHov1A && (
                                   <div style={{
-                                    position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)',
-                                    fontSize: '0.65rem', fontWeight: 700, color: aStyle.textColor,
-                                    background: aStyle.badgeBg, border: `1px solid ${aStyle.textColor}40`,
-                                    borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
+                                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                    background: 'rgba(255,255,255,0.95)', border: `1px solid ${aStyle.textColor}40`,
+                                    borderRadius: 6, padding: '4px 8px', whiteSpace: 'nowrap',
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none', zIndex: 10,
                                   }}>
-                                    {aStyle.badge}
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: aStyle.textColor }}>{aStyle.badge ? `${aStyle.badge} - ${a.name}A` : `${a.name}A`}</span>
+                                    <span style={{ fontSize: '0.62rem', color: aStyle.textColor }}>{assignedW}m × {assignedL}m</span>
+                                    <span style={{ fontSize: '0.62rem', color: aStyle.textColor }}>{vol1A} m³</span>
                                   </div>
                                 )}
                               </div>
@@ -879,24 +882,17 @@ const ContractDetail = () => {
                                     cursor: 'default',
                                   }}
                                 >
-                                  <div style={{ fontWeight: 800, color: bStyle.textColor, fontSize: '0.72rem', lineHeight: 1.1, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {a.name}B
-                                  </div>
-                                  <div style={{ fontSize: '0.62rem', color: bStyle.textColor, fontWeight: 700, marginTop: 1, display: cpw1B < 30 || cph1B < 30 ? 'none' : 'block' }}>
-                                    {aW}m × {Math.round(remL * 10) / 10}m
-                                  </div>
-                                  <div style={{ fontSize: '0.62rem', color: bStyle.textColor, fontWeight: 700, display: cpw1B < 30 || cph1B < 25 ? 'none' : 'block' }}>
-                                    {vol1B} m³
-                                  </div>
                                   {isHov1B && (
                                     <div style={{
-                                      position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)',
-                                      fontSize: '0.65rem', fontWeight: 700, color: bStyle.textColor,
-                                      background: bStyle.badgeBg, border: `1px solid ${bStyle.textColor}40`,
-                                      borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
+                                      position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                      background: 'rgba(255,255,255,0.95)', border: `1px solid ${bStyle.textColor}40`,
+                                      borderRadius: 6, padding: '4px 8px', whiteSpace: 'nowrap',
                                       boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none', zIndex: 10,
                                     }}>
-                                      {bStyle.badge}
+                                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: bStyle.textColor }}>{bStyle.badge ? `${bStyle.badge} - ${a.name}B` : `${a.name}B`}</span>
+                                      <span style={{ fontSize: '0.62rem', color: bStyle.textColor }}>{aW}m × {Math.round(remL * 10) / 10}m</span>
+                                      <span style={{ fontSize: '0.62rem', color: bStyle.textColor }}>{vol1B} m³</span>
                                     </div>
                                   )}
                                 </div>
@@ -908,8 +904,26 @@ const ContractDetail = () => {
                             const ph = Math.max(aL * scale, 4);
                             const px = aPX * scale;
                             const py = aPY * scale;
-                            const zs = getZoneStyle({ ...a, name: a.name, size: a.size });
-                            const isThisContract = a.activeContractId === contract.contractId;
+                            // Check if this area is auto-selected via additionalZonesJson
+                            const isAutoSelected = autoSelectedAreaIds.includes(a.id) || autoSelectedAreaIds.includes(a.rentalAreaId);
+                            const zs = isAutoSelected
+                              ? (contract.isCurrentUserRenter
+                                ? {
+                                    bg: floorPlanHovered === a.id ? '#fbbf24' : '#fde68a',
+                                    border: '2.5px solid #f59e0b',
+                                    textColor: '#92400e',
+                                    badge: '★ Khu của bạn',
+                                    badgeBg: '#fef3c7',
+                                  }
+                                : {
+                                    bg: floorPlanHovered === a.id ? '#d8b4fe' : '#e9d5ff',
+                                    border: '2.5px solid #a855f7',
+                                    textColor: '#6b21a8',
+                                    badge: '★ Hợp đồng này',
+                                    badgeBg: '#faf5ff',
+                                  })
+                              : getZoneStyle({ ...a, name: a.name, size: a.size });
+                            const isThisContract = a.activeContractId === contract.contractId || isAutoSelected;
                             const isHov = floorPlanHovered === a.id;
                             const isPortrait = pw < 50 && ph >= 60;
 
@@ -929,23 +943,17 @@ const ContractDetail = () => {
                                   cursor: 'default',
                                 }}
                               >
-                                <div style={{ fontWeight: 800, color: zs.textColor, fontSize: '0.75rem', lineHeight: 1.2, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', writingMode: isPortrait ? 'vertical-rl' : 'horizontal-tb', transform: isPortrait ? 'rotate(180deg)' : 'none' }}>
-                                  {isThisContract ? (isPortrait ? '★' : '★ ') : ''}{a.name}
-                                </div>
-                                <div style={{ fontSize: '0.65rem', color: zs.textColor, marginTop: 2, fontWeight: 700, display: pw < 50 || ph < 50 ? 'none' : 'block' }}>{a.size} m³</div>
-                                <div style={{ fontSize: '0.6rem', color: zs.textColor, marginTop: 2, display: pw < 50 || ph < 60 ? 'none' : 'block' }}>{Math.round(pw/scale*10)/10}m × {Math.round(ph/scale*10)/10}m</div>
                                 {isHov && (
                                   <div style={{
-                                    position: 'absolute',
-                                    top: (pw < 60 || ph < 50) ? '50%' : undefined,
-                                    bottom: (pw < 60 || ph < 50) ? undefined : 6,
-                                    left: '50%', transform: (pw < 60 || ph < 50) ? 'translate(-50%, -50%)' : 'translateX(-50%)',
-                                    fontSize: '0.65rem', fontWeight: 700,
-                                    color: zs.textColor, background: zs.badgeBg, border: `1px solid ${zs.textColor}40`,
-                                    borderRadius: 4, padding: '4px 8px', whiteSpace: 'nowrap',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none'
+                                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                    background: 'rgba(255,255,255,0.95)', border: `1px solid ${zs.textColor}40`,
+                                    borderRadius: 6, padding: '4px 8px', whiteSpace: 'nowrap',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none', zIndex: 10,
                                   }}>
-                                    {zs.badge}
+                                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zs.textColor }}>{zs.badge ? `${zs.badge} - ${a.name}` : a.name}</span>
+                                    <span style={{ fontSize: '0.62rem', color: zs.textColor }}>{Math.round(pw/scale*10)/10}m × {Math.round(ph/scale*10)/10}m</span>
+                                    <span style={{ fontSize: '0.62rem', color: zs.textColor }}>{a.size} m³</span>
                                   </div>
                                 )}
                               </div>
@@ -961,7 +969,7 @@ const ContractDetail = () => {
                           const czPl = (contract.proposedLength || 0) * scale;
                           const zoneStyle = contract.isCurrentUserRenter
                             ? { bg: 'rgba(253,230,138,0.75)', border: '#f59e0b', textColor: '#92400e', badge: 'Khu của bạn' }
-                            : { bg: 'rgba(253,230,138,0.75)', border: '#f59e0b', textColor: '#92400e', badge: 'Vị trí được sắp xếp' };
+                            : { bg: 'rgba(233,213,255,0.85)', border: '#a855f7', textColor: '#6b21a8', badge: '★ Hợp đồng này' };
 
                           const hasExtZone = contract.hasExtensionZone && contract.extensionWidth && contract.extensionLength;
                           const ezX = (contract.extensionPositionX || 0) * scale;
@@ -1010,10 +1018,11 @@ const ContractDetail = () => {
                                   </svg>
                                   {/* Primary label */}
                                   {isHovCustom && (
-                                    <div style={{ position: 'absolute', left: czPx, top: czPy, width: czPw, height: czPl, zIndex: 4, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: (czPx / scale) < 1.5 ? 'flex-start' : 'center' }}>
-                                    <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content' }}>
+                                    <div style={{ position: 'absolute', left: czPx, top: czPy, width: czPw, height: czPl, zIndex: 4, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: `1px solid ${zoneStyle.textColor}40`, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content' }}>
                                       <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneStyle.textColor, whiteSpace: 'nowrap' }}>{zoneStyle.badge}</span>
                                       <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{contract.proposedWidth}m × {contract.proposedLength}m</span>
+                                      <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{Math.round((contract.proposedWidth || 0) * (contract.proposedLength || 0) * 5)} m³</span>
                                       </div>
                                     </div>
                                   )}
@@ -1032,12 +1041,13 @@ const ContractDetail = () => {
                                   <div 
                                     onMouseEnter={() => setFloorPlanHovered('custom-zone')}
                                     onMouseLeave={() => setFloorPlanHovered(null)}
-                                    style={{ position: 'absolute', left: czPx, top: czPy, width: Math.max(czPw, 4), height: Math.max(czPl, 4), background: zoneStyle.bg, border: `2.5px solid ${zoneStyle.border}`, borderRadius: 4, zIndex: 3, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: (czPx / scale) < 1.5 ? 'flex-start' : 'center', animation: 'proposedZonePulse 2s ease-in-out infinite', cursor: 'pointer' }}
+                                    style={{ position: 'absolute', left: czPx, top: czPy, width: Math.max(czPw, 4), height: Math.max(czPl, 4), background: zoneStyle.bg, border: `2.5px solid ${zoneStyle.border}`, borderRadius: 4, zIndex: 3, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'proposedZonePulse 2s ease-in-out infinite', cursor: 'pointer' }}
                                   >
                                     {isHovCustom && (
-                                      <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content' }}>
+                                      <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: `1px solid ${zoneStyle.textColor}40`, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content' }}>
                                         <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneStyle.textColor, whiteSpace: 'nowrap' }}>{zoneStyle.badge}</span>
                                         <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{contract.proposedWidth}m × {contract.proposedLength}m</span>
+                                        <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{Math.round((contract.proposedWidth || 0) * (contract.proposedLength || 0) * 5)} m³</span>
                                       </div>
                                     )}
                                   </div>
@@ -1060,6 +1070,59 @@ const ContractDetail = () => {
                             </React.Fragment>
                           );
                         }
+
+                        // ── Render carved zones from additionalZonesJson ──────────────────
+                        carvedZones.forEach((z, i) => {
+                          const zPx = (z.x || 0) * scale;
+                          const zPy = (z.y || 0) * scale;
+                          const zPw = Math.max((z.w || 0) * scale, 4);
+                          const zPl = Math.max((z.l || 0) * scale, 4);
+                          const isHovCarved = floorPlanHovered === `carved-${i}`;
+                          const cStyle = contract.isCurrentUserRenter
+                            ? {
+                                bg: isHovCarved ? '#fbbf24' : 'rgba(253,230,138,0.75)',
+                                border: '#f59e0b',
+                                textColor: '#92400e',
+                                badge: '★ Khu của bạn',
+                              }
+                            : {
+                                bg: isHovCarved ? '#d8b4fe' : 'rgba(233,213,255,0.85)',
+                                border: '#a855f7',
+                                textColor: '#6b21a8',
+                                badge: '★ Hợp đồng này',
+                              };
+                          elements.push(
+                            <div key={`carved-${i}`}
+                              onMouseEnter={() => setFloorPlanHovered(`carved-${i}`)}
+                              onMouseLeave={() => setFloorPlanHovered(null)}
+                              style={{
+                                position: 'absolute', left: zPx, top: zPy, width: zPw, height: zPl,
+                                background: cStyle.bg, border: `2.5px solid ${cStyle.border}`,
+                                borderRadius: 4, boxSizing: 'border-box', zIndex: 3,
+                                display: 'flex', flexDirection: 'column',
+                                justifyContent: 'center', alignItems: 'center',
+                                padding: '2px', textAlign: 'center',
+                                overflow: isHovCarved ? 'visible' : 'hidden',
+                                boxShadow: contract.isCurrentUserRenter ? '0 0 0 2px #fde04780, 0 4px 12px rgba(202,138,4,0.25)' : '0 0 0 2px rgba(168,85,247,0.4), 0 4px 12px rgba(168,85,247,0.25)',
+                                cursor: 'default',
+                              }}
+                            >
+                              {isHovCarved && (
+                                <div style={{
+                                  position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                                  display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                  background: 'rgba(255,255,255,0.95)', border: `1px solid ${cStyle.textColor}40`,
+                                  borderRadius: 6, padding: '4px 8px', whiteSpace: 'nowrap',
+                                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', pointerEvents: 'none', zIndex: 10,
+                                }}>
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: cStyle.textColor }}>{cStyle.badge}</span>
+                                  <span style={{ fontSize: '0.62rem', color: cStyle.textColor }}>{z.w}m × {z.l}m</span>
+                                  <span style={{ fontSize: '0.62rem', color: cStyle.textColor }}>{Math.round(z.w * z.l * 5)} m³</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        });
                         // ─────────────────────────────────────────────────────────────────────────
 
                         return elements;

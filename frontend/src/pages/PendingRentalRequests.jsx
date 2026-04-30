@@ -286,6 +286,11 @@ const PendingRentalRequests = () => {
           payload.assignedExtensionWidth       = assignedZone.extensionZone.width;
           payload.assignedExtensionLength      = assignedZone.extensionZone.length;
         }
+
+        // Multi-zone: additional non-adjacent rectangles
+        if (assignedZone.additionalZones && assignedZone.additionalZones.length > 0) {
+          payload.assignedAdditionalZonesJson = JSON.stringify(assignedZone.additionalZones);
+        }
       }
 
       const result = await rentalService.approveRentalRequest(
@@ -299,7 +304,7 @@ const PendingRentalRequests = () => {
     } catch (err) {
       console.error(err);
       alert(
-        err.response?.data?.error || err.response?.data?.message || err.message || "Có lỗi khi tạo hợp đồng"
+        err.response?.data?.error || err.response?.data?.message || "Có lỗi khi tạo hợp đồng"
       );
     } finally {
       setActionLoading(false);
@@ -1089,9 +1094,16 @@ const PendingRentalRequests = () => {
                             const label = ownerAssigned ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ";
                             const w = req.proposedWidth;
                             const l = req.proposedLength;
+                            let value = `${w}m × ${l}m`;
+                            if (req.additionalZonesJson) {
+                              try {
+                                const addZones = JSON.parse(req.additionalZonesJson);
+                                value = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m³`;
+                              } catch(e) {}
+                            }
                             return {
                               label,
-                              value: `${w}m × ${l}m`,
+                              value,
                               highlighted: ownerAssigned,
                               customZone: !ownerAssigned,
                               ownerZone: ownerAssigned,

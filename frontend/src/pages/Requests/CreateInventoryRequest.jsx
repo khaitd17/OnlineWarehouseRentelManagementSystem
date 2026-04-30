@@ -320,7 +320,7 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
                   <div onMouseDown={()=>onUpdate({ assetId:null, itemName:item.search, isNew:true, showDrop:false, unit:'cái', weightPerUnit:null })}
                     style={{ padding:'9px 14px', cursor:'pointer', fontSize:'0.85rem', color:accent, fontWeight:700, borderTop:'1px solid #f1f5f9' }}
                     onMouseEnter={e=>e.currentTarget.style.background=`${accent}10`} onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
-                    ➕ Tạo mới: "{item.search}"
+                    + Tạo mới: "{item.search}"
                   </div>
                 )}
               </>}
@@ -341,7 +341,7 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
             fontWeight:700 }} />
         {isOverWeight && (
           <div style={{ fontSize:'0.68rem', color:'#dc2626', marginTop:3, fontWeight:600, lineHeight:1.3 }}>
-            🚫 Tải trọng vượt giới hạn sàn kho<br/>
+            Tải trọng vượt giới hạn sàn kho<br/>
             ({itemWeight?.toLocaleString('vi-VN')} kg / tối đa {maxWeightKg?.toLocaleString('vi-VN')} kg)
           </div>
         )}
@@ -362,8 +362,8 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
       </td>
       <td style={{ padding:'6px 8px', width:44 }}>
         <button onClick={onRemove} disabled={!canRemove} title="Xóa dòng"
-          style={{ width:32, height:32, borderRadius:8, border:`1px solid ${canRemove?'#fecaca':'#f1f5f9'}`, background:canRemove?'#fef2f2':'transparent', color:canRemove?'#dc2626':'#e2e8f0', cursor:canRemove?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s' }}>
-          🗑
+          style={{ width:32, height:32, borderRadius:8, border:`1px solid ${canRemove?'#fecaca':'#f1f5f9'}`, background:canRemove?'#fef2f2':'transparent', color:canRemove?'#dc2626':'#e2e8f0', cursor:canRemove?'pointer':'default', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.75rem', fontWeight:700, transition:'all 0.15s' }}>
+          Xóa
         </button>
       </td>
     </tr>
@@ -395,7 +395,6 @@ function OutboundInventoryTable({ inventory, loading, selectedItems, setSelected
 
   if (loading) return (
     <div style={{ padding:'40px 24px', textAlign:'center', color:'#94a3b8' }}>
-      <div style={{ fontSize:'2rem', marginBottom:8 }}>⏳</div>
       <div style={{ fontWeight:600 }}>Đang tải tồn kho...</div>
     </div>
   );
@@ -412,10 +411,9 @@ function OutboundInventoryTable({ inventory, loading, selectedItems, setSelected
       {/* Toolbar */}
       <div style={{ padding:'14px 20px', borderBottom:'1px solid #f1f5f9', display:'flex', alignItems:'center', gap:12 }}>
         <div style={{ position:'relative', flex:1, maxWidth:340 }}>
-          <span style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', fontSize:'0.9rem', color:'#94a3b8' }}>🔍</span>
           <input value={search} onChange={e=>setSearch(e.target.value)}
             placeholder="Tìm kiếm mặt hàng..."
-            style={{ ...inp(), paddingLeft:34, borderRadius:10 }}
+            style={{ ...inp(), borderRadius:10 }}
             onFocus={e=>e.target.style.borderColor=accent}
             onBlur={e=>e.target.style.borderColor='#e2e8f0'}
           />
@@ -480,7 +478,7 @@ function OutboundInventoryTable({ inventory, loading, selectedItems, setSelected
                         color: !isChecked ? '#cbd5e1' : isOver ? '#dc2626' : '#1e293b',
                         background: !isChecked ? '#f8fafc' : '#fff',
                         cursor: isChecked ? 'text' : 'not-allowed' }}/>
-                    {isOver && <div style={{ fontSize:'0.7rem', color:'#dc2626', marginTop:3, fontWeight:600 }}>⚠️ Vượt tồn kho</div>}
+                    {isOver && <div style={{ fontSize:'0.7rem', color:'#dc2626', marginTop:3, fontWeight:600 }}>Vượt tồn kho</div>}
                   </td>
                   {/* Note */}
                   <td style={{ padding:'8px 10px', minWidth:180 }} onClick={e=>e.stopPropagation()}>
@@ -516,13 +514,12 @@ function DocUpload({ docFiles, setDocFiles, uploadedUrls, accent }) {
   return (
     <div>
       <p style={{ fontSize:'0.82rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>
-        📎 Chứng từ đính kèm <span style={{ textTransform:'none', fontWeight:400, color:'#94a3b8' }}>(tuỳ chọn)</span>
+        Chứng từ đính kèm <span style={{ textTransform:'none', fontWeight:400, color:'#94a3b8' }}>(tuỳ chọn)</span>
       </p>
       <div onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)}
         onDrop={e=>{e.preventDefault();setDrag(false);add(e.dataTransfer.files);}}
         onClick={()=>ref.current?.click()}
         style={{ border:`2px dashed ${drag?accent:'#cbd5e1'}`, borderRadius:12, padding:'18px 14px', textAlign:'center', cursor:'pointer', background:drag?`${accent}10`:'#fafbff', transition:'all 0.2s' }}>
-        <div style={{ fontSize:'1.7rem', marginBottom:4 }}>📁</div>
         <p style={{ fontSize:'0.83rem', fontWeight:600, color:'#475569', margin:0 }}>Kéo thả file vào đây</p>
         <p style={{ fontSize:'0.73rem', color:'#94a3b8', marginTop:4 }}>PDF, ảnh, Excel, Word · Tối đa 10 file, mỗi file ≤ 10MB</p>
         <input ref={ref} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.xls,.xlsx,.doc,.docx" style={{ display:'none' }} onChange={e=>add(e.target.files)} />
@@ -531,13 +528,12 @@ function DocUpload({ docFiles, setDocFiles, uploadedUrls, accent }) {
         <div style={{ marginTop:8, display:'flex', flexDirection:'column', gap:5 }}>
           {docFiles.map((f,i)=>(
             <div key={i} style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 12px', borderRadius:8, background:uploadedUrls.length?'#f0fdf4':'#f8fafc', border:`1px solid ${uploadedUrls.length?'#bbf7d0':'#e2e8f0'}` }}>
-              <span style={{ fontSize:'1rem' }}>{fileIcon(f.name)}</span>
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ margin:0, fontSize:'0.78rem', fontWeight:600, color:'#1e293b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</p>
                 <p style={{ margin:0, fontSize:'0.72rem', color:'#94a3b8' }}>{fmtBytes(f.size)}</p>
               </div>
-              {uploadedUrls.length ? <span>✅</span>
-                : <button onClick={e=>{e.stopPropagation();setDocFiles(p=>p.filter((_,j)=>j!==i));}} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:'1rem', lineHeight:1, padding:0 }}>✕</button>}
+              {uploadedUrls.length ? <span style={{ fontSize:'0.75rem', fontWeight:700, color:'#16a34a' }}>Đã tải</span>
+                : <button onClick={e=>{e.stopPropagation();setDocFiles(p=>p.filter((_,j)=>j!==i));}} style={{ background:'none', border:'none', cursor:'pointer', color:'#94a3b8', fontSize:'0.8rem', fontWeight:600, padding:0 }}>Xóa</button>}
             </div>
           ))}
         </div>
@@ -788,7 +784,6 @@ export default function CreateInventoryRequest() {
     <div style={{ fontFamily:'Inter, sans-serif', maxWidth:920, margin:'0 auto', paddingBottom:60 }}>
       {hasDraft && (
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 18px', borderRadius:12, background:'#fffbeb', border:'1.5px solid #fde68a', marginBottom:18 }}>
-          <span style={{ fontSize:'1.1rem' }}>📝</span>
           <span style={{ flex:1, fontSize:'0.87rem', color:'#92400e', fontWeight:600 }}>Bạn có một bản nháp chưa hoàn thành. Muốn tiếp tục?</span>
           <button onClick={loadDraft} style={{ padding:'6px 14px', borderRadius:8, border:'none', background:'#f59e0b', color:'#fff', fontWeight:700, fontSize:'0.82rem', cursor:'pointer' }}>Phục hồi nháp</button>
           <button onClick={clearDraft} style={{ padding:'6px 12px', borderRadius:8, border:'1px solid #fde68a', background:'#fff', color:'#92400e', fontWeight:600, fontSize:'0.82rem', cursor:'pointer' }}>Bỏ qua</button>
@@ -817,7 +812,7 @@ export default function CreateInventoryRequest() {
         </div>
       </div>
 
-      {error&&<div style={{ padding:'11px 16px', borderRadius:10, marginBottom:18, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.87rem', fontWeight:600 }}>⚠️ {error}</div>}
+      {error&&<div style={{ padding:'11px 16px', borderRadius:10, marginBottom:18, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.87rem', fontWeight:600 }}>{error}</div>}
 
       {step===1&&(
         <div style={{ ...card, padding:32 }}>
@@ -1013,7 +1008,6 @@ export default function CreateInventoryRequest() {
               </div>
               {scheduledDate && (
                 <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:10, background:`${accent}10`, border:`1px solid ${accent}25` }}>
-                  <span style={{ fontSize:'1rem' }}>🗓</span>
                   <span style={{ fontSize:'0.83rem', fontWeight:600, color:accent }}>
                     {new Date(scheduledDate).toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' })}
                   </span>
@@ -1040,12 +1034,12 @@ export default function CreateInventoryRequest() {
               style={{ padding:'11px 20px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', color:'#64748b', fontWeight:600, fontSize:'0.88rem', cursor:'pointer', transition:'all 0.15s' }}
               onMouseEnter={e=>e.currentTarget.style.background='#f8fafc'}
               onMouseLeave={e=>e.currentTarget.style.background='#fff'}>
-              ← Quay lại
+              Quay lại
             </button>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               {draftSaved && (
-                <span style={{ fontSize:'0.8rem', color:'#16a34a', fontWeight:600, background:'#dcfce7', border:'1px solid #bbf7d0', borderRadius:8, padding:'5px 12px', display:'flex', alignItems:'center', gap:5 }}>
-                  ✔ Đã lưu nháp
+                <span style={{ fontSize:'0.8rem', color:'#16a34a', fontWeight:600, background:'#dcfce7', border:'1px solid #bbf7d0', borderRadius:8, padding:'5px 12px' }}>
+                  Đã lưu nháp
                 </span>
               )}
               <span style={{ fontSize:'0.82rem', color:'#94a3b8' }}>
@@ -1060,7 +1054,7 @@ export default function CreateInventoryRequest() {
               <button onClick={handleSubmit} disabled={submitting||uploadingDocs}
                 style={{ padding:'12px 28px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.95rem', cursor: submitting?'wait':'pointer', color:'#fff', background:`linear-gradient(135deg,${accent},${accent}bb)`, boxShadow:`0 4px 16px ${accent}40`, opacity:submitting?0.75:1, transition:'all 0.2s', display:'flex', alignItems:'center', gap:8 }}>
                 {(submitting||uploadingDocs)&&<span style={{ display:'inline-block', width:15, height:15, border:'2px solid rgba(255,255,255,0.35)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite' }}/>}
-                {uploadingDocs?'Đang upload...':submitting?'Đang gửi...':'Gửi yêu cầu ✓'}
+                {uploadingDocs?'Đang upload...':submitting?'Đang gửi...':'Gửi yêu cầu'}
               </button>
             </div>
           </div>

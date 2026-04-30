@@ -72,7 +72,7 @@ const ContractPaymentSelection = () => {
         setLoading(false);
       } catch (err) {
         console.error("Error loading contract:", err);
-        setError(err.response?.data?.message || err.message || "Không thể tải thông tin hợp đồng");
+        setError(err.response?.data?.message || "Không thể tải thông tin hợp đồng");
         setLoading(false);
       }
     };

@@ -92,7 +92,7 @@ const ContractSigningWrapper = ({ userRole }) => {
         setSigned(true);
       }
     } catch (error) {
-      message.error('Không thể tải dữ liệu hợp đồng: ' + error.message);
+      message.error('Không thể tải dữ liệu hợp đồng: ' + 'Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }
@@ -136,7 +136,7 @@ const ContractSigningWrapper = ({ userRole }) => {
         message.error(response.message || 'Không thể gửi OTP');
       }
     } catch (error) {
-      message.error('Lỗi: ' + (error.response?.data?.message || error.message));
+      message.error('Lỗi: ' + (error.response?.data?.message || 'Có lỗi xảy ra'));
     } finally {
       setSendingOtp(false);
     }
@@ -166,7 +166,7 @@ const ContractSigningWrapper = ({ userRole }) => {
         message.error(response.message || 'Mã OTP không đúng');
       }
     } catch (error) {
-      message.error('Lỗi: ' + (error.response?.data?.message || error.message));
+      message.error('Lỗi: ' + (error.response?.data?.message || 'Có lỗi xảy ra'));
     } finally {
       setSigning(false);
     }

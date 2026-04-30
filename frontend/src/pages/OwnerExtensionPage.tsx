@@ -79,7 +79,7 @@ const OwnerExtensionPage: React.FC = () => {
       setPendingExtensions(pendingData);
       setPendingSignatureExtensions(signatureData);
     } catch (error: any) {
-      message.error('Kh├┤ng thß╗â tß║úi dß╗» liß╗çu: ' + (error.message || 'Lß╗ùi kh├┤ng x├íc ─æß╗ïnh'));
+      message.error('Kh├┤ng thß╗â tß║úi dß╗» liß╗çu: ' + ('Lß╗ùi kh├┤ng x├íc ─æß╗ïnh'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -109,7 +109,7 @@ const OwnerExtensionPage: React.FC = () => {
       loadData(true);
       setReviewModalVisible(false);
     } catch (error: any) {
-      message.error('Lß╗ùi: ' + (error.response?.data?.message || error.message));
+      message.error('Lß╗ùi: ' + (error.response?.data?.message || 'Có lỗi xảy ra'));
     } finally {
       setActionLoading(false);
     }
@@ -124,7 +124,7 @@ const OwnerExtensionPage: React.FC = () => {
       loadData(true);
       setReviewModalVisible(false);
     } catch (error: any) {
-      message.error('Lß╗ùi: ' + (error.response?.data?.message || error.message));
+      message.error('Lß╗ùi: ' + (error.response?.data?.message || 'Có lỗi xảy ra'));
     } finally {
       setActionLoading(false);
     }

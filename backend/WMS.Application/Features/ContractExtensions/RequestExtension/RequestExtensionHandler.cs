@@ -39,7 +39,7 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
                     return new RequestExtensionResponse
                     {
                         Success = false,
-                        Message = "Original contract not found"
+                        Message = "Không tìm thấy hợp đồng gốc"
                     };
                 }
 
@@ -49,7 +49,7 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
                     return new RequestExtensionResponse
                     {
                         Success = false,
-                        Message = $"Cannot extend contract with status: {originalContract.Status}"
+                        Message = $"Không thể gia hạn hợp đồng có trạng thái: {originalContract.Status}"
                     };
                 }
 
@@ -60,7 +60,7 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
                     return new RequestExtensionResponse
                     {
                         Success = false,
-                        Message = "There is already a pending extension request for this contract"
+                        Message = "Đã có yêu cầu gia hạn cho hợp đồng này"
                     };
                 }
 
@@ -70,7 +70,7 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
                     return new RequestExtensionResponse
                     {
                         Success = false,
-                        Message = "Only the contract renter can request extension"
+                        Message = "Chỉ người thuê mới có thể yêu cầu gia hạn hợp đồng"
                     };
                 }
 
@@ -118,10 +118,10 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
                 return new RequestExtensionResponse
                 {
                     Success = true,
-                    Message = "Contract extension request submitted successfully",
+                    Message = "Yêu cầu gia hạn hợp đồng đã được gửi thành công",
                     ExtensionId = savedExtension.ExtensionId,
                     Status = savedExtension.Status,
-                    NextSteps = "Your extension request has been submitted and is pending review by the warehouse owner."
+                    NextSteps = "Yêu cầu gia hạn của bạn đã được gửi và đang chờ chủ kho xem xét."
                 };
             }
             catch (Exception ex)
@@ -129,7 +129,7 @@ namespace WMS.Application.Features.ContractExtensions.RequestExtension
                 return new RequestExtensionResponse
                 {
                     Success = false,
-                    Message = $"Error submitting extension request: {ex.Message}"
+                    Message = $"Lỗi khi gửi yêu cầu gia hạn: {ex.Message}"
                 };
             }
         }

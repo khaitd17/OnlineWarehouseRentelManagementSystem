@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
@@ -65,7 +66,9 @@ public class RentalAreaRepository : IRentalAreaRepository
                     r.ExtensionPositionX,
                     r.ExtensionPositionY,
                     r.ExtensionWidth,
-                    r.ExtensionLength
+                    r.ExtensionLength,
+                    // Multi-zone
+                    r.AdditionalZonesJson
                 })
             .ToListAsync(cancellationToken);
 
@@ -78,6 +81,45 @@ public class RentalAreaRepository : IRentalAreaRepository
             .GroupBy(x => x.RentalAreaId!.Value)
             .ToDictionary(g => g.Key, g => g.First().ContractId);
 
+        // 1b. Auto-selected areas from additionalZonesJson
+        // Format: [{"x":0,"y":10,"w":10,"l":10,"areaId":19}, ...]
+        // Items with areaId > 0 are auto-selected existing areas
+        var autoSelectedMap = new Dictionary<int, int>(); // areaId -> contractId
+        foreach (var occ in occupied)
+        {
+            if (string.IsNullOrEmpty(occ.AdditionalZonesJson)) continue;
+            try
+            {
+                using var doc = JsonDocument.Parse(occ.AdditionalZonesJson);
+                var root = doc.RootElement;
+
+                // Format 1: Direct array of zone objects
+                if (root.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var zoneEl in root.EnumerateArray())
+                    {
+                        if (zoneEl.TryGetProperty("areaId", out var aidEl) && aidEl.TryGetInt32(out var areaId) && areaId != 0)
+                        {
+                            if (!autoSelectedMap.ContainsKey(areaId))
+                                autoSelectedMap[areaId] = occ.ContractId;
+                        }
+                    }
+                }
+                // Format 2: Object with autoSelectedAreaIds array (legacy)
+                else if (root.ValueKind == JsonValueKind.Object &&
+                         root.TryGetProperty("autoSelectedAreaIds", out var idsEl) &&
+                         idsEl.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var idEl in idsEl.EnumerateArray())
+                    {
+                        if (idEl.TryGetInt32(out var areaId) && areaId != 0 && !autoSelectedMap.ContainsKey(areaId))
+                            autoSelectedMap[areaId] = occ.ContractId;
+                    }
+                }
+            }
+            catch { /* malformed JSON – skip */ }
+        }
+
         // 2. Custom mapped areas (splits)
         var customSplits = occupied
             .Where(x => x.IsCustomArea && x.BaseRentalAreaId != null)
@@ -89,6 +131,15 @@ public class RentalAreaRepository : IRentalAreaRepository
             {
                 area.IsOccupied = true;
                 area.ActiveContractId = cid;
+                resultAreas.Add(area);
+                continue;
+            }
+
+            // Check if this area is auto-selected via additionalZonesJson
+            if (autoSelectedMap.TryGetValue(area.Id, out var autoContractId))
+            {
+                area.IsOccupied = true;
+                area.ActiveContractId = autoContractId;
                 resultAreas.Add(area);
                 continue;
             }
@@ -159,6 +210,12 @@ public class RentalAreaRepository : IRentalAreaRepository
 
                 if ((areaB.Size) > 0)
                 {
+                    // Check if Khu B is also auto-selected via additionalZonesJson
+                    if (autoSelectedMap.TryGetValue(areaB.Id, out var areaBContractId))
+                    {
+                        areaB.IsOccupied = true;
+                        areaB.ActiveContractId = areaBContractId;
+                    }
                     resultAreas.Add(areaB);
                 }
                 continue;

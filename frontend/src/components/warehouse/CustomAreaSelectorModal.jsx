@@ -13,7 +13,7 @@
  *  requestedM3    {number}  — thể tích người thuê cần
  *  onConfirm      {fn({ posX, posY, width, length, baseAreaId })}
  */
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 
 /* ─── constants ─────────────────────────────────────────────────────────── */
 const SCALE_PX_PER_M = 24;   // 1 metre = 24 px trong canvas
@@ -67,6 +67,13 @@ export default function CustomAreaSelectorModal({
   /* auto-compute length so that w × l == neededM2 */
   const autoLength = (w) => neededM2 ? clamp(snap(neededM2 / w), MIN_ZONE_M, whL) : null;
 
+  /* ── Unzoned area stats ─────────────────────────────────────── */
+  const totalRentalM2 = areas.reduce((s, a) =>
+    s + parseFloat(a.width || 0) * parseFloat(a.length || 0), 0);
+  const unzonedM2 = Math.max(0, parseFloat((whW * whL - totalRentalM2).toFixed(1)));
+  const freeRentalCount = areas.filter(a => !a.isOccupied).length;
+  const unzonedM3 = parseFloat((unzonedM2 * whHeight).toFixed(1));
+
   /* canvas pixel size */
   const canvasW = m2px(whW);
   const canvasH = m2px(whL);
@@ -99,6 +106,18 @@ export default function CustomAreaSelectorModal({
   /* whenever the primary zone changes, clear any extension (user must re-run auto-adjust) */
   const clearExtension = () => setZoneExtension(null);
 
+  /* ── Multi-zone: additional selected zones (Greedy Fill) ──── */
+  const [selectedZones, setSelectedZones] = useState([]);
+  const [autoSelectedAreaIds, setAutoSelectedAreaIds] = useState([]);
+
+
+  /* Auto-switch to draw mode if no free rental areas */
+  useEffect(() => {
+    if (freeRentalCount === 0 && mode === 'choose') {
+      setMode('draw');
+    }
+  }, [freeRentalCount]);
+
 
   /* drag/resize state */
   const dragRef  = useRef(null); // { type: 'move'|'se', startX, startY, startZone }
@@ -120,6 +139,8 @@ export default function CustomAreaSelectorModal({
     if (a.isOccupied) return;
     setSelectedAreaId(a.id);
     setCustomZone(null);
+    setAutoSelectedAreaIds([]);
+    setSelectedZones([]);
     const aW = parseFloat(a.width  || 5);
     const aL = parseFloat(a.length || 5);
     if (neededM2) {
@@ -363,8 +384,15 @@ export default function CustomAreaSelectorModal({
   }, [editMouseMove]);
 
   /* ── Confirm ────────────────────────────────────────────────── */
-  const activeZone = mode === 'choose' ? editZone : customZone;
+  const activeZone = mode === 'choose' ? editZone : (mode === 'multi' ? null : customZone);
   const activeM3   = activeZone ? toM3(activeZone.w, activeZone.l) : 0;
+
+  // Total multi-zone volume (carved zones + auto-selected existing areas)
+  const multiZoneM3 = selectedZones.reduce((sum, z) => sum + toM3(z.w, z.l), 0);
+  const autoSelectedM3 = areas
+    .filter(a => autoSelectedAreaIds.includes(a.id))
+    .reduce((sum, a) => sum + toM3(parseFloat(a.width || 0), parseFloat(a.length || 0)), 0);
+  const totalSelectedM3 = activeM3 + multiZoneM3 + autoSelectedM3;
 
   // Free areas the zone overlaps (excluding the selected base area)
   const overlappingAreas = getOverlappingFreeAreas(
@@ -379,19 +407,179 @@ export default function CustomAreaSelectorModal({
     : getOverlappingOccupiedAreas(editZone, 0);
   const hasOccupiedConflict = occupiedOverlaps.length > 0;
 
+  /* ── Auto-place: greedy fill multiple free areas ─────────── */
+  const handleAutoPlaceMulti = () => {
+    if (!requestedM3 || requestedM3 <= 0) return;
+    let remaining = requestedM3;
+    const pickedAreaIds = [];
+    const carvedZones = [];
+
+    // Step 1: Grab free predefined RentalAreas (sorted largest first)
+    const freeAreas = areas
+      .filter(a => !a.isOccupied)
+      .map(a => ({
+        id: a.id,
+        x: parseFloat(a.positionX ?? a.PositionX ?? 0),
+        y: parseFloat(a.positionY ?? a.PositionY ?? 0),
+        w: parseFloat(a.width ?? a.Width ?? 0),
+        l: parseFloat(a.length ?? a.Length ?? 0),
+      }))
+      .filter(a => a.w > 0 && a.l > 0)
+      .sort((a, b) => (b.w * b.l) - (a.w * a.l));
+
+    for (const fa of freeAreas) {
+      if (remaining <= 0) break;
+      const vol = toM3(fa.w, fa.l);
+      pickedAreaIds.push(fa.id);
+      remaining -= vol;
+    }
+
+    // Step 2: If still not enough, carve from unzoned space
+    if (remaining > 0 && unzonedM2 > 0) {
+      const neededFloorM2 = remaining / whHeight;
+      const STEP = 0.5;
+      const snapUp = (m) => Math.ceil(m * 2) / 2;
+      const rawSide = Math.sqrt(neededFloorM2);
+
+      const allOccupied = areas.map(a => ({
+        x: parseFloat(a.positionX ?? a.PositionX ?? 0),
+        y: parseFloat(a.positionY ?? a.PositionY ?? 0),
+        w: parseFloat(a.width ?? a.Width ?? 0),
+        l: parseFloat(a.length ?? a.Length ?? 0),
+      }));
+      const overlapsAny = (cand) => {
+        for (const occ of allOccupied) {
+          if (cand.x < occ.x + occ.w && cand.x + cand.w > occ.x &&
+              cand.y < occ.y + occ.l && cand.y + cand.l > occ.y) return true;
+        }
+        for (const z of carvedZones) {
+          if (cand.x < z.x + z.w && cand.x + cand.w > z.x &&
+              cand.y < z.y + z.l && cand.y + cand.l > z.y) return true;
+        }
+        return false;
+      };
+
+      const wMin = clamp(snapUp(rawSide * 0.5), MIN_ZONE_M, whW);
+      let found = null;
+      for (let w = wMin; w <= whW + 0.01 && !found; w = parseFloat((w + STEP).toFixed(2))) {
+        const lRaw = neededFloorM2 / w;
+        const l = clamp(snapUp(lRaw), MIN_ZONE_M, whL);
+        if (l > whL || w > whW) continue;
+        if (w * l * whHeight < remaining * 0.99) continue;
+        for (let y = 0; y <= whL - l + 0.01 && !found; y = parseFloat((y + STEP).toFixed(1))) {
+          for (let x = 0; x <= whW - w + 0.01 && !found; x = parseFloat((x + STEP).toFixed(1))) {
+            const cand = { x: parseFloat(x.toFixed(1)), y: parseFloat(y.toFixed(1)), w, l };
+            if (!overlapsAny(cand)) found = cand;
+          }
+        }
+      }
+
+      if (found) {
+        carvedZones.push(found);
+        remaining -= toM3(found.w, found.l);
+      }
+    }
+
+    if (pickedAreaIds.length === 0 && carvedZones.length === 0) {
+      alert('Không tìm thấy không gian trống phù hợp trong kho.');
+      return;
+    }
+
+    // Set state
+    setAutoSelectedAreaIds(pickedAreaIds);
+    setMode('draw');
+    setSelectedAreaId(null);
+    setEditZone(null);
+    clearExtension();
+
+    if (carvedZones.length > 0) {
+      setCustomZone(carvedZones[0]);
+      setSelectedZones(carvedZones.slice(1));
+    } else {
+      setCustomZone(null);
+      setSelectedZones([]);
+    }
+  };
+
+  /* ── Single-zone auto-place (fallback) ──────────────────── */
+  const handleAutoPlace = () => {
+    if (!neededM2 || neededM2 <= 0) return;
+    const STEP = 0.5;
+    const snapUp = (m) => Math.ceil(m * 2) / 2;
+    const rawSide = Math.sqrt(neededM2);
+    const tryCandidates = (wStart, wEnd, wStep) => {
+      for (let w = wStart; w <= wEnd + 0.01; w = parseFloat((w + wStep).toFixed(2))) {
+        const lRaw = neededM2 / w;
+        const l = clamp(snapUp(lRaw), MIN_ZONE_M, whL);
+        if (l > whL || w > whW) continue;
+        if (w * l * whHeight < requestedM3 * 0.99) continue;
+        for (let y = 0; y <= whL - l + 0.01; y = parseFloat((y + STEP).toFixed(1))) {
+          for (let x = 0; x <= whW - w + 0.01; x = parseFloat((x + STEP).toFixed(1))) {
+            const cand = { x: parseFloat(x.toFixed(1)), y: parseFloat(y.toFixed(1)), w, l };
+            if (!overlapsOccupied(cand)) return cand;
+          }
+        }
+      }
+      return null;
+    };
+    const wMin = clamp(snapUp(rawSide * 0.5), MIN_ZONE_M, whW);
+    const found = tryCandidates(wMin, whW, STEP);
+    if (found) {
+      setMode('draw');
+      setCustomZone(found);
+      setSelectedAreaId(null);
+      setEditZone(null);
+      clearExtension();
+      setSelectedZones([]);
+      setAutoSelectedAreaIds([]);
+    } else {
+      // Single block failed → try multi-zone
+      handleAutoPlaceMulti();
+    }
+  };
+
   const handleConfirm = () => {
-    if (!activeZone || hasOccupiedConflict) return;
+    const isMulti = selectedZones.length > 0 || autoSelectedAreaIds.length > 0;
+    if (!activeZone && !isMulti) return;
+    if (hasOccupiedConflict) return;
+
+    // Build additionalZones: auto-selected areas + carved zones
+    const allAdditionalZones = [];
+    // Add auto-selected existing areas
+    for (const aId of autoSelectedAreaIds) {
+      const area = areas.find(a => a.id === aId);
+      if (area) {
+        allAdditionalZones.push({
+          x: parseFloat(area.positionX || 0), y: parseFloat(area.positionY || 0),
+          w: parseFloat(area.width || 0), l: parseFloat(area.length || 0),
+          areaId: aId,
+        });
+      }
+    }
+    // Add carved zones
+    for (const z of selectedZones) {
+      allAdditionalZones.push({ x: z.x, y: z.y, w: z.w, l: z.l, areaId: null });
+    }
+
+    // If no activeZone but auto-selected areas exist, use first auto-selected as primary
+    let primary = activeZone;
+    let additionals = allAdditionalZones;
+    if (!primary && allAdditionalZones.length > 0) {
+      primary = allAdditionalZones[0];
+      additionals = allAdditionalZones.slice(1);
+    }
+
     onConfirm({
-      posX              : activeZone.x,
-      posY              : activeZone.y,
-      width             : activeZone.w,
-      length            : activeZone.l,
-      baseAreaId        : mode === 'choose' ? selectedAreaId : null,
+      posX              : primary?.x ?? 0,
+      posY              : primary?.y ?? 0,
+      width             : primary?.w ?? 0,
+      length            : primary?.l ?? 0,
+      baseAreaId        : mode === 'choose' ? selectedAreaId : (primary?.areaId ?? null),
       overlappingAreaIds: overlappingAreas.map(a => a.id),
-      // L-shaped extension zone (draw mode only)
       extensionZone: (mode === 'draw' && zoneExtension)
         ? { posX: zoneExtension.x, posY: zoneExtension.y, width: zoneExtension.w, length: zoneExtension.l }
         : null,
+      additionalZones: additionals.length > 0 ? additionals : null,
     });
   };
 
@@ -426,11 +614,13 @@ export default function CustomAreaSelectorModal({
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
               {isOwnerMode ? 'Khách yêu cầu' : 'Bạn cần thuê'} <strong style={{ color: '#0ea5e9' }}>{requestedM3} m³</strong>.
-              {activeZone ? (
+              {totalSelectedM3 > 0 ? (
                 <>
                   {' '}Vùng đang chọn:{' '}
-                  <strong style={{ color: activeM3 >= requestedM3 * 0.9 ? '#10b981' : '#f59e0b' }}>
-                    {activeZone.w}m × {activeZone.l}m = {activeM3} m³
+                  <strong style={{ color: totalSelectedM3 >= requestedM3 * 0.9 ? '#10b981' : '#f59e0b' }}>
+                    {(selectedZones.length > 0 || autoSelectedAreaIds.length > 0)
+                      ? `Tổng ${totalSelectedM3.toFixed(1)} m³`
+                      : `${activeZone.w}m × ${activeZone.l}m = ${activeM3} m³`}
                   </strong>
                 </>
               ) : ' Chọn hoặc vẽ vùng trên bản đồ.'}
@@ -444,25 +634,51 @@ export default function CustomAreaSelectorModal({
         </div>
 
         {/* ── Mode toggle ── */}
-        <div style={{ padding: '0.8rem 1.8rem 0', display: 'flex', gap: 10 }}>
+        <div style={{ padding: '0.8rem 1.8rem 0', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           {[
-            { key: 'choose', label: 'Chọn khu có sẵn' },
-            { key: 'draw',   label: 'Vẽ khu tự do'    },
+            { key: 'choose', label: 'Chọn khu có sẵn', disabled: freeRentalCount === 0 },
+            { key: 'draw',   label: 'Vẽ khu tự do', badge: freeRentalCount === 0 ? 'Khuyến nghị' : null },
           ].map(tab => (
             <button
               key={tab.key}
-              onClick={() => { setMode(tab.key); setSelectedAreaId(null); setEditZone(null); setCustomZone(null); }}
+              disabled={tab.disabled}
+              onClick={() => { if (!tab.disabled) { setMode(tab.key); setSelectedAreaId(null); setEditZone(null); setCustomZone(null); setSelectedZones([]); }}}
               style={{
                 padding: '7px 18px', borderRadius: 10, fontWeight: 700,
-                fontSize: '0.85rem', cursor: 'pointer', border: 'none',
-                background: mode === tab.key ? '#0ea5e9' : '#f1f5f9',
-                color: mode === tab.key ? '#fff' : '#475569',
-                boxShadow: mode === tab.key ? '0 2px 8px rgba(14,165,233,0.3)' : 'none',
-                transition: 'all 0.15s',
+                fontSize: '0.85rem', cursor: tab.disabled ? 'not-allowed' : 'pointer', border: 'none',
+                background: tab.disabled ? '#f1f5f9' : (mode === tab.key ? '#0ea5e9' : '#f1f5f9'),
+                color: tab.disabled ? '#cbd5e1' : (mode === tab.key ? '#fff' : '#475569'),
+                boxShadow: mode === tab.key && !tab.disabled ? '0 2px 8px rgba(14,165,233,0.3)' : 'none',
+                transition: 'all 0.15s', position: 'relative',
+                opacity: tab.disabled ? 0.6 : 1,
               }}
-            >{tab.label}</button>
+            >
+              {tab.label}
+              {tab.badge && <span style={{ marginLeft: 6, fontSize: '0.65rem', background: '#10b981', color: '#fff', padding: '1px 6px', borderRadius: 6, fontWeight: 800 }}>{tab.badge}</span>}
+            </button>
           ))}
+          {/* Auto-place button */}
+          <button
+            onClick={handleAutoPlace}
+            style={{
+              marginLeft: 'auto', padding: '7px 16px', borderRadius: 10, fontWeight: 700,
+              fontSize: '0.82rem', cursor: 'pointer', border: 'none',
+              background: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', color: '#fff',
+              boxShadow: '0 2px 10px rgba(139,92,246,0.35)', transition: 'all 0.15s',
+            }}
+          >
+            Tự động đặt {requestedM3}m³
+          </button>
         </div>
+        {/* Unzoned area info bar */}
+        {unzonedM2 > 0 && (
+          <div style={{ padding: '0 1.8rem', marginTop: 6 }}>
+            <div style={{ fontSize: '0.75rem', color: '#8b5cf6', background: '#f5f3ff', padding: '5px 12px', borderRadius: 8, fontWeight: 600, border: '1px solid #e9d5ff' }}>
+              Diện tích chưa chia ô: {unzonedM2} m² ({unzonedM3} m³)
+              {(selectedZones.length > 0 || autoSelectedAreaIds.length > 0) && <span style={{ marginLeft: 8, color: '#059669', fontWeight: 700 }}>| Tổng: {totalSelectedM3.toFixed(1)} m³ ({autoSelectedAreaIds.length + (customZone ? 1 : 0) + selectedZones.length} vùng)</span>}
+            </div>
+          </div>
+        )}
 
         {/* ── Body: canvas + sidebar ── */}
         <div style={{ display: 'flex', gap: 0, padding: '1rem 1.8rem 1.4rem', flex: 1 }}>
@@ -470,8 +686,7 @@ export default function CustomAreaSelectorModal({
           {/* ── Scrollable canvas wrapper ── */}
           <div style={{ flex: 1, overflowX: 'auto', paddingRight: 16 }}>
             <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '0 0 8px', fontWeight: 600 }}>
-              Kho: {whW}m × {whL}m &nbsp;|&nbsp; Tỉ lệ: 1m = {SCALE_PX_PER_M}px
-              {mode === 'draw' && <span style={{ color: '#f59e0b' }}> &nbsp;— Kéo để vẽ, kéo góc ↘ để resize</span>}
+              Kho: {whW}m × {whL}m
             </p>
 
             {/* Canvas */}
@@ -501,7 +716,9 @@ export default function CustomAreaSelectorModal({
                 const isOcc  = a.isOccupied;
                 const isSel  = a.id === selectedAreaId;
                 const isOver = !isSel && overlappingAreas.some(o => o.id === a.id);
-                const c = isSel  ? COLORS.selected
+                const isAutoSelected = autoSelectedAreaIds.includes(a.id);
+                const c = isAutoSelected ? { bg: 'rgba(253,230,138,0.85)', border: '#f59e0b', text: '#92400e' }
+                        : isSel  ? COLORS.selected
                         : isOver ? { bg: 'rgba(253,186,116,0.85)', border: '#f97316', text: '#9a3412' }
                         : isOcc  ? COLORS.occupied
                         :          COLORS.free;
@@ -527,7 +744,7 @@ export default function CustomAreaSelectorModal({
                     }}
                   >
                     {isOver && (
-                      <span style={{ fontSize: '0.6rem', marginBottom: 2, opacity: 0.85, fontWeight: 700, color: c.text }}>✂ SẼ BỊ CẮT</span>
+                      <span style={{ fontSize: '0.6rem', marginBottom: 2, opacity: 0.85, fontWeight: 700, color: c.text }}>SẼ BỊ CẮT</span>
                     )}
                     {isOcc && (
                       <span style={{ fontSize: '1rem', marginBottom: 2, opacity: 0.7 }}>🔒</span>
@@ -668,6 +885,30 @@ export default function CustomAreaSelectorModal({
                 );
               })()}
 
+              {/* ── Multi-zone: additional zones (same yellow style) ── */}
+              {selectedZones.map((z, i) => (
+                <div key={`mz-${i}`} style={{
+                  position: 'absolute',
+                  left: m2px(z.x), top: m2px(z.y),
+                  width: m2px(z.w), height: m2px(z.l),
+                  border: '2.5px solid #f59e0b',
+                  background: 'rgba(253,230,138,0.6)',
+                  borderRadius: 8, boxSizing: 'border-box',
+                  zIndex: 10, pointerEvents: 'none',
+                }}>
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%',
+                    transform: 'translate(-50%,-50%)', width: 'max-content',
+                    fontSize: '0.65rem', fontWeight: 800, color: '#92400e',
+                    whiteSpace: 'nowrap', textAlign: 'center',
+                    background: 'rgba(255,255,255,0.95)', padding: '3px 7px',
+                    borderRadius: 5, border: '1px solid rgba(245,158,11,0.3)',
+                  }}>
+                    {z.w}m×{z.l}m<br />{toM3(z.w, z.l)} m³
+                  </div>
+                </div>
+              ))}
+
             </div>
 
             {/* Legend */}
@@ -692,19 +933,29 @@ export default function CustomAreaSelectorModal({
               <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                 Thông tin vùng
               </div>
-              {activeZone ? (
+              {activeZone || selectedZones.length > 0 || autoSelectedAreaIds.length > 0 ? (
                 <>
-                  <Row label="Rộng"    value={`${activeZone.w} m`} />
-                  <Row label="Dài"     value={`${activeZone.l} m`} />
+                  {(activeZone && selectedZones.length === 0 && autoSelectedAreaIds.length === 0) && (
+                    <>
+                      <Row label="Rộng"    value={`${activeZone.w} m`} />
+                      <Row label="Dài"     value={`${activeZone.l} m`} />
+                    </>
+                  )}
                   <Row label="Chiều cao kho" value={`${whHeight.toFixed(1)} m`} />
                   {(() => {
-                    const totalM3 = (mode === 'draw' && zoneExtension && customZone)
-                      ? parseFloat(((customZone.w * customZone.l + zoneExtension.w * zoneExtension.l) * whHeight).toFixed(1))
-                      : activeM3;
+                    // Total = primary + extension + carved zones + auto-selected areas
+                    let totalM3 = activeM3;
+                    if (mode === 'draw' && zoneExtension && customZone)
+                      totalM3 = parseFloat(((customZone.w * customZone.l + zoneExtension.w * zoneExtension.l) * whHeight).toFixed(1));
+                    totalM3 += multiZoneM3 + autoSelectedM3;
                     const isMet = totalM3 >= requestedM3;
+                    const zoneCount = autoSelectedAreaIds.length + (activeZone ? 1 : 0) + selectedZones.length;
                     return (
                       <>
-                        <Row label="Thể tích" value={<span style={{ color: isMet ? '#16a34a' : '#d97706', fontWeight: 700 }}>{totalM3} m³</span>} />
+                        <Row label="Thể tích" value={<span style={{ color: isMet ? '#16a34a' : '#d97706', fontWeight: 700 }}>{totalM3.toFixed(1)} m³</span>} />
+                        {zoneCount > 1 && (
+                          <Row label="Số vùng" value={`${zoneCount} vùng`} />
+                        )}
                         {mode === 'choose' && selectedExisting && (
                           <Row label="Dựa trên" value={selectedExisting.name} />
                         )}
@@ -715,8 +966,8 @@ export default function CustomAreaSelectorModal({
                           fontSize: '0.78rem', fontWeight: 700,
                         }}>
                           {isMet
-                            ? `✓ Đủ thể tích: ${totalM3} m³ / ${requestedM3} m³`
-                            : `⚠ Thể tích chọn: ${totalM3} m³ / yêu cầu ${requestedM3} m³`}
+                            ? `Đủ thể tích: ${totalM3.toFixed(1)} m³ / ${requestedM3} m³`
+                            : `Thể tích chọn: ${totalM3.toFixed(1)} m³ / yêu cầu ${requestedM3} m³`}
                         </div>
                       </>
                     );
@@ -837,19 +1088,19 @@ export default function CustomAreaSelectorModal({
             </div>
 
             <button
-              disabled={!activeZone || hasOccupiedConflict}
+              disabled={(!activeZone && selectedZones.length === 0) || hasOccupiedConflict}
               onClick={handleConfirm}
               style={{
                 padding: '12px 0', borderRadius: 12, border: 'none',
-                background: (!activeZone || hasOccupiedConflict) ? '#e2e8f0' : 'linear-gradient(135deg,#0ea5e9,#0284c7)',
-                color: (!activeZone || hasOccupiedConflict) ? '#94a3b8' : '#fff',
+                background: ((!activeZone && selectedZones.length === 0) || hasOccupiedConflict) ? '#e2e8f0' : 'linear-gradient(135deg,#0ea5e9,#0284c7)',
+                color: ((!activeZone && selectedZones.length === 0) || hasOccupiedConflict) ? '#94a3b8' : '#fff',
                 fontWeight: 700, fontSize: '0.92rem',
-                cursor: (!activeZone || hasOccupiedConflict) ? 'not-allowed' : 'pointer',
-                boxShadow: (!activeZone || hasOccupiedConflict) ? 'none' : '0 4px 14px rgba(14,165,233,0.4)',
+                cursor: ((!activeZone && selectedZones.length === 0) || hasOccupiedConflict) ? 'not-allowed' : 'pointer',
+                boxShadow: ((!activeZone && selectedZones.length === 0) || hasOccupiedConflict) ? 'none' : '0 4px 14px rgba(14,165,233,0.4)',
                 transition: 'all 0.2s',
               }}
             >
-              Xác nhận vị trí
+              {(selectedZones.length > 0 || autoSelectedAreaIds.length > 0) ? `Xác nhận vị trí (${totalSelectedM3.toFixed(1)} m³)` : 'Xác nhận vị trí'}
             </button>
 
             <button
