@@ -64,7 +64,7 @@ const RenterExtensionPage: React.FC = () => {
       setContracts(Array.isArray(contractsData) ? contractsData : []);
       setExtensions(Array.isArray(extensionsData) ? extensionsData : []);
     } catch (error: any) {
-      message.error('Kh├┤ng thß╗â tß║úi dß╗» liß╗çu: ' + (error.message || 'Lß╗ùi kh├┤ng x├íc ─æß╗ïnh'));
+      message.error('Kh├┤ng thß╗â tß║úi dß╗» liß╗çu: ' + ('Lß╗ùi kh├┤ng x├íc ─æß╗ïnh'));
     } finally {
       setLoading(false);
       setRefreshing(false);

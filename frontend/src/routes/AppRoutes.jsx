@@ -76,8 +76,6 @@ import AdminDashboard from "../pages/admin/AdminDashboard";
 import AccountsPage from "../pages/admin/AccountsPage";
 import WarehousesPage from "../pages/admin/WarehousesPage";
 import WarehouseDetailPage from "../pages/admin/WarehouseDetailPage";
-import AuditSessionsPage from "../pages/admin/AuditSessionsPage";
-import AuditSessionDetailPage from "../pages/admin/AuditSessionDetailPage";
 import ReportsPage from "../pages/admin/ReportsPage";
 import RatingsPage from "../pages/admin/RatingsPage";
 import AdminProfilePage from "../pages/admin/AdminProfilePage";
@@ -290,8 +288,6 @@ function AppRoutes() {
             <Route path="/admin/pending-warehouses" element={<AdminPendingWarehousesPage />} />
             <Route path="/admin/warehouses" element={<WarehousesPage />} />
             <Route path="/admin/warehouses/:id" element={<WarehouseDetailPage />} />
-            <Route path="/admin/audit-sessions" element={<AuditSessionsPage />} />
-            <Route path="/admin/audit-sessions/:id" element={<AuditSessionDetailPage />} />
             <Route path="/admin/subscriptions" element={<SubscriptionsPage />} />
             <Route path="/admin/reports" element={<ReportsPage />} />
             <Route path="/admin/ratings" element={<RatingsPage />} />

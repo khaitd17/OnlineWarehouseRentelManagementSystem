@@ -44,4 +44,7 @@ public class RentalRequestDto
     public double? ExtensionPositionY { get; set; }
     public double? ExtensionWidth { get; set; }
     public double? ExtensionLength { get; set; }
+
+    // Multi-zone (additional non-adjacent rectangles as JSON array)
+    public string? AdditionalZonesJson { get; set; }
 }

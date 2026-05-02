@@ -76,7 +76,7 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
             session.CreatedAt,
             cancellationToken);
 
-        var message = "Tạo yêu cầu kiểm kê thành công. Chờ chủ kho/điều phối viên duyệt.";
+        var message = "Tạo yêu cầu kiểm kê thành công. Chờ chủ kho duyệt.";
 
         return ApiResponse<int>.SuccessResponse(session.AuditId, message);
     }

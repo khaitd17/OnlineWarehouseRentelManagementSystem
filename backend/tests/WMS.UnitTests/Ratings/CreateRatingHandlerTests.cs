@@ -68,7 +68,7 @@ public class CreateRatingHandlerTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    // ── UTC002 — Boundary: Star = 1 (lower boundary), Comment = null → success ─
+    // ── UTC002 — Boundary: Star = 1 (lower boundary), Comment provided → success ─
     [Fact]
     public async Task UTC002_Star1_LowerBoundary_NullComment_ReturnsRatingId()
     {
@@ -80,7 +80,7 @@ public class CreateRatingHandlerTests
         repo.Setup(x => x.CreateAsync(It.IsAny<Rating>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(102);
 
-        var cmd = ValidCmd(star: 1, contractId: 2, comment: null);
+        var cmd = ValidCmd(star: 1, contractId: 2, comment: "Needs improvement");
 
         // Act
         var ratingId = await handler.Handle(cmd, CancellationToken.None);
@@ -161,7 +161,7 @@ public class CreateRatingHandlerTests
         Assert.Contains("Số sao phải từ 1 đến 5", ex.Message);
     }
 
-    // ── UTC007 — Normal: Star=4, valid ContractId, no comment (null) → IsHidden=false ─
+    // ── UTC007 — Normal: Star=4, valid ContractId, comment provided → IsHidden=false ─
     [Fact]
     public async Task UTC007_Star4_ValidContract_NullComment_IsHiddenFalse_ReturnsRatingId()
     {
@@ -173,7 +173,7 @@ public class CreateRatingHandlerTests
         repo.Setup(x => x.CreateAsync(It.IsAny<Rating>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(107);
 
-        var cmd = ValidCmd(star: 4, contractId: 7, comment: null);
+        var cmd = ValidCmd(star: 4, contractId: 7, comment: "Good warehouse");
 
         // Act
         var ratingId = await handler.Handle(cmd, CancellationToken.None);
@@ -181,7 +181,7 @@ public class CreateRatingHandlerTests
         // Assert
         Assert.True(ratingId > 0);
         repo.Verify(x => x.CreateAsync(
-            It.Is<Rating>(r => r.Star == 4 && r.IsHidden == false && r.Comment == null),
+            It.Is<Rating>(r => r.Star == 4 && r.IsHidden == false && r.Comment == "Good warehouse"),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -198,7 +198,7 @@ public class CreateRatingHandlerTests
         repo.Setup(x => x.CreateAsync(It.IsAny<Rating>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new KeyNotFoundException("Warehouse 9999 not found."));
 
-        var cmd = ValidCmd(star: 3, contractId: null, warehouseId: 9999, comment: null);
+        var cmd = ValidCmd(star: 3, contractId: null, warehouseId: 9999, comment: "Test comment");
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<KeyNotFoundException>(() =>
@@ -217,7 +217,7 @@ public class CreateRatingHandlerTests
         repo.Setup(x => x.GetByContractIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Rating { RatingId = 50, ContractId = 1, Star = 4 });
 
-        var cmd = ValidCmd(star: 5, contractId: 1, comment: null);
+        var cmd = ValidCmd(star: 5, contractId: 1, comment: "Another review");
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -225,28 +225,20 @@ public class CreateRatingHandlerTests
         Assert.Contains("Bạn đã đánh giá hợp đồng này rồi", ex.Message);
     }
 
-    // ── UTC010 — Abnormal: Star=3, Comment="" (empty string) → verify handler behaviour ─
+    // ── UTC010 — Abnormal: Star=3, Comment="" (empty string) → handler throws ArgumentException ─
     [Fact]
     public async Task UTC010_EmptyComment_HandledGracefully_RatingCreated()
     {
+        // Handler now validates that comment is required (non-empty).
+
         // Arrange
         var (handler, repo) = BuildHandler();
 
-        // ContractId = null → skip duplicate check
-        repo.Setup(x => x.CreateAsync(It.IsAny<Rating>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(110);
-
         var cmd = ValidCmd(star: 3, contractId: null, comment: "");  // empty string
 
-        // Act
-        // The handler does NOT currently reject empty comments (treated as optional field).
-        // This test documents and locks that behaviour.
-        var ratingId = await handler.Handle(cmd, CancellationToken.None);
-
-        // Assert — empty comment treated as valid (no exception thrown)
-        Assert.True(ratingId > 0);
-        repo.Verify(x => x.CreateAsync(
-            It.Is<Rating>(r => r.Comment == "" && r.Star == 3),
-            It.IsAny<CancellationToken>()), Times.Once);
+        // Act & Assert — handler rejects empty comment
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            handler.Handle(cmd, CancellationToken.None));
+        Assert.Contains("Vui lòng nhập nhận xét", ex.Message);
     }
 }

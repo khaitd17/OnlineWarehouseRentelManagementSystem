@@ -90,6 +90,15 @@ public partial class RentalRequest
     public double? ExtensionLength { get; set; }
     // ──────────────────────────────────────────────────────────────────────
 
+    // ── Additional Zones (Multi-zone: rent multiple non-adjacent areas) ──
+    /// <summary>
+    /// JSON array of additional zone rectangles beyond the primary + extension.
+    /// Each element: { "x": double, "y": double, "w": double, "l": double, "areaId": int? }
+    /// areaId references a RentalArea if the zone maps to a predefined area; null for free-drawn zones.
+    /// </summary>
+    public string? AdditionalZonesJson { get; set; }
+    // ──────────────────────────────────────────────────────────────────────
+
     // NEW - Cancel tracking
     public string? CancellationReason { get; set; }
     

@@ -38,7 +38,7 @@ const OwnerWarehouseList = () => {
       loadWarehouses();
     } catch (err) {
       setDeleteModal(p => ({ ...p, loading: false }));
-      showToast("Lỗi: " + (err.response?.data?.message || err.message), "error");
+      showToast("Lỗi: " + (err.response?.data?.message || 'Có lỗi xảy ra'), "error");
     }
   };
 
@@ -48,7 +48,7 @@ const OwnerWarehouseList = () => {
       showToast("Thu hồi kho thành công!", "success");
       loadWarehouses();
     } catch (err) {
-      showToast("Lỗi: " + (err.response?.data?.message || err.message), "error");
+      showToast("Lỗi: " + (err.response?.data?.message || 'Có lỗi xảy ra'), "error");
     }
   };
 

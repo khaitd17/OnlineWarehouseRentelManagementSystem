@@ -201,7 +201,7 @@ const EquipmentManagement = () => {
       resetFormData();
       fetchEquipments();
     } catch (err) {
-      alert('Thêm thiết bị thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || err.message));
+      alert('Thêm thiết bị thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || 'Có lỗi xảy ra'));
     }
   };
 
@@ -223,7 +223,7 @@ const EquipmentManagement = () => {
       setShowEditModal(false);
       fetchEquipments();
     } catch (err) {
-      alert('Cập nhật thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || err.message));
+      alert('Cập nhật thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || 'Có lỗi xảy ra'));
     }
   };
 
@@ -238,7 +238,7 @@ const EquipmentManagement = () => {
       setShowStatusModal(false);
       fetchEquipments();
     } catch (err) {
-      alert('Cập nhật trạng thái thất bại: ' + (err.response?.data?.message || err.message));
+      alert('Cập nhật trạng thái thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
     }
   };
 
@@ -248,7 +248,7 @@ const EquipmentManagement = () => {
       await equipmentService.deleteEquipment(id);
       fetchEquipments();
     } catch (err) {
-      alert('Xóa thất bại: ' + (err.response?.data?.message || err.message));
+      alert('Xóa thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
     }
   };
 
@@ -271,7 +271,7 @@ const EquipmentManagement = () => {
       fetchIncidents();
       alert('Đã gửi báo cáo sự cố thành công.');
     } catch (err) {
-      alert('Gửi báo cáo thất bại: ' + (err.response?.data?.message || err.message));
+      alert('Gửi báo cáo thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
     } finally {
       setIsUploading(false);
     }
@@ -300,7 +300,7 @@ const EquipmentManagement = () => {
       fetchEquipments();
       alert('Cập nhật trạng thái thành công.');
     } catch (err) {
-      alert('Cập nhật thất bại: ' + (err.response?.data?.message || err.message));
+      alert('Cập nhật thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
     }
   };
 
@@ -323,7 +323,7 @@ const EquipmentManagement = () => {
       const res = await equipmentService.controlEquipment(id, command);
       alert(res.message);
     } catch (err) {
-      alert('Điều khiển thất bại: ' + (err.response?.data?.message || err.message));
+      alert('Điều khiển thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
     }
   };
 

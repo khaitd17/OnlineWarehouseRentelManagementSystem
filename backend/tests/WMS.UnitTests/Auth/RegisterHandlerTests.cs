@@ -17,10 +17,9 @@ namespace WMS.UnitTests.Auth;
 ///   at registration time is "RENTER".
 ///
 /// Validation Note:
-///   RegisterHandler only validates email uniqueness. Format validation (email
-///   format, password complexity, RoleName casing) runs via MediatR
-///   ValidationBehavior pipeline — NOT inside the handler itself. Unit tests
-///   that fall into this category are marked // GAP.
+///   RegisterHandler validates FullName, Email format, Password complexity,
+///   Phone format, and email uniqueness directly inside Handle().
+///   RoleName validation remains in the FluentValidation pipeline.
 /// </summary>
 public class RegisterHandlerTests
 {
@@ -55,7 +54,7 @@ public class RegisterHandlerTests
             FullName: "Nguyen Van A",
             Email:    "newuser@test.com",
             Password: "Password123!",
-            Phone:    "901234567",
+            Phone:    "0901234567",
             RoleName: "RENTER");
 
         // Act
@@ -164,53 +163,47 @@ public class RegisterHandlerTests
         Assert.Equal(6, result);
     }
 
-    // ── UTC006 — Boundary: Email = empty string → handler cannot find user, passes to repo (GAP) ─
+    // ── UTC006 — Boundary: Email = empty string → handler throws ArgumentException ─
     [Fact]
     public async Task UTC006_EmptyEmail_HandlerPassesThrough_DocumentedAsValidationGap()
     {
-        // GAP: Empty email validation sits in the FluentValidation pipeline.
-        //      Handler calls GetByEmailAsync("") → null (no user with empty email),
-        //      then calls CreateAsync with empty email. In production, pipeline rejects this.
+        // Handler validates empty email and throws ArgumentException.
 
         // Arrange
         var (handler, userRepo) = BuildHandler();
 
-        userRepo.Setup(x => x.GetByEmailAsync("", It.IsAny<CancellationToken>()))
-                .ReturnsAsync((UserRecord?)null);
-        userRepo.Setup(x => x.CreateAsync(It.IsAny<CreateUserDto>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(7);
-
         var cmd = new RegisterCommand("New User", "", "Password123!", null, "RENTER");
 
-        // Act
-        var result = await handler.Handle(cmd, CancellationToken.None);
+        // Act & Assert: handler throws for empty email
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            handler.Handle(cmd, CancellationToken.None));
+        Assert.Contains("Email không được để trống", ex.Message);
 
-        // Assert: handler succeeds (gap — pipeline would have blocked)
-        Assert.Equal(7, result);
+        // CreateAsync must NOT be called
+        userRepo.Verify(x => x.CreateAsync(It.IsAny<CreateUserDto>(), It.IsAny<CancellationToken>()),
+                        Times.Never);
     }
 
-    // ── UTC007 — Boundary: Email with SQL injection attempt → handler treats as string (GAP) ─
+    // ── UTC007 — Boundary: Email with SQL injection attempt → handler rejects invalid format ─
     [Fact]
     public async Task UTC007_SqlInjectionEmail_HandlerTreatsAsLiteralString()
     {
-        // GAP: "OR 1=1 --" is not a valid email format; pipeline rejects it.
-        //      In the handler, GetByEmailAsync receives the string as-is (repo is mocked).
-        //      This test confirms the handler does not crash on the string value itself.
+        // Handler validates email format; "OR 1=1 --" fails the regex check.
 
         // Arrange
         var (handler, userRepo) = BuildHandler();
         string injectionEmail = "OR 1=1 --";
 
-        userRepo.Setup(x => x.GetByEmailAsync(injectionEmail, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((UserRecord?)null);
-        userRepo.Setup(x => x.CreateAsync(It.IsAny<CreateUserDto>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(8);
-
         var cmd = new RegisterCommand("Hacker", injectionEmail, "Password123!", null, "RENTER");
 
-        // Act — pipeline would block this; handler passes through
-        var result = await handler.Handle(cmd, CancellationToken.None);
-        Assert.Equal(8, result);
+        // Act & Assert — handler rejects invalid email format
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            handler.Handle(cmd, CancellationToken.None));
+        Assert.Contains("Email không đúng định dạng", ex.Message);
+
+        // CreateAsync must NOT be called
+        userRepo.Verify(x => x.CreateAsync(It.IsAny<CreateUserDto>(), It.IsAny<CancellationToken>()),
+                        Times.Never);
     }
 
     // ── UTC008 — Abnormal: RoleName = "rEnTeR" (wrong casing) — handler gap ──
@@ -240,72 +233,56 @@ public class RegisterHandlerTests
         Assert.Equal(9, result);  // gap: handler allows wrong casing through
     }
 
-    // ── UTC009 — Boundary: Email with invalid format → handler treats as string (GAP) ─
+    // ── UTC009 — Boundary: Email with invalid format → handler rejects ─
     [Fact]
     public async Task UTC009_InvalidEmailFormat_HandlerPassesThrough_DocumentedAsValidationGap()
     {
-        // GAP: "invalid_email_format" has no "@" — pipeline rejects, handler does not.
+        // Handler validates email format; "invalid_email_format" fails regex.
 
         // Arrange
         var (handler, userRepo) = BuildHandler();
         string badEmail = "invalid_email_format";
 
-        userRepo.Setup(x => x.GetByEmailAsync(badEmail, It.IsAny<CancellationToken>()))
-                .ReturnsAsync((UserRecord?)null);
-        userRepo.Setup(x => x.CreateAsync(It.IsAny<CreateUserDto>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(11);
-
         var cmd = new RegisterCommand("New User", badEmail, "Password123!", null, "RENTER");
 
-        // Act
-        var result = await handler.Handle(cmd, CancellationToken.None);
-        Assert.Equal(11, result);  // gap exposed
+        // Act & Assert — handler rejects invalid email format
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            handler.Handle(cmd, CancellationToken.None));
+        Assert.Contains("Email không đúng định dạng", ex.Message);
     }
 
-    // ── UTC010 — Boundary: Empty password → BCrypt still runs, handler passes (GAP) ─
+    // ── UTC010 — Boundary: Empty password → handler throws ArgumentException ─
     [Fact]
     public async Task UTC010_EmptyPassword_HandlerHashesAndPasses_DocumentedAsValidationGap()
     {
-        // GAP: Empty password validation is in the pipeline.
-        //      BCrypt.Net.BCrypt.HashPassword("") succeeds (hash of empty string).
-        //      RegisterHandler creates user with hash of empty string.
-        //      This test documents the gap.
+        // Handler validates empty password and throws ArgumentException.
 
         // Arrange
         var (handler, userRepo) = BuildHandler();
-
-        userRepo.Setup(x => x.GetByEmailAsync("newuser@test.com", It.IsAny<CancellationToken>()))
-                .ReturnsAsync((UserRecord?)null);
-        userRepo.Setup(x => x.CreateAsync(It.IsAny<CreateUserDto>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(12);
 
         var cmd = new RegisterCommand("New User", "newuser@test.com", "", null, "RENTER");
 
-        // Act — BCrypt.HashPassword("") does not throw; handler proceeds (gap)
-        var result = await handler.Handle(cmd, CancellationToken.None);
-        Assert.Equal(12, result);   // gap: pipeline would have blocked empty password
+        // Act & Assert — handler rejects empty password
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            handler.Handle(cmd, CancellationToken.None));
+        Assert.Contains("Mật khẩu không được để trống", ex.Message);
     }
 
-    // ── UTC011 — Boundary: Password = "1" (too short) → handler passes (GAP) ─
+    // ── UTC011 — Boundary: Password = "1" (too short) → handler throws ArgumentException ─
     [Fact]
     public async Task UTC011_TooShortPassword_HandlerHashesAndPasses_DocumentedAsValidationGap()
     {
-        // GAP: Password minimum length (e.g., 8 chars) enforced by pipeline, not handler.
-        //      BCrypt.HashPassword("1") succeeds. Handler creates user successfully.
+        // Handler validates password minimum length (8 chars).
 
         // Arrange
         var (handler, userRepo) = BuildHandler();
 
-        userRepo.Setup(x => x.GetByEmailAsync("newuser@test.com", It.IsAny<CancellationToken>()))
-                .ReturnsAsync((UserRecord?)null);
-        userRepo.Setup(x => x.CreateAsync(It.IsAny<CreateUserDto>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(13);
-
         var cmd = new RegisterCommand("New User", "newuser@test.com", "1", null, "RENTER");
 
-        // Act
-        var result = await handler.Handle(cmd, CancellationToken.None);
-        Assert.Equal(13, result);   // gap: pipeline would reject password "1"
+        // Act & Assert — handler rejects short password
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            handler.Handle(cmd, CancellationToken.None));
+        Assert.Contains("Mật khẩu phải có ít nhất 8 ký tự", ex.Message);
     }
 
     // ── UTC012 — Abnormal: RoleName = "BAD_ROLE" (invalid) → handler gap ──────
@@ -384,26 +361,21 @@ public class RegisterHandlerTests
         Assert.True(BCrypt.Net.BCrypt.Verify("Password123!", capturedHash!)); // valid bcrypt hash
     }
 
-    // ── UTC015 — Boundary: FullName longer than 100 characters → handler passes (GAP) ─
+    // ── UTC015 — Boundary: FullName longer than 100 characters → handler throws ArgumentException ─
     [Fact]
     public async Task UTC015_LongFullName_HandlerPassesThrough_DocumentedAsValidationGap()
     {
-        // GAP: MaxLength constraint on FullName enforced by pipeline/DB, not in handler.
-        //      RegisterHandler does not validate string length of FullName.
+        // Handler validates FullName length (max 100 chars).
 
         // Arrange
         var (handler, userRepo) = BuildHandler();
         string longName = new string('A', 101); // 101 characters
 
-        userRepo.Setup(x => x.GetByEmailAsync("newuser@test.com", It.IsAny<CancellationToken>()))
-                .ReturnsAsync((UserRecord?)null);
-        userRepo.Setup(x => x.CreateAsync(It.IsAny<CreateUserDto>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(99);
-
         var cmd = new RegisterCommand(longName, "newuser@test.com", "Password123!", null, "RENTER");
 
-        // Act — handler does not throw for long FullName (gap)
-        var result = await handler.Handle(cmd, CancellationToken.None);
-        Assert.Equal(99, result);   // gap: pipeline or DB would reject 101-char name
+        // Act & Assert — handler rejects long FullName
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            handler.Handle(cmd, CancellationToken.None));
+        Assert.Contains("Họ tên phải từ 2 đến 100 ký tự", ex.Message);
     }
 }

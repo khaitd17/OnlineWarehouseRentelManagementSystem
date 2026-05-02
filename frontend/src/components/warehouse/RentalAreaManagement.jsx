@@ -239,7 +239,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
       if(editingId){ await api.put(`/RentalAreas/${editingId}`,{id:editingId,...payload}); alert('Cập nhật thành công!'); }
       else { await api.post('/RentalAreas',{warehouseId:parseInt(warehouseId),...payload}); alert('Thêm mới thành công!'); }
       closeForm(); fetchData();
-    } catch(err){ setFormError(err.response?.data?.error || err.response?.data?.Error || err.response?.data?.message || err.message); }
+    } catch(err){ setFormError(err.response?.data?.error || err.response?.data?.Error || err.response?.data?.message || 'Có lỗi xảy ra'); }
     finally { setSubmitLoading(false); }
   };
 

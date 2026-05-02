@@ -360,7 +360,19 @@ const WarehouseDetailsPage = () => {
 
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    
+    // Prevent entering more than available volume
+    if (name === "requestedArea") {
+      const numValue = parseFloat(value);
+      if (numValue > warehouse?.availableArea) {
+        setFormData({ ...formData, [name]: warehouse.availableArea.toString() });
+        setSubmitMsg(null);
+        return;
+      }
+    }
+
+    setFormData({ ...formData, [name]: value });
     setSubmitMsg(null);
   };
 
@@ -410,6 +422,11 @@ const WarehouseDetailsPage = () => {
           payload.extensionPositionY     = ca.extensionZone.posY;
           payload.extensionWidth         = ca.extensionZone.width;
           payload.extensionLength        = ca.extensionZone.length;
+        }
+
+        // Multi-zone: additional non-adjacent rectangles
+        if (ca.additionalZones && ca.additionalZones.length > 0) {
+          payload.additionalZonesJson = JSON.stringify(ca.additionalZones);
         }
       }
 
@@ -837,7 +854,7 @@ const WarehouseDetailsPage = () => {
                                         placeholder="Viết phản hồi của bạn..." 
                                         value={replyText[r.ratingId] || ''}
                                         onChange={(e) => setReplyText({ ...replyText, [r.ratingId]: e.target.value })}
-                                        style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                                        style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none', color: '#0f172a' }}
                                         disabled={replyLoading}
                                       />
                                       <button 

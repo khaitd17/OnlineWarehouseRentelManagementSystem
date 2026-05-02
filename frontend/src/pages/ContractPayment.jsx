@@ -155,7 +155,6 @@ const ContractPayment = () => {
         || err.response?.data?.detail
         || err.response?.data?.title
         || (err.response?.data && JSON.stringify(err.response.data))
-        || err.message
         || "Không thể tải thông tin thanh toán";
       console.error("Error details:", {
         status: err.response?.status,

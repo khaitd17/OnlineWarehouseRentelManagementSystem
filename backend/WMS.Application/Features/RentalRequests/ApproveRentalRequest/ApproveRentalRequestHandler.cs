@@ -117,6 +117,11 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
                     rentalRequest.ExtensionWidth = request.AssignedExtensionWidth;
                     rentalRequest.ExtensionLength = request.AssignedExtensionLength;
                 }
+                // Multi-zone
+                if (!string.IsNullOrWhiteSpace(request.AssignedAdditionalZonesJson))
+                {
+                    rentalRequest.AdditionalZonesJson = request.AssignedAdditionalZonesJson;
+                }
                 Console.WriteLine($"[DEBUG] Owner assigned zone: ({request.AssignedPositionX}, {request.AssignedPositionY}) {request.AssignedWidth}x{request.AssignedLength}");
             }
 

@@ -286,12 +286,23 @@ const MyRentalRequests = () => {
                       { label: "Địa chỉ", value: req.warehouseAddress },
                       { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
                       req.isCustomArea
-                        ? {
-                            label: req.isOwnerAssigned ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ",
-                            value: `${req.proposedWidth}m × ${req.proposedLength}m${req.hasExtensionZone ? ` + ${req.extensionWidth}m × ${req.extensionLength}m` : ''}`,
-                            customZone: !req.isOwnerAssigned,
-                            highlighted: !!req.isOwnerAssigned,
-                          }
+                        ? (() => {
+                            const hasAdditional = !!req.additionalZonesJson;
+                            let zoneDesc = `${req.proposedWidth}m × ${req.proposedLength}m`;
+                            if (req.hasExtensionZone) zoneDesc += ` + ${req.extensionWidth}m × ${req.extensionLength}m`;
+                            if (hasAdditional) {
+                              try {
+                                const addZones = JSON.parse(req.additionalZonesJson);
+                                zoneDesc = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m³`;
+                              } catch(e) {}
+                            }
+                            return {
+                              label: req.isOwnerAssigned ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ",
+                              value: zoneDesc,
+                              customZone: !req.isOwnerAssigned,
+                              highlighted: !!req.isOwnerAssigned,
+                            };
+                          })()
                         : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null),
                       { label: "Bắt đầu", value: formatDate(req.startDate) },
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },

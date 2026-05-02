@@ -91,6 +91,8 @@ public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IE
                 ExtensionPositionY = r.ExtensionPositionY,
                 ExtensionWidth    = r.ExtensionWidth,
                 ExtensionLength   = r.ExtensionLength,
+                // Multi-zone
+                AdditionalZonesJson = r.AdditionalZonesJson,
             });
         }
         return result;

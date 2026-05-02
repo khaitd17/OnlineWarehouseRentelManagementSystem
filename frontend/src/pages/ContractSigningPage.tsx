@@ -103,7 +103,7 @@ const ContractSigningPage: React.FC<ContractSigningPageProps> = ({
         setSigned(true);
       }
     } catch (error: any) {
-      message.error('Kh├┤ng thß╗â tß║úi dß╗» liß╗çu hß╗úp ─æß╗ông: ' + error.message);
+      message.error('Kh├┤ng thß╗â tß║úi dß╗» liß╗çu hß╗úp ─æß╗ông: ' + 'Có lỗi xảy ra');
     } finally {
       setLoading(false);
     }
@@ -147,7 +147,7 @@ const ContractSigningPage: React.FC<ContractSigningPageProps> = ({
         message.error(response.message || 'Kh├┤ng thß╗â gß╗¡i OTP');
       }
     } catch (error: any) {
-      message.error('Lß╗ùi: ' + (error.response?.data?.message || error.message));
+      message.error('Lß╗ùi: ' + (error.response?.data?.message || 'Có lỗi xảy ra'));
     } finally {
       setSendingOtp(false);
     }
@@ -177,7 +177,7 @@ const ContractSigningPage: React.FC<ContractSigningPageProps> = ({
         message.error(response.message || 'M├ú OTP kh├┤ng ─æ├║ng');
       }
     } catch (error: any) {
-      message.error('Lß╗ùi: ' + (error.response?.data?.message || error.message));
+      message.error('Lß╗ùi: ' + (error.response?.data?.message || 'Có lỗi xảy ra'));
     } finally {
       setSigning(false);
     }

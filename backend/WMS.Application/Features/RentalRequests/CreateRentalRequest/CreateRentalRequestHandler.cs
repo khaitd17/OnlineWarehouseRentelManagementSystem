@@ -111,6 +111,12 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
                 rentalRequest.ExtensionWidth      = request.ExtensionWidth;
                 rentalRequest.ExtensionLength     = request.ExtensionLength;
             }
+
+            // Multi-zone: additional non-adjacent rectangles
+            if (!string.IsNullOrWhiteSpace(request.AdditionalZonesJson))
+            {
+                rentalRequest.AdditionalZonesJson = request.AdditionalZonesJson;
+            }
         }
 
         var requestId = await _rentalRequestRepository.AddAsync(rentalRequest);

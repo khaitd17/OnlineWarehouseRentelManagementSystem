@@ -602,6 +602,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ProposedWidth).HasColumnName("proposed_width").IsRequired(false);
             entity.Property(e => e.ProposedLength).HasColumnName("proposed_length").IsRequired(false);
             entity.Property(e => e.BaseRentalAreaId).HasColumnName("base_rental_area_id").IsRequired(false);
+            // Multi-zone JSON
+            entity.Property(e => e.AdditionalZonesJson).HasColumnName("additional_zones_json").IsRequired(false);
             entity.HasOne(d => d.Renter).WithMany(p => p.RentalRequestRenters).HasForeignKey(d => d.RenterId).HasConstraintName("FK_rental_requests_renter");
             entity.HasOne(d => d.ReviewedByNavigation).WithMany(p => p.RentalRequestReviewedByNavigations).HasForeignKey(d => d.ReviewedBy).HasConstraintName("FK_rental_requests_reviewer");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.RentalRequests).HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_rental_requests_warehouse");
@@ -1085,7 +1087,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.AssetName).HasMaxLength(200).HasColumnName("asset_name");
             entity.Property(e => e.Unit).HasMaxLength(50).HasDefaultValue("cái").HasColumnName("unit");
             entity.Property(e => e.WeightPerUnit).HasColumnType("decimal(10, 2)").HasColumnName("weight_per_unit").IsRequired(false);
-            entity.Property(e => e.VolumePerUnit).HasColumnType("decimal(10, 2)").HasColumnName("volume_per_unit").IsRequired(false);
+            entity.Property(e => e.VolumePerUnit).HasColumnType("decimal(10, 2)").HasColumnName("VolumePerUnit").IsRequired(false);
             entity.Property(e => e.Description).HasColumnName("description").IsRequired(false);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.HasOne(d => d.Renter).WithMany().HasForeignKey(d => d.RenterId)

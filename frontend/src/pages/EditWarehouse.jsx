@@ -701,7 +701,7 @@ const EditWarehouse = () => {
                             await loadDocuments();
                             alert("Tải giấy tờ lên thành công!");
                           } catch (err) {
-                            alert("Lỗi khi tải giấy tờ: " + (err.response?.data?.message || err.message));
+                            alert("Lỗi khi tải giấy tờ: " + (err.response?.data?.message || 'Có lỗi xảy ra'));
                           } finally {
                             setDocUploadLoading(false);
                             e.target.value = "";

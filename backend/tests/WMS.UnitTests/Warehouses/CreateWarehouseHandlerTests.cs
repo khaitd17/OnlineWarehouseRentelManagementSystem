@@ -69,6 +69,7 @@ public class CreateWarehouseHandlerTests
             Address    = "Valid Address 123",
             TotalArea  = 1000,
             Status     = "PENDING",
+            Is24HoursAccess = true,
         };
 
         // Act
@@ -108,6 +109,7 @@ public class CreateWarehouseHandlerTests
             Address   = "Valid Address 123",
             TotalArea = 1000,
             Status    = "PENDING",
+            Is24HoursAccess = true,
         };
 
         // Act — handler passes OwnerId = 999 to repo without throwing
@@ -239,6 +241,7 @@ public class CreateWarehouseHandlerTests
             Address   = "Valid Address 123",
             TotalArea = 1000,
             Status    = null,   // null → should default to "DRAFT"
+            Is24HoursAccess = true,
         };
 
         // Act
@@ -273,6 +276,7 @@ public class CreateWarehouseHandlerTests
             Address   = "Valid Address 123",
             TotalArea = 1000,
             Status    = "INVALID_STATUS",
+            Is24HoursAccess = true,
         };
 
         // Act
@@ -346,6 +350,7 @@ public class CreateWarehouseHandlerTests
             Address   = "Valid Address 123",
             TotalArea = 1000,
             Status    = "PENDING",
+            Is24HoursAccess = true,
         };
 
         var result = await handler.Handle(cmd, CancellationToken.None);
@@ -373,6 +378,7 @@ public class CreateWarehouseHandlerTests
             Address   = "Valid Address 123",
             TotalArea = 1000,
             Status    = longStatus,
+            Is24HoursAccess = true,
         };
 
         var result = await handler.Handle(cmd, CancellationToken.None);
@@ -402,6 +408,7 @@ public class CreateWarehouseHandlerTests
             Address   = "Valid Address 123",
             TotalArea = 1000,
             Status    = "PENDING",
+            Is24HoursAccess = true,
         };
 
         // Act

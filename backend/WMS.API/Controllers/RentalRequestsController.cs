@@ -334,6 +334,8 @@ public class RentalRequestsController : ControllerBase
             entity.ProposedWidth = dto.Width;
             entity.ProposedLength = dto.Length;
             entity.BaseRentalAreaId = dto.BaseAreaId;
+            // Multi-zone support
+            entity.AdditionalZonesJson = dto.AdditionalZonesJson;
 
             await _rentalRequestRepository.UpdateAsync(entity);
 
@@ -360,5 +362,6 @@ public class RentalRequestsController : ControllerBase
         public double? Width { get; set; }
         public double? Length { get; set; }
         public int? BaseAreaId { get; set; }
+        public string? AdditionalZonesJson { get; set; }
     }
 }
