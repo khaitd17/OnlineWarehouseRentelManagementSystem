@@ -854,7 +854,7 @@ const WarehouseDetailsPage = () => {
                                         placeholder="Viết phản hồi của bạn..." 
                                         value={replyText[r.ratingId] || ''}
                                         onChange={(e) => setReplyText({ ...replyText, [r.ratingId]: e.target.value })}
-                                        style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                                        style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none', color: '#0f172a' }}
                                         disabled={replyLoading}
                                       />
                                       <button 

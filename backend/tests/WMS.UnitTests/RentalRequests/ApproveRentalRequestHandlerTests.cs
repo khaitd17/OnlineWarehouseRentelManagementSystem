@@ -65,7 +65,7 @@ public class ApproveRentalRequestHandlerTests
     public async Task UTCID01_ValidId_Owner_Pending_EnoughArea_Approve_Success()
     {
         // Arrange
-        var rentalRequest = new RentalRequest { RequestId = 1, WarehouseId = 5, Status = "PENDING", RequestedArea = 50 };
+        var rentalRequest = new RentalRequest { RequestId = 1, WarehouseId = 5, Status = "PENDING", RequestedArea = 50, RentalAreaId = 1 };
         var warehouse = new Warehouse { WarehouseId = 5, OwnerId = 99, AvailableArea = 100 };
         
         _mockRentalRequestRepo.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(rentalRequest);
@@ -151,7 +151,7 @@ public class ApproveRentalRequestHandlerTests
         _mockRentalRequestRepo.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(rentalRequest);
         _mockWarehouseRepo.Setup(x => x.GetByIdAsync(5, It.IsAny<CancellationToken>())).ReturnsAsync(warehouse);
 
-        var cmd = new ApproveRentalRequestCommand { RequestId = 1, ReviewerId = 99 };
+        var cmd = new ApproveRentalRequestCommand { RequestId = 1, ReviewerId = 99, MonthlyPayment = 1000, DurationMonths = 12 };
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidStateException>(() => _approveHandler.Handle(cmd, CancellationToken.None));

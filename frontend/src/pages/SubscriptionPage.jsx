@@ -15,6 +15,7 @@ const SubscriptionPage = () => {
   const [previewData, setPreviewData] = useState(null);
   const [paymentInfo, setPaymentInfo] = useState(null);
   const [targetPlan, setTargetPlan] = useState("");
+  const [currentStatus, setCurrentStatus] = useState(null); // trạng thái gói hiện tại
 
   React.useEffect(() => {
     const loadPackages = async () => {
@@ -30,6 +31,11 @@ const SubscriptionPage = () => {
       }
     };
     loadPackages();
+
+    // Load trạng thái gói hiện tại
+    subscriptionService.getSubscriptionStatus()
+      .then(res => { if (res.data?.success !== undefined) setCurrentStatus(res.data); })
+      .catch(() => {});
   }, []);
 
   const handleSubscribe = async (planValue) => {
@@ -75,16 +81,20 @@ const SubscriptionPage = () => {
       if (qrModalVisible) {
         setQrModalVisible(false);
         setPaymentInfo(null);
+        // Refresh trạng thái gói sau khi thanh toán thành công
+        subscriptionService.getSubscriptionStatus()
+          .then(res => { if (res.data?.success !== undefined) setCurrentStatus(res.data); })
+          .catch(() => {});
         Modal.success({
-          title: 'Thanh toán thành công Cảm ơn',
-          content: 'Gói dịch vụ cao cấp đã được kích hoạt. Hãy tận hưởng nhé!',
-          onOk: () => { window.location.href = '/owner-dashboard'; } // redirect to dashboard or home
+          title: 'Thanh toán thành công!',
+          content: `Gói ${targetPlan} đã được kích hoạt. Hãy tận hưởng nhé!`,
+          onOk: () => { window.location.href = '/owner-dashboard'; }
         });
       }
     };
     window.addEventListener('authChange', handleAuthChange);
     return () => window.removeEventListener('authChange', handleAuthChange);
-  }, [qrModalVisible]);
+  }, [qrModalVisible, targetPlan]);
 
   React.useEffect(() => {
     if (!qrModalVisible || !paymentInfo?.paymentCode) return;
@@ -155,25 +165,48 @@ const SubscriptionPage = () => {
         ) : (
             packages.map((pkg, idx) => {
                 const isPremium = pkg.price > 100000;
+                // Kiểm tra xem đây có phải gói user đang dùng không
+                const isCurrentPlan = currentStatus?.isActive
+                    && currentStatus?.plan?.toLowerCase() === pkg.name?.toLowerCase();
+                // Khi đang có gói còn hạn, block tất cả nút (cả gói khác lẫn cùng gói)
+                const isBlocked = currentStatus?.isActive === true;
+                const expiryDate = currentStatus?.endDate
+                    ? new Date(currentStatus.endDate).toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' })
+                    : null;
+
                 return (
                     <Col xs={24} md={11} key={pkg.packageId}>
                       <div style={{
                         position: 'relative',
                         background: isPremium ? 'linear-gradient(145deg, #1e293b 0%, #0f172a 100%)' : '#f8fafc',
-                        border: isPremium ? 'none' : '2px solid #e2e8f0',
+                        border: isCurrentPlan ? '2px solid #10b981' : (isPremium ? 'none' : '2px solid #e2e8f0'),
                         borderRadius: '24px',
                         padding: '32px',
                         height: '100%',
                         display: 'flex',
                         flexDirection: 'column',
                         transition: 'all 0.3s ease',
-                        cursor: 'pointer',
-                        boxShadow: isPremium ? '0 20px 40px rgba(15, 23, 42, 0.4)' : 'none'
+                        cursor: isBlocked ? 'not-allowed' : 'pointer',
+                        boxShadow: isPremium ? '0 20px 40px rgba(15, 23, 42, 0.4)' : 'none',
+                        opacity: isBlocked && !isCurrentPlan ? 0.65 : 1,
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px)'; if (!isPremium) e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)'; }}
+                      onMouseEnter={e => { if (!isBlocked) { e.currentTarget.style.transform = 'translateY(-8px)'; if (!isPremium) e.currentTarget.style.boxShadow = '0 20px 40px rgba(0,0,0,0.08)'; }}}
                       onMouseLeave={e => { e.currentTarget.style.transform = 'none'; if (!isPremium) e.currentTarget.style.boxShadow = 'none'; }}
                       >
-                        {isPremium && (
+                        {/* Badge "Gói hiện tại" */}
+                        {isCurrentPlan && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '-16px', left: '50%', transform: 'translateX(-50%)',
+                              background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                              color: '#fff', padding: '6px 20px', borderRadius: '30px',
+                              fontSize: '13px', fontWeight: 800, whiteSpace: 'nowrap'
+                            }}>
+                              Gói hiện tại • Hết hạn {expiryDate}
+                            </div>
+                        )}
+                        {/* Badge "Đề xuất" cho premium (chỉ khi chưa có gói) */}
+                        {isPremium && !isCurrentPlan && (
                             <div style={{
                               position: 'absolute',
                               top: '-16px', left: '50%', transform: 'translateX(-50%)',
@@ -224,14 +257,33 @@ const SubscriptionPage = () => {
                         </div>
             
                         <div style={{ flex: 1 }}></div>
-                        <Button type={isPremium ? "primary" : "default"} size="large" onClick={() => handleSubscribe(pkg.name)} loading={loading} style={{
-                          height: '52px', borderRadius: '12px', fontSize: '16px', fontWeight: isPremium ? 700 : 600,
-                          background: isPremium ? 'linear-gradient(90deg, #38bdf8 0%, #818cf8 100%)' : '#fff', 
-                          color: isPremium ? '#fff' : '#0f172a', 
-                          border: isPremium ? 'none' : '2px solid #cbd5e1',
-                          marginTop: '24px'
-                        }} block>
-                          Mua Gói {pkg.name}
+
+                        {/* Nút mua */}
+                        <Button
+                          type={isPremium && !isBlocked ? 'primary' : 'default'}
+                          size="large"
+                          disabled={isBlocked}
+                          onClick={() => !isBlocked && handleSubscribe(pkg.name)}
+                          loading={loading && targetPlan === pkg.name}
+                          title={isBlocked ? `Gói hiện tại hết hạn ${expiryDate} mới có thể mua gói mới` : ''}
+                          style={{
+                            height: '52px', borderRadius: '12px', fontSize: '16px',
+                            fontWeight: isPremium ? 700 : 600,
+                            background: isBlocked ? (isPremium ? 'rgba(255,255,255,0.1)' : '#f1f5f9')
+                                      : isPremium ? 'linear-gradient(90deg, #38bdf8 0%, #818cf8 100%)' : '#fff',
+                            color: isBlocked ? (isPremium ? '#94a3b8' : '#94a3b8')
+                                 : isPremium ? '#fff' : '#0f172a',
+                            border: isBlocked ? 'none' : (isPremium ? 'none' : '2px solid #cbd5e1'),
+                            marginTop: '24px',
+                            cursor: isBlocked ? 'not-allowed' : 'pointer',
+                          }}
+                          block
+                        >
+                          {isCurrentPlan
+                            ? `Hết hạn ${expiryDate}`
+                            : isBlocked
+                            ? 'Chờ hết hạn gói hiện tại'
+                            : `Mua Gói ${pkg.name}`}
                         </Button>
                       </div>
                     </Col>
