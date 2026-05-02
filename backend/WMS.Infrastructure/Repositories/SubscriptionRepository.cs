@@ -47,4 +47,28 @@ public class SubscriptionRepository : ISubscriptionRepository
     {
         return await _db.Subscriptions.AnyAsync(s => s.TransactionReference == transactionCode && s.Status == SubscriptionStatus.Pending);
     }
+
+    public async Task<Subscription?> GetActiveByUserAsync(int userId)
+    {
+        return await _db.Subscriptions
+            .Where(s => s.UserId == userId
+                     && s.Status == SubscriptionStatus.Active
+                     && s.EndDate.HasValue
+                     && s.EndDate.Value > DateTime.UtcNow)
+            .OrderByDescending(s => s.EndDate)
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task CancelAllPendingAsync(int userId)
+    {
+        var pendings = await _db.Subscriptions
+            .Where(s => s.UserId == userId && s.Status == SubscriptionStatus.Pending)
+            .ToListAsync();
+
+        foreach (var p in pendings)
+            p.Status = SubscriptionStatus.Cancelled;
+
+        if (pendings.Any())
+            await _db.SaveChangesAsync();
+    }
 }

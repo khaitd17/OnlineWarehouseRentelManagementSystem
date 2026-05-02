@@ -200,52 +200,25 @@ public class SepayService : ISepayService
                 var newPackage = await _db.SubscriptionPackages.FirstOrDefaultAsync(p => p.Name == subscription.Plan);
                 if (newPackage == null) throw new Exception($"Package {subscription.Plan} not found");
 
-                // Find existing active subscription
-                var currentActiveSub = _db.Subscriptions
-                    .Where(s => s.UserId == subscription.UserId && s.Status == SubscriptionStatus.Active && s.SubscriptionId != subscription.SubscriptionId && s.EndDate > DateTime.UtcNow)
-                    .OrderByDescending(s => s.EndDate)
+                // Kiểm tra race condition: user có thể đã có Active sub từ giao dịch khác
+                var currentActive = _db.Subscriptions
+                    .Where(s => s.UserId == subscription.UserId
+                             && s.Status == SubscriptionStatus.Active
+                             && s.SubscriptionId != subscription.SubscriptionId
+                             && s.EndDate > DateTime.UtcNow)
                     .FirstOrDefault();
 
-                if (currentActiveSub != null)
+                if (currentActive != null)
                 {
-                    var currentPackage = await _db.SubscriptionPackages.FirstOrDefaultAsync(p => p.Name == currentActiveSub.Plan);
-                    
-                    decimal currentDailyPrice = currentPackage != null ? currentPackage.Price / (currentPackage.DurationMonths * 30m) : 0;
-                    decimal newDailyPrice = newPackage.Price / (newPackage.DurationMonths * 30m);
-                    
-                    bool isDowngrade = currentPackage != null && newDailyPrice < currentDailyPrice;
-
-                    if (!isDowngrade)
-                    {
-                        // Upgrade or Same Tier: convert remaining days based on daily price ratio
-                        double remainingDays = (currentActiveSub.EndDate.Value - DateTime.UtcNow).TotalDays;
-                        if (remainingDays < 0) remainingDays = 0;
-
-                        double convertedDays = remainingDays;
-
-                        // Only convert if it's an actual upgrade (different package prices)
-                        if (currentPackage != null && newDailyPrice > 0 && currentDailyPrice < newDailyPrice)
-                        {
-                            convertedDays = (double)((decimal)remainingDays * (currentDailyPrice / newDailyPrice));
-                        }
-
-                        currentActiveSub.Status = SubscriptionStatus.Expired; // Đóng gói cũ
-                        
-                        subscription.Status = SubscriptionStatus.Active;
-                        subscription.StartDate = DateTime.UtcNow;
-                        double totalDays = Math.Round(convertedDays + (newPackage.DurationMonths * 30.0), MidpointRounding.AwayFromZero);
-                        subscription.EndDate = DateTime.UtcNow.AddDays(totalDays);
-                    }
-                    else
-                    {
-                        // Downgrade: queue the new subscription after current ends
-                        subscription.Status = SubscriptionStatus.Active;
-                        subscription.StartDate = currentActiveSub.EndDate;
-                        subscription.EndDate = currentActiveSub.EndDate.Value.AddDays(newPackage.DurationMonths * 30);
-                    }
+                    // Đã có gói còn hạn → hủy giao dịch này (1 tài khoản chỉ được 1 gói)
+                    subscription.Status = SubscriptionStatus.Cancelled;
+                    _logger.LogWarning(
+                        "User {UserId} đã có Active subscription {SubId} — hủy giao dịch {NewSubId} (race condition).",
+                        subscription.UserId, currentActive.SubscriptionId, subscription.SubscriptionId);
                 }
                 else
                 {
+                    // Kích hoạt gói mới bình thường
                     subscription.Status = SubscriptionStatus.Active;
                     subscription.StartDate = DateTime.UtcNow;
                     subscription.EndDate = DateTime.UtcNow.AddDays(newPackage.DurationMonths * 30);

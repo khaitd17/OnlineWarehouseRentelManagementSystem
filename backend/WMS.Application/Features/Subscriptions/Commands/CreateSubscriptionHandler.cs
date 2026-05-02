@@ -25,6 +25,21 @@ public class CreateSubscriptionHandler : IRequestHandler<CreateSubscriptionComma
     {
         try
         {
+            // Kiểm tra user có đang dùng gói còn hiệu lực không
+            var activeSub = await _subscriptionRepo.GetActiveByUserAsync(request.UserId);
+            if (activeSub != null)
+            {
+                var expiryStr = activeSub.EndDate.HasValue
+                    ? activeSub.EndDate.Value.ToLocalTime().ToString("dd/MM/yyyy")
+                    : "không xác định";
+                return new CreateSubscriptionResult
+                {
+                    Success = false,
+                    Message = $"Bạn đang sử dụng gói {activeSub.Plan}, hết hạn ngày {expiryStr}. " +
+                              $"Vui lòng chờ hết hạn để mua gói mới."
+                };
+            }
+
             var package = await _packageRepo.GetByNameAsync(request.Plan);
             if (package == null)
             {
@@ -35,6 +50,9 @@ public class CreateSubscriptionHandler : IRequestHandler<CreateSubscriptionComma
                 };
             }
             decimal amount = package.Price;
+
+            // Hủy tất cả Pending cũ (tránh rác DB khi user bấm nhiều lần trước đây)
+            await _subscriptionRepo.CancelAllPendingAsync(request.UserId);
 
             // Generate unique transaction reference SUB + 6 digits
             var random = new Random();

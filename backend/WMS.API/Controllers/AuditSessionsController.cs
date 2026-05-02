@@ -69,10 +69,11 @@ public class AuditSessionsController : ControllerBase
 
         int userId = GetCurrentUserId();
 
-        var session = await _db.AuditSessions.FindAsync(id);
-        if (session == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
+        var sessionInfo = await _db.AuditSessions.AsNoTracking()
+            .Where(a => a.AuditId == id).Select(a => new { a.WarehouseId }).FirstOrDefaultAsync(HttpContext.RequestAborted);
+        if (sessionInfo == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
 
-        if (!await IsOwnerOfWarehouseAsync(userId, session.WarehouseId))
+        if (!await IsOwnerOfWarehouseAsync(userId, sessionInfo.WarehouseId))
             return StatusCode(403, ApiResponse<bool>.ErrorResponse("Chỉ OWNER của kho mới có thể duyệt phiên kiểm kê."));
 
         var result = await _mediator.Send(new ApproveAuditSessionCommand(id, request.AssignedTo, request.Notes, userId));
@@ -89,10 +90,11 @@ public class AuditSessionsController : ControllerBase
     {
         int userId = GetCurrentUserId();
 
-        var session = await _db.AuditSessions.FindAsync(id);
-        if (session == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
+        var sessionInfo = await _db.AuditSessions.AsNoTracking()
+            .Where(a => a.AuditId == id).Select(a => new { a.WarehouseId }).FirstOrDefaultAsync(HttpContext.RequestAborted);
+        if (sessionInfo == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
 
-        if (!await IsOwnerOfWarehouseAsync(userId, session.WarehouseId))
+        if (!await IsOwnerOfWarehouseAsync(userId, sessionInfo.WarehouseId))
             return StatusCode(403, ApiResponse<bool>.ErrorResponse("Chỉ OWNER của kho mới có thể từ chối phiên kiểm kê."));
 
         var result = await _mediator.Send(new RejectAuditSessionCommand(id, request?.Reason, userId));
@@ -154,11 +156,17 @@ public class AuditSessionsController : ControllerBase
                     .ToListAsync(HttpContext.RequestAborted);
 
                 if (roleCodes.Any(r => r == "STAFF"))
-                    query.UserRole = "STAFF";   // STAFF chỉ thấy phiên được giao
+                    query.UserRole = "STAFF";
                 else if (roleCodes.Any(r => r == "RENTER"))
-                    query.UserRole = "RENTER";  // RENTER chỉ thấy phiên mình tạo
+                    query.UserRole = "RENTER";
                 else
-                    query.UserRole = "NONE";
+                {
+                    // Fallback: renter có thể không có WarehouseMembership,
+                    // kiểm tra qua bảng contracts (hợp đồng chính)
+                    var isRenter = await _db.Contracts
+                        .AnyAsync(c => c.RenterId == userId && c.Status == "ACTIVE", HttpContext.RequestAborted);
+                    query.UserRole = isRenter ? "RENTER" : "NONE";
+                }
             }
         }
 
@@ -202,10 +210,11 @@ public class AuditSessionsController : ControllerBase
 
         int userId = GetCurrentUserId();
 
-        var session = await _db.AuditSessions.FindAsync(id);
-        if (session == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
+        var sessionInfo = await _db.AuditSessions.AsNoTracking()
+            .Where(a => a.AuditId == id).Select(a => new { a.AssignedTo }).FirstOrDefaultAsync(HttpContext.RequestAborted);
+        if (sessionInfo == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
 
-        if (session.AssignedTo != userId)
+        if (sessionInfo.AssignedTo != userId)
             return StatusCode(403, ApiResponse<bool>.ErrorResponse("Chỉ nhân viên (STAFF) được giao kiểm kê mới được ghi nhận kết quả."));
 
         var items = request.Items.Select(i => new AuditResultInput(
@@ -251,10 +260,14 @@ public class AuditSessionsController : ControllerBase
     {
         int userId = GetCurrentUserId();
 
-        var session = await _db.AuditSessions.FindAsync(id);
-        if (session == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
+        var sessionInfo = await _db.AuditSessions
+            .AsNoTracking()
+            .Where(a => a.AuditId == id)
+            .Select(a => new { a.AuditId, a.WarehouseId })
+            .FirstOrDefaultAsync(HttpContext.RequestAborted);
+        if (sessionInfo == null) return NotFound(ApiResponse<bool>.ErrorResponse("Không tìm thấy phiên kiểm kê."));
 
-        if (!await IsOwnerOfWarehouseAsync(userId, session.WarehouseId))
+        if (!await IsOwnerOfWarehouseAsync(userId, sessionInfo.WarehouseId))
             return StatusCode(403, ApiResponse<bool>.ErrorResponse("Chỉ OWNER của kho mới có thể đóng phiên kiểm kê."));
 
         var result = await _mediator.Send(new CloseAuditSessionCommand(id, request?.Notes, userId));

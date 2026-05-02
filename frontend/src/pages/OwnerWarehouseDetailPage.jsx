@@ -958,7 +958,7 @@ const OwnerWarehouseDetailPage = () => {
                                   borderRadius: 10, border: "1.5px solid #e2e8f0",
                                   fontSize: "0.88rem", outline: "none", boxSizing: "border-box",
                                   transition: "border-color 0.2s, box-shadow 0.2s",
-                                  fontFamily: "inherit",
+                                  fontFamily: "inherit", color: "#0f172a"
                                 }}
                                 onFocus={e => { e.target.style.borderColor = "#0284c7"; e.target.style.boxShadow = "0 0 0 3px rgba(2,132,199,0.12)"; }}
                                 onBlur={e => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
