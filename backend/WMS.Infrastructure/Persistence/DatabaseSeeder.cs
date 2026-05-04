@@ -325,6 +325,18 @@ namespace WMS.Infrastructure.Persistence
             // Manager → MANAGER membership trong warehouse 1
             EnsureMembership(context, managerUser.UserId, warehouse.WarehouseId, managerWhRole.Id, true, true);
 
+            // Owner → OWNER + OPERATOR membership cho warehouse 2 (Hải Phòng) và warehouse 3 (TP.HCM)
+            // Thiếu memberships này sẽ khiến owner không thấy kho 2/3 trong context → không hiển thị được schedule
+            if (warehouse2 != null)
+            {
+                EnsureMembership(context, ownerUser.UserId, warehouse2.WarehouseId, ownerWhRole.Id,    true, true);
+                EnsureMembership(context, ownerUser.UserId, warehouse2.WarehouseId, operatorWhRole.Id, true, true);
+            }
+            if (warehouse3 != null)
+            {
+                EnsureMembership(context, ownerUser.UserId, warehouse3.WarehouseId, ownerWhRole.Id,    true, true);
+                EnsureMembership(context, ownerUser.UserId, warehouse3.WarehouseId, operatorWhRole.Id, true, true);
+            }
 
             // ══════════════════════════════════════════════════
             // 9. RENTAL REQUESTS + CONTRACTS + PAYMENTS
