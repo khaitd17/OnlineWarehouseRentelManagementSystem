@@ -45,12 +45,22 @@ public class StaffShiftRepository : IStaffShiftRepository
         DateOnly to,
         CancellationToken ct = default)
     {
+        // Chỉ OPERATOR và MANAGER được xem schedule — lọc caller theo role cho phép
+        var allowedRoles = new[] { "OPERATOR", "MANAGER" };
         var caller = await _db.WarehouseMemberships
-            .Where(m => m.UserId == callerId && m.WarehouseId == warehouseId && m.IsActive)
+            .Where(m => m.UserId == callerId && m.WarehouseId == warehouseId && m.IsActive
+                     && allowedRoles.Contains(m.Role.Code))
             .Include(m => m.Role)
             .Include(m => m.Skills)
             .Include(m => m.Zones)
+            .OrderBy(m => m.Role.Code == "OPERATOR" ? 0 : 1) // ưu tiên OPERATOR nếu có cả 2
             .FirstOrDefaultAsync(ct);
+
+        if (caller == null)
+        {
+            // Không có membership OPERATOR/MANAGER → không có quyền
+            return new List<StaffScheduleDto>();
+        }
 
         var q = _db.WarehouseMemberships
             .Where(m => m.WarehouseId == warehouseId && m.IsActive && m.Role.Code != "OWNER")
@@ -59,12 +69,6 @@ public class StaffShiftRepository : IStaffShiftRepository
             .Include(m => m.Skills)
             .Include(m => m.Zones)
             .AsQueryable();
-
-        if (caller == null)
-        {
-            // no membership → return empty
-            return new List<StaffScheduleDto>();
-        }
 
         var callerRole = caller.Role.Code;
 
@@ -82,12 +86,7 @@ public class StaffShiftRepository : IStaffShiftRepository
                 m.Skills.Any(s => callerSkillIds.Contains(s.Id))
             );
         }
-        else if (callerRole == "STAFF")
-        {
-            // STAFF chỉ thấy chính mình
-            q = q.Where(m => m.UserId == callerId);
-        }
-        // OPERATOR và OWNER thấy tất cả (q không filter thêm)
+        // OPERATOR thấy tất cả (q không filter thêm)
 
         var members = await q.OrderBy(m => m.User!.FullName).ToListAsync(ct);
         var memberIds = members.Select(m => m.Id).ToList();
