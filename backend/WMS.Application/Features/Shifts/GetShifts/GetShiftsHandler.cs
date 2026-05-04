@@ -16,8 +16,10 @@ public class GetShiftsHandler : IRequestHandler<GetShiftsCommand, List<StaffShif
 
     public async Task<List<StaffShiftDto>> Handle(GetShiftsCommand cmd, CancellationToken cancellationToken)
     {
-        var membership = await _membershipRepo.GetCallerMembershipAsync(cmd.CallerId, cmd.WarehouseId, cancellationToken);
-        if (membership == null)
+        // Chỉ OPERATOR và MANAGER được xem shift data
+        bool isOperator = await _membershipRepo.HasRoleAsync(cmd.CallerId, cmd.WarehouseId, "OPERATOR", cancellationToken);
+        bool isManager  = await _membershipRepo.HasRoleAsync(cmd.CallerId, cmd.WarehouseId, "MANAGER",  cancellationToken);
+        if (!isOperator && !isManager)
             throw new UnauthorizedAccessException("Bạn không có quyền truy cập lịch ca của kho này.");
 
         return await _repo.GetShiftsAsync(cmd.WarehouseId, cmd.From, cmd.To, cancellationToken);
