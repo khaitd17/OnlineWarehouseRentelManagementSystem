@@ -293,8 +293,8 @@ const OwnerWarehouseDetailPage = () => {
               {/* Quick stats */}
               <div style={{ display: "flex", gap: 16, marginTop: 28, flexWrap: "wrap" }}>
                 {[
-                  { icon: "straighten",  label: "Tổng thể tích",  value: `${warehouse.totalArea} m³`,     color: "#38bdf8" },
-                  { icon: "check_circle", label: "Còn trống",       value: `${warehouse.availableArea} m³`, color: "#4ade80" },
+                  { icon: "straighten",  label: "Diện tích sàn",  value: `${warehouse.totalArea} m²`,     color: "#38bdf8" },
+                  { icon: "check_circle", label: "Còn trống",       value: `${warehouse.availableArea} m²`, color: "#4ade80" },
                   { icon: "grid_view",   label: "Khu vực",         value: `${areas.length} khu`,            color: "#fb923c" },
                   { icon: "description", label: "Hợp đồng HLực",  value: `${activeContracts.length}`,      color: "#f472b6" },
                   { icon: "payments",    label: "Doanh thu/tháng", value: `${fmt(totalMonthlyRevenue)} ₫`,  color: "#a78bfa" },
@@ -416,7 +416,7 @@ const OwnerWarehouseDetailPage = () => {
                           {AREA_STATUS_BADGE(isRented)}
                         </div>
                         <p style={{ margin: "4px 0", fontSize: "0.85rem", color: "#475569" }}>
-                          Thể tích: <strong>{(a.size || (a.width * a.length * 5) || 0).toFixed(1)} m³</strong>
+                          Diện tích: <strong>{(a.size || (a.width * a.length) || 0).toFixed(1)} m²</strong>
                         </p>
                         <p style={{ margin: "4px 0", fontSize: "0.85rem", color: "#475569" }}>
                           Kích thước: <strong>{a.width}m × {a.length}m</strong>
@@ -457,7 +457,7 @@ const OwnerWarehouseDetailPage = () => {
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#f8fafc" }}>
-                      {["Số HĐ", "Người thuê", "Thể tích", "Bắt đầu", "Kết thúc", "Tiền/tháng", "Tổng GTriị", "Trạng thái"].map(h => (
+                      {["Số HĐ", "Người thuê", "Diện tích", "Bắt đầu", "Kết thúc", "Tiền/tháng", "Tổng GTriị", "Trạng thái"].map(h => (
                         <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.8rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" }}>{h}</th>
                       ))}
                     </tr>
@@ -467,7 +467,7 @@ const OwnerWarehouseDetailPage = () => {
                       <tr key={c.contractId} style={{ borderBottom: "1px solid #f1f5f9", background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                         <td style={{ padding: "14px 16px", fontWeight: 600, color: "#0284c7", fontSize: "0.9rem" }}>{c.contractNumber || `#${c.contractId}`}</td>
                         <td style={{ padding: "14px 16px", color: "#1e293b", fontSize: "0.9rem" }}>{c.renterName || "—"}</td>
-                        <td style={{ padding: "14px 16px", color: "#475569", fontSize: "0.875rem", fontWeight: 600 }}>{c.requestedArea} m³</td>
+                        <td style={{ padding: "14px 16px", color: "#475569", fontSize: "0.875rem", fontWeight: 600 }}>{c.requestedArea} m²</td>
                         <td style={{ padding: "14px 16px", color: "#475569", fontSize: "0.875rem" }}>{fmtDate(c.startDate)}</td>
                         <td style={{ padding: "14px 16px", color: "#475569", fontSize: "0.875rem" }}>{fmtDate(c.endDate)}</td>
                         <td style={{ padding: "14px 16px", color: "#1e293b", fontWeight: 600, fontSize: "0.875rem" }}>{fmt(c.monthlyPayment)} ₫</td>
@@ -488,7 +488,7 @@ const OwnerWarehouseDetailPage = () => {
             {[
               { icon: "payments",       label: "Doanh thu tháng này",  value: `${fmt(totalMonthlyRevenue)} ₫`,  desc: `Từ ${activeContracts.length} hợp đồng đang hiệu lực`, color: "#0284c7", bg: "#e0f2fe" },
               { icon: "account_balance", label: "Tổng giá trị hợp đồng", value: `${fmt(totalContractValue)} ₫`, desc: `${contracts.length} hợp đồng tất cả thời gian`,        color: "#059669", bg: "#d1fae5" },
-              { icon: "trending_up",    label: "Tỷ lệ lấp đầy",         value: `${warehouse.totalArea > 0 ? Math.round((1 - (warehouse.availableArea / warehouse.totalArea)) * 100) : 0}%`, desc: `${warehouse.totalArea - warehouse.availableArea}/${warehouse.totalArea} m³`, color: "#7c3aed", bg: "#ede9fe" },
+              { icon: "trending_up",    label: "Tỷ lệ lấp đầy",         value: `${warehouse.totalArea > 0 ? Math.round((1 - (warehouse.availableArea / warehouse.totalArea)) * 100) : 0}%`, desc: `${warehouse.totalArea - warehouse.availableArea}/${warehouse.totalArea} m²`, color: "#7c3aed", bg: "#ede9fe" },
               { icon: "receipt_long",  label: "Hợp đồng hiệu lực",    value: activeContracts.length,           desc: `${contracts.filter(c => c.status?.toUpperCase() === "EXPIRED").length} đã hết hạn`, color: "#d97706", bg: "#fef3c7" },
             ].map((card, i) => (
               <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
@@ -582,10 +582,10 @@ const OwnerWarehouseDetailPage = () => {
                     { label: "Tên kho",          value: warehouse.name },
                     { label: "Địa chỉ",           value: warehouse.address },
                     { label: "Loại kho",          value: warehouse.warehouseType || "Khác" },
-                    { label: "Tổng thể tích",    value: `${warehouse.totalArea} m³` },
-                    { label: "Thể tích còn trống", value: `${warehouse.availableArea} m³` },
-                    { label: "Chiều dài",          value: (warehouse.length ?? warehouse.Length) != null ? `${warehouse.length ?? warehouse.Length} m` : "—" },
-                    { label: "Chiều rộng",         value: (warehouse.width ?? warehouse.Width)  != null ? `${warehouse.width ?? warehouse.Width} m`  : "—" },
+                    { label: "Diện tích sàn",    value: `${warehouse.totalArea} m²` },
+                    { label: "Diện tích còn trống", value: `${warehouse.availableArea} m²` },
+                    { label: "Chiều cao",          value: (warehouse.height ?? warehouse.Height) != null ? `${warehouse.height ?? warehouse.Height} m` : "—" },
+                
                     { label: "Giờ hoạt động",     value: warehouse.is24HoursAccess ? "24/7" : (warehouse.operatingHours || "—") },
                     { label: "Pháp lý",           value: warehouse.mainDoorDirection || "—" },
                     { label: "Trạng thái",         value: STATUS_BADGE[warehouse.status?.toUpperCase()]?.label || warehouse.status },

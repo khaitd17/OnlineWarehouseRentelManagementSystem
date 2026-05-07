@@ -359,14 +359,14 @@ export default function SearchResultsPage() {
             {divider}
 
             {/* 4. Diện tích trống cần thuê — Range Slider */}
-            <FilterSection icon="" title="Thể tích cần thuê (còn trống)">
+            <FilterSection icon="" title="Diện tích cần thuê (còn trống)">
               <RangeSlider
                 min={AREA_MIN}
                 max={AREA_MAX}
                 step={10}
                 value={areaRange}
                 onChange={v => { setAreaRange(v); setPage(1); }}
-                formatValue={v => v >= AREA_MAX ? `${AREA_MAX.toLocaleString()}+ m³` : `${v.toLocaleString()} m³`}
+                formatValue={v => v >= AREA_MAX ? `${AREA_MAX.toLocaleString()}+ m²` : `${v.toLocaleString()} m²`}
                 color="#0095c7"
               />
             </FilterSection>
@@ -374,7 +374,7 @@ export default function SearchResultsPage() {
             {divider}
 
             {/* 5. Khoảng giá thuê — Range Slider */}
-            <FilterSection icon="" title="Giá thuê / m³ / tháng">
+            <FilterSection icon="" title="Giá thuê / m² / tháng">
               <RangeSlider
                 min={PRICE_MIN}
                 max={PRICE_MAX}
@@ -495,8 +495,8 @@ export default function SearchResultsPage() {
                   {provinceInput && <ActiveChip label={provinceInput} onRemove={() => { setProvinceInput(''); setPage(1); }} />}
                   {districtInput && <ActiveChip label={districtInput} onRemove={() => { setDistrictInput(''); setPage(1); }} />}
                   {warehouseType && <ActiveChip label={WAREHOUSE_TYPES.find(t => t.value === warehouseType)?.label} onRemove={() => { setWarehouseType(''); setPage(1); }} />}
-                  {areaActive  && <ActiveChip label={`${areaRange[0].toLocaleString()}–${areaRange[1] >= AREA_MAX ? AREA_MAX.toLocaleString()+'+' : areaRange[1].toLocaleString()} m³`} onRemove={() => { setAreaRange([AREA_MIN, AREA_MAX]); setPage(1); }} />}
-                  {priceActive && <ActiveChip label={`${(priceRange[0]/1000).toFixed(0)}k–${priceRange[1] >= PRICE_MAX ? '500k+' : (priceRange[1]/1000).toFixed(0)+'k'} đ/m³`} onRemove={() => { setPriceRange([PRICE_MIN, PRICE_MAX]); setPage(1); }} />}
+                  {areaActive  && <ActiveChip label={`${areaRange[0].toLocaleString()}–${areaRange[1] >= AREA_MAX ? AREA_MAX.toLocaleString()+'+' : areaRange[1].toLocaleString()} m²`} onRemove={() => { setAreaRange([AREA_MIN, AREA_MAX]); setPage(1); }} />}
+                  {priceActive && <ActiveChip label={`${(priceRange[0]/1000).toFixed(0)}k–${priceRange[1] >= PRICE_MAX ? '500k+' : (priceRange[1]/1000).toFixed(0)+'k'} đ/m²`} onRemove={() => { setPriceRange([PRICE_MIN, PRICE_MAX]); setPage(1); }} />}
                   {is24Hours && <ActiveChip label="24/7" onRemove={() => { setIs24Hours(false); setPage(1); }} />}
                   {minRating != null && <ActiveChip label={`≥ ${minRating} sao`} onRemove={() => { setMinRating(null); setPage(1); }} />}
                 </div>
@@ -514,8 +514,8 @@ export default function SearchResultsPage() {
                   <option value='newest'>Mới nhất</option>
                   <option value='price_asc'>Giá: Thấp → Cao</option>
                   <option value='price_desc'>Giá: Cao → Thấp</option>
-                  <option value='area_asc'>Thể tích: Nhỏ → Lớn</option>
-                  <option value='area_desc'>Thể tích: Lớn → Nhỏ</option>
+                  <option value='area_asc'>Diện tích: Nhỏ → Lớn</option>
+                  <option value='area_desc'>Diện tích: Lớn → Nhỏ</option>
                 </select>
               </div>
 

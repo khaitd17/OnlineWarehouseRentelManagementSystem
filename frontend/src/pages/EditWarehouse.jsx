@@ -59,10 +59,8 @@ const EditWarehouse = () => {
     images: [],
     status: "",
     legalStatus: "",
-    width: "",
-    length: "",
-    height: "",
     totalArea: "",
+    height: "",
     pricePerM2: ""
   });
 
@@ -70,8 +68,6 @@ const EditWarehouse = () => {
   const [documents, setDocuments] = useState([]);
   const [docUploadLoading, setDocUploadLoading] = useState(false);
   const [pendingDocDeletes, setPendingDocDeletes] = useState([]);
-  // Cho phép sửa kích thước nếu dữ liệu ban đầu là 0 hoặc trống
-  const [canEditDimensions, setCanEditDimensions] = useState(false);
 
   const DOC_TYPE_LABELS = {
     BUSINESS_LICENSE: "Giấy phép kinh doanh",
@@ -123,25 +119,10 @@ const EditWarehouse = () => {
               ? res.data.status 
               : "PENDING",
       legalStatus: res.data.mainDoorDirection || "",
-      width: res.data.width ?? res.data.Width ?? "",
-      length: res.data.length ?? res.data.Length ?? "",
-      height: (res.data.width && res.data.length && (res.data.totalArea || res.data.TotalArea)) 
-                ? parseFloat(((res.data.totalArea ?? res.data.TotalArea) / (res.data.width * res.data.length)).toFixed(2)) 
-                : "5",
       totalArea: res.data.totalArea ?? res.data.TotalArea ?? "",
+      height: res.data.height ?? res.data.Height ?? "",
       pricePerM2: res.data.pricePerM2 ?? res.data.PricePerM2 ?? ""
     });
-
-
-    // Logic: Nếu cả Dài và Rộng đều chưa có (> 0) thì cho phép sửa. 
-    // Nếu đã có dữ liệu (> 0) thì khóa lại.
-    const w = res.data.width ?? res.data.Width ?? 0;
-    const l = res.data.length ?? res.data.Length ?? 0;
-    if (w <= 0 || l <= 0) {
-      setCanEditDimensions(true);
-    } else {
-      setCanEditDimensions(false);
-    }
   };
 
   useEffect(() => {
@@ -151,27 +132,10 @@ const EditWarehouse = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    
-    setFormData((prev) => {
-      const nextData = {
-        ...prev,
-        [name]: type === "checkbox" ? checked : value
-      };
-
-      // Auto-calculate TotalArea if width or length or height changes
-      if (name === "width" || name === "length" || name === "height") {
-        const w = parseFloat(nextData.width) || 0;
-        const l = parseFloat(nextData.length) || 0;
-        const h = parseFloat(nextData.height) || 0;
-        if (w > 0 && l > 0 && h > 0) {
-          nextData.totalArea = parseFloat((w * l * h).toFixed(2));
-        } else {
-          nextData.totalArea = "";
-        }
-      }
-
-      return nextData;
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const setLatLng = (lat, lng) => {
@@ -250,8 +214,7 @@ const EditWarehouse = () => {
       status: formData.status,
       mainDoorDirection: formData.legalStatus,
       totalArea: parseFloat(formData.totalArea) || 0,
-      width: formData.width ? parseFloat(formData.width) : null,
-      length: formData.length ? parseFloat(formData.length) : null,
+      height: formData.height ? parseFloat(formData.height) : null,
       pricePerM2: formData.pricePerM2 ? parseFloat(String(formData.pricePerM2).replace(/\./g, "")) : null
     };
 
@@ -464,92 +427,40 @@ const EditWarehouse = () => {
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div style={groupStyle}>
-                  <label style={labelStyle}>Chiều rộng (m)</label>
-                  <input 
-                    name="width" 
-                    type="number" 
-                    value={formData.width} 
-                    onChange={handleChange} 
-                    readOnly={!canEditDimensions}
-                    style={{ 
-                      ...inputStyle, 
-                      backgroundColor: !canEditDimensions ? "#f8fafc" : "#fff",
-                      cursor: !canEditDimensions ? "not-allowed" : "text",
-                      color: !canEditDimensions ? "#64748b" : "#1e293b"
-                    }} 
-                    placeholder="VD: 20"
+                  <label style={labelStyle}>Diện tích sàn (m²) <span style={{ color: "#ef4444" }}>*</span></label>
+                  <input
+                    name="totalArea"
+                    type="number"
+                    min="1"
+                    step="0.5"
+                    value={formData.totalArea}
+                    onChange={handleChange}
+                    placeholder="VD: 500"
+                    style={inputStyle}
                   />
                 </div>
                 <div style={groupStyle}>
-                  <label style={labelStyle}>Chiều dài (m)</label>
-                  <input 
-                    name="length" 
-                    type="number" 
-                    value={formData.length} 
-                    onChange={handleChange} 
-                    readOnly={!canEditDimensions}
-                    style={{ 
-                      ...inputStyle, 
-                      backgroundColor: !canEditDimensions ? "#f8fafc" : "#fff",
-                      cursor: !canEditDimensions ? "not-allowed" : "text",
-                      color: !canEditDimensions ? "#64748b" : "#1e293b"
-                    }} 
-                    placeholder="VD: 50"
-                  />
-                </div>
-                <div style={groupStyle}>
-                  <label style={labelStyle}>Chiều cao (m)</label>
-                  <input 
-                    name="height" 
-                    type="number" 
-                    value={formData.height} 
-                    onChange={handleChange} 
-                    readOnly={!canEditDimensions}
-                    style={{ 
-                      ...inputStyle, 
-                      backgroundColor: !canEditDimensions ? "#f8fafc" : "#fff",
-                      cursor: !canEditDimensions ? "not-allowed" : "text",
-                      color: !canEditDimensions ? "#64748b" : "#1e293b"
-                    }} 
+                  <label style={labelStyle}>Chiều cao kho (m) <span style={{ color: "#ef4444" }}>*</span></label>
+                  <input
+                    name="height"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    value={formData.height}
+                    onChange={handleChange}
                     placeholder="VD: 5"
+                    style={inputStyle}
                   />
                 </div>
               </div>
-              {/* Lock badge */}
-              {!canEditDimensions && (
-                <div style={{
-                  display: "flex", alignItems: "center", gap: "10px",
-                  background: "#f0f9ff", border: "1px solid #bae6fd",
-                  borderRadius: "12px", padding: "10px 14px", marginTop: "-0.5rem"
-                }}>
-                  <span className="material-symbols-outlined" style={{ color: "#0284c7", fontSize: "18px", flexShrink: 0 }}>lock</span>
-                  <span style={{ fontSize: "0.82rem", color: "#0369a1", lineHeight: 1.5 }}>
-                    Kích thước kho <strong>đã được khóa</strong> sau khi thiết lập lần đầu để đảm bảo tính nhất quán với các khu vực đã tạo.
-                    Nếu cần thay đổi, vui lòng liên hệ quản trị viên.
-                  </span>
-                </div>
-              )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <div style={groupStyle}>
-                  <label style={labelStyle}>Tổng thể tích (m³)</label>
-                  <input 
-                    name="totalArea" 
-                    type="text" 
-                    value={formData.totalArea} 
-                    placeholder="Tự động tính bằng Rộng x Dài x Cao"
-                    readOnly 
-                    style={{ ...inputStyle, backgroundColor: "#f1f5f9", cursor: "not-allowed", fontWeight: 700 }} 
-                  />
-                </div>
-
-              {/* Giá thuê/m³ */}
+              {/* Giá thuê/m² */}
               <div style={groupStyle}>
 
                 <label style={labelStyle}>
-                  Giá thuê/m³ (VNĐ/tháng) <span style={{ color: "#ef4444" }}>*</span>
+                  Giá thuê/m² (VNĐ/tháng) <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <div style={{ position: "relative" }}>
                   <input
@@ -561,7 +472,7 @@ const EditWarehouse = () => {
                       : ""}
                     placeholder="VD: 150.000"
                     onChange={(e) => {
-                      const raw = e.target.value.replace(/[\.,\s]/g, "");
+                      const raw = e.target.value.replace(/[\..,\s]/g, "");
                       if (raw === "" || /^\d+$/.test(raw)) {
                         setFormData(prev => ({ ...prev, pricePerM2: raw }));
                       }
@@ -571,7 +482,7 @@ const EditWarehouse = () => {
                   <span style={{
                     position: "absolute", right: "18px", top: "50%", transform: "translateY(-50%)",
                     fontSize: "0.85rem", fontWeight: 700, color: "#64748b", pointerEvents: "none"
-                  }}>₫/m³</span>
+                  }}>₫/m²</span>
                 </div>
                 {formData.pricePerM2 && formData.totalArea && (
                   <div style={{ fontSize: "0.82rem", color: "#0095c7", fontWeight: 600, marginTop: 2 }}>
@@ -579,7 +490,7 @@ const EditWarehouse = () => {
                   </div>
                 )}
               </div>
-              </div>
+              
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div style={groupStyle}>

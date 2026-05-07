@@ -257,7 +257,7 @@ const OwnerContracts = () => {
               <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: "0" }}>
                 <thead>
                   <tr style={{ backgroundColor: "#f8fafc" }}>
-                    {["Mã HĐ / Kho", "Người thuê", "Thời hạn", "Thể tích", "Giá trị / Tháng", "Trạng thái", "Thao tác"].map((h, i) => (
+                    {["Mã HĐ / Kho", "Người thuê", "Thời hạn", "Diện tích", "Giá trị / Tháng", "Trạng thái", "Thao tác"].map((h, i) => (
                       <th key={i} style={{ padding: "12px 16px", textAlign: i === 6 ? "right" : "left", fontWeight: 700, color: "#64748b", textTransform: "uppercase", fontSize: "0.75rem", letterSpacing: "0.05em", borderBottom: "2px solid #e2e8f0", borderTop: "1px solid #e2e8f0", borderLeft: i===0?"1px solid #e2e8f0":"none", borderRight: i===6?"1px solid #e2e8f0":"none", borderTopLeftRadius: i===0?"8px":"0", borderTopRightRadius: i===6?"8px":"0" }}>
                         {h}
                       </th>
@@ -292,7 +292,7 @@ const OwnerContracts = () => {
                         </td>
                         <td style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}>
                           <span style={{ backgroundColor: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: "12px", fontSize: "0.8rem", fontWeight: 700, display: "inline-block" }}>
-                            {contract.requestedArea || 0} m³
+                            {contract.requestedArea || 0} m²
                           </span>
                         </td>
                         <td style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}>

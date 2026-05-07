@@ -31,7 +31,7 @@ const calculateTotalValue = (monthlyPayment, durationMonths) => {
 };
 
 const generateDefaultTerms = (req) => {
-  return `1. Bên A cho Bên B thuê thể tích ${req.requestedArea} m³ tại kho ${req.warehouseName}, địa chỉ: ${req.warehouseAddress}.
+  return `1. Bên A cho Bên B thuê diện tích ${req.requestedArea} m² tại kho ${req.warehouseName}, địa chỉ: ${req.warehouseAddress}.
 2. Bên B sử dụng kho đúng mục đích thuê, không chứa hàng cấm, hàng nguy hiểm, dễ cháy nổ.
 3. Bên B thanh toán tiền thuê hàng tháng, chậm nhất vào ngày 05 của mỗi tháng.
 4. Nếu Bên B chậm thanh toán quá 15 ngày, Bên A có quyền đơn phương chấm dứt hợp đồng.
@@ -477,7 +477,7 @@ const PendingRentalRequests = () => {
         {/* ── Warehouse info ── */}
         <ContractSection title="Thông tin kho hàng" icon="warehouse" accent="#0891b2">
           <ReadOnlyField label="Tên kho" value={req.warehouseName} />
-          <ReadOnlyField label="Thể tích thuê" value={`${req.requestedArea} m³`} />
+          <ReadOnlyField label="Diện tích thuê" value={`${req.requestedArea} m²`} />
           <ReadOnlyField label="Địa chỉ" value={req.warehouseAddress} fullWidth />
         </ContractSection>
 
@@ -535,7 +535,7 @@ const PendingRentalRequests = () => {
               }}>
                 <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#15803d", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>Ô khu đã chọn bởi người thuê</div>
                 <div style={{ fontSize: "0.88rem", fontWeight: 600, color: "#166534" }}>
-                  {req.rentalAreaName} — {req.rentalAreaSize} m³
+                  {req.rentalAreaName} — {req.rentalAreaSize} m²
                 </div>
               </div>
             ) : (
@@ -675,10 +675,10 @@ const PendingRentalRequests = () => {
 
         {/* ── Pricing ── */}
         <ContractSection title="Giá thuê và thanh toán" icon="payments" accent="#d97706">
-          <ReadOnlyField label="Giá/m³ (VNĐ)" value={formatCurrency(contractForm.pricePerM2)} />
-          <ReadOnlyField label="Thể tích thuê" value={`${req.requestedArea} m³`} />
+          <ReadOnlyField label="Giá/m² (VNĐ)" value={formatCurrency(contractForm.pricePerM2)} />
+          <ReadOnlyField label="Diện tích thuê" value={`${req.requestedArea} m²`} />
           <ReadOnlyField
-            label={`Giá thuê/tháng (${req.requestedArea}m³ × ${formatCurrency(contractForm.pricePerM2)})`}
+            label={`Giá thuê/tháng (${req.requestedArea}m² × ${formatCurrency(contractForm.pricePerM2)})`}
             value={formatCurrency(contractForm.monthlyPayment)}
             fullWidth
           />
@@ -1087,7 +1087,7 @@ const PendingRentalRequests = () => {
                     {[
                       { label: "Người thuê", value: `${req.renterName} (${req.renterEmail})`, wide: true },
                       { label: "Địa chỉ", value: req.warehouseAddress, wide: true },
-                      { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
+                      { label: "Diện tích yêu cầu", value: `${req.requestedArea} m²` },
                       req.isCustomArea
                         ? (() => {
                             const ownerAssigned = !!req.isOwnerAssigned;
@@ -1098,7 +1098,7 @@ const PendingRentalRequests = () => {
                             if (req.additionalZonesJson) {
                               try {
                                 const addZones = JSON.parse(req.additionalZonesJson);
-                                value = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m³`;
+                                value = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m²`;
                               } catch(e) {}
                             }
                             return {
@@ -1109,7 +1109,7 @@ const PendingRentalRequests = () => {
                               ownerZone: ownerAssigned,
                             };
                           })()
-                        : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null),
+                        : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m²`, highlighted: true } : null),
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
                       { label: "Ngày bắt đầu", value: formatDate(req.startDate) },
                     ].filter(Boolean).map(item => (

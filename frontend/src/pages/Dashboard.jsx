@@ -299,7 +299,7 @@ const Dashboard = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-slate-700 font-medium">
-                            {wh.totalArea ? `${wh.totalArea.toLocaleString('vi-VN')} m³` : '—'}
+                            {wh.totalArea ? `${wh.totalArea.toLocaleString('vi-VN')} m²` : '—'}
                           </td>
                           <td className="px-6 py-4">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${st.cls}`}>

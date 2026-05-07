@@ -20,10 +20,6 @@ public class CreateWarehouseCommand : IRequest<int>
 
     public double TotalArea { get; set; }
 
-    public double? Width { get; set; }
-    
-    public double? Length { get; set; }
-
     public double? Height { get; set; }
 
     public string? OperatingHours { get; set; }

@@ -27,8 +27,7 @@ public class WarehouseRepository : IWarehouseRepository
             Description = warehouse.Description,
             TotalArea = warehouse.TotalArea,
             WarehouseType = warehouse.WarehouseType,
-            Width = warehouse.Width,
-            Length = warehouse.Length,
+            Height = warehouse.Height,
             AvailableArea = warehouse.AvailableArea,
             OperatingHours = warehouse.OperatingHours,
             Is24HoursAccess = warehouse.Is24HoursAccess,
@@ -79,8 +78,7 @@ public async Task<Warehouse?> GetByIdAsync(
         Lng = entity.Lng,
         Description = entity.Description,
         TotalArea = entity.TotalArea,
-        Width = entity.Width,
-        Length = entity.Length,
+        Height = entity.Height,
         AvailableArea = entity.AvailableArea,
         OperatingHours = entity.OperatingHours,
         WarehouseType = entity.WarehouseType,
@@ -136,8 +134,7 @@ public async Task<Warehouse?> GetByIdAsync(
             Lng = entity.Lng,
             Description = entity.Description,
             TotalArea = entity.TotalArea,
-            Width = entity.Width,
-            Length = entity.Length,
+            Height = entity.Height,
             AvailableArea = entity.AvailableArea,
             WarehouseType = entity.WarehouseType,
             OperatingHours = entity.OperatingHours,
@@ -173,8 +170,7 @@ public async Task<Warehouse?> GetByIdAsync(
         entity.Lng = warehouse.Lng;
         entity.Description = warehouse.Description;
         entity.TotalArea = warehouse.TotalArea;
-        entity.Width = warehouse.Width;
-        entity.Length = warehouse.Length;
+        entity.Height = warehouse.Height;
         entity.AvailableArea = warehouse.AvailableArea;
         entity.OperatingHours = warehouse.OperatingHours;
         entity.Is24HoursAccess = warehouse.Is24HoursAccess;

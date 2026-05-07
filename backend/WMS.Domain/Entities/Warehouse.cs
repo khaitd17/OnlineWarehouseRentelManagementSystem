@@ -24,8 +24,12 @@ public partial class Warehouse
 
     public double TotalArea { get; set; }
 
+    /// <summary>Chiều rộng kho (m) — legacy, không dùng nữa.</summary>
     public double? Width { get; set; }
+    /// <summary>Chiều dài kho (m) — legacy, không dùng nữa.</summary>
     public double? Length { get; set; }
+    /// <summary>Chiều cao kho (m) — bắt buộc từ v2, dùng để hiển thị thông tin kho.</summary>
+    public double? Height { get; set; }
     public string? MainDoorDirection { get; set; }
 
     public double AvailableArea { get; set; }

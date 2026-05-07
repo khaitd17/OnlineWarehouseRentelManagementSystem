@@ -284,7 +284,7 @@ const MyRentalRequests = () => {
                   }}>
                     {[
                       { label: "Địa chỉ", value: req.warehouseAddress },
-                      { label: "Thể tích yêu cầu", value: `${req.requestedArea} m³` },
+                      { label: "Diện tích yêu cầu", value: `${req.requestedArea} m²` },
                       req.isCustomArea
                         ? (() => {
                             const hasAdditional = !!req.additionalZonesJson;
@@ -293,7 +293,7 @@ const MyRentalRequests = () => {
                             if (hasAdditional) {
                               try {
                                 const addZones = JSON.parse(req.additionalZonesJson);
-                                zoneDesc = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m³`;
+                                zoneDesc = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m²`;
                               } catch(e) {}
                             }
                             return {
@@ -303,7 +303,7 @@ const MyRentalRequests = () => {
                               highlighted: !!req.isOwnerAssigned,
                             };
                           })()
-                        : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m³`, highlighted: true } : null),
+                        : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m²`, highlighted: true } : null),
                       { label: "Bắt đầu", value: formatDate(req.startDate) },
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
                     ].filter(Boolean).map(item => (

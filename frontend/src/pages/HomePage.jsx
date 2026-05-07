@@ -724,10 +724,10 @@ const PROVINCES = [
 
 const AREA_RANGES = [
   { label: 'Tất cả diện tích', value: '' },
-  { label: '< 50 m³',      value: '50'   },
-  { label: '< 100 m³',     value: '100'  },
-  { label: '< 500 m³',     value: '500'  },
-  { label: '< 1,000 m³',   value: '1000' },
+  { label: '< 50 m²',      value: '50'   },
+  { label: '< 100 m²',     value: '100'  },
+  { label: '< 500 m²',     value: '500'  },
+  { label: '< 1.000 m²',   value: '1000' },
 ];
 
 const HomePage = () => {
@@ -995,19 +995,19 @@ const HomePage = () => {
                       {w.description && <p className="wh-desc">{w.description}</p>}
                       {w.pricePerM2 && (
                         <div className="wh-price-tag">
-                          <strong>{Number(w.pricePerM2).toLocaleString('vi-VN')} đ</strong>/m³/tháng
+                          <strong>{Number(w.pricePerM2).toLocaleString('vi-VN')} đ</strong>/m²/tháng
                         </div>
                       )}
                       <div className="wh-footer">
                         <div>
-                          <div className="wh-area-label">Tổng thể tích</div>
-                          <div className="wh-area-value">{w.totalArea} m³</div>
+                          <div className="wh-area-label">Diện tích sàn</div>
+                          <div className="wh-area-value">{w.totalArea} m²</div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div className="wh-area-label">Còn trống</div>
                           <div>
                             <span className="wh-avail-value">{w.availableArea}</span>
-                            <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}> m³</span>
+                            <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}> m²</span>
                           </div>
                         </div>
                       </div>
