@@ -36,17 +36,17 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
         if (request.Address.Trim().Length < 10 || request.Address.Trim().Length > 300)
             throw new ArgumentException("Địa chỉ phải từ 10 đến 300 ký tự.");
 
-        // Thể tích tổng
+        // Diện tích sàn
         if (request.TotalArea <= 0)
-            throw new ArgumentException("Tổng thể tích kho phải lớn hơn 0.");
-        if (request.TotalArea > 500_000)
-            throw new ArgumentException("Tổng thể tích kho không được vượt quá 500,000 m³.");
+            throw new ArgumentException("Diện tích sàn kho phải lớn hơn 0.");
+        if (request.TotalArea > 200_000)
+            throw new ArgumentException("Diện tích sàn kho không được vượt quá 200,000 m².");
 
-        // Kích thước (nếu cung cấp)
-        if (request.Width.HasValue && request.Width.Value <= 0)
-            throw new ArgumentException("Chiều rộng kho phải lớn hơn 0.");
-        if (request.Length.HasValue && request.Length.Value <= 0)
-            throw new ArgumentException("Chiều dài kho phải lớn hơn 0.");
+        // Chiều cao kho (bắt buộc)
+        if (!request.Height.HasValue || request.Height.Value <= 0)
+            throw new ArgumentException("Chiều cao kho phải lớn hơn 0.");
+        if (request.Height.Value > 50)
+            throw new ArgumentException("Chiều cao kho không được vượt quá 50 m.");
 
         // Tọa độ GPS
         if (request.Lat.HasValue && (request.Lat.Value < -90 || request.Lat.Value > 90))
@@ -101,8 +101,7 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             Description = request.Description,
             WarehouseType = request.WarehouseType,
             TotalArea = request.TotalArea,
-            Width = request.Width,
-            Length = request.Length,
+            Height = request.Height,
             AvailableArea = request.TotalArea,
             OperatingHours = request.OperatingHours,
             Is24HoursAccess = request.Is24HoursAccess,
@@ -110,7 +109,8 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             CloseTime = request.CloseTime,
             MainDoorDirection = request.MainDoorDirection,
             Status = "DRAFT",
-            PricePerM2 = request.PricePerM2
+            PricePerM2 = request.PricePerM2,
+            BoundaryPoints = string.IsNullOrEmpty(request.BoundaryPoints) ? null : request.BoundaryPoints,
         };
 
         var warehouseId = await _repository.CreateAsync(warehouse, cancellationToken);

@@ -5,6 +5,7 @@ import rentalService from '../services/rentalService';
 import ratingService from '../services/ratingService';
 import authService from '../services/authService';
 import CustomAreaSelectorModal from '../components/warehouse/CustomAreaSelectorModal';
+import WarehouseFloorPlanView from '../components/warehouse/WarehouseFloorPlanView';
 
 // ─── Floor Plan Blueprint ────────────────────────────────────────────────────
 const FloorPlanView = ({ areas, warehouseData }) => {
@@ -124,7 +125,7 @@ const FloorPlanView = ({ areas, warehouseData }) => {
                   }}
                 >
                   <div style={{ fontWeight: 800, color: occupied ? '#991b1b' : '#1e3a8a', fontSize: '0.75rem', lineHeight: 1.2, width: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', writingMode: isPortrait ? 'vertical-rl' : 'horizontal-tb', transform: isPortrait ? 'rotate(180deg)' : 'none' }}>{a.name}</div>
-                  <div style={{ fontSize: '0.65rem', color: occupied ? '#b91c1c' : '#1d4ed8', marginTop: 2, fontWeight: 700, display: pw < 50 || ph < 50 ? 'none' : 'block' }}>{a.size} m³</div>
+                  <div style={{ fontSize: '0.65rem', color: occupied ? '#b91c1c' : '#1d4ed8', marginTop: 2, fontWeight: 700, display: pw < 50 || ph < 50 ? 'none' : 'block' }}>{a.size} m²</div>
                   <div style={{ fontSize: '0.6rem', color: occupied ? '#dc2626' : '#2563eb', marginTop: 2, display: pw < 50 || ph < 60 ? 'none' : 'block' }}>{a.width}m × {a.length}m</div>
                   {isHov && (
                     <div style={{
@@ -380,14 +381,14 @@ const WarehouseDetailsPage = () => {
   // customArea: { posX, posY, width, length, baseAreaId } | null
   const doSubmitRequest = async (areaOverride, customArea) => {
     const chosenArea = areaOverride !== undefined ? areaOverride : selectedArea;
-    const area = parseFloat(formData.requestedArea);   // Luôn dùng thể tích người thuê nhập
+    const area = parseFloat(formData.requestedArea);   // Luôn dùng diện tích người thuê nhập
     const duration = parseInt(formData.durationMonths);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const startDate = formData.startDate ? new Date(formData.startDate) : null;
 
-    if (!area || area <= 0) { setSubmitMsg({ type: 'error', text: 'Vui lòng nhập thể tích cần thuê.' }); return; }
-    if (warehouse && area > warehouse.availableArea) { setSubmitMsg({ type: 'error', text: `Thể tích vượt quá thể tích còn trống (${warehouse.availableArea} m³).` }); return; }
+    if (!area || area <= 0) { setSubmitMsg({ type: 'error', text: 'Vui lòng nhập diện tích cần thuê.' }); return; }
+    if (warehouse && area > warehouse.availableArea) { setSubmitMsg({ type: 'error', text: `Diện tích vượt quá diện tích còn trống (${warehouse.availableArea} m²).` }); return; }
     if (!formData.startDate) { setSubmitMsg({ type: 'error', text: 'Vui lòng chọn ngày bắt đầu.' }); return; }
     if (startDate < today) { setSubmitMsg({ type: 'error', text: 'Ngày bắt đầu phải từ hôm nay trở đi.' }); return; }
     if (!duration || duration < 1 || duration > 60) { setSubmitMsg({ type: 'error', text: 'Thời hạn thuê từ 1 đến 60 tháng.' }); return; }
@@ -675,13 +676,13 @@ const WarehouseDetailsPage = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
               {[
-                { label: "TỔNG THỂ TÍCH", value: `${warehouse.area} m³` },
+                { label: "DIỆN TÍCH SÀN", value: `${warehouse.area} m²` },
                 { label: "LOẠI KHO", value: warehouseData?.warehouseType || "Khác" },
-                { label: "CÒN TRỐNG", value: `${warehouse.availableArea} m³` },
+                { label: "CÒN TRỐNG", value: `${warehouse.availableArea} m²` },
                 { label: "GIỜ HOẠT ĐỘNG", value: warehouse.operatingHours || 'Không rõ' },
                 { label: "TRẠNG THÁI", value: warehouse.status },
                 {
-                  label: "GIÁ THUÊ/M³/THÁNG",
+                  label: "GIÁ THUÊ/M²/THÁNG",
                   value: warehouseData?.pricePerM2
                     ? `${Number(warehouseData.pricePerM2).toLocaleString('vi-VN')} ₫`
                     : 'Liên hệ'
@@ -699,9 +700,17 @@ const WarehouseDetailsPage = () => {
               <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{warehouse.description}</p>
             </section>
 
-            {/* ── Rental Areas Floor Plan ── */}
-            {areas.length > 0 && (
-              <FloorPlanView areas={areas} warehouseData={warehouseData} />
+            {/* ── Sơ đồ mặt bằng kho ── */}
+            {warehouseData?.boundaryPoints && (
+              <section style={{ background: '#fff', borderRadius: '20px', padding: '1.5rem', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: '0 0 1rem' }}>
+                  Sơ đồ mặt bằng kho
+                </h2>
+                <WarehouseFloorPlanView
+                  boundaryPoints={warehouseData.boundaryPoints}
+                  totalArea={warehouseData.totalArea}
+                />
+              </section>
             )}
             {warehouse.lat && warehouse.lng && (
               <section>
@@ -1088,7 +1097,7 @@ const WarehouseDetailsPage = () => {
                       <div>
                         <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Chọn vị trí thuê</h3>
                         <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                          Bạn cần thuê <strong>{enteredVol} m³</strong>.
+                          Bạn cần thuê <strong>{enteredVol} m²</strong>.
                         </p>
                       </div>
                       <button onClick={() => setShowAreaModal(false)} style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', color: '#64748b', flexShrink: 0 }}>✕</button>
@@ -1152,7 +1161,7 @@ const WarehouseDetailsPage = () => {
                                       <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>{a.name}</span>
                                       {fits && <span style={{ fontSize: '0.66rem', fontWeight: 700, color: '#0369a1', background: '#e0f2fe', padding: '1px 7px', borderRadius: 6 }}>Phù hợp</span>}
                                     </div>
-                                    <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: 2 }}>{a.size} m³ · {a.width}m × {a.length}m</div>
+                                    <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: 2 }}>{a.size} m² {a.width}m × {a.length}m</div>
                                   </div>
                                   <div style={{ textAlign: 'right' }}>
                                     {estimatedPrice && (
@@ -1297,10 +1306,10 @@ const WarehouseDetailsPage = () => {
                     <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#065f46' }}>
                       {Number(warehouseData.pricePerM2).toLocaleString('vi-VN')} đ
                     </span>
-                    <span style={{ fontSize: '0.8rem', color: '#047857', fontWeight: 600 }}>/m³/tháng</span>
+                    <span style={{ fontSize: '0.8rem', color: '#047857', fontWeight: 600 }}>/m²/tháng</span>
                   </div>
                 ) : null}
-                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Thể tích còn trống: <strong>{warehouse.availableArea} m³</strong></p>
+                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>Diện tích còn trống: <strong>{warehouse.availableArea} m²</strong></p>
               </div>
 
               {isOwner ? (
@@ -1342,17 +1351,17 @@ const WarehouseDetailsPage = () => {
                       <div style={{ padding: '10px 14px', borderRadius: 10, background: '#f0fdf4', border: '1.5px solid #86efac', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
                           <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Ô khu đã chọn</div>
-                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{selectedArea.name} — {selectedArea.size} m³</div>
+                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{selectedArea.name} — {selectedArea.size} m²</div>
                         </div>
                         <button onClick={() => setSelectedArea(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1.2rem', lineHeight: 1 }}>✕</button>
                       </div>
                     )}
                     {!selectedArea && (
                       <div style={fieldGroup}>
-                        <label style={fieldLabel}>THỂ TÍCH CẦN THUÊ (m³) *</label>
+                        <label style={fieldLabel}>DIỆN TÍCH CẦN THUÊ (m²) *</label>
                         <input
                           type="number" name="requestedArea" min="1" step="0.1"
-                          placeholder={`Tối đa ${warehouse.availableArea} m³`}
+                          placeholder={`Tối đa ${warehouse.availableArea} m²`}
                           value={formData.requestedArea} onChange={handleInputChange}
                           style={fieldInput}
                         />
@@ -1391,7 +1400,7 @@ const WarehouseDetailsPage = () => {
                     <>
                       {!selectedArea && !formData.requestedArea && (
                         <div style={{ fontSize: '0.78rem', color: '#94a3b8', textAlign: 'center', marginBottom: 8, fontStyle: 'italic' }}>
-                          Nhập thể tích cần thuê để tiếp tục
+                          Nhập diện tích cần thuê để tiếp tục
                         </div>
                       )}
                       <button

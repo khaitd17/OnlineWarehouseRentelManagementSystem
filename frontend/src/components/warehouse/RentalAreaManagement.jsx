@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Rnd } from "react-rnd";
 import api from "../../services/axiosClient";
+import { parseBoundary, buildMaskPath, buildPolygonPoints, getGridDimensions, CELL_SIZE } from "../../utils/polygonUtils";
 
 // ── Gate sizing constants ──────────────────────────────────────────────────
 const GATE_LONG  = 140; // px along the wall
@@ -345,15 +346,37 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
   // ── Render ──────────────────────────────────────────────────────────────
   if(loading) return <p style={{color:'#64748b'}}>Đang tải sơ đồ 2D...</p>;
 
-  const whW = parseFloat(warehouse?.width ?? warehouse?.Width ?? 0) || 0;
-  const whL = parseFloat(warehouse?.length ?? warehouse?.Length ?? 0) || 0;
-  // Derive warehouse height from TotalArea (m³) / (W × L) since Height is not stored separately
-  const whH = (warehouse?.totalArea && whW && whL)
-    ? Math.round((warehouse.totalArea / (whW * whL)) * 10) / 10
-    : 0;
+  // Try legacy width/length first, fall back to boundary polygon or totalArea square root
+  let whW = parseFloat(warehouse?.width ?? warehouse?.Width ?? 0) || 0;
+  let whL = parseFloat(warehouse?.length ?? warehouse?.Length ?? 0) || 0;
+
+  // ── Boundary polygon (from BoundaryPoints JSON) ──────────────────────────
+  const boundary = parseBoundary(warehouse?.boundaryPoints);
+  const cellPx = scale * CELL_SIZE;
+
+  // If no legacy width/length, derive from boundary polygon or totalArea
+  if (!whW || !whL) {
+    if (boundary && boundary.length >= 3) {
+      const { cols, rows } = getGridDimensions(boundary);
+      whW = cols * CELL_SIZE;  // each grid cell = 0.5m
+      whL = rows * CELL_SIZE;
+    }
+    
+    // If STILL no usable dimensions (e.g. boundary was legacy px/py format with no gx)
+    if (!whW || !whL) {
+      // Last resort: assume square from totalArea
+      const area = parseFloat(warehouse?.totalArea ?? 0);
+      if (area > 0) {
+        whW = Math.ceil(Math.sqrt(area));
+        whL = Math.ceil(area / whW);
+      }
+    }
+  }
+
+  const whH = (warehouse?.height ?? warehouse?.Height) ? parseFloat(warehouse?.height ?? warehouse?.Height) : 0;
   const cw=whW*scale, ch=whL*scale;
 
-  // Guard: dimensions not saved yet
+  // Guard: still no usable dimensions
   if (!whW || !whL) {
     return (
       <div style={{marginTop:'2rem',backgroundColor:'#fff',padding:'2.5rem',borderRadius:'24px',boxShadow:'0 10px 40px rgba(0,0,0,0.05)'}}>
@@ -361,19 +384,20 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
           <span className="material-symbols-outlined" style={{fontSize:'2.5rem',color:'#d97706',display:'block',marginBottom:'1rem'}}>info</span>
           <h3 style={{margin:'0 0 0.5rem',color:'#92400e',fontSize:'1.1rem',fontWeight:800}}>Chưa có thông tin kích thước kho</h3>
           <p style={{margin:0,color:'#b45309',fontSize:'0.9rem',lineHeight:1.6}}>
-            Vui lòng <strong>lưu thông tin kho</strong> với <strong>Chiều rộng</strong> và <strong>Chiều dài</strong> đầy đủ ở form bên trên trước khi tạo sơ đồ khu vực.
+            Vui lòng lưu thông tin kho với <strong>Diện tích sàn</strong> hợp lệ hoặc vẽ <strong>sơ đồ kho</strong> trước khi tạo sơ đồ khu vực.
           </p>
         </div>
       </div>
     );
   }
 
+
   const containerStyle = {
     position:'absolute', top:0, left:0,
     width:`${cw}px`, height:`${ch}px`,
     backgroundColor:'#f8fafc',
     backgroundImage:'linear-gradient(#e2e8f0 1px,transparent 1px),linear-gradient(90deg,#e2e8f0 1px,transparent 1px)',
-    backgroundSize:`${scale}px ${scale}px`,
+    backgroundSize:`${scale/2}px ${scale/2}px`,
     border:'3px solid #64748b', borderRadius:'8px',
     boxShadow:'inset 0 0 10px rgba(0,0,0,0.05)',
     pointerEvents:'none',
@@ -454,6 +478,33 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
             </div>
             <div ref={canvasWrapperRef} style={{position:'relative',width:`${cw}px`,height:`${ch}px`,flexShrink:0}}>
               <div style={containerStyle}/>
+
+              {/* ── Boundary polygon mask overlay (visual only, no booking impact) ── */}
+              {boundary && (
+                <svg style={{
+                  position:'absolute', top:0, left:0,
+                  width:cw, height:ch,
+                  pointerEvents:'none',
+                  zIndex:10,
+                  overflow:'visible',
+                }}>
+                  {/* Grey-out outside boundary using SVG evenodd fill rule */}
+                  <path
+                    fillRule="evenodd"
+                    fill="rgba(100,116,139,0.45)"
+                    d={buildMaskPath(boundary, cw, ch, cellPx)}
+                  />
+                  {/* Boundary outline — blue dashed */}
+                  <polygon
+                    points={buildPolygonPoints(boundary, cw, ch, cellPx)}
+                    fill="none"
+                    stroke="#0095c7"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                  />
+                </svg>
+              )}
+
               <div style={{position:'absolute',top:0,left:0,width:`${cw}px`,height:`${ch}px`,overflow:'hidden'}}>
                 {areas.length===0 && !viewOnly && (
                   <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,textAlign:'center',pointerEvents:'none'}}>

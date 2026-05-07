@@ -58,7 +58,7 @@ const WarehouseDetail = () => {
     e.preventDefault();
 
     if (parseFloat(formData.requestedArea) > warehouse?.availableArea) {
-      alert(`Thể tích yêu cầu không được vượt quá thể tích còn trống (${warehouse.availableArea} m³).`);
+      alert(`Diện tích yêu cầu không được vượt quá diện tích còn trống (${warehouse.availableArea} m²).`);
       return;
     }
 
@@ -366,19 +366,19 @@ const WarehouseDetail = () => {
 
                 <div>
                   <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
-                    Tổng thể tích
+                    Diện tích sàn
                   </div>
                   <div style={{ fontWeight: 700 }}>
-                    {warehouse.totalArea} m³
+                    {warehouse.totalArea} m²
                   </div>
                 </div>
 
                 <div>
                   <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
-                    Thể tích còn trống
+                    Diện tích còn trống
                   </div>
                   <div style={{ fontWeight: 700 }}>
-                    {warehouse.availableArea} m³
+                    {warehouse.availableArea} m²
                   </div>
                 </div>
 
@@ -505,7 +505,7 @@ const WarehouseDetail = () => {
                 
                 <div>
                   <label style={{ display: "block", fontWeight: 600, marginBottom: "8px", fontSize: "0.9rem" }}>
-                    Thể tích cần thuê (m³) <span style={{ color: "red" }}>*</span>
+                    Diện tích cần thuê (m²) <span style={{ color: "red" }}>*</span>
                   </label>
                   <input
                     type="number"
@@ -515,7 +515,7 @@ const WarehouseDetail = () => {
                     required
                     min="1"
                     max={warehouse?.availableArea}
-                    placeholder={`Tối đa ${warehouse?.availableArea} m³`}
+                    placeholder={`Tối đa ${warehouse?.availableArea} m²`}
                     style={{
                       width: "100%",
                       padding: "12px",

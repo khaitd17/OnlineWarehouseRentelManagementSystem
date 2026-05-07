@@ -45,19 +45,20 @@ public class UpdateWarehouseHandler : IRequestHandler<UpdateWarehouseCommand>
             throw new ArgumentException("Địa chỉ phải từ 10 đến 300 ký tự.");
 
         if (request.TotalArea <= 0)
-            throw new ArgumentException("Tổng thể tích kho phải lớn hơn 0.");
-        if (request.TotalArea > 500_000)
-            throw new ArgumentException("Tổng thể tích kho không được vượt quá 500,000 m³.");
+            throw new ArgumentException("Diện tích sàn kho phải lớn hơn 0.");
+        if (request.TotalArea > 200_000)
+            throw new ArgumentException("Diện tích sàn kho không được vượt quá 200,000 m².");
 
-        // Không được giảm thể tích xuống dưới phần đã cho thuê
+        // Không được giảm diện tích xuống dưới phần đã cho thuê
         var rentedArea = warehouse.TotalArea - warehouse.AvailableArea;
         if (request.TotalArea < rentedArea)
-            throw new ArgumentException($"Không thể giảm thể tích xuống {request.TotalArea} m³ vì đã có {rentedArea} m³ đang được cho thuê.");
+            throw new ArgumentException($"Không thể giảm diện tích xuống {request.TotalArea} m² vì đã có {rentedArea} m² đang được cho thuê.");
 
-        if (request.Width.HasValue && request.Width.Value <= 0)
-            throw new ArgumentException("Chiều rộng kho phải lớn hơn 0.");
-        if (request.Length.HasValue && request.Length.Value <= 0)
-            throw new ArgumentException("Chiều dài kho phải lớn hơn 0.");
+        // Chiều cao kho (bắt buộc)
+        if (!request.Height.HasValue || request.Height.Value <= 0)
+            throw new ArgumentException("Chiều cao kho phải lớn hơn 0.");
+        if (request.Height.Value > 50)
+            throw new ArgumentException("Chiều cao kho không được vượt quá 50 m.");
 
         if (request.Lat.HasValue && (request.Lat.Value < -90 || request.Lat.Value > 90))
             throw new ArgumentException("Vĩ độ (Lat) phải nằm trong khoảng [-90, 90].");
@@ -77,7 +78,7 @@ public class UpdateWarehouseHandler : IRequestHandler<UpdateWarehouseCommand>
             if (request.PricePerM2.Value < 0)
                 throw new ArgumentException("Giá thuê không được âm.");
             if (request.PricePerM2.Value > 100_000_000_000)
-                throw new ArgumentException("Giá thuê không được vượt quá 100 tỷ đồng/m³/tháng.");
+                throw new ArgumentException("Giá thuê không được vượt quá 100 tỷ đồng/m²/tháng.");
         }
 
         if (!string.IsNullOrEmpty(request.Description) && request.Description.Length > 2000)
@@ -101,11 +102,14 @@ public class UpdateWarehouseHandler : IRequestHandler<UpdateWarehouseCommand>
         warehouse.OpenTime         = request.OpenTime;
         warehouse.CloseTime        = request.CloseTime;
         warehouse.TotalArea        = request.TotalArea;
-        warehouse.Width            = request.Width;
-        warehouse.Length           = request.Length;
+        warehouse.Height           = request.Height;
         warehouse.AvailableArea    = request.TotalArea - rentedArea;
         warehouse.MainDoorDirection = request.MainDoorDirection;
         warehouse.PricePerM2       = incomingPrice ?? currentPrice;
+
+        // BoundaryPoints: null in request means "keep existing"; explicit empty string means "clear"
+        if (request.BoundaryPoints != null)
+            warehouse.BoundaryPoints = request.BoundaryPoints == "" ? null : request.BoundaryPoints;
 
         // Price changes no longer require admin re-approval – save directly
         warehouse.Status            = request.Status ?? warehouse.Status;

@@ -11,6 +11,7 @@ import StepIndicator from "../components/warehouse/StepIndicator";
 import Step1WarehouseInfo from "../components/warehouse/Step1WarehouseInfo";
 import Step2UploadImages from "../components/warehouse/Step2UploadImages";
 import Step3UploadDocuments from "../components/warehouse/Step3UploadDocuments";
+import PolygonBoundaryEditor from "../components/warehouse/PolygonBoundaryEditor";
 
 const CreateWarehouse = () => {
 
@@ -27,10 +28,8 @@ const CreateWarehouse = () => {
       address: "",
     lat: "",
     lng: "",
-    width: "",
-    length: "",
-    height: "",
     totalArea: "",
+    height: "",
     pricePerM2: "",
     is24HoursAccess: false,
     openTime: "08:00",
@@ -42,6 +41,7 @@ const CreateWarehouse = () => {
   const [existingImages, setExistingImages] = useState([]);
   const [documents, setDocuments] = useState(null); // { file, type }
   const [existingDoc, setExistingDoc] = useState(null);
+  const [boundaryJson, setBoundaryJson] = useState(null); // floor plan JSON
 
   // Load draft if ID is in URL
   useEffect(() => {
@@ -67,10 +67,8 @@ const CreateWarehouse = () => {
         address: data.address || "",
         lat: data.lat || "",
         lng: data.lng || "",
-        width: data.width || "",
-        length: data.length || "",
-        height: (data.width && data.length && data.totalArea) ? parseFloat((data.totalArea / (data.width * data.length)).toFixed(2)) : "5",
         totalArea: data.totalArea || "",
+        height: data.height || "",
         pricePerM2: data.pricePerM2 || "",
         is24HoursAccess: data.operatingHours === "24/7",
         openTime: data.openTime ? data.openTime.substring(0, 5) : "08:00",
@@ -79,16 +77,17 @@ const CreateWarehouse = () => {
       });
       setWarehouseId(id);
       setExistingImages(data.images || []);
-      setExistingDoc(data.documentStatus !== "MISSING" ? { type: data.mainDoorDirection } : null); // Simple indicator
+      setExistingDoc(data.documentStatus !== "MISSING" ? { type: data.mainDoorDirection } : null);
+      setBoundaryJson(data.boundaryPoints || null);
 
       // Determine the next logical step
       const hasImages = data.images && data.images.length > 0;
       const hasDocs = data.documentStatus && data.documentStatus !== "MISSING";
 
       if (hasImages && !hasDocs) {
-        setStep(3); // Jump to Step 3 if images are present but no docs
+        setStep(4); // Jump to Step 4 if images are present but no docs
       } else if (data.name && data.address) {
-        setStep(2); // Jump to Step 2 if basic info is present
+        setStep(2); // Jump to Step 2 (floor plan) if basic info is present
       } else {
         setStep(1); // Stay on Step 1 if basic info is missing
       }
@@ -101,20 +100,10 @@ const CreateWarehouse = () => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData((prev) => {
-      const nextData = { ...prev, [name]: type === "checkbox" ? checked : value };
-      if (name === "width" || name === "length" || name === "height") {
-        const w = parseFloat(nextData.width) || 0;
-        const l = parseFloat(nextData.length) || 0;
-        const h = parseFloat(nextData.height) || 0;
-        if (w > 0 && l > 0 && h > 0) {
-          nextData.totalArea = parseFloat((w * l * h).toFixed(2));
-        } else {
-          nextData.totalArea = "";
-        }
-      }
-      return nextData;
-    });
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const setLatLng = (lat, lng) => {
@@ -132,12 +121,16 @@ const CreateWarehouse = () => {
     if (formData.name.trim().length > 255) { alert('Tên kho không được vượt quá 255 ký tự'); return; }
     if (!formData.address?.trim()) { alert('Địa chỉ không được để trống'); return; }
     const totalArea = parseFloat(formData.totalArea);
-    if (!formData.totalArea || isNaN(totalArea) || totalArea < 10 || totalArea > 1000000) {
-      alert('Diện tích kho phải từ 10 đến 1,000,000 m³'); return;
+    if (!formData.totalArea || isNaN(totalArea) || totalArea <= 0 || totalArea > 200000) {
+      alert('Diện tích sàn kho phải từ 1 đến 200,000 m²'); return;
+    }
+    const height = parseFloat(formData.height);
+    if (!formData.height || isNaN(height) || height <= 0 || height > 50) {
+      alert('Chiều cao kho phải từ 0.1 đến 50 m'); return;
     }
     const price = parseFloat(formData.pricePerM2);
     if (formData.pricePerM2 && !isNaN(price) && (price < 1000 || price > 100000000)) {
-      alert('Giá thuê phải từ 1,000 đến 100,000,000 VNĐ/m³/tháng'); return;
+      alert('Giá thuê phải từ 1,000 đến 100,000,000 VNĐ/m²/tháng'); return;
     }
     if (formData.lat && (parseFloat(formData.lat) < -90 || parseFloat(formData.lat) > 90)) {
       alert('Vĩ độ phải từ -90 đến 90'); return;
@@ -163,8 +156,7 @@ const CreateWarehouse = () => {
         lng: formData.lng ? parseFloat(formData.lng) : null,
         description: formData.description,
         totalArea: parseFloat(formData.totalArea),
-        width: formData.width ? parseFloat(formData.width) : null,
-        length: formData.length ? parseFloat(formData.length) : null,
+        height: parseFloat(formData.height),
         pricePerM2: formData.pricePerM2 ? parseFloat(formData.pricePerM2) : null,
         is24HoursAccess: formData.is24HoursAccess,
         openTime: formData.is24HoursAccess ? null : formData.openTime,
@@ -179,7 +171,7 @@ const CreateWarehouse = () => {
         const id = await createWarehouse(payload);
         setWarehouseId(id);
       }
-      setStep(2);
+      setStep(2); // Go to image upload step
     } catch (error) {
       console.error("Lỗi khi lưu bản nháp:", error);
       const rd = error?.response?.data;
@@ -193,9 +185,45 @@ const CreateWarehouse = () => {
   };
 
   const handleFinalSubmit = async (docData) => {
-    // Since Step 2 and Step 3 now handle their own uploads sequentially,
-    // we just need to show the success step.
-    setStep(4);
+    setStep(4); // After docs, go to floor plan drawing
+  };
+
+  // Save floor plan (step 4) and move to done
+  const handleFloorPlanSave = async (jsonString) => {
+    try {
+      // Thử PATCH trước (endpoint nhẹ)
+      try {
+        await api.patch(`/Warehouse/${warehouseId}/boundary`, { boundaryPoints: jsonString });
+      } catch {
+        // Fallback: dùng PUT với giá trị mặc định an toàn nếu PATCH chưa có
+        const res = await api.get(`/Warehouse/${warehouseId}`);
+        const d = res.data;
+        await api.put(`/Warehouse/${warehouseId}`, {
+          warehouseId: parseInt(warehouseId),
+          ownerId: d.ownerId,
+          name: d.name || 'Kho mới',
+          address: d.address || '.',
+          warehouseType: d.warehouseType || 'Khác',
+          lat: d.lat || null,
+          lng: d.lng || null,
+          description: d.description || '',
+          is24HoursAccess: d.is24HoursAccess ?? true,
+          openTime: null,
+          closeTime: null,
+          operatingHours: d.operatingHours || '24/7',
+          status: d.status,
+          mainDoorDirection: d.mainDoorDirection || null,
+          totalArea: d.totalArea || 100,
+          height: d.height || 3,      // mặc định 3m nếu null
+          pricePerM2: d.pricePerM2 || null,
+          boundaryPoints: jsonString,
+        });
+      }
+      setBoundaryJson(jsonString);
+      setStep(5); // Done
+    } catch (err) {
+      alert('Lỗi khi lưu sơ đồ: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   return (
@@ -253,15 +281,17 @@ const CreateWarehouse = () => {
           />
         )}
 
-        {step === 5 && (
-          <div style={{ textAlign: "center", padding: "60px", background: "#fff", borderRadius: "32px" }}>
-            <span className="material-symbols-outlined" style={{ fontSize: "64px", color: "#00b2d6", animation: "spin 2s linear infinite" }}>sync</span>
-            <h2 style={{ marginTop: "24px", color: "#1e293b", fontWeight: 800 }}>Đang tạo kho của bạn...</h2>
-            <p style={{ color: "#64748b" }}>Vui lòng đợi giây lát, hệ thống đang xử lý hình ảnh và hồ sơ.</p>
-          </div>
+        {step === 4 && (
+          <PolygonBoundaryEditor
+            totalArea={parseFloat(formData.totalArea) || 100}
+            initialJson={boundaryJson}
+            onSave={handleFloorPlanSave}
+            inline
+          />
         )}
 
-        {step === 4 && (
+
+        {step === 5 && (
           <div style={{ 
             textAlign: "center", 
             marginTop: "40px",

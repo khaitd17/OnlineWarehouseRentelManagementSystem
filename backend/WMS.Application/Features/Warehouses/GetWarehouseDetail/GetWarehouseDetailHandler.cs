@@ -46,8 +46,7 @@ public class GetWarehouseDetailHandler
             Description = warehouse.Description,
             WarehouseType = warehouse.WarehouseType,
             TotalArea = warehouse.TotalArea,
-            Width = warehouse.Width,
-            Length = warehouse.Length,
+            Height = warehouse.Height,
             AvailableArea = warehouse.AvailableArea,
             PricePerM2 = warehouse.PricePerM2,
             OperatingHours = warehouse.OperatingHours,
@@ -74,7 +73,8 @@ public class GetWarehouseDetailHandler
                 }).ToList(),
             OwnerName = owner?.FullName,
             OwnerPhone = owner?.Phone,
-            OwnerAvatarUrl = owner?.AvatarUrl
+            OwnerAvatarUrl = owner?.AvatarUrl,
+            BoundaryPoints = warehouse.BoundaryPoints
         };
     }
 }

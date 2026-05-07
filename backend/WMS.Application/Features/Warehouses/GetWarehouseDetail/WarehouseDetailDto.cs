@@ -20,9 +20,8 @@ public class WarehouseDetailDto
 
     public double TotalArea { get; set; }
 
-    public double? Width { get; set; }
+    public double? Height { get; set; }
 
-    public double? Length { get; set; }
     public string? MainDoorDirection { get; set; }
 
     public double AvailableArea { get; set; }
@@ -49,4 +48,7 @@ public class WarehouseDetailDto
     public string? OwnerName { get; set; }
     public string? OwnerPhone { get; set; }
     public string? OwnerAvatarUrl { get; set; }
+
+    /// <summary>Polygon boundary JSON. Format: [{gx,gy},...], 1 unit = 0.5m. Null = full rectangle.</summary>
+    public string? BoundaryPoints { get; set; }
 }
