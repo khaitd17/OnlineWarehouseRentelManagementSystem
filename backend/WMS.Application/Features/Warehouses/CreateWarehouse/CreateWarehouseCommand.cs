@@ -32,4 +32,7 @@ public class CreateWarehouseCommand : IRequest<int>
     public string? MainDoorDirection { get; set; }
     public string? Status { get; set; }
     public decimal? PricePerM2 { get; set; }
+
+    /// <summary>Polygon boundary JSON from floor plan drawing. Format: [{gx,gy},...], 1 unit = 0.5m. Optional.</summary>
+    public string? BoundaryPoints { get; set; }
 }

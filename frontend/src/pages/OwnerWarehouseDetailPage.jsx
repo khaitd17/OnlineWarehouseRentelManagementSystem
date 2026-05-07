@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/axiosClient";
 import ratingService from "../services/ratingService";
 import RentalAreaManagement from "../components/warehouse/RentalAreaManagement";
+import WarehouseFloorPlanView from "../components/warehouse/WarehouseFloorPlanView";
 
 // ─── Status helpers ────────────────────────────────────────────────────────
 const STATUS_BADGE = {
@@ -389,53 +390,19 @@ const OwnerWarehouseDetailPage = () => {
         {/* TAB: Map & Areas */}
         {activeTab === "map" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-            {/* Areas list */}
-            <div style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", border: "1px solid #e2e8f0" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>
-                  Tất cả Khu cho thuê ({areas.length})
-                </h3>
-              </div>
-              {areas.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "2rem", color: "#94a3b8" }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 48 }}>grid_off</span>
-                  <p>Chưa có khu cho thuê nào được tạo</p>
-                </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
-                  {areas.map(a => {
-                    const isRented = a.isOccupied;
-                    return (
-                      <div key={a.id} style={{
-                        border: isRented ? "1.5px solid #fca5a5" : "1px solid #e2e8f0",
-                        borderRadius: 10, padding: "12px 16px",
-                        background: isRented ? "#fff7f7" : "#fafafa",
-                      }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                          <span style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.95rem" }}>{a.name}</span>
-                          {AREA_STATUS_BADGE(isRented)}
-                        </div>
-                        <p style={{ margin: "4px 0", fontSize: "0.85rem", color: "#475569" }}>
-                          Diện tích: <strong>{(a.size || (a.width * a.length) || 0).toFixed(1)} m²</strong>
-                        </p>
-                        <p style={{ margin: "4px 0", fontSize: "0.85rem", color: "#475569" }}>
-                          Kích thước: <strong>{a.width}m × {a.length}m</strong>
-                        </p>
-                        {isRented && a.activeContractId && (
-                          <p style={{ margin: "4px 0", fontSize: "0.78rem", color: "#dc2626", fontWeight: 600 }}>
-                            Hợp đồng #{a.activeContractId}
-                          </p>
-                        )}
-                        {a.description && <p style={{ margin: "4px 0", fontSize: "0.8rem", color: "#94a3b8", fontStyle: "italic" }}>{a.description}</p>}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
 
-            {/* Map component */}
-            <RentalAreaManagement warehouseId={parseInt(id)} viewOnly={true} />
+            {/* Sơ đồ mặt bằng kho */}
+            {warehouse?.boundaryPoints && (
+              <div style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", border: "1px solid #e2e8f0" }}>
+                <h3 style={{ margin: "0 0 1rem", fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>
+                  Sơ đồ mặt bằng kho
+                </h3>
+                <WarehouseFloorPlanView
+                  boundaryPoints={warehouse.boundaryPoints}
+                  totalArea={warehouse.totalArea}
+                />
+              </div>
+            )}
           </div>
         )}
 

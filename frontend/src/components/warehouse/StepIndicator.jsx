@@ -5,6 +5,7 @@ const StepIndicator = ({ step }) => {
     { title: "Thông tin", sub: "Thông tin kho" },
     { title: "Hình ảnh", sub: "Tải ảnh lên" },
     { title: "Pháp lý",  sub: "Hồ sơ" },
+    { title: "Sơ đồ",    sub: "Vẽ sơ đồ kho" },
     { title: "Hoàn tất", sub: "Xem lại" }
   ];
 

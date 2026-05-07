@@ -147,6 +147,38 @@ public class WarehouseController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// PATCH only the BoundaryPoints field — lightweight endpoint used by the floor plan editor.
+    /// Skips full warehouse validation (height, address, etc.) that can cause failures.
+    /// </summary>
+    [HttpPatch("{id}/boundary")]
+    public async Task<IActionResult> UpdateBoundary(int id, [FromBody] UpdateBoundaryRequest req)
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                     ?? User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(userId))
+            return Unauthorized();
+
+        var repo = HttpContext.RequestServices
+            .GetRequiredService<WMS.Domain.Interfaces.IWarehouseRepository>();
+
+        var warehouse = await repo.GetByIdAsync(id, HttpContext.RequestAborted);
+        if (warehouse == null)
+            return NotFound(new { message = "Không tìm thấy kho." });
+
+        if (warehouse.OwnerId != int.Parse(userId))
+            return Forbid();
+
+        // Empty string means clear; non-null means set; null means keep existing
+        if (req.BoundaryPoints != null)
+            warehouse.BoundaryPoints = string.IsNullOrEmpty(req.BoundaryPoints) ? null : req.BoundaryPoints;
+
+        await repo.UpdateAsync(warehouse, HttpContext.RequestAborted);
+
+        Console.WriteLine($"[PatchBoundary] Warehouse {id}: saved {warehouse.BoundaryPoints?.Length ?? 0} chars");
+        return Ok(new { message = "Đã lưu sơ đồ kho." });
+    }
+
     [HttpPost("{id}/media")]
     public async Task<IActionResult> UploadMedia(
         int id,
@@ -315,4 +347,10 @@ public class WarehouseController : ControllerBase
 
         return Ok(new { message = "Media deleted successfully" });
     }
+}
+
+/// <summary>Request DTO for PATCH /api/Warehouse/{id}/boundary</summary>
+public class UpdateBoundaryRequest
+{
+    public string? BoundaryPoints { get; set; }
 }
