@@ -73,7 +73,8 @@ public class GetWarehouseDetailHandler
                 }).ToList(),
             OwnerName = owner?.FullName,
             OwnerPhone = owner?.Phone,
-            OwnerAvatarUrl = owner?.AvatarUrl
+            OwnerAvatarUrl = owner?.AvatarUrl,
+            BoundaryPoints = warehouse.BoundaryPoints
         };
     }
 }

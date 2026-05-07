@@ -11,6 +11,7 @@ import StepIndicator from "../components/warehouse/StepIndicator";
 import Step1WarehouseInfo from "../components/warehouse/Step1WarehouseInfo";
 import Step2UploadImages from "../components/warehouse/Step2UploadImages";
 import Step3UploadDocuments from "../components/warehouse/Step3UploadDocuments";
+import PolygonBoundaryEditor from "../components/warehouse/PolygonBoundaryEditor";
 
 const CreateWarehouse = () => {
 
@@ -40,6 +41,7 @@ const CreateWarehouse = () => {
   const [existingImages, setExistingImages] = useState([]);
   const [documents, setDocuments] = useState(null); // { file, type }
   const [existingDoc, setExistingDoc] = useState(null);
+  const [boundaryJson, setBoundaryJson] = useState(null); // floor plan JSON
 
   // Load draft if ID is in URL
   useEffect(() => {
@@ -75,16 +77,17 @@ const CreateWarehouse = () => {
       });
       setWarehouseId(id);
       setExistingImages(data.images || []);
-      setExistingDoc(data.documentStatus !== "MISSING" ? { type: data.mainDoorDirection } : null); // Simple indicator
+      setExistingDoc(data.documentStatus !== "MISSING" ? { type: data.mainDoorDirection } : null);
+      setBoundaryJson(data.boundaryPoints || null);
 
       // Determine the next logical step
       const hasImages = data.images && data.images.length > 0;
       const hasDocs = data.documentStatus && data.documentStatus !== "MISSING";
 
       if (hasImages && !hasDocs) {
-        setStep(3); // Jump to Step 3 if images are present but no docs
+        setStep(4); // Jump to Step 4 if images are present but no docs
       } else if (data.name && data.address) {
-        setStep(2); // Jump to Step 2 if basic info is present
+        setStep(2); // Jump to Step 2 (floor plan) if basic info is present
       } else {
         setStep(1); // Stay on Step 1 if basic info is missing
       }
@@ -168,7 +171,7 @@ const CreateWarehouse = () => {
         const id = await createWarehouse(payload);
         setWarehouseId(id);
       }
-      setStep(2);
+      setStep(2); // Go to image upload step
     } catch (error) {
       console.error("Lỗi khi lưu bản nháp:", error);
       const rd = error?.response?.data;
@@ -182,9 +185,45 @@ const CreateWarehouse = () => {
   };
 
   const handleFinalSubmit = async (docData) => {
-    // Since Step 2 and Step 3 now handle their own uploads sequentially,
-    // we just need to show the success step.
-    setStep(4);
+    setStep(4); // After docs, go to floor plan drawing
+  };
+
+  // Save floor plan (step 4) and move to done
+  const handleFloorPlanSave = async (jsonString) => {
+    try {
+      // Thử PATCH trước (endpoint nhẹ)
+      try {
+        await api.patch(`/Warehouse/${warehouseId}/boundary`, { boundaryPoints: jsonString });
+      } catch {
+        // Fallback: dùng PUT với giá trị mặc định an toàn nếu PATCH chưa có
+        const res = await api.get(`/Warehouse/${warehouseId}`);
+        const d = res.data;
+        await api.put(`/Warehouse/${warehouseId}`, {
+          warehouseId: parseInt(warehouseId),
+          ownerId: d.ownerId,
+          name: d.name || 'Kho mới',
+          address: d.address || '.',
+          warehouseType: d.warehouseType || 'Khác',
+          lat: d.lat || null,
+          lng: d.lng || null,
+          description: d.description || '',
+          is24HoursAccess: d.is24HoursAccess ?? true,
+          openTime: null,
+          closeTime: null,
+          operatingHours: d.operatingHours || '24/7',
+          status: d.status,
+          mainDoorDirection: d.mainDoorDirection || null,
+          totalArea: d.totalArea || 100,
+          height: d.height || 3,      // mặc định 3m nếu null
+          pricePerM2: d.pricePerM2 || null,
+          boundaryPoints: jsonString,
+        });
+      }
+      setBoundaryJson(jsonString);
+      setStep(5); // Done
+    } catch (err) {
+      alert('Lỗi khi lưu sơ đồ: ' + (err.response?.data?.message || err.message));
+    }
   };
 
   return (
@@ -242,15 +281,17 @@ const CreateWarehouse = () => {
           />
         )}
 
-        {step === 5 && (
-          <div style={{ textAlign: "center", padding: "60px", background: "#fff", borderRadius: "32px" }}>
-            <span className="material-symbols-outlined" style={{ fontSize: "64px", color: "#00b2d6", animation: "spin 2s linear infinite" }}>sync</span>
-            <h2 style={{ marginTop: "24px", color: "#1e293b", fontWeight: 800 }}>Đang tạo kho của bạn...</h2>
-            <p style={{ color: "#64748b" }}>Vui lòng đợi giây lát, hệ thống đang xử lý hình ảnh và hồ sơ.</p>
-          </div>
+        {step === 4 && (
+          <PolygonBoundaryEditor
+            totalArea={parseFloat(formData.totalArea) || 100}
+            initialJson={boundaryJson}
+            onSave={handleFloorPlanSave}
+            inline
+          />
         )}
 
-        {step === 4 && (
+
+        {step === 5 && (
           <div style={{ 
             textAlign: "center", 
             marginTop: "40px",

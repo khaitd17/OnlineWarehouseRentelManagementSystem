@@ -94,6 +94,7 @@ public async Task<Warehouse?> GetByIdAsync(
         RejectionReason = entity.RejectionReason,
         SubmissionType = entity.SubmissionType ?? "NEW",
         PendingChangeNote = entity.PendingChangeNote,
+        BoundaryPoints = entity.BoundaryPoints,
         WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
         {
             MediaId = m.MediaId,
@@ -182,6 +183,7 @@ public async Task<Warehouse?> GetByIdAsync(
         entity.Status               = warehouse.Status ?? entity.Status;
         entity.SubmissionType       = warehouse.SubmissionType ?? "NEW";
         entity.PendingChangeNote    = warehouse.PendingChangeNote;
+        entity.BoundaryPoints       = warehouse.BoundaryPoints;
         entity.UpdatedAt            = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);

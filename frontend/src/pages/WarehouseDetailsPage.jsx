@@ -5,6 +5,7 @@ import rentalService from '../services/rentalService';
 import ratingService from '../services/ratingService';
 import authService from '../services/authService';
 import CustomAreaSelectorModal from '../components/warehouse/CustomAreaSelectorModal';
+import WarehouseFloorPlanView from '../components/warehouse/WarehouseFloorPlanView';
 
 // ─── Floor Plan Blueprint ────────────────────────────────────────────────────
 const FloorPlanView = ({ areas, warehouseData }) => {
@@ -699,9 +700,17 @@ const WarehouseDetailsPage = () => {
               <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.7, whiteSpace: 'pre-line' }}>{warehouse.description}</p>
             </section>
 
-            {/* ── Rental Areas Floor Plan ── */}
-            {areas.length > 0 && (
-              <FloorPlanView areas={areas} warehouseData={warehouseData} />
+            {/* ── Sơ đồ mặt bằng kho ── */}
+            {warehouseData?.boundaryPoints && (
+              <section style={{ background: '#fff', borderRadius: '20px', padding: '1.5rem', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: '0 0 1rem' }}>
+                  Sơ đồ mặt bằng kho
+                </h2>
+                <WarehouseFloorPlanView
+                  boundaryPoints={warehouseData.boundaryPoints}
+                  totalArea={warehouseData.totalArea}
+                />
+              </section>
             )}
             {warehouse.lat && warehouse.lng && (
               <section>
