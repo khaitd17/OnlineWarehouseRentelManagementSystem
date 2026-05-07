@@ -550,7 +550,7 @@ const ContractDetail = () => {
         <Section title="Thông tin kho" accent="#0891b2">
           <InfoRow label="Tên kho" value={contract.warehouseName} />
           <InfoRow label="Địa chỉ" value={contract.warehouseAddress} />
-          <InfoRow label="Thể tích thuê" value={`${contract.requestedArea || 0} m³`} />
+          <InfoRow label="Diện tích thuê" value={`${contract.requestedArea || 0} m²`} />
         </Section>
       </div>
 
@@ -851,7 +851,7 @@ const ContractDetail = () => {
                                   }}>
                                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: aStyle.textColor }}>{aStyle.badge ? `${aStyle.badge} - ${a.name}A` : `${a.name}A`}</span>
                                     <span style={{ fontSize: '0.62rem', color: aStyle.textColor }}>{assignedW}m × {assignedL}m</span>
-                                    <span style={{ fontSize: '0.62rem', color: aStyle.textColor }}>{vol1A} m³</span>
+                                    <span style={{ fontSize: '0.62rem', color: aStyle.textColor }}>{vol1A} m²</span>
                                   </div>
                                 )}
                               </div>
@@ -892,7 +892,7 @@ const ContractDetail = () => {
                                     }}>
                                       <span style={{ fontSize: '0.7rem', fontWeight: 800, color: bStyle.textColor }}>{bStyle.badge ? `${bStyle.badge} - ${a.name}B` : `${a.name}B`}</span>
                                       <span style={{ fontSize: '0.62rem', color: bStyle.textColor }}>{aW}m × {Math.round(remL * 10) / 10}m</span>
-                                      <span style={{ fontSize: '0.62rem', color: bStyle.textColor }}>{vol1B} m³</span>
+                                      <span style={{ fontSize: '0.62rem', color: bStyle.textColor }}>{vol1B} m²</span>
                                     </div>
                                   )}
                                 </div>
@@ -953,7 +953,7 @@ const ContractDetail = () => {
                                   }}>
                                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zs.textColor }}>{zs.badge ? `${zs.badge} - ${a.name}` : a.name}</span>
                                     <span style={{ fontSize: '0.62rem', color: zs.textColor }}>{Math.round(pw/scale*10)/10}m × {Math.round(ph/scale*10)/10}m</span>
-                                    <span style={{ fontSize: '0.62rem', color: zs.textColor }}>{a.size} m³</span>
+                                    <span style={{ fontSize: '0.62rem', color: zs.textColor }}>{a.size} m²</span>
                                   </div>
                                 )}
                               </div>
@@ -1022,7 +1022,7 @@ const ContractDetail = () => {
                                     <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: `1px solid ${zoneStyle.textColor}40`, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content' }}>
                                       <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneStyle.textColor, whiteSpace: 'nowrap' }}>{zoneStyle.badge}</span>
                                       <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{contract.proposedWidth}m × {contract.proposedLength}m</span>
-                                      <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{Math.round((contract.proposedWidth || 0) * (contract.proposedLength || 0) * 5)} m³</span>
+                                      <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{Math.round((contract.proposedWidth || 0) * (contract.proposedLength || 0) * 5)} m²</span>
                                       </div>
                                     </div>
                                   )}
@@ -1047,7 +1047,7 @@ const ContractDetail = () => {
                                       <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: `1px solid ${zoneStyle.textColor}40`, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content' }}>
                                         <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneStyle.textColor, whiteSpace: 'nowrap' }}>{zoneStyle.badge}</span>
                                         <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{contract.proposedWidth}m × {contract.proposedLength}m</span>
-                                        <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{Math.round((contract.proposedWidth || 0) * (contract.proposedLength || 0) * 5)} m³</span>
+                                        <span style={{ fontSize: '0.62rem', color: zoneStyle.textColor }}>{Math.round((contract.proposedWidth || 0) * (contract.proposedLength || 0) * 5)} m²</span>
                                       </div>
                                     )}
                                   </div>
@@ -1117,7 +1117,7 @@ const ContractDetail = () => {
                                 }}>
                                   <span style={{ fontSize: '0.7rem', fontWeight: 800, color: cStyle.textColor }}>{cStyle.badge}</span>
                                   <span style={{ fontSize: '0.62rem', color: cStyle.textColor }}>{z.w}m × {z.l}m</span>
-                                  <span style={{ fontSize: '0.62rem', color: cStyle.textColor }}>{Math.round(z.w * z.l * 5)} m³</span>
+                                  <span style={{ fontSize: '0.62rem', color: cStyle.textColor }}>{Math.round(z.w * z.l * 5)} m²</span>
                                 </div>
                               )}
                             </div>

@@ -309,16 +309,16 @@ const OwnerWarehouseList = () => {
 
               <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
                 <div style={{ flex: 1, backgroundColor: "#f8fafc", padding: "12px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                  <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "4px", fontWeight: 600 }}>TỔNG THỂ TÍCH</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1e293b" }}>{w.totalArea} <span style={{ fontSize: "0.9rem", color: "#94a3b8" }}>m³</span></div>
+                  <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "4px", fontWeight: 600 }}>DIỆN TÍCH SÀN</div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#1e293b" }}>{w.totalArea} <span style={{ fontSize: "0.9rem", color: "#94a3b8" }}>m²</span></div>
                 </div>
                 <div style={{ flex: 1, backgroundColor: "#f0fdf4", padding: "12px", borderRadius: "12px", border: "1px solid #dcfce7" }}>
                   <div style={{ fontSize: "0.8rem", color: "#166534", marginBottom: "4px", fontWeight: 600 }}>CÒN TRỐNG</div>
-                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#15803d" }}>{w.availableArea} <span style={{ fontSize: "0.9rem", color: "#86efac" }}>m³</span></div>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 800, color: "#15803d" }}>{w.availableArea} <span style={{ fontSize: "0.9rem", color: "#86efac" }}>m²</span></div>
                 </div>
               </div>
 
-              {/* Giá thuê/m³ */}
+              {/* Giá thuê/m² */}
               <div style={{
                 padding: "12px 14px", borderRadius: "12px",
                 background: w.pricePerM2
@@ -329,11 +329,11 @@ const OwnerWarehouseList = () => {
               }}>
                 <div>
                   <div style={{ fontSize: "0.75rem", fontWeight: 700, color: w.pricePerM2 ? "#166534" : "#94a3b8", marginBottom: 3, textTransform: "uppercase" }}>
-                    Giá thuê / m³ / tháng
+                    Giá thuê / m² / tháng
                   </div>
                   {w.pricePerM2 ? (
                     <div style={{ fontSize: "1.1rem", fontWeight: 900, color: "#15803d" }}>
-                      {new Intl.NumberFormat("vi-VN").format(w.pricePerM2)} <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#16a34a" }}>₫/m³</span>
+                      {new Intl.NumberFormat("vi-VN").format(w.pricePerM2)} <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#16a34a" }}>₫/m²</span>
                     </div>
                   ) : (
                     <div style={{ fontSize: "0.88rem", color: "#94a3b8", fontWeight: 500 }}>Chưa cập nhật giá</div>

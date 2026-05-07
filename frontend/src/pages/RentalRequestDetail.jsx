@@ -177,7 +177,7 @@ const RentalRequestDetail = () => {
           <InfoItem label="Mã kho" value={`#${request.warehouseId}`} />
           <InfoItem label="Tên kho" value={request.warehouseName || "—"} />
           <InfoItem label="Địa chỉ kho" value={request.warehouseAddress || "—"} />
-          <InfoItem label="Thể tích thuê" value={`${request.requestedArea} m³`} />
+          <InfoItem label="Diện tích thuê" value={`${request.requestedArea} m²`} />
           <InfoItem label="Ngày bắt đầu" value={formatDate(request.startDate)} />
           <InfoItem label="Thời hạn" value={`${request.durationMonths} tháng`} />
         </div>

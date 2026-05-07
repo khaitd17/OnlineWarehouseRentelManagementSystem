@@ -68,6 +68,7 @@ public class CreateWarehouseHandlerTests
             Name       = "New Warehouse",
             Address    = "Valid Address 123",
             TotalArea  = 1000,
+            Height     = 5,
             Status     = "PENDING",
             Is24HoursAccess = true,
         };
@@ -108,6 +109,7 @@ public class CreateWarehouseHandlerTests
             Name      = "New Warehouse",
             Address   = "Valid Address 123",
             TotalArea = 1000,
+            Height    = 5,
             Status    = "PENDING",
             Is24HoursAccess = true,
         };
@@ -240,6 +242,7 @@ public class CreateWarehouseHandlerTests
             Name      = "New Warehouse",
             Address   = "Valid Address 123",
             TotalArea = 1000,
+            Height    = 5,
             Status    = null,   // null → should default to "DRAFT"
             Is24HoursAccess = true,
         };
@@ -275,6 +278,7 @@ public class CreateWarehouseHandlerTests
             Name      = "New Warehouse",
             Address   = "Valid Address 123",
             TotalArea = 1000,
+            Height    = 5,
             Status    = "INVALID_STATUS",
             Is24HoursAccess = true,
         };
@@ -349,6 +353,7 @@ public class CreateWarehouseHandlerTests
             Name      = "New Warehouse",
             Address   = "Valid Address 123",
             TotalArea = 1000,
+            Height    = 5,
             Status    = "PENDING",
             Is24HoursAccess = true,
         };
@@ -377,6 +382,7 @@ public class CreateWarehouseHandlerTests
             Name      = "New Warehouse",
             Address   = "Valid Address 123",
             TotalArea = 1000,
+            Height    = 5,
             Status    = longStatus,
             Is24HoursAccess = true,
         };
@@ -407,6 +413,7 @@ public class CreateWarehouseHandlerTests
             Name      = "New Warehouse",
             Address   = "Valid Address 123",
             TotalArea = 1000,
+            Height    = 5,
             Status    = "PENDING",
             Is24HoursAccess = true,
         };
@@ -439,8 +446,7 @@ public class CreateWarehouseHandlerTests
             Name             = "New Warehouse",
             Address          = "Valid Address 123",
             TotalArea        = 1000,
-            Width            = 20,
-            Length           = 50,
+            Height           = 5,
             Status           = "PENDING", // Ignored by handler, becomes "DRAFT"
             Is24HoursAccess  = true,
             PricePerM2       = 50000,

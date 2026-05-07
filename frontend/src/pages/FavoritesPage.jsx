@@ -279,7 +279,7 @@ function FavoriteCard({ w, onRemove }) {
           }}>
             <strong style={{ color: '#065f46', fontSize: '0.9rem' }}>
               {Number(w.pricePerM2).toLocaleString('vi-VN')} đ
-            </strong>/m³/tháng
+            </strong>/m²/tháng
           </div>
         )}
 
@@ -289,11 +289,11 @@ function FavoriteCard({ w, onRemove }) {
         }}>
           <div>
             <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>Tổng DT</div>
-            <div style={{ fontWeight: 700, color: '#334155', fontSize: '0.9rem' }}>{w.totalArea?.toLocaleString()} m³</div>
+            <div style={{ fontWeight: 700, color: '#334155', fontSize: '0.9rem' }}>{w.totalArea?.toLocaleString()} m²</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>Còn trống</div>
-            <div style={{ fontWeight: 800, color: '#0095c7', fontSize: '0.95rem' }}>{w.availableArea?.toLocaleString()} m³</div>
+            <div style={{ fontWeight: 800, color: '#0095c7', fontSize: '0.95rem' }}>{w.availableArea?.toLocaleString()} m²</div>
           </div>
         </div>
 
