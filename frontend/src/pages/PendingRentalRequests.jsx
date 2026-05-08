@@ -129,7 +129,15 @@ const PendingRentalRequests = () => {
     setError(null);
     try {
       const data = await rentalService.getOwnerRequests(activeTab);
-      setRequests(data);
+      // Thay đổi 1: Sort tab PENDING theo tổng giá trị hợp đồng giảm dần
+      const sorted = activeTab === "PENDING"
+        ? [...data].sort((a, b) => {
+            const totalA = calculateTotalValue(a.monthlyPayment, a.durationMonths);
+            const totalB = calculateTotalValue(b.monthlyPayment, b.durationMonths);
+            return totalB - totalA;
+          })
+        : data;
+      setRequests(sorted);
     } catch (err) {
       console.error(err);
       setError(
@@ -925,7 +933,7 @@ const PendingRentalRequests = () => {
           Xem xét và gửi hợp đồng hoặc từ chối các yêu cầu thuê kho
         </p>
         {!loading && requests.length > 0 && (
-          <div style={{ display: "flex", gap: 24, marginTop: 20, position: "relative" }}>
+          <div style={{ display: "flex", gap: 16, marginTop: 20, position: "relative", flexWrap: "wrap" }}>
             <div style={{
               padding: "10px 20px", borderRadius: 12,
               background: "rgba(255,255,255,0.08)",
@@ -937,6 +945,26 @@ const PendingRentalRequests = () => {
                 {activeTab === "PENDING" ? "Chờ duyệt" : "Đã duyệt"}
               </div>
             </div>
+            {/* Thay đổi 7: Stat giá trị cao nhất (chỉ tab PENDING) */}
+            {activeTab === "PENDING" && (() => {
+              const top = requests[0];
+              const topVal = top ? calculateTotalValue(top.monthlyPayment, top.durationMonths) : 0;
+              return topVal > 0 ? (
+                <div style={{
+                  padding: "10px 20px", borderRadius: 12,
+                  background: "rgba(245,158,11,0.18)",
+                  backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(245,158,11,0.35)",
+                }}>
+                  <div style={{ fontSize: "1rem", fontWeight: 800, color: "#fbbf24", lineHeight: 1.3 }}>
+                    {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(topVal)}
+                  </div>
+                  <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "rgba(253,211,77,0.85)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    ⭐ Giá trị cao nhất
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
         )}
       </div>
@@ -1016,22 +1044,35 @@ const PendingRentalRequests = () => {
           {requests.map((req, idx) => {
             const status = statusColors[req.status] || { bg: "#f1f5f9", color: "#64748b", label: req.status };
             const accentColor = req.status === "PENDING" ? "#f59e0b" : req.status === "APPROVED" ? "#22c55e" : "#94a3b8";
+            // Thay đổi 2: Xác định card ưu tiên cao nhất
+            const totalValue = calculateTotalValue(req.monthlyPayment, req.durationMonths);
+            const isTopPriority = activeTab === "PENDING" && idx === 0 && totalValue > 0 && requests.length > 1;
             return (
               <div
                 key={req.requestId}
                 className="ow-card"
                 style={{
-                  background: "#fff", borderRadius: 18,
+                  // Thay đổi 3: Card top 1 có viền vàng + nền amber nhạt
+                  background: isTopPriority
+                    ? "linear-gradient(180deg, #fffbeb 0%, #fff 100px)"
+                    : "#fff",
+                  borderRadius: 18,
                   overflow: "hidden",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03)",
-                  border: "1px solid #eef1f6",
+                  boxShadow: isTopPriority
+                    ? "0 8px 32px rgba(245,158,11,0.2), 0 2px 8px rgba(0,0,0,0.06)"
+                    : "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03)",
+                  border: isTopPriority
+                    ? "2px solid #fbbf24"
+                    : "1px solid #eef1f6",
                   animation: `cardIn 0.4s ease ${idx * 0.06}s both`,
                 }}
               >
-                {/* Top accent bar */}
+                {/* Thay đổi 4: Top accent bar — vàng cho card top 1 */}
                 <div style={{
-                  height: 4,
-                  background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88, transparent)`,
+                  height: isTopPriority ? 5 : 4,
+                  background: isTopPriority
+                    ? "linear-gradient(90deg, #f59e0b, #fbbf24 40%, #fde68a 70%, transparent)"
+                    : `linear-gradient(90deg, ${accentColor}, ${accentColor}88, transparent)`,
                 }} />
 
                 <div style={{ padding: "22px 28px 0" }}>
@@ -1041,7 +1082,7 @@ const PendingRentalRequests = () => {
                     alignItems: "flex-start", gap: 16, marginBottom: 18,
                   }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
                         <span style={{
                           fontSize: "0.72rem", fontWeight: 800,
                           color: accentColor, letterSpacing: "0.08em", textTransform: "uppercase",
@@ -1056,6 +1097,21 @@ const PendingRentalRequests = () => {
                         }}>
                           {status.label}
                         </span>
+                        {/* Thay đổi 5: Badge ưu tiên cao nhất */}
+                        {isTopPriority && (
+                          <span style={{
+                            padding: "3px 12px", borderRadius: 20,
+                            background: "linear-gradient(90deg, #f59e0b, #d97706)",
+                            color: "#fff",
+                            fontSize: "0.7rem", fontWeight: 800,
+                            letterSpacing: "0.03em",
+                            display: "flex", alignItems: "center", gap: 3,
+                            boxShadow: "0 2px 8px rgba(245,158,11,0.4)",
+                            whiteSpace: "nowrap",
+                          }}>
+                            ⭐ Ưu tiên cao nhất
+                          </span>
+                        )}
                       </div>
                       <h3 style={{
                         fontSize: "1.18rem", fontWeight: 800, color: "#0f172a",
@@ -1112,6 +1168,15 @@ const PendingRentalRequests = () => {
                         : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m²`, highlighted: true } : null),
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
                       { label: "Ngày bắt đầu", value: formatDate(req.startDate) },
+                      // Thay đổi 6: Chip tổng giá trị hợp đồng
+                      totalValue > 0
+                        ? {
+                            label: "Tổng giá trị HĐ",
+                            value: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(totalValue),
+                            highlighted: isTopPriority,
+                            isTotalValue: true,
+                          }
+                        : null,
                     ].filter(Boolean).map(item => (
                       <div key={item.label} style={{
                         padding: "8px 14px", borderRadius: 10,
