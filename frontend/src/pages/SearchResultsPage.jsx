@@ -1,822 +1,812 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import WarehouseMap from '../components/WarehouseMap';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { searchWarehouses } from '../services/warehouseService';
-import favoritesService from '../services/favoritesService';
-import WarehouseCard, { resolveImage, StarDisplay } from '../components/WarehouseCard';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { searchWarehouses } from "../services/warehouseService";
+import WarehouseCard from "../components/WarehouseCard";
+import PrimaryFilterBar from "../components/search/PrimaryFilterBar";
+import SelectedFilters from "../components/search/SelectedFilters";
+import AdvancedFilterDrawer from "../components/search/AdvancedFilterDrawer";
+import SearchMapPanel from "../components/search/SearchMapPanel";
+import { readSearchDraft, writeSearchDraft } from "../utils/searchDraft";
 
-/* ── 63 tỉnh thành Việt Nam ─────────────────────────────── */
 const PROVINCES = [
-  'An Giang','Bà Rịa - Vũng Tàu','Bắc Giang','Bắc Kạn','Bạc Liêu',
-  'Bắc Ninh','Bến Tre','Bình Định','Bình Dương','Bình Phước','Bình Thuận',
-  'Cà Mau','Cần Thơ','Cao Bằng','Đà Nẵng','Đắk Lắk','Đắk Nông',
-  'Điện Biên','Đồng Nai','Đồng Tháp','Gia Lai','Hà Giang','Hà Nam',
-  'Hà Nội','Hà Tĩnh','Hải Dương','Hải Phòng','Hậu Giang','Hòa Bình',
-  'Hưng Yên','Khánh Hòa','Kiên Giang','Kon Tum','Lai Châu','Lâm Đồng',
-  'Lạng Sơn','Lào Cai','Long An','Nam Định','Nghệ An','Ninh Bình',
-  'Ninh Thuận','Phú Thọ','Phú Yên','Quảng Bình','Quảng Nam','Quảng Ngãi',
-  'Quảng Ninh','Quảng Trị','Sóc Trăng','Sơn La','Tây Ninh','Thái Bình',
-  'Thái Nguyên','Thanh Hóa','Thừa Thiên Huế','Tiền Giang','TP. Hồ Chí Minh',
-  'Trà Vinh','Tuyên Quang','Vĩnh Long','Vĩnh Phúc','Yên Bái',
+  "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu",
+  "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận",
+  "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông",
+  "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam",
+  "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình",
+  "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng",
+  "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình",
+  "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi",
+  "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình",
+  "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh",
+  "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái",
 ];
 
 const WAREHOUSE_TYPES = [
-  { value: '',           label: 'Tất cả loại kho' },
-  { value: 'lạnh',       label: 'Kho lạnh / mát' },
-  { value: 'chung',      label: 'Kho chung' },
-  { value: 'tự quản',    label: 'Kho tự quản' },
-  { value: 'xưởng',      label: 'Kho xưởng' },
-  { value: 'ngoại quan', label: 'Kho ngoại quan' },
+  { value: "", label: "Tất cả loại kho" },
+  { value: "lạnh", label: "Kho lạnh / mát" },
+  { value: "chung", label: "Kho chung" },
+  { value: "tự quản", label: "Kho tự quản" },
+  { value: "xưởng", label: "Kho xưởng" },
+  { value: "ngoại quan", label: "Kho ngoại quan" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "all", label: "Tất cả" },
+  { value: "available", label: "Còn trống" },
+  { value: "full", label: "Đã thuê kín" },
+];
+
+const SORT_OPTIONS = [
+  { value: "relevance", label: "Phù hợp nhất" },
+  { value: "price_asc", label: "Giá thấp → cao" },
+  { value: "price_desc", label: "Giá cao → thấp" },
+  { value: "area_asc", label: "Diện tích nhỏ → lớn" },
+  { value: "area_desc", label: "Diện tích lớn → nhỏ" },
+  { value: "newest", label: "Mới đăng gần đây" },
+  { value: "distance", label: "Gần vị trí của tôi nhất" },
 ];
 
 const AREA_MIN = 0;
-const AREA_MAX = 5000;
+const AREA_MAX = 100000;
 const PRICE_MIN = 0;
-const PRICE_MAX = 500000;
+const PRICE_MAX = 30000000;
+const PAGE_SIZE = 12;
 
-const RATING_OPTIONS = [
-  { label: '≥ 3 sao', stars: 3, value: 3 },
-  { label: '≥ 4 sao', stars: 4, value: 4 },
-  { label: '≥ 4.5 sao', stars: 4.5, value: 4.5 },
-];
+const normalizeText = (value) =>
+  (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
+const includesAny = (text, keywords) => keywords.some((k) => text.includes(k));
 
-/* ── Section header helper ───────────────────────────────── */
-const FilterSection = ({ icon, title, children }) => (
-  <div style={{ marginBottom: 20 }}>
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 6,
-      fontSize: '0.75rem', fontWeight: 800, color: '#475569',
-      textTransform: 'uppercase', letterSpacing: '0.07em',
-      marginBottom: 10,
-    }}>
-      {title}
-    </div>
-    {children}
-  </div>
-);
+const FACILITY_KEYWORDS = {
+  container: ["container", "xe cont", "xe container"],
+  camera: ["camera", "cctv"],
+  fire: ["pccc", "phong chay", "fire"],
+  dock: ["loading dock", "boc do", "boc xep"],
+  forklift: ["xe nang", "forklift"],
+  power: ["dien 3 pha", "3 pha"],
+  security: ["bao ve", "an ninh", "security"],
+  office: ["van phong", "office"],
+};
 
+const LOCATION_KEYWORDS = {
+  port: ["cang", "port"],
+  airport: ["san bay", "airport"],
+  highway: ["cao toc", "highway"],
+  industrial: ["kcn", "khu cong nghiep", "industrial"],
+};
 
-/* ── Main Component ─────────────────────────────────────── */
+const RENTAL_KEYWORDS = {
+  short: ["ngan han"],
+  long: ["dai han"],
+  monthly: ["theo thang", "hang thang"],
+  yearly: ["theo nam", "hang nam"],
+};
+
+const parseNumber = (value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
+const formatPrice = (value) => {
+  if (value >= 1000000) return `${(value / 1000000).toFixed(0)}tr`;
+  if (value >= 1000) return `${(value / 1000).toFixed(0)}k`;
+  return `${value}`;
+};
+
+const haversine = (a, b) => {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+
 export default function SearchResultsPage() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const [showMobileFilter, setShowMobileFilter] = useState(false);
+  const draft = readSearchDraft();
 
-  // Scroll to top on mount
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, []);
-
-  /* ── Filter states ───────────────────────── */
+  const [heroQuery, setHeroQuery] = useState(draft.heroQuery || "");
   const [provinceInput, setProvinceInput] = useState(() => {
     const p = new URLSearchParams(location.search);
-    return p.get('province') || '';
+    return p.get("province") || draft.province || "";
   });
-  const [showProvDrop,  setShowProvDrop]  = useState(false);
   const [districtInput, setDistrictInput] = useState(() => {
     const p = new URLSearchParams(location.search);
-    return p.get('district') || '';
+    return p.get("district") || draft.district || "";
   });
-  const provRef = useRef(null);
-
-  const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const filteredProvinces = provinceInput.trim()
-    ? PROVINCES.filter(p => norm(p).includes(norm(provinceInput)))
-    : PROVINCES;
-
   const [warehouseType, setWarehouseType] = useState(() => {
     const p = new URLSearchParams(location.search);
-    const cat = p.get('warehouseType');
-    if (!cat) return '';
+    const cat = p.get("warehouseType") || draft.warehouseType;
+    if (!cat) return "";
     const normText = cat.toLowerCase();
-    if (normText.includes('mát') || normText.includes('lạnh')) return 'lạnh';
-    if (normText.includes('chung')) return 'chung';
-    if (normText.includes('tự quản')) return 'tự quản';
-    if (normText.includes('xưởng')) return 'xưởng';
-    if (normText.includes('ngoại quan')) return 'ngoại quan';
-    return '';
+    if (normText.includes("mát") || normText.includes("lạnh")) return "lạnh";
+    if (normText.includes("chung")) return "chung";
+    if (normText.includes("tự quản")) return "tự quản";
+    if (normText.includes("xưởng")) return "xưởng";
+    if (normText.includes("ngoại quan")) return "ngoại quan";
+    return "";
   });
-  const [areaRange,     setAreaRange]     = useState(() => {
+
+  const [areaRange, setAreaRange] = useState(() => {
     const p = new URLSearchParams(location.search);
-    const maxA = p.get('maxArea');
-    if (maxA && !isNaN(maxA)) return [AREA_MIN, parseInt(maxA, 10)];
-    return [AREA_MIN, AREA_MAX];
-  });   // [min, max]
-  const [priceRange,    setPriceRange]    = useState([PRICE_MIN, PRICE_MAX]); // [min, max]
-  const [is24Hours,     setIs24Hours]     = useState(false);  // 24/7
-  const [minRating,     setMinRating]     = useState(null);   // rating
-  const [sortBy,        setSortBy]        = useState('newest');
-  const [page,          setPage]          = useState(1);
-  const [viewMode,      setViewMode]      = useState('list'); // 'list' or 'map'
+    const maxA = p.get("maxArea");
+    const minA = p.get("minArea");
+    const parsedMax = parseNumber(maxA) ?? parseNumber(draft.maxArea);
+    const parsedMin = parseNumber(minA) ?? parseNumber(draft.minArea);
+    return [
+      parsedMin ?? AREA_MIN,
+      parsedMax ?? AREA_MAX,
+    ];
+  });
 
-  const areaActive  = areaRange[0]  !== AREA_MIN  || areaRange[1]  !== AREA_MAX;
-  const priceActive = priceRange[0] !== PRICE_MIN || priceRange[1] !== PRICE_MAX;
+  const [priceRange, setPriceRange] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    const minP = p.get("minPrice");
+    const maxP = p.get("maxPrice");
+    const parsedMin = parseNumber(minP) ?? parseNumber(draft.minPrice);
+    const parsedMax = parseNumber(maxP) ?? parseNumber(draft.maxPrice);
+    return [
+      parsedMin ?? PRICE_MIN,
+      parsedMax ?? PRICE_MAX,
+    ];
+  });
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (provRef.current && !provRef.current.contains(e.target)) setShowProvDrop(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  const [statusFilter, setStatusFilter] = useState(draft.statusFilter || "all");
+  const [sortBy, setSortBy] = useState(() => {
+    const p = new URLSearchParams(location.search);
+    return p.get("sortBy") || draft.sortBy || "relevance";
+  });
+  const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState("list");
+  const [showDrawer, setShowDrawer] = useState(false);
 
-  /* ── Data states ─────────────────────────── */
-  const [results, setResults]  = useState([]);
-  const [total,   setTotal]    = useState(0);
-  const [loading, setLoading]  = useState(true);
-  const [error,   setError]    = useState(null);
+  const [advancedFilters, setAdvancedFilters] = useState(() => ({
+    operatingHours: draft.operatingHours || "all",
+    facilities: draft.facilities || [],
+    locationTags: draft.locationTags || [],
+    rentalTerms: draft.rentalTerms || [],
+    availableFrom: draft.availableFrom || "",
+    minRating: draft.minRating ?? null,
+  }));
 
-  const PAGE_SIZE = 12;
+  const [results, setResults] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [userLocation, setUserLocation] = useState(null);
+  const [geoError, setGeoError] = useState("");
 
-  /* ── Fetch ───────────────────────────────── */
+  const apiSortBy = sortBy === "relevance" || sortBy === "distance" ? "newest" : sortBy;
+  const is24Hours = advancedFilters.operatingHours === "24_7" ? true : undefined;
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await searchWarehouses({
-        province:      provinceInput,
-        district:      districtInput,
+        province: provinceInput,
+        district: districtInput,
         warehouseType,
-        minArea:       areaRange[0]  > AREA_MIN  ? areaRange[0]  : undefined,
-        maxArea:       areaRange[1]  < AREA_MAX  ? areaRange[1]  : undefined,
-        minPrice:      priceRange[0] > PRICE_MIN ? priceRange[0] : undefined,
-        maxPrice:      priceRange[1] < PRICE_MAX ? priceRange[1] : undefined,
-        is24Hours:     is24Hours || undefined,
-        minRating:     minRating ?? undefined,
-        sortBy,
+        minArea: areaRange[0] > AREA_MIN ? areaRange[0] : undefined,
+        maxArea: undefined,
+        minPrice: priceRange[0] > PRICE_MIN ? priceRange[0] : undefined,
+        maxPrice: priceRange[1] < PRICE_MAX ? priceRange[1] : undefined,
+        is24Hours,
+        minRating: advancedFilters.minRating ?? undefined,
+        sortBy: apiSortBy,
         page,
         pageSize: PAGE_SIZE,
       });
       setResults(data.items ?? []);
       setTotal(data.total ?? 0);
-    } catch (e) {
-      setError('Không thể tải dữ liệu. Vui lòng thử lại.');
+    } catch (err) {
+      setError("Không thể tải dữ liệu. Vui lòng thử lại.");
       setResults([]);
       setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [provinceInput, districtInput, warehouseType, areaRange, priceRange, is24Hours, minRating, sortBy, page]);
+  }, [
+    provinceInput,
+    districtInput,
+    warehouseType,
+    areaRange,
+    priceRange,
+    is24Hours,
+    advancedFilters.minRating,
+    apiSortBy,
+    page,
+  ]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  /* ── Handlers ────────────────────────────── */
-  const handleApply = () => { setPage(1); fetchData(); };
-  const handleReset = () => {
-    setProvinceInput('');
-    setDistrictInput('');
-    setWarehouseType('');
-    setAreaRange([AREA_MIN, AREA_MAX]);
-    setPriceRange([PRICE_MIN, PRICE_MAX]);
-    setIs24Hours(false);
-    setMinRating(null);
-    setSortBy('newest');
+  useEffect(() => {
+    if (sortBy !== "distance") return;
+    if (userLocation || geoError) return;
+    if (!navigator.geolocation) {
+      setGeoError("unsupported");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
+      },
+      () => setGeoError("denied"),
+      { timeout: 8000 }
+    );
+  }, [sortBy, userLocation, geoError]);
+
+  useEffect(() => {
+    writeSearchDraft({
+      heroQuery: heroQuery || undefined,
+      province: provinceInput || undefined,
+      district: districtInput || undefined,
+      warehouseType: warehouseType || undefined,
+      minArea: areaRange[0] !== AREA_MIN ? areaRange[0] : undefined,
+      maxArea: areaRange[1] !== AREA_MAX ? areaRange[1] : undefined,
+      minPrice: priceRange[0] !== PRICE_MIN ? priceRange[0] : undefined,
+      maxPrice: priceRange[1] !== PRICE_MAX ? priceRange[1] : undefined,
+      statusFilter: statusFilter !== "all" ? statusFilter : undefined,
+      operatingHours: advancedFilters.operatingHours !== "all" ? advancedFilters.operatingHours : undefined,
+      facilities: advancedFilters.facilities.length ? advancedFilters.facilities : undefined,
+      locationTags: advancedFilters.locationTags.length ? advancedFilters.locationTags : undefined,
+      rentalTerms: advancedFilters.rentalTerms.length ? advancedFilters.rentalTerms : undefined,
+      availableFrom: advancedFilters.availableFrom || undefined,
+      minRating: advancedFilters.minRating ?? undefined,
+      sortBy: sortBy || undefined,
+    });
+  }, [
+    heroQuery,
+    provinceInput,
+    districtInput,
+    warehouseType,
+    areaRange,
+    priceRange,
+    statusFilter,
+    advancedFilters,
+    sortBy,
+  ]);
+
+  const applyHeroSearch = () => {
+    const query = heroQuery.trim();
+    if (!query) return;
+    const parts = query.split(",").map((p) => p.trim()).filter(Boolean);
+    if (parts.length >= 2) {
+      setDistrictInput(parts[0]);
+      setProvinceInput(parts.slice(1).join(", "));
+    } else {
+      setProvinceInput(query);
+      setDistrictInput("");
+    }
     setPage(1);
   };
 
+  const quickChips = [
+    {
+      label: "TP.HCM",
+      onClick: () => {
+        setHeroQuery("TP. Hồ Chí Minh");
+        setProvinceInput("TP. Hồ Chí Minh");
+        setDistrictInput("");
+        setPage(1);
+      },
+    },
+    {
+      label: "Bình Dương",
+      onClick: () => {
+        setHeroQuery("Bình Dương");
+        setProvinceInput("Bình Dương");
+        setDistrictInput("");
+        setPage(1);
+      },
+    },
+    {
+      label: "Kho lạnh",
+      onClick: () => {
+        setWarehouseType("lạnh");
+        setPage(1);
+      },
+    },
+    {
+      label: "Gần cảng",
+      onClick: () => {
+        setAdvancedFilters((prev) => ({
+          ...prev,
+          locationTags: prev.locationTags.includes("port")
+            ? prev.locationTags
+            : [...prev.locationTags, "port"],
+        }));
+        setPage(1);
+      },
+    },
+    {
+      label: "Dưới 30 triệu",
+      onClick: () => {
+        setPriceRange([PRICE_MIN, PRICE_MAX]);
+        setPage(1);
+      },
+    },
+  ];
+
+  const handleReset = () => {
+    setHeroQuery("");
+    setProvinceInput("");
+    setDistrictInput("");
+    setWarehouseType("");
+    setAreaRange([AREA_MIN, AREA_MAX]);
+    setPriceRange([PRICE_MIN, PRICE_MAX]);
+    setStatusFilter("all");
+    setSortBy("relevance");
+    setAdvancedFilters({
+      operatingHours: "all",
+      facilities: [],
+      locationTags: [],
+      rentalTerms: [],
+      availableFrom: "",
+      minRating: null,
+    });
+    setPage(1);
+  };
+
+  const activeFilterCount = useMemo(() => {
+    const areaActive = areaRange[0] !== AREA_MIN || areaRange[1] !== AREA_MAX;
+    const priceActive = priceRange[0] !== PRICE_MIN || priceRange[1] !== PRICE_MAX;
+    return (
+      (provinceInput ? 1 : 0) +
+      (districtInput ? 1 : 0) +
+      (warehouseType ? 1 : 0) +
+      (statusFilter !== "all" ? 1 : 0) +
+      (areaActive ? 1 : 0) +
+      (priceActive ? 1 : 0) +
+      (advancedFilters.operatingHours !== "all" ? 1 : 0) +
+      (advancedFilters.minRating != null ? 1 : 0) +
+      advancedFilters.facilities.length +
+      advancedFilters.locationTags.length +
+      advancedFilters.rentalTerms.length +
+      (advancedFilters.availableFrom ? 1 : 0)
+    );
+  }, [provinceInput, districtInput, warehouseType, statusFilter, areaRange, priceRange, advancedFilters]);
+
+  const activeFilterChips = useMemo(() => {
+    const chips = [];
+    if (provinceInput) chips.push({ id: "province", label: provinceInput, onRemove: () => setProvinceInput("") });
+    if (districtInput) chips.push({ id: "district", label: districtInput, onRemove: () => setDistrictInput("") });
+    if (warehouseType) {
+      const label = WAREHOUSE_TYPES.find((t) => t.value === warehouseType)?.label || warehouseType;
+      chips.push({ id: "type", label, onRemove: () => setWarehouseType("") });
+    }
+    if (statusFilter !== "all") {
+      const label = STATUS_OPTIONS.find((s) => s.value === statusFilter)?.label || statusFilter;
+      chips.push({ id: "status", label, onRemove: () => setStatusFilter("all") });
+    }
+    if (areaRange[0] !== AREA_MIN || areaRange[1] !== AREA_MAX) {
+      chips.push({
+        id: "area",
+        label: `${areaRange[0].toLocaleString("vi-VN")}–${areaRange[1] >= AREA_MAX ? `${AREA_MAX.toLocaleString("vi-VN")}+` : areaRange[1].toLocaleString("vi-VN")} m²`,
+        onRemove: () => setAreaRange([AREA_MIN, AREA_MAX]),
+      });
+    }
+    if (priceRange[0] !== PRICE_MIN || priceRange[1] !== PRICE_MAX) {
+      chips.push({
+        id: "price",
+        label: `${formatPrice(priceRange[0])}–${priceRange[1] >= PRICE_MAX ? `${formatPrice(PRICE_MAX)}+` : formatPrice(priceRange[1])} đ/m²`,
+        onRemove: () => setPriceRange([PRICE_MIN, PRICE_MAX]),
+      });
+    }
+    if (advancedFilters.operatingHours !== "all") {
+      const labelMap = {
+        "24_7": "24/7",
+        business: "Giờ hành chính",
+        shift: "Theo ca",
+      };
+      chips.push({
+        id: "hours",
+        label: labelMap[advancedFilters.operatingHours] || "Giờ hoạt động",
+        onRemove: () => setAdvancedFilters((prev) => ({ ...prev, operatingHours: "all" })),
+      });
+    }
+    if (advancedFilters.minRating != null) {
+      chips.push({
+        id: "rating",
+        label: `≥ ${advancedFilters.minRating} sao`,
+        onRemove: () => setAdvancedFilters((prev) => ({ ...prev, minRating: null })),
+      });
+    }
+    advancedFilters.facilities.forEach((f) => {
+      const labelMap = {
+        container: "Xe container",
+        camera: "Camera",
+        fire: "PCCC",
+        dock: "Loading dock",
+        forklift: "Xe nâng",
+        power: "Điện 3 pha",
+        security: "Bảo vệ",
+        office: "Văn phòng",
+      };
+      chips.push({
+        id: `facility-${f}`,
+        label: labelMap[f] || f,
+        onRemove: () =>
+          setAdvancedFilters((prev) => ({
+            ...prev,
+            facilities: prev.facilities.filter((item) => item !== f),
+          })),
+      });
+    });
+    advancedFilters.locationTags.forEach((t) => {
+      const labelMap = {
+        port: "Gần cảng",
+        airport: "Gần sân bay",
+        highway: "Gần cao tốc",
+        industrial: "Gần KCN",
+      };
+      chips.push({
+        id: `location-${t}`,
+        label: labelMap[t] || t,
+        onRemove: () =>
+          setAdvancedFilters((prev) => ({
+            ...prev,
+            locationTags: prev.locationTags.filter((item) => item !== t),
+          })),
+      });
+    });
+    advancedFilters.rentalTerms.forEach((t) => {
+      const labelMap = {
+        short: "Ngắn hạn",
+        long: "Dài hạn",
+        monthly: "Theo tháng",
+        yearly: "Theo năm",
+      };
+      chips.push({
+        id: `term-${t}`,
+        label: labelMap[t] || t,
+        onRemove: () =>
+          setAdvancedFilters((prev) => ({
+            ...prev,
+            rentalTerms: prev.rentalTerms.filter((item) => item !== t),
+          })),
+      });
+    });
+    if (advancedFilters.availableFrom) {
+      chips.push({
+        id: "available-from",
+        label: `Từ ${advancedFilters.availableFrom}`,
+        onRemove: () => setAdvancedFilters((prev) => ({ ...prev, availableFrom: "" })),
+      });
+    }
+    return chips;
+  }, [provinceInput, districtInput, warehouseType, statusFilter, areaRange, priceRange, advancedFilters]);
+
+  const clientFiltersActive = useMemo(() => {
+    return (
+      (advancedFilters.operatingHours === "business" || advancedFilters.operatingHours === "shift") ||
+      advancedFilters.facilities.length > 0 ||
+      advancedFilters.locationTags.length > 0 ||
+      advancedFilters.rentalTerms.length > 0 ||
+      !!advancedFilters.availableFrom
+    );
+  }, [advancedFilters]);
+
+  const matchesAdvancedFilters = useCallback(
+    (warehouse) => {
+      const haystack = normalizeText(
+        `${warehouse.name || ""} ${warehouse.address || ""} ${warehouse.description || ""} ${warehouse.warehouseType || ""} ${warehouse.operatingHours || ""}`
+      );
+
+      if (advancedFilters.operatingHours === "business") {
+        const businessKeywords = ["hanh chinh", "gio hanh chinh", "8h", "17h", "8:00", "17:00"];
+        if (warehouse.is24HoursAccess) return false;
+        if (!includesAny(haystack, businessKeywords)) return false;
+      }
+      if (advancedFilters.operatingHours === "shift") {
+        const shiftKeywords = ["theo ca", "ca sang", "ca dem", "shift"];
+        if (!includesAny(haystack, shiftKeywords)) return false;
+      }
+
+      if (advancedFilters.facilities.length) {
+        const allMatch = advancedFilters.facilities.every((f) => includesAny(haystack, FACILITY_KEYWORDS[f] || []));
+        if (!allMatch) return false;
+      }
+
+      if (advancedFilters.locationTags.length) {
+        const allMatch = advancedFilters.locationTags.every((t) => includesAny(haystack, LOCATION_KEYWORDS[t] || []));
+        if (!allMatch) return false;
+      }
+
+      if (advancedFilters.rentalTerms.length) {
+        const allMatch = advancedFilters.rentalTerms.every((t) => includesAny(haystack, RENTAL_KEYWORDS[t] || []));
+        if (!allMatch) return false;
+      }
+
+      if (advancedFilters.availableFrom) {
+        const since = new Date(advancedFilters.availableFrom);
+        if (warehouse.createdAt) {
+          const createdAt = new Date(warehouse.createdAt);
+          if (createdAt < since) return false;
+        }
+      }
+
+      return true;
+    },
+    [advancedFilters]
+  );
+
+  const statusMatches = useCallback(
+    (warehouse) => {
+      if (statusFilter === "available") return warehouse.availableArea > 0;
+      if (statusFilter === "full") return warehouse.availableArea <= 0;
+      return true;
+    },
+    [statusFilter]
+  );
+
+  const displayResults = useMemo(() => {
+    let list = [...results];
+    if (sortBy === "distance" && userLocation) {
+      list = list
+        .map((item) => ({
+          item,
+          distance: item.lat != null && item.lng != null
+            ? haversine(userLocation, { lat: item.lat, lng: item.lng })
+            : Number.POSITIVE_INFINITY,
+        }))
+        .sort((a, b) => a.distance - b.distance)
+        .map((entry) => entry.item);
+    }
+    if (statusFilter !== "all") {
+      list = list.filter(statusMatches);
+    }
+    if (clientFiltersActive) {
+      list = list.filter(matchesAdvancedFilters);
+    }
+    return list;
+  }, [results, sortBy, userLocation, statusFilter, statusMatches, clientFiltersActive, matchesAdvancedFilters]);
+
+  const displayTotal = clientFiltersActive || statusFilter !== "all" ? displayResults.length : total;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // Count active filters for badge
-  const activeFilterCount =
-    (provinceInput ? 1 : 0) +
-    (districtInput ? 1 : 0) +
-    (warehouseType ? 1 : 0) +
-    (areaActive  ? 1 : 0) +
-    (priceActive ? 1 : 0) +
-    (is24Hours ? 1 : 0) +
-    (minRating != null ? 1 : 0);
-
-  /* ── Styles ──────────────────────────────── */
-  const inputStyle = {
-    width: '100%', padding: '9px 12px', borderRadius: 8,
-    border: '1px solid #e2e8f0', fontSize: '0.88rem',
-    outline: 'none', boxSizing: 'border-box',
-    fontFamily: 'inherit', background: '#fff',
-    color: '#1e293b', transition: 'border-color 0.15s',
-  };
-  const chipBase = {
-    padding: '7px 10px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 600,
-    border: '1px solid #e2e8f0', background: '#fff',
-    color: '#334155', cursor: 'pointer', transition: 'all 0.15s',
-    whiteSpace: 'nowrap',
-  };
-  const chipActive = {
-    ...chipBase,
-    border: '2px solid #0095c7', background: '#e0f2fe', color: '#0369a1',
-  };
-
-  const sidebarStyle = {
-    background: '#fff', borderRadius: 16, padding: '22px 18px',
-    boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
-    border: '1px solid #f1f5f9',
-    position: 'sticky', top: 108,
-  };
-
-  const divider = <hr style={{ border: 'none', borderTop: '1px solid #f1f5f9', margin: '16px 0' }} />;
-
   return (
-    <div style={{ backgroundColor: '#f0f4f8', minHeight: '100vh', width: '100%' }}>
-      <div style={{
-        maxWidth: 1280, margin: '0 auto',
-      padding: '1.5rem 1rem',
-      fontFamily: "'Inter','Segoe UI',sans-serif",
-    }}>
-      {/* Mobile Filter Toggle Button */}
-      <div style={{ display: 'none' }} className="mobile-filter-btn-wrap">
-        <button
-          onClick={() => setShowMobileFilter(!showMobileFilter)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '10px 16px', borderRadius: 10, marginBottom: 16,
-            background: showMobileFilter ? '#0095c7' : '#fff',
-            color: showMobileFilter ? '#fff' : '#334155',
-            border: '1.5px solid ' + (showMobileFilter ? '#0095c7' : '#e2e8f0'),
-            fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    <div className="min-h-screen bg-slate-50 font-sans">
+      <div className="sticky top-16 z-30">
+        <PrimaryFilterBar
+          provinces={PROVINCES}
+          province={provinceInput}
+          district={districtInput}
+          onProvinceChange={(value) => {
+            setProvinceInput(value);
+            setPage(1);
           }}
+          onDistrictChange={(value) => {
+            setDistrictInput(value);
+            setPage(1);
+          }}
+          areaRange={areaRange}
+          areaMax={AREA_MAX}
+          onAreaRangeChange={(value) => {
+            setAreaRange(value);
+            setPage(1);
+          }}
+          priceRange={priceRange}
+          priceMax={PRICE_MAX}
+          onPriceRangeChange={(value) => {
+            setPriceRange(value);
+            setPage(1);
+          }}
+          warehouseType={warehouseType}
+          warehouseTypes={WAREHOUSE_TYPES}
+          onWarehouseTypeChange={(value) => {
+            setWarehouseType(value);
+            setPage(1);
+          }}
+          status={statusFilter}
+          statusOptions={STATUS_OPTIONS}
+          onStatusChange={(value) => {
+            setStatusFilter(value);
+            setPage(1);
+          }}
+          onOpenAdvanced={() => setShowDrawer(true)}
+          onReset={handleReset}
+          activeCount={activeFilterCount}
+        />
+        <div className="bg-white/95 px-4 pb-4">
+          <div className="mx-auto max-w-7xl">
+            <SelectedFilters filters={activeFilterChips} />
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="text-sm text-slate-500">
+              {loading ? "Đang tìm..." : `${displayTotal.toLocaleString("vi-VN")} kho phù hợp`}
+            </div>
+            {geoError && sortBy === "distance" && (
+              <div className="text-xs text-rose-500">Không thể lấy vị trí để sắp xếp theo khoảng cách.</div>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold uppercase text-slate-500">Sắp xếp</span>
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setPage(1);
+              }}
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-200"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <div className="hidden items-center rounded-lg bg-slate-100 p-1 lg:flex">
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                  viewMode === "list" ? "bg-white text-cyan-700 shadow" : "text-slate-500"
+                }`}
+              >
+                Danh sách
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("map")}
+                className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+                  viewMode === "map" ? "bg-white text-cyan-700 shadow" : "text-slate-500"
+                }`}
+              >
+                Bản đồ
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className={`${viewMode === "map" ? "hidden" : "block"} lg:block`}>
+            {loading ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-80 animate-pulse rounded-2xl bg-slate-200" />
+                ))}
+              </div>
+            ) : error ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-10 text-center text-sm text-rose-600">
+                {error}
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={fetchData}
+                    className="rounded-lg bg-cyan-600 px-4 py-2 text-xs font-semibold text-white"
+                  >
+                    Thử lại
+                  </button>
+                </div>
+              </div>
+            ) : displayResults.length === 0 ? (
+              <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center">
+                <div className="text-3xl">🔎</div>
+                <h3 className="mt-3 text-lg font-semibold text-slate-800">Không tìm thấy kho phù hợp</h3>
+                <p className="mt-2 text-sm text-slate-500">Thử điều chỉnh bộ lọc để xem thêm kết quả.</p>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="mt-4 rounded-lg bg-cyan-600 px-4 py-2 text-xs font-semibold text-white"
+                >
+                  Xóa bộ lọc
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {displayResults.map((w) => (
+                  <WarehouseCard key={w.warehouseId} w={w} />
+                ))}
+              </div>
+            )}
+
+            {!clientFiltersActive && statusFilter === "all" && !loading && totalPages > 1 && (
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ← Trước
+                </button>
+                {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+                  const p = i + 1;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPage(p)}
+                      className={`rounded-lg px-4 py-2 text-xs font-semibold ${
+                        page === p ? "bg-cyan-600 text-white" : "border border-slate-200 bg-white text-slate-600"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Sau →
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className={`lg:block ${viewMode === "map" ? "block" : "hidden"}`}>
+            <div className="sticky top-24">
+              <SearchMapPanel warehouses={displayResults} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <AdvancedFilterDrawer
+        open={showDrawer}
+        onClose={() => setShowDrawer(false)}
+        filters={advancedFilters}
+        areaRange={areaRange}
+        areaMax={AREA_MAX}
+        onAreaRangeChange={(value) => {
+          setAreaRange(value);
+          setPage(1);
+        }}
+        priceRange={priceRange}
+        priceMax={PRICE_MAX}
+        onPriceRangeChange={(value) => {
+          setPriceRange(value);
+          setPage(1);
+        }}
+        onFiltersChange={(partial) => {
+          setAdvancedFilters((prev) => ({ ...prev, ...partial }));
+          setPage(1);
+        }}
+        onReset={handleReset}
+        onApply={() => setShowDrawer(false)}
+      />
+
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex gap-3 border-t border-slate-200 bg-white px-4 py-3 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setShowDrawer(true)}
+          className="flex-1 rounded-lg border border-slate-200 bg-white py-2 text-sm font-semibold text-slate-700 shadow-sm"
         >
-          <span>Bộ lọc</span>
-          {activeFilterCount > 0 && (
-            <span style={{
-              background: showMobileFilter ? '#fff' : '#0095c7', color: showMobileFilter ? '#0095c7' : '#fff',
-              borderRadius: '50%', width: 20, height: 20, fontSize: '0.7rem',
-              fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            }}>{activeFilterCount}</span>
-          )}
-          <span style={{ marginLeft: 'auto', fontSize: '0.8rem' }}>{showMobileFilter ? '▲' : '▼'}</span>
+          Bộ lọc
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode(viewMode === "list" ? "map" : "list")}
+          className="flex-1 rounded-lg bg-cyan-600 py-2 text-sm font-semibold text-white shadow-soft"
+        >
+          {viewMode === "list" ? "Xem bản đồ" : "Xem danh sách"}
         </button>
       </div>
-
-      <div style={{ display: 'flex', gap: 28, alignItems: 'flex-start' }} className="search-layout">
-
-        {/* ══ FILTER SIDEBAR ══════════════════════════════════ */}
-        <aside style={{ width: 292, flexShrink: 0 }} className={`search-sidebar${showMobileFilter ? ' mobile-open' : ''}`}>
-          <div style={sidebarStyle}>
-
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
-                  Bộ lọc
-                </h3>
-                {activeFilterCount > 0 && (
-                  <span style={{
-                    background: '#0095c7', color: '#fff', borderRadius: '50%',
-                    width: 20, height: 20, fontSize: '0.7rem', fontWeight: 800,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>{activeFilterCount}</span>
-                )}
-              </div>
-              <button onClick={handleReset} style={{
-                background: 'none', border: 'none', color: '#0095c7',
-                fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', padding: 0,
-              }}>Xóa tất cả</button>
-            </div>
-
-            {/* 1. Địa điểm - Tỉnh/TP */}
-            <FilterSection icon="" title="Tỉnh / Thành phố">
-              <div ref={provRef} style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  placeholder="Nhập tỉnh, thành phố..."
-                  value={provinceInput}
-                  onChange={e => { setProvinceInput(e.target.value); setShowProvDrop(true); setPage(1); }}
-                  onFocus={() => setShowProvDrop(true)}
-                  autoComplete="off"
-                  style={{ ...inputStyle, cursor: 'text' }}
-                />
-                {showProvDrop && (
-                  <div style={{
-                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-                    background: '#fff', border: '1.5px solid #bae6fd',
-                    borderRadius: 10, boxShadow: '0 10px 28px rgba(14,165,233,0.14)',
-                    maxHeight: 200, overflowY: 'auto', zIndex: 999, scrollbarWidth: 'thin',
-                  }}>
-                    {filteredProvinces.length > 0 ? filteredProvinces.map(p => (
-                      <div
-                        key={p}
-                        onMouseDown={e => { e.preventDefault(); setProvinceInput(p); setShowProvDrop(false); setPage(1); }}
-                        style={{
-                          padding: '8px 12px', fontSize: '0.86rem',
-                          color: provinceInput === p ? '#0369a1' : '#1e293b',
-                          fontWeight: provinceInput === p ? 700 : 400,
-                          background: provinceInput === p ? '#f0f9ff' : 'transparent',
-                          cursor: 'pointer', borderBottom: '1px solid #f0f9ff',
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#f0f9ff'}
-                        onMouseLeave={e => e.currentTarget.style.background = provinceInput === p ? '#f0f9ff' : 'transparent'}
-                      >
-                        {p}
-                      </div>
-                    )) : (
-                      <div style={{ padding: '10px 12px', fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center' }}>
-                        Không tìm thấy
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </FilterSection>
-
-            {/* 2. Quận/Huyện */}
-            <FilterSection icon="" title="Quận / Huyện">
-              <input
-                type="text"
-                placeholder="VD: Quận 7, Hoàng Mai..."
-                value={districtInput}
-                onChange={e => { setDistrictInput(e.target.value); setPage(1); }}
-                style={inputStyle}
-              />
-            </FilterSection>
-
-            {divider}
-
-            {/* 3. Loại kho */}
-            <FilterSection icon="" title="Loại kho">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {WAREHOUSE_TYPES.map(t => (
-                  <label key={t.value} style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    fontSize: '0.875rem', cursor: 'pointer',
-                    color: warehouseType === t.value ? '#0095c7' : '#334155',
-                    fontWeight: warehouseType === t.value ? 700 : 400,
-                  }}>
-                    <input
-                      type='radio'
-                      name='warehouseType'
-                      checked={warehouseType === t.value}
-                      onChange={() => { setWarehouseType(t.value); setPage(1); }}
-                      style={{ accentColor: '#0095c7', width: 15, height: 15 }}
-                    />
-                    {t.label}
-                  </label>
-                ))}
-              </div>
-            </FilterSection>
-
-            {divider}
-
-            {/* 4. Diện tích trống cần thuê — Range Slider */}
-            <FilterSection icon="" title="Diện tích cần thuê (còn trống)">
-              <RangeSlider
-                min={AREA_MIN}
-                max={AREA_MAX}
-                step={10}
-                value={areaRange}
-                onChange={v => { setAreaRange(v); setPage(1); }}
-                formatValue={v => v >= AREA_MAX ? `${AREA_MAX.toLocaleString()}+ m²` : `${v.toLocaleString()} m²`}
-                color="#0095c7"
-              />
-            </FilterSection>
-
-            {divider}
-
-            {/* 5. Khoảng giá thuê — Range Slider */}
-            <FilterSection icon="" title="Giá thuê / m² / tháng">
-              <RangeSlider
-                min={PRICE_MIN}
-                max={PRICE_MAX}
-                step={10000}
-                value={priceRange}
-                onChange={v => { setPriceRange(v); setPage(1); }}
-                formatValue={v => {
-                  if (v >= PRICE_MAX) return '500k+ đ';
-                  if (v >= 1000) return `${(v/1000).toFixed(0)}k đ`;
-                  return `${v} đ`;
-                }}
-                color="#0095c7"
-              />
-            </FilterSection>
-
-            {divider}
-
-            {/* 6. Kho 24/7 */}
-            <FilterSection icon="" title="Giờ hoạt động">
-              <div
-                onClick={() => { setIs24Hours(!is24Hours); setPage(1); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '10px 12px', borderRadius: 10, cursor: 'pointer',
-                  border: is24Hours ? '2px solid #0095c7' : '1.5px solid #e2e8f0',
-                  background: is24Hours ? '#e0f2fe' : '#f8fafc',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {/* Toggle pill */}
-                <div style={{
-                  width: 40, height: 22, borderRadius: 11,
-                  background: is24Hours ? '#0095c7' : '#cbd5e1',
-                  position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-                }}>
-                  <div style={{
-                    position: 'absolute', top: 3,
-                    left: is24Hours ? 21 : 3,
-                    width: 16, height: 16, borderRadius: '50%',
-                    background: '#fff', transition: 'left 0.2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                  }} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: is24Hours ? '#0369a1' : '#334155' }}>
-                    Chỉ kho 24/7
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Truy cập không giới hạn giờ</div>
-                </div>
-              </div>
-            </FilterSection>
-
-            {divider}
-
-            {/* 7. Đánh giá tối thiểu */}
-            <FilterSection icon="" title="Đánh giá tối thiểu">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {RATING_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => { setMinRating(minRating === opt.value ? null : opt.value); setPage(1); }}
-                    style={{
-                      ...(minRating === opt.value ? chipActive : chipBase),
-                      textAlign: 'left', padding: '8px 12px',
-                      display: 'flex', alignItems: 'center', gap: 6,
-                    }}
-                  >
-                    <span style={{ display: 'inline-flex', gap: 1 }}>
-                      {Array.from({ length: 5 }).map((_, i) => {
-                        const filled = i < Math.floor(opt.stars);
-                        const half = !filled && i < opt.stars;
-                        return (
-                          <span key={i} style={{
-                            fontSize: '0.85rem',
-                            color: filled || half ? '#f59e0b' : '#d1d5db',
-                          }}>
-                            {half ? '½' : '★'}
-                          </span>
-                        );
-                      })}
-                    </span>
-                    <span>{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            </FilterSection>
-
-            {/* Apply button */}
-            <button
-              onClick={handleApply}
-              style={{
-                width: '100%', padding: '12px', borderRadius: 10, marginTop: 4,
-                background: 'linear-gradient(135deg,#0095c7,#0077a3)',
-                color: '#fff', fontWeight: 700, fontSize: '0.95rem',
-                border: 'none', cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(0,149,199,0.3)',
-                transition: 'transform 0.15s, box-shadow 0.15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(0,149,199,0.4)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,149,199,0.3)'; }}
-            >
-              Áp dụng bộ lọc
-            </button>
-          </div>
-        </aside>
-
-        {/* ══ RESULTS AREA ════════════════════════════════════ */}
-        <main style={{ flex: 1, minWidth: 0 }}>
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: '#0f172a' }}>
-                {loading ? 'Đang tìm...' : `${total.toLocaleString()} kết quả tìm kiếm`}
-              </h2>
-              {/* Active filter chips */}
-              {activeFilterCount > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-                  {provinceInput && <ActiveChip label={provinceInput} onRemove={() => { setProvinceInput(''); setPage(1); }} />}
-                  {districtInput && <ActiveChip label={districtInput} onRemove={() => { setDistrictInput(''); setPage(1); }} />}
-                  {warehouseType && <ActiveChip label={WAREHOUSE_TYPES.find(t => t.value === warehouseType)?.label} onRemove={() => { setWarehouseType(''); setPage(1); }} />}
-                  {areaActive  && <ActiveChip label={`${areaRange[0].toLocaleString()}–${areaRange[1] >= AREA_MAX ? AREA_MAX.toLocaleString()+'+' : areaRange[1].toLocaleString()} m²`} onRemove={() => { setAreaRange([AREA_MIN, AREA_MAX]); setPage(1); }} />}
-                  {priceActive && <ActiveChip label={`${(priceRange[0]/1000).toFixed(0)}k–${priceRange[1] >= PRICE_MAX ? '500k+' : (priceRange[1]/1000).toFixed(0)+'k'} đ/m²`} onRemove={() => { setPriceRange([PRICE_MIN, PRICE_MAX]); setPage(1); }} />}
-                  {is24Hours && <ActiveChip label="24/7" onRemove={() => { setIs24Hours(false); setPage(1); }} />}
-                  {minRating != null && <ActiveChip label={`≥ ${minRating} sao`} onRemove={() => { setMinRating(null); setPage(1); }} />}
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {/* Sắp xếp */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: '0.88rem', color: '#64748b' }}>Sắp xếp:</span>
-                <select
-                  value={sortBy}
-                  onChange={e => { setSortBy(e.target.value); setPage(1); }}
-                  style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: '0.9rem', background: '#fff', color: '#1e293b' }}
-                >
-                  <option value='newest'>Mới nhất</option>
-                  <option value='price_asc'>Giá: Thấp → Cao</option>
-                  <option value='price_desc'>Giá: Cao → Thấp</option>
-                  <option value='area_asc'>Diện tích: Nhỏ → Lớn</option>
-                  <option value='area_desc'>Diện tích: Lớn → Nhỏ</option>
-                </select>
-              </div>
-
-              {/* View Toggle */}
-              <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 8, padding: 4 }}>
-                <button
-                  onClick={() => setViewMode('list')}
-                  onMouseEnter={e => { if (viewMode !== 'list') e.currentTarget.style.background = '#e2e8f0'; }}
-                  onMouseLeave={e => { if (viewMode !== 'list') e.currentTarget.style.background = 'transparent'; }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 32,
-                    borderRadius: 6, border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                    background: viewMode === 'list' ? '#fff' : 'transparent',
-                    boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    color: viewMode === 'list' ? '#0095c7' : '#64748b',
-                  }}
-                  title="Danh sách"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>format_list_bulleted</span>
-                </button>
-                <button
-                  onClick={() => setViewMode('map')}
-                  onMouseEnter={e => { if (viewMode !== 'map') e.currentTarget.style.background = '#e2e8f0'; }}
-                  onMouseLeave={e => { if (viewMode !== 'map') e.currentTarget.style.background = 'transparent'; }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 32,
-                    borderRadius: 6, border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                    background: viewMode === 'map' ? '#fff' : 'transparent',
-                    boxShadow: viewMode === 'map' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                    color: viewMode === 'map' ? '#0095c7' : '#64748b',
-                  }}
-                  title="Bản đồ"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>map</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Cards / Map */}
-          {loading ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 20 }}>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} style={{
-                  background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
-                  backgroundSize: '200% 100%',
-                  borderRadius: 16, height: 340,
-                  animation: 'shimmer 1.5s infinite',
-                }} />
-              ))}
-              <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
-            </div>
-          ) : error ? (
-            <div style={{ textAlign: 'center', padding: '4rem 0', color: '#ef4444' }}>
-              <p style={{ fontSize: '1rem', fontWeight: 600 }}>{error}</p>
-              <button onClick={fetchData} style={{ marginTop: 12, padding: '10px 24px', borderRadius: 8, background: '#0095c7', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                Thử lại
-              </button>
-            </div>
-          ) : results.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '5rem 0' }}>
-              <div style={{ fontSize: '3rem', marginBottom: 16 }}></div>
-              <h3 style={{ color: '#334155', fontWeight: 700, marginBottom: 8 }}>Không tìm thấy kho phù hợp</h3>
-              <p style={{ color: '#64748b', fontSize: '0.95rem' }}>Thử điều chỉnh bộ lọc để xem thêm kết quả.</p>
-              <button onClick={handleReset} style={{ marginTop: 16, padding: '10px 24px', borderRadius: 8, background: '#0095c7', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-                Xóa bộ lọc
-              </button>
-            </div>
-          ) : viewMode === 'map' ? (
-            <WarehouseMap warehouses={results} />
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(270px,1fr))', gap: 20 }}>
-              {results.map(w => (
-                <WarehouseCard key={w.warehouseId} w={w} />
-              ))}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {!loading && totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 40 }}>
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                style={{
-                  padding: '8px 16px', borderRadius: 8,
-                  border: '1px solid #e2e8f0', background: '#fff',
-                  cursor: page === 1 ? 'not-allowed' : 'pointer', fontWeight: 600,
-                  color: page === 1 ? '#cbd5e1' : '#334155',
-                }}
-              >← Trước</button>
-
-              {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
-                const p = i + 1;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    style={{
-                      padding: '8px 14px', borderRadius: 8,
-                      border: page === p ? 'none' : '1px solid #e2e8f0',
-                      background: page === p ? '#0095c7' : '#fff',
-                      color: page === p ? '#fff' : '#334155',
-                      fontWeight: 700, cursor: 'pointer',
-                    }}
-                  >{p}</button>
-                );
-              })}
-
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                style={{
-                  padding: '8px 16px', borderRadius: 8,
-                  border: '1px solid #e2e8f0', background: '#fff',
-                  cursor: page === totalPages ? 'not-allowed' : 'pointer', fontWeight: 600,
-                  color: page === totalPages ? '#cbd5e1' : '#334155',
-                }}
-              >Sau →</button>
-            </div>
-          )}
-        </main>
-      </div>
-
-      {/* Responsive styles */}
-      <style>{`
-        @media (max-width: 768px) {
-          .mobile-filter-btn-wrap {
-            display: block !important;
-          }
-          .search-layout {
-            flex-direction: column !important;
-            gap: 0 !important;
-          }
-          .search-sidebar {
-            width: 100% !important;
-            display: none;
-          }
-          .search-sidebar.mobile-open {
-            display: block !important;
-          }
-          .search-sidebar aside > div {
-            position: static !important;
-            top: auto !important;
-          }
-        }
-      `}</style>
-      </div>
-    </div>
-  );
-}
-
-/* ── Active filter chip ─────────────────────────────────── */
-function ActiveChip({ label, onRemove }) {
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      background: '#e0f2fe', color: '#0369a1',
-      padding: '3px 10px', borderRadius: 20,
-      fontSize: '0.78rem', fontWeight: 600,
-    }}>
-      {label}
-      <button onClick={onRemove} style={{
-        background: 'none', border: 'none', cursor: 'pointer',
-        color: '#0369a1', fontSize: '0.85rem', lineHeight: 1,
-        padding: '0 0 0 2px', fontWeight: 700,
-      }}>✕</button>
-    </span>
-  );
-}
-
-/* ── Dual-handle Range Slider ────────────────────────────── */
-function RangeSlider({ min, max, step, value, onChange, formatValue, color = '#0095c7' }) {
-  const [dragging, setDragging] = useState(null); // 'min' | 'max' | null
-  const trackRef = useRef(null);
-
-  const pct = (v) => ((v - min) / (max - min)) * 100;
-
-  const clamp = (v) => Math.round(Math.max(min, Math.min(max, v)) / step) * step;
-
-  const getValueFromEvent = useCallback((e) => {
-    const rect = trackRef.current.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    return clamp(min + ratio * (max - min));
-  }, [min, max, step]); // eslint-disable-line
-
-  const handleTrackClick = (e) => {
-    if (!trackRef.current) return;
-    const v = getValueFromEvent(e);
-    const distMin = Math.abs(v - value[0]);
-    const distMax = Math.abs(v - value[1]);
-    if (distMin <= distMax) {
-      onChange([Math.min(v, value[1]), value[1]]);
-    } else {
-      onChange([value[0], Math.max(v, value[0])]);
-    }
-  };
-
-  useEffect(() => {
-    if (!dragging) return;
-    const onMove = (e) => {
-      if (!trackRef.current) return;
-      const v = getValueFromEvent(e);
-      if (dragging === 'min') onChange([Math.min(v, value[1]), value[1]]);
-      else onChange([value[0], Math.max(v, value[0])]);
-    };
-    const onUp = () => setDragging(null);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', onMove, { passive: false });
-    window.addEventListener('touchend', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onUp);
-    };
-  }, [dragging, value, onChange, getValueFromEvent]);
-
-  const thumbStyle = (active) => ({
-    width: 18, height: 18, borderRadius: '50%',
-    background: active ? color : '#fff',
-    border: `2.5px solid ${color}`,
-    boxShadow: active
-      ? `0 0 0 4px ${color}25, 0 2px 8px rgba(0,0,0,0.18)`
-      : '0 2px 8px rgba(0,0,0,0.18)',
-    cursor: 'grab',
-    position: 'absolute',
-    top: '50%', transform: 'translate(-50%, -50%)',
-    zIndex: active ? 4 : 3,
-    transition: 'box-shadow 0.15s, background 0.15s',
-    userSelect: 'none', touchAction: 'none',
-  });
-
-  const lo = pct(value[0]);
-  const hi = pct(value[1]);
-
-  return (
-    <div style={{ padding: '4px 2px 8px' }}>
-      {/* Value labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span style={{
-          fontSize: '0.78rem', fontWeight: 700,
-          color: value[0] > min ? color : '#94a3b8',
-          background: value[0] > min ? `${color}15` : '#f1f5f9',
-          border: `1px solid ${value[0] > min ? color+'40' : '#e2e8f0'}`,
-          borderRadius: 6, padding: '3px 8px',
-          transition: 'all 0.15s',
-        }}>
-          {formatValue(value[0])}
-        </span>
-        <span style={{
-          fontSize: '0.78rem', fontWeight: 700,
-          color: value[1] < max ? color : '#94a3b8',
-          background: value[1] < max ? `${color}15` : '#f1f5f9',
-          border: `1px solid ${value[1] < max ? color+'40' : '#e2e8f0'}`,
-          borderRadius: 6, padding: '3px 8px',
-          transition: 'all 0.15s',
-        }}>
-          {formatValue(value[1])}
-        </span>
-      </div>
-
-      {/* Track */}
-      <div
-        ref={trackRef}
-        onClick={handleTrackClick}
-        style={{
-          position: 'relative', height: 6, borderRadius: 3,
-          background: '#e2e8f0', cursor: 'pointer', margin: '10px 9px',
-        }}
-      >
-        {/* Filled range */}
-        <div style={{
-          position: 'absolute', top: 0, bottom: 0,
-          left: `${lo}%`, width: `${hi - lo}%`,
-          background: `linear-gradient(90deg, ${color}99, ${color})`,
-          borderRadius: 3, transition: dragging ? 'none' : 'all 0.05s',
-        }} />
-
-        {/* Min thumb */}
-        <div
-          style={{ ...thumbStyle(dragging === 'min'), left: `${lo}%` }}
-          onMouseDown={(e) => { e.preventDefault(); setDragging('min'); }}
-          onTouchStart={(e) => { e.preventDefault(); setDragging('min'); }}
-        />
-
-        {/* Max thumb */}
-        <div
-          style={{ ...thumbStyle(dragging === 'max'), left: `${hi}%` }}
-          onMouseDown={(e) => { e.preventDefault(); setDragging('max'); }}
-          onTouchStart={(e) => { e.preventDefault(); setDragging('max'); }}
-        />
-      </div>
-
-      {/* Min/Max labels */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, padding: '0 2px' }}>
-        <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{formatValue(min)}</span>
-        <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{formatValue(max)}</span>
-      </div>
+      <div className="h-16 lg:hidden" />
     </div>
   );
 }

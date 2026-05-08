@@ -35,6 +35,7 @@ public class RentalAreasController : ControllerBase
     }
 
     [HttpGet("warehouse/{warehouseId}")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetByWarehouseId(int warehouseId)
     {
         var result = await _mediator.Send(new GetRentalAreasByWarehouseQuery { WarehouseId = warehouseId });

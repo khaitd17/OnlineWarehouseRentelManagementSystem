@@ -49,10 +49,9 @@ public class SearchWarehousesHandler
         }
 
         // ── 5. Lọc theo Diện tích (fix: dùng AvailableArea thay TotalArea) ──
+        // Chỉ lọc MinArea (>= minArea), không cần MaxArea constraint
         if (request.MinArea.HasValue)
             query = query.Where(w => w.AvailableArea >= request.MinArea.Value);
-        if (request.MaxArea.HasValue)
-            query = query.Where(w => w.AvailableArea <= request.MaxArea.Value);
 
         // ── 6. Lọc theo Khoảng giá ────────────────────────────────
         if (request.MinPrice.HasValue)

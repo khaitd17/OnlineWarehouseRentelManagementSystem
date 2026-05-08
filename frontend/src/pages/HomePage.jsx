@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getFeaturedWarehouses } from '../services/warehouseService';
+import { readSearchDraft, writeSearchDraft } from '../utils/searchDraft';
 
 const HOME_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -736,7 +737,7 @@ const HomePage = () => {
   const [loading, setLoading] = useState(true);
 
   // Province autocomplete
-  const [provinceInput, setProvinceInput] = useState('');
+  const [provinceInput, setProvinceInput] = useState(() => readSearchDraft().province || '');
   const [showProvinceDropdown, setShowProvinceDropdown] = useState(false);
   const provinceRef = React.useRef(null);
   const normHP = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -745,10 +746,21 @@ const HomePage = () => {
     : PROVINCES;
 
   // Area dropdown
-  const [selectedArea, setSelectedArea] = useState('');
+  const [selectedArea, setSelectedArea] = useState(() => {
+    const draftMaxArea = readSearchDraft().maxArea;
+    return draftMaxArea != null ? String(draftMaxArea) : '';
+  });
 
   // Warehouse type
-  const [warehouseType, setWarehouseType] = useState('');
+  const [warehouseType, setWarehouseType] = useState(() => readSearchDraft().warehouseType || '');
+
+  useEffect(() => {
+    writeSearchDraft({
+      province: provinceInput || undefined,
+      maxArea: selectedArea || undefined,
+      warehouseType: warehouseType || undefined,
+    });
+  }, [provinceInput, selectedArea, warehouseType]);
 
   // Close province dropdown on outside click
   React.useEffect(() => {
