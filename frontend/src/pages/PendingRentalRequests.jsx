@@ -129,12 +129,14 @@ const PendingRentalRequests = () => {
     setError(null);
     try {
       const data = await rentalService.getOwnerRequests(activeTab);
+      console.log(`[RentalRequests] Tab: ${activeTab}, Data:`, data);
+      
       // Thay đổi 1: Sort tab PENDING theo tổng giá trị hợp đồng giảm dần
       const sorted = activeTab === "PENDING"
         ? [...data].sort((a, b) => {
-            const totalA = calculateTotalValue(a.monthlyPayment, a.durationMonths);
-            const totalB = calculateTotalValue(b.monthlyPayment, b.durationMonths);
-            return totalB - totalA;
+            const valA = Number(a.totalValue) || 0;
+            const valB = Number(b.totalValue) || 0;
+            return valB - valA;
           })
         : data;
       setRequests(sorted);
@@ -142,7 +144,7 @@ const PendingRentalRequests = () => {
       console.error(err);
       setError(
         err.response?.data?.message ||
-          "Không thể tải danh sách yêu cầu"
+        "Không thể tải danh sách yêu cầu"
       );
     } finally {
       setLoading(false);
@@ -247,19 +249,19 @@ const PendingRentalRequests = () => {
       alert("Vui lòng nhập thời hạn hợp đồng từ 1-120 tháng");
       return;
     }
-    
+
     // Validate Tiền đặt cọc
     const deposit = parseFloat(contractForm.depositAmount);
     const totalContractValue = calculateTotalValue(contractForm.monthlyPayment, contractForm.durationMonths);
     if (contractForm.depositAmount !== "" && (isNaN(deposit) || deposit < 0)) {
-        alert("Tiền đặt cọc không được nhỏ hơn 0.");
-        return;
+      alert("Tiền đặt cọc không được nhỏ hơn 0.");
+      return;
     }
     if (deposit > totalContractValue) {
-        alert("Tiền đặt cọc không được vượt quá tổng giá trị hợp đồng.");
-        return;
+      alert("Tiền đặt cọc không được vượt quá tổng giá trị hợp đồng.");
+      return;
     }
-    
+
     setActionLoading(true);
     try {
       let contractImageUrl = null;
@@ -288,11 +290,11 @@ const PendingRentalRequests = () => {
 
         // L-shaped extension zone
         if (assignedZone.extensionZone) {
-          payload.assignedHasExtensionZone     = true;
-          payload.assignedExtensionPositionX   = assignedZone.extensionZone.posX;
-          payload.assignedExtensionPositionY   = assignedZone.extensionZone.posY;
-          payload.assignedExtensionWidth       = assignedZone.extensionZone.width;
-          payload.assignedExtensionLength      = assignedZone.extensionZone.length;
+          payload.assignedHasExtensionZone = true;
+          payload.assignedExtensionPositionX = assignedZone.extensionZone.posX;
+          payload.assignedExtensionPositionY = assignedZone.extensionZone.posY;
+          payload.assignedExtensionWidth = assignedZone.extensionZone.width;
+          payload.assignedExtensionLength = assignedZone.extensionZone.length;
         }
 
         // Multi-zone: additional non-adjacent rectangles
@@ -948,7 +950,7 @@ const PendingRentalRequests = () => {
             {/* Thay đổi 7: Stat giá trị cao nhất (chỉ tab PENDING) */}
             {activeTab === "PENDING" && (() => {
               const top = requests[0];
-              const topVal = top ? calculateTotalValue(top.monthlyPayment, top.durationMonths) : 0;
+              const topVal = top?.totalValue || 0;
               return topVal > 0 ? (
                 <div style={{
                   padding: "10px 20px", borderRadius: 12,
@@ -1044,9 +1046,9 @@ const PendingRentalRequests = () => {
           {requests.map((req, idx) => {
             const status = statusColors[req.status] || { bg: "#f1f5f9", color: "#64748b", label: req.status };
             const accentColor = req.status === "PENDING" ? "#f59e0b" : req.status === "APPROVED" ? "#22c55e" : "#94a3b8";
-            // Thay đổi 2: Xác định card ưu tiên cao nhất
-            const totalValue = calculateTotalValue(req.monthlyPayment, req.durationMonths);
-            const isTopPriority = activeTab === "PENDING" && idx === 0 && totalValue > 0 && requests.length > 1;
+            // Thay đổi 2: Xác định card ưu tiên cao nhất (Top 1 sau khi sort)
+            const totalValue = Number(req.totalValue) || 0;
+            const isTopPriority = activeTab === "PENDING" && idx === 0 && totalValue > 0;
             return (
               <div
                 key={req.requestId}
@@ -1146,36 +1148,36 @@ const PendingRentalRequests = () => {
                       { label: "Diện tích yêu cầu", value: `${req.requestedArea} m²` },
                       req.isCustomArea
                         ? (() => {
-                            const ownerAssigned = !!req.isOwnerAssigned;
-                            const label = ownerAssigned ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ";
-                            const w = req.proposedWidth;
-                            const l = req.proposedLength;
-                            let value = `${w}m × ${l}m`;
-                            if (req.additionalZonesJson) {
-                              try {
-                                const addZones = JSON.parse(req.additionalZonesJson);
-                                value = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m²`;
-                              } catch(e) {}
-                            }
-                            return {
-                              label,
-                              value,
-                              highlighted: ownerAssigned,
-                              customZone: !ownerAssigned,
-                              ownerZone: ownerAssigned,
-                            };
-                          })()
+                          const ownerAssigned = !!req.isOwnerAssigned;
+                          const label = ownerAssigned ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ";
+                          const w = req.proposedWidth;
+                          const l = req.proposedLength;
+                          let value = `${w}m × ${l}m`;
+                          if (req.additionalZonesJson) {
+                            try {
+                              const addZones = JSON.parse(req.additionalZonesJson);
+                              value = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m²`;
+                            } catch (e) { }
+                          }
+                          return {
+                            label,
+                            value,
+                            highlighted: ownerAssigned,
+                            customZone: !ownerAssigned,
+                            ownerZone: ownerAssigned,
+                          };
+                        })()
                         : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m²`, highlighted: true } : null),
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
                       { label: "Ngày bắt đầu", value: formatDate(req.startDate) },
                       // Thay đổi 6: Chip tổng giá trị hợp đồng
                       totalValue > 0
                         ? {
-                            label: "Tổng giá trị HĐ",
-                            value: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(totalValue),
-                            highlighted: isTopPriority,
-                            isTotalValue: true,
-                          }
+                          label: "Tổng giá trị HĐ",
+                          value: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(totalValue),
+                          highlighted: isTopPriority,
+                          isTotalValue: true,
+                        }
                         : null,
                     ].filter(Boolean).map(item => (
                       <div key={item.label} style={{
