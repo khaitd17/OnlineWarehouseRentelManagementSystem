@@ -5,7 +5,7 @@ import rentalService from '../services/rentalService';
 import ratingService from '../services/ratingService';
 import authService from '../services/authService';
 import CustomAreaSelectorModal from '../components/warehouse/CustomAreaSelectorModal';
-import WarehouseFloorPlanView from '../components/warehouse/WarehouseFloorPlanView';
+import InteractiveGridMap from '../components/warehouse/InteractiveGridMap';
 
 // ─── Floor Plan Blueprint ────────────────────────────────────────────────────
 const FloorPlanView = ({ areas, warehouseData }) => {
@@ -176,6 +176,7 @@ const WarehouseDetailsPage = () => {
   const [selectedArea, setSelectedArea] = useState(null); // chosen rental area
   const [showAreaModal, setShowAreaModal] = useState(false); // area selection modal
   const [warehouseData, setWarehouseData] = useState(null);
+  const [gridLocations, setGridLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState({ open: false, index: 0 });
   const [submitting, setSubmitting] = useState(false);
@@ -229,6 +230,21 @@ const WarehouseDetailsPage = () => {
       } catch (err) { console.error('Failed to load areas:', err); }
     };
     fetchAreas();
+
+    // Fetch grid locations to show occupied spots
+    const fetchGridLocations = async () => {
+      try {
+        const res = await api.get(`/warehouses/${id}/grid-locations/public`);
+        // InteractiveGridMap expects parsed coordinates
+        const parsed = (res.data?.data || res.data || []).map(loc => {
+            let coords = [];
+            try { coords = typeof loc.coordinates === 'string' ? JSON.parse(loc.coordinates) : loc.coordinates; } catch {}
+            return { ...loc, coordinates: coords || [] };
+        });
+        setGridLocations(parsed);
+      } catch (err) { console.error('Failed to load grid locations:', err); }
+    };
+    fetchGridLocations();
 
     const fetchRatings = async () => {
       try {
@@ -706,9 +722,12 @@ const WarehouseDetailsPage = () => {
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: '0 0 1rem' }}>
                   Sơ đồ mặt bằng kho
                 </h2>
-                <WarehouseFloorPlanView
+                <InteractiveGridMap
                   boundaryPoints={warehouseData.boundaryPoints}
                   totalArea={warehouseData.totalArea}
+                  gridLocations={gridLocations}
+                  editMode={false} // View-only mode for renters
+                  hideAxis={true} // Do not show coordinates
                 />
               </section>
             )}

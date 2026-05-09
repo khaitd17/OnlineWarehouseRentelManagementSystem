@@ -103,6 +103,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<AiAnalysisSession> AiAnalysisSessions { get; set; }
 
+    public virtual DbSet<WarehouseGridLocation> WarehouseGridLocations { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.ConfigureWarnings(warnings =>
@@ -467,6 +469,27 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_warehouse_inventory_wh");
+        });
+
+        modelBuilder.Entity<WarehouseGridLocation>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_warehouse_grid_locations");
+            entity.ToTable("warehouse_grid_locations");
+            entity.HasIndex(e => new { e.WarehouseId }, "idx_warehouse_grid_locations_pos");
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
+            entity.Property(e => e.Coordinates).HasColumnType("nvarchar(max)").HasColumnName("coordinates");
+            entity.Property(e => e.AssetId).HasColumnName("asset_id").IsRequired(false);
+            entity.Property(e => e.ItemName).HasMaxLength(255).HasColumnName("item_name").IsRequired(false);
+            entity.Property(e => e.RenterId).HasColumnName("renter_id").IsRequired(false);
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
+            entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId)
+                .OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_warehouse_grid_locations_wh");
+            entity.HasOne(d => d.Asset).WithMany().HasForeignKey(d => d.AssetId)
+                .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_warehouse_grid_locations_asset");
+            entity.HasOne(d => d.Renter).WithMany().HasForeignKey(d => d.RenterId)
+                .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_warehouse_grid_locations_renter");
         });
 
         modelBuilder.Entity<InventoryTransaction>(entity =>

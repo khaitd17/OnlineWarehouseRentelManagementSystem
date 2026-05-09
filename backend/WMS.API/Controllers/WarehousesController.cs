@@ -99,15 +99,22 @@ public class WarehouseController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetDetail(int id)
     {
-        var result = await _mediator.Send(new GetWarehouseDetailQuery
+        try 
         {
-            WarehouseId = id
-        });
+            var result = await _mediator.Send(new GetWarehouseDetailQuery
+            {
+                WarehouseId = id
+            });
 
-        if (result == null)
-            return NotFound();
+            if (result == null)
+                return NotFound();
 
-        return Ok(result);
+            return Ok(result);
+        }
+        catch (System.Exception ex)
+        {
+            return StatusCode(500, new { message = ex.ToString() });
+        }
     }
 
     [HttpGet("owner/{ownerId}")]

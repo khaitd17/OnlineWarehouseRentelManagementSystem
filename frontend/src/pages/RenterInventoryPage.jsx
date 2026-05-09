@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import renterAssetService from '../services/renterAssetService';
 import rentalService from '../services/rentalService';
+import ItemLocationModal from '../components/warehouse/ItemLocationModal';
 
 const ACCENT = '#0ea5e9';
 
@@ -30,6 +31,7 @@ const RenterInventoryPage = () => {
   const [search,     setSearch]     = useState('');
   const [warehouses, setWarehouses] = useState([]);       // [{id, name}]
   const [activeWh,   setActiveWh]   = useState('');       // '' = tất cả
+  const [locationItem, setLocationItem] = useState(null); // Item for the modal
 
   /* Load warehouse list from active contracts */
   useEffect(() => {
@@ -187,7 +189,7 @@ const RenterInventoryPage = () => {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#f8fafc' }}>
-                  {[['Hàng hóa', 'auto'], ['Đơn vị', '100px'], ['Kho lưu trữ', '180px'], ['Số lượng', '140px', 'center'], ['Cập nhật', '140px']].map(([h, w, align])=>(
+                  {[['Hàng hóa', 'auto'], ['Đơn vị', '100px'], ['Kho lưu trữ', '180px'], ['Số lượng', '140px', 'center'], ['Cập nhật', '140px'], ['', '60px']].map(([h, w, align])=>(
                     <th key={h} style={{ padding:'11px 16px', textAlign:align||'left', fontSize:'0.68rem', fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', textTransform:'uppercase', width:w }}>
                       {h}
                     </th>
@@ -226,6 +228,18 @@ const RenterInventoryPage = () => {
                     <td style={{ padding:'13px 16px', fontSize:'0.78rem', color:'#94a3b8' }}>
                       {fmtDT(row.updatedAt)}
                     </td>
+                    {/* Action */}
+                    <td style={{ padding:'13px 16px', textAlign:'right' }}>
+                      <button 
+                        onClick={() => setLocationItem(row)}
+                        title="Tra cứu vị trí trên sơ đồ"
+                        style={{ border:'none', background:'none', cursor:'pointer', color:'#0ea5e9', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:6, borderRadius:'50%', transition:'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background='#e0f2fe'}
+                        onMouseLeave={e => e.currentTarget.style.background='none'}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize:'1.2rem' }}>location_on</span>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -246,6 +260,13 @@ const RenterInventoryPage = () => {
           </>
         )}
       </div>
+
+      {locationItem && (
+        <ItemLocationModal 
+            item={locationItem} 
+            onClose={() => setLocationItem(null)} 
+        />
+      )}
     </div>
   );
 };

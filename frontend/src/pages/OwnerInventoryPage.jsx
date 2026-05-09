@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import renterAssetService from '../services/renterAssetService';
 import { getMyWarehouses } from '../services/warehouseService';
 import authService from '../services/authService';
+import ItemLocationModal from '../components/warehouse/ItemLocationModal';
 
 /* ── Helpers ─────────────────────────────────────────────────── */
 const fmtDT = d => d
@@ -34,6 +35,7 @@ const OwnerInventoryPage = () => {
   const [searchItem,      setSearchItem]      = useState('');
   const [filterRenter,    setFilterRenter]    = useState('ALL');
   const [stockStatus,     setStockStatus]     = useState('ALL'); // ALL, IN_STOCK, LOW_STOCK, OUT_OF_STOCK
+  const [locationItem,    setLocationItem]    = useState(null);
 
   /* Load warehouse list — luôn fetch từ API để tránh stale cache */
   useEffect(() => {
@@ -228,7 +230,7 @@ const OwnerInventoryPage = () => {
               <table style={{ width:'100%', borderCollapse:'collapse' }}>
                 <thead>
                   <tr style={{ background:'#f8fafc', borderBottom:'1px solid #e2e8f0' }}>
-                    {[['Hàng hóa','auto'],['Đơn vị','100px'],['Người thuê','240px'],['Số lượng','140px','center'],['Cập nhật','140px']].map(([h,w,align])=>(
+                    {[['Hàng hóa','auto'],['Đơn vị','100px'],['Người thuê','240px'],['Số lượng','140px','center'],['Cập nhật','140px'],['','60px']].map(([h,w,align])=>(
                       <th key={h} style={{ padding:'14px 20px', textAlign:align||'left', fontSize:'0.75rem', fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.05em', width:w }}>{h}</th>
                     ))}
                   </tr>
@@ -265,6 +267,18 @@ const OwnerInventoryPage = () => {
                       </td>
                       {/* Cập nhật */}
                       <td style={{ padding:'16px 20px', fontSize:'0.8rem', color:'#64748b' }}>{fmtDT(row.updatedAt)}</td>
+                      {/* Tra cứu vị trí */}
+                      <td style={{ padding:'16px 20px', textAlign:'right' }}>
+                        <button 
+                          onClick={() => setLocationItem({...row, warehouseId: selectedWh})}
+                          title="Tra cứu vị trí trên sơ đồ"
+                          style={{ border:'none', background:'none', cursor:'pointer', color:'#0ea5e9', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:6, borderRadius:'50%', transition:'background 0.2s' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#e0f2fe'}
+                          onMouseLeave={e => e.currentTarget.style.background='none'}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize:'1.2rem' }}>location_on</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -288,6 +302,13 @@ const OwnerInventoryPage = () => {
           </div>
         )}
       </div>
+
+      {locationItem && (
+        <ItemLocationModal 
+            item={locationItem} 
+            onClose={() => setLocationItem(null)} 
+        />
+      )}
 
     </div>
   );
