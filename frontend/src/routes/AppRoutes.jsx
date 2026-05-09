@@ -61,6 +61,8 @@ import OwnerInventoryPage from "../pages/OwnerInventoryPage";
 import StaffInventoryPage from "../pages/StaffInventoryPage";
 import SubscriptionPage from "../pages/SubscriptionPage";
 import AiItemAnalyzerPage from "../pages/AiItemAnalyzerPage";
+import WarehouseGridManager from "../pages/Requests/WarehouseGridManager";
+import WarehouseGridMapPage from "../pages/Requests/WarehouseGridMapPage";
 
 // Audit session pages
 import OwnerAuditSessionsPage from "../pages/OwnerAuditSessionsPage";
@@ -226,9 +228,11 @@ function AppRoutes() {
             <Route path="/staff-dashboard" element={<StaffDashboard />} />
             <Route path="/confirm-movement" element={<ConfirmMovement />} />
             <Route path="/staff-inventory" element={<StaffInventoryPage />} />
+            <Route path="/warehouse-grid-map" element={<WarehouseGridMapPage />} />
             <Route path="/staff-audit-sessions" element={<StaffAuditSessionsPage />} />
             <Route path="/staff-audit-sessions/:id" element={<StaffAuditSessionDetailPage />} />
             <Route path="/equipment-management" element={<EquipmentManagement />} />
+            <Route path="/warehouse-grid/:reqId" element={<WarehouseGridManager />} />
           </Route>
         </Route>
 

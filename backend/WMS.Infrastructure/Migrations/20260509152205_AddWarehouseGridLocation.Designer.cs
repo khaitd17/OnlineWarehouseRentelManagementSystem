@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WMS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260509152205_AddWarehouseGridLocation")]
+    partial class AddWarehouseGridLocation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2971,10 +2974,13 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("asset_id");
 
-                    b.Property<string>("Coordinates")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("coordinates");
+                    b.Property<decimal>("GridX")
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("grid_x");
+
+                    b.Property<decimal>("GridY")
+                        .HasColumnType("decimal(10, 2)")
+                        .HasColumnName("grid_y");
 
                     b.Property<string>("ItemName")
                         .HasMaxLength(255)
@@ -3006,7 +3012,7 @@ namespace WMS.Infrastructure.Migrations
 
                     b.HasIndex("RenterId");
 
-                    b.HasIndex(new[] { "WarehouseId" }, "idx_warehouse_grid_locations_pos");
+                    b.HasIndex(new[] { "WarehouseId", "GridX", "GridY" }, "idx_warehouse_grid_locations_pos");
 
                     b.ToTable("warehouse_grid_locations", (string)null);
                 });
