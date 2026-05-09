@@ -1178,24 +1178,27 @@ const ContractDetail = () => {
       </div>
 
       {/* Điều khoản */}
-      {contract.terms && (
-        <div style={{
-          backgroundColor: "#fff", borderRadius: 18, overflow: "hidden",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02)",
-          border: "1px solid #eef1f6", marginBottom: "1rem",
-          animation: "cardFadeIn 0.4s ease 0.3s both",
-        }}>
-          <div style={{ height: 3, background: "linear-gradient(90deg, #64748b, #64748b44, transparent)" }} />
-          <div style={{ padding: "20px 24px" }}>
-            <h2 style={{ fontSize: "0.82rem", fontWeight: 800, color: "#64748b", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Điều khoản hợp đồng
-            </h2>
-            <p style={{ color: "#475569", fontSize: "0.9rem", lineHeight: 1.8, whiteSpace: "pre-wrap", margin: 0 }}>
-              {contract.terms}
-            </p>
+      {(() => {
+        const termsText = (contract.terms || "").trim();
+        return (
+          <div style={{
+            backgroundColor: "#fff", borderRadius: 18, overflow: "hidden",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02)",
+            border: "1px solid #eef1f6", marginBottom: "1rem",
+            animation: "cardFadeIn 0.4s ease 0.3s both",
+          }}>
+            <div style={{ height: 3, background: "linear-gradient(90deg, #64748b, #64748b44, transparent)" }} />
+            <div style={{ padding: "20px 24px" }}>
+              <h2 style={{ fontSize: "0.82rem", fontWeight: 800, color: "#64748b", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Điều khoản hợp đồng
+              </h2>
+              <p style={{ color: "#475569", fontSize: "0.9rem", lineHeight: 1.8, whiteSpace: "pre-wrap", margin: 0 }}>
+                {termsText || "Chưa có điều khoản được cập nhật cho hợp đồng này."}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Ảnh / tài liệu đính kèm từ chủ kho */}
       {contract.contractImageUrl && (

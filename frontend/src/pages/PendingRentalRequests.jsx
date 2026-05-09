@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import rentalService from "../services/rentalService";
 import warehouseService from "../services/warehouseService";
+import contractTemplateService from "../services/contractTemplateService";
 import SignatureCanvas from "../components/SignatureCanvas";
 import ProposedZonePreviewModal from "../components/warehouse/ProposedZonePreviewModal";
 import CustomAreaSelectorModal from "../components/warehouse/CustomAreaSelectorModal";
@@ -37,6 +38,56 @@ const generateDefaultTerms = (req) => {
 4. Nếu Bên B chậm thanh toán quá 15 ngày, Bên A có quyền đơn phương chấm dứt hợp đồng.
 5. Tiền đặt cọc sẽ được hoàn trả khi hết hạn hợp đồng, sau khi trừ các khoản phí phát sinh (nếu có).
 6. Hai bên có thể thỏa thuận gia hạn hợp đồng trước khi hết hạn ít nhất 30 ngày.`;
+};
+
+const applyTemplateVariables = (content, req) => {
+  if (!content) return "";
+  const replacementMap = {
+    "{requestedArea}": `${req.requestedArea ?? ""}`,
+    "{warehouseName}": req.warehouseName ?? "",
+    "{warehouseAddress}": req.warehouseAddress ?? "",
+    "{renterName}": req.renterName ?? "",
+    "{durationMonths}": `${req.durationMonths ?? ""}`,
+    "[Diện tích thuê]": `${req.requestedArea ?? ""}`,
+    "[Tên kho]": req.warehouseName ?? "",
+    "[Địa chỉ kho]": req.warehouseAddress ?? "",
+    "[Người thuê]": req.renterName ?? "",
+    "[Thời hạn]": `${req.durationMonths ?? ""}`,
+  };
+
+  return Object.entries(replacementMap).reduce(
+    (result, [key, value]) => result.split(key).join(value),
+    content
+  );
+};
+
+const generateTermsFromTemplate = (template, req) => {
+  if (!template) return generateDefaultTerms(req);
+
+  const baseSections = [
+    template.useBasicInfoSection ? template.basicInfoContent : null,
+    template.usePaymentSection ? template.paymentContent : null,
+    template.useViolationSection ? template.violationContent : null,
+    template.useTerminationSection ? template.terminationContent : null,
+    template.useSignatureSection ? template.signatureContent : null,
+  ]
+    .map((section) => (section || "").trim())
+    .filter(Boolean)
+    .map((section) => applyTemplateVariables(section, req));
+
+  const additionalSections = (template.additionalTermsContent || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => applyTemplateVariables(line, req));
+
+  const rawSections = [...baseSections, ...additionalSections];
+
+  if (rawSections.length === 0) {
+    return generateDefaultTerms(req);
+  }
+
+  return rawSections.map((content, index) => `${index + 1}. ${content}`).join("\n");
 };
 
 // Icon helper
@@ -119,10 +170,15 @@ const PendingRentalRequests = () => {
   const [showZoneAssignment, setShowZoneAssignment] = useState(false);
   const [zoneAssignmentData, setZoneAssignmentData] = useState(null); // warehouse data + areas for modal
   const [assignedZone, setAssignedZone] = useState(null); // { posX, posY, width, length, baseAreaId }
+  const [defaultContractTemplate, setDefaultContractTemplate] = useState(null);
 
   useEffect(() => {
     fetchRequests();
   }, [activeTab]);
+
+  useEffect(() => {
+    fetchDefaultTemplate();
+  }, []);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -138,6 +194,16 @@ const PendingRentalRequests = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDefaultTemplate = async () => {
+    try {
+      const template = await contractTemplateService.getOwnerDefaultTemplate();
+      setDefaultContractTemplate(template || null);
+    } catch (err) {
+      console.error("Không thể tải template hợp đồng mặc định:", err);
+      setDefaultContractTemplate(null);
     }
   };
 
@@ -176,7 +242,7 @@ const PendingRentalRequests = () => {
         durationMonths: req.durationMonths || "",
         monthlyPayment: calculatedMonthlyPayment.toFixed(0), // Tự động tính giá
         depositAmount: "",
-        terms: generateDefaultTerms(req),
+        terms: generateTermsFromTemplate(defaultContractTemplate, req),
         pricePerM2: pricePerM2, // Lưu giá/m2 để hiển thị
       });
       setContractImageFile(null);

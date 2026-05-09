@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WMS.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using WMS.Infrastructure.Persistence;
 namespace WMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260509071408_AddOwnerContractTemplates")]
+    partial class AddOwnerContractTemplates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1229,10 +1232,6 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("template_id");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TemplateId"));
-
-                    b.Property<string>("AdditionalTermsContent")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("additional_terms_content");
 
                     b.Property<string>("BasicInfoContent")
                         .HasColumnType("nvarchar(max)")

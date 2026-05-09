@@ -37,6 +37,8 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<ContractExtension> ContractExtensions { get; set; }
 
+    public virtual DbSet<OwnerContractTemplate> OwnerContractTemplates { get; set; }
+
     public virtual DbSet<Rating> Ratings { get; set; }
 
     public virtual DbSet<RentalRequest> RentalRequests { get; set; }
@@ -236,6 +238,39 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.NewContract).WithMany().HasForeignKey(d => d.NewContractId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Requester).WithMany().HasForeignKey(d => d.RequesterId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Reviewer).WithMany().HasForeignKey(d => d.ReviewedBy).OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<OwnerContractTemplate>(entity =>
+        {
+            entity.HasKey(e => e.TemplateId);
+            entity.ToTable("owner_contract_templates");
+
+            entity.HasIndex(e => e.OwnerId, "idx_owner_contract_templates_owner");
+            entity.HasIndex(e => new { e.OwnerId, e.IsDefault }, "idx_owner_contract_templates_default");
+
+            entity.Property(e => e.TemplateId).HasColumnName("template_id");
+            entity.Property(e => e.OwnerId).HasColumnName("owner_id");
+            entity.Property(e => e.TemplateName).HasMaxLength(150).HasColumnName("template_name");
+            entity.Property(e => e.UseBasicInfoSection).HasDefaultValue(true).HasColumnName("use_basic_info_section");
+            entity.Property(e => e.UsePaymentSection).HasDefaultValue(true).HasColumnName("use_payment_section");
+            entity.Property(e => e.UseViolationSection).HasDefaultValue(true).HasColumnName("use_violation_section");
+            entity.Property(e => e.UseTerminationSection).HasDefaultValue(true).HasColumnName("use_termination_section");
+            entity.Property(e => e.UseSignatureSection).HasDefaultValue(true).HasColumnName("use_signature_section");
+            entity.Property(e => e.BasicInfoContent).HasColumnName("basic_info_content");
+            entity.Property(e => e.PaymentContent).HasColumnName("payment_content");
+            entity.Property(e => e.ViolationContent).HasColumnName("violation_content");
+            entity.Property(e => e.TerminationContent).HasColumnName("termination_content");
+            entity.Property(e => e.SignatureContent).HasColumnName("signature_content");
+            entity.Property(e => e.AdditionalTermsContent).HasColumnName("additional_terms_content");
+            entity.Property(e => e.IsDefault).HasDefaultValue(false).HasColumnName("is_default");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Owner)
+                .WithMany(p => p.OwnerContractTemplates)
+                .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_owner_contract_templates_owner");
         });
 
         modelBuilder.Entity<RentalContract>(entity =>

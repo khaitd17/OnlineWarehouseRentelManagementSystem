@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../services/axiosClient";
+import contractTemplateService from "../services/contractTemplateService";
 
 const statusConfig = {
   DRAFT: { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
@@ -44,10 +45,30 @@ const OwnerContracts = () => {
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [searchKeyword, setSearchKeyword] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [contractTemplates, setContractTemplates] = useState([]);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [templateSubmitting, setTemplateSubmitting] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [templateForm, setTemplateForm] = useState({
+    templateName: "",
+    useBasicInfoSection: true,
+    usePaymentSection: true,
+    useViolationSection: true,
+    useTerminationSection: true,
+    useSignatureSection: true,
+    basicInfoContent: "Bên A cho Bên B thuê diện tích [Diện tích thuê] m² tại kho [Tên kho], địa chỉ [Địa chỉ kho].",
+    paymentContent: "Bên B thanh toán tiền thuê hàng tháng đúng hạn theo thỏa thuận của hai bên.",
+    violationContent: "Nếu Bên B vi phạm nghĩa vụ thanh toán quá 15 ngày, Bên A có quyền áp dụng chế tài theo hợp đồng.",
+    terminationContent: "Hai bên có quyền đề nghị chấm dứt hợp đồng theo điều kiện và quy trình đã thỏa thuận.",
+    signatureContent: "Hợp đồng có hiệu lực khi cả hai bên hoàn tất chữ ký điện tử trên hệ thống.",
+    additionalTermsContent: "",
+  });
   const itemsPerPage = 8; // Adjust to prevent scrolling
 
   useEffect(() => {
     loadContracts();
+    loadTemplates();
   }, []);
 
   const loadContracts = async () => {
@@ -61,6 +82,70 @@ const OwnerContracts = () => {
       setError(err.response?.data?.message || "Không thể tải danh sách hợp đồng");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTemplates = async () => {
+    try {
+      setTemplateLoading(true);
+      const templates = await contractTemplateService.getOwnerTemplates();
+      setContractTemplates(Array.isArray(templates) ? templates : []);
+    } catch (err) {
+      console.error("Error loading contract templates:", err);
+    } finally {
+      setTemplateLoading(false);
+    }
+  };
+
+  const handleTemplateFieldChange = (field, value) => {
+    setTemplateForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCreateTemplate = async () => {
+    if (!templateForm.templateName.trim()) {
+      alert("Vui lòng nhập tên template");
+      return;
+    }
+
+    const hasEnabledSection = [
+      templateForm.useBasicInfoSection,
+      templateForm.usePaymentSection,
+      templateForm.useViolationSection,
+      templateForm.useTerminationSection,
+      templateForm.useSignatureSection,
+    ].some(Boolean);
+
+    if (!hasEnabledSection) {
+      alert("Cần bật ít nhất 1 nhóm trường trong template");
+      return;
+    }
+
+    setTemplateSubmitting(true);
+    try {
+      const result = await contractTemplateService.createOwnerTemplate(templateForm);
+      const shouldSetDefault = window.confirm("Đã lưu template. Bạn có muốn đặt template này làm mặc định không?");
+      if (shouldSetDefault && result?.templateId) {
+        await contractTemplateService.setDefaultTemplate(result.templateId);
+      }
+      await loadTemplates();
+      setShowTemplateModal(false);
+      alert("Tạo template hợp đồng thành công!");
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Không thể tạo template hợp đồng");
+    } finally {
+      setTemplateSubmitting(false);
+    }
+  };
+
+  const handleSetDefaultTemplate = async (templateId) => {
+    try {
+      await contractTemplateService.setDefaultTemplate(templateId);
+      await loadTemplates();
+      alert("Đã đặt template mặc định thành công");
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Không thể đặt template mặc định");
     }
   };
 
@@ -90,6 +175,8 @@ const OwnerContracts = () => {
     acc[c.status] = (acc[c.status] || 0) + 1;
     return acc;
   }, {});
+
+  const defaultTemplate = contractTemplates.find((t) => t.isDefault);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredContracts.length / itemsPerPage);
@@ -143,15 +230,39 @@ const OwnerContracts = () => {
         <div style={{ position: "absolute", top: -40, right: -40, width: 180, height: 180, borderRadius: "50%", background: "rgba(14,165,233,0.08)" }} />
         <div style={{ position: "absolute", bottom: -20, right: 80, width: 100, height: 100, borderRadius: "50%", background: "rgba(14,165,233,0.05)" }} />
 
-        <h1 style={{
-          fontSize: "1.65rem", fontWeight: 800, color: "#fff", margin: "0 0 6px",
-          letterSpacing: "-0.02em", position: "relative",
-        }}>
-          Quản lý hợp đồng
-        </h1>
-        <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.9rem", margin: 0, position: "relative" }}>
-          Quản lý, theo dõi tình trạng và cập nhật hợp đồng thuê kho của bạn.
-        </p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem", position: "relative" }}>
+          <div>
+            <h1 style={{
+              fontSize: "1.65rem", fontWeight: 800, color: "#fff", margin: "0 0 6px",
+              letterSpacing: "-0.02em",
+            }}>
+              Quản lý hợp đồng
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.9rem", margin: 0 }}>
+              Quản lý, theo dõi tình trạng và cập nhật hợp đồng thuê kho của bạn.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowTemplateModal(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 14px",
+              borderRadius: "10px",
+              border: "1px solid rgba(255,255,255,0.25)",
+              background: "rgba(14,165,233,0.22)",
+              color: "#fff",
+              fontWeight: 700,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>note_add</span>
+            Tạo template hợp đồng
+          </button>
+        </div>
 
         {/* Stats */}
         <div style={{
@@ -209,6 +320,34 @@ const OwnerContracts = () => {
                 onBlur={e => { e.target.style.borderColor = "#cbd5e1"; e.target.style.backgroundColor = "#f8fafc"; e.target.style.boxShadow = "none"; }}
               />
             </div>
+          </div>
+
+          <div style={{ marginBottom: "1.2rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+            <div>
+              <div style={{ fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#0ea5e9" }}>description</span>
+                Template hợp đồng mặc định
+              </div>
+              <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
+                {defaultTemplate ? defaultTemplate.templateName : "Chưa đặt template mặc định"}
+              </div>
+            </div>
+            <button
+              onClick={() => setShowTemplatePicker(true)}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "10px",
+                border: "1px solid #0284c7",
+                backgroundColor: "#fff",
+                color: "#0284c7",
+                fontWeight: 700,
+                cursor: "pointer",
+                fontSize: "0.85rem",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Chọn template
+            </button>
           </div>
 
           {/* Status Filter Cards */}
@@ -367,6 +506,197 @@ const OwnerContracts = () => {
 
         </div>
       </div>
+
+      {showTemplateModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(2, 6, 23, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "16px",
+          }}
+          onClick={() => !templateSubmitting && setShowTemplateModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "760px",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              backgroundColor: "#fff",
+              borderRadius: "16px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 20px 40px rgba(15,23,42,0.22)",
+              padding: "1.1rem 1.2rem",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>Tạo template hợp đồng</h3>
+              <button onClick={() => !templateSubmitting && setShowTemplateModal(false)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#64748b", fontSize: "1.25rem" }}>×</button>
+            </div>
+
+            <div style={{ marginBottom: "10px" }}>
+              <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#475569", marginBottom: "4px" }}>Tên template *</label>
+              <input
+                type="text"
+                value={templateForm.templateName}
+                onChange={(e) => handleTemplateFieldChange("templateName", e.target.value)}
+                placeholder="Ví dụ: Mẫu hợp đồng kho tiêu chuẩn"
+                style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.9rem" }}
+              />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px", marginBottom: "12px" }}>
+              {[
+                ["useBasicInfoSection", "Thông tin cơ bản"],
+                ["usePaymentSection", "Điều khoản thanh toán"],
+                ["useViolationSection", "Điều khoản vi phạm"],
+                ["useTerminationSection", "Điều khoản chấm dứt"],
+                ["useSignatureSection", "Điều khoản chữ ký"],
+              ].map(([field, label]) => (
+                <label key={field} style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "0.85rem", color: "#334155", fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={templateForm[field]}
+                    onChange={(e) => handleTemplateFieldChange(field, e.target.checked)}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+
+            <div style={{ display: "grid", gap: "10px" }}>
+              {[
+                ["basicInfoContent", "Nội dung thông tin cơ bản", templateForm.useBasicInfoSection],
+                ["paymentContent", "Nội dung điều khoản thanh toán", templateForm.usePaymentSection],
+                ["violationContent", "Nội dung điều khoản vi phạm", templateForm.useViolationSection],
+                ["terminationContent", "Nội dung điều khoản chấm dứt", templateForm.useTerminationSection],
+                ["signatureContent", "Nội dung điều khoản chữ ký", templateForm.useSignatureSection],
+              ].map(([field, label, enabled]) => (
+                <div key={field}>
+                  <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: enabled ? "#475569" : "#94a3b8", marginBottom: "4px" }}>{label}</label>
+                  <textarea
+                    rows={3}
+                    disabled={!enabled}
+                    value={templateForm[field]}
+                    onChange={(e) => handleTemplateFieldChange(field, e.target.value)}
+                    style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.88rem", resize: "vertical", backgroundColor: enabled ? "#fff" : "#f8fafc" }}
+                  />
+                </div>
+              ))}
+              <div>
+                <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 700, color: "#475569", marginBottom: "4px" }}>Điều khoản bổ sung (tự ghi)</label>
+                <textarea
+                  rows={3}
+                  value={templateForm.additionalTermsContent}
+                  onChange={(e) => handleTemplateFieldChange("additionalTermsContent", e.target.value)}
+                  placeholder="Mỗi dòng sẽ được tính là 1 điều khoản bổ sung."
+                  style={{ width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.88rem", resize: "vertical" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: "12px", fontSize: "0.8rem", color: "#64748b", backgroundColor: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: "10px", padding: "8px 10px" }}>
+              Gợi ý chèn thông tin tự động: <strong>[Diện tích thuê]</strong>, <strong>[Tên kho]</strong>, <strong>[Địa chỉ kho]</strong>, <strong>[Người thuê]</strong>, <strong>[Thời hạn]</strong>.
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "14px" }}>
+              <button onClick={() => !templateSubmitting && setShowTemplateModal(false)} disabled={templateSubmitting} style={{ padding: "8px 14px", borderRadius: "8px", border: "1px solid #cbd5e1", backgroundColor: "#fff", color: "#475569", fontWeight: 700, cursor: "pointer" }}>
+                Hủy
+              </button>
+              <button onClick={handleCreateTemplate} disabled={templateSubmitting} style={{ padding: "8px 14px", borderRadius: "8px", border: "none", backgroundColor: templateSubmitting ? "#94a3b8" : "#0284c7", color: "#fff", fontWeight: 700, cursor: templateSubmitting ? "not-allowed" : "pointer" }}>
+                {templateSubmitting ? "Đang lưu..." : "Lưu template"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showTemplatePicker && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(2, 6, 23, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "16px",
+          }}
+          onClick={() => setShowTemplatePicker(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "520px",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              backgroundColor: "#fff",
+              borderRadius: "16px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 20px 40px rgba(15,23,42,0.22)",
+              padding: "1.1rem 1.2rem",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+              <h3 style={{ margin: 0, fontSize: "1.02rem", fontWeight: 800, color: "#0f172a" }}>Chọn template hợp đồng</h3>
+              <button onClick={() => setShowTemplatePicker(false)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#64748b", fontSize: "1.25rem" }}>×</button>
+            </div>
+
+            {templateLoading && <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Đang tải...</div>}
+            {!templateLoading && contractTemplates.length === 0 && (
+              <div style={{ fontSize: "0.88rem", color: "#64748b" }}>
+                Chưa có template nào. Hãy tạo template trước khi chọn mặc định.
+              </div>
+            )}
+            {contractTemplates.length > 0 && (
+              <div style={{ display: "grid", gap: "8px" }}>
+                {contractTemplates.map((template) => (
+                  <div key={template.templateId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px 12px" }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
+                        {template.templateName}
+                        {template.isDefault && (
+                          <span style={{ fontSize: "0.72rem", color: "#065f46", backgroundColor: "#d1fae5", borderRadius: "999px", padding: "2px 8px" }}>
+                            Mặc định
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                        Tạo ngày: {formatDate(template.createdAt)}
+                      </div>
+                    </div>
+                    {!template.isDefault && (
+                      <button
+                        onClick={() => handleSetDefaultTemplate(template.templateId)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          border: "1px solid #0284c7",
+                          backgroundColor: "#fff",
+                          color: "#0284c7",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          fontSize: "0.82rem",
+                        }}
+                      >
+                        Đặt mặc định
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

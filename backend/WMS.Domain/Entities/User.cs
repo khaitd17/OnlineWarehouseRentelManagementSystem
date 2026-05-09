@@ -41,6 +41,8 @@ public partial class User
 
     public virtual ICollection<RentalRequest> RentalRequestReviewedByNavigations { get; set; } = new List<RentalRequest>();
 
+    public virtual ICollection<OwnerContractTemplate> OwnerContractTemplates { get; set; } = new List<OwnerContractTemplate>();
+
     public virtual Role Role { get; set; } = null!;
 
     public virtual ICollection<Warehouse> WarehouseApprovedByNavigations { get; set; } = new List<Warehouse>();
