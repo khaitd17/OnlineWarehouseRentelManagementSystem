@@ -275,6 +275,7 @@ export default function WarehouseGridMapPage() {
                     <div style={{ flex: 4, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 20, minHeight: 750, overflow: 'auto' }}>
                         <InteractiveGridMap 
                             boundaryPoints={warehouse.boundaryPoints}
+                            gatePosition={warehouse.gatePosition}
                             totalArea={warehouse.totalArea}
                             gridLocations={filteredGridLocations}
                             onCellClick={handleMainMapClick}
@@ -352,6 +353,7 @@ export default function WarehouseGridMapPage() {
                             <div style={{ flex: 3, padding: 20, overflow: 'auto', borderRight: '1px solid #e2e8f0', background: '#fff' }}>
                                 <InteractiveGridMap 
                                     boundaryPoints={warehouse.boundaryPoints}
+                                    gatePosition={warehouse.gatePosition}
                                     totalArea={warehouse.totalArea}
                                     gridLocations={filteredGridLocations.filter(g => !selectedItem?.renterName || g.renterName === selectedItem.renterName)}
                                     onCellClick={handleAssignmentMapClick}

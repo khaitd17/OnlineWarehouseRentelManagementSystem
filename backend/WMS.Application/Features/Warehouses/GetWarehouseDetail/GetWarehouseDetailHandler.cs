@@ -74,7 +74,8 @@ public class GetWarehouseDetailHandler
             OwnerName = owner?.FullName,
             OwnerPhone = owner?.Phone,
             OwnerAvatarUrl = owner?.AvatarUrl,
-            BoundaryPoints = warehouse.BoundaryPoints
+            BoundaryPoints = warehouse.BoundaryPoints,
+            GatePosition = warehouse.GatePosition
         };
     }
 }

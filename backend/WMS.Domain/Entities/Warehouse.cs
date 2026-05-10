@@ -40,6 +40,9 @@ public partial class Warehouse
 
     public string? MainDoorDirection { get; set; }
 
+    /// <summary>Vị trí cổng chính trên bản đồ. JSON: {"px":0.5,"py":1.0}</summary>
+    public string? GatePosition { get; set; }
+
     public double AvailableArea { get; set; }
 
 

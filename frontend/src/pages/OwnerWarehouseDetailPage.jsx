@@ -399,6 +399,7 @@ const OwnerWarehouseDetailPage = () => {
                 </h3>
                 <WarehouseFloorPlanView
                   boundaryPoints={warehouse.boundaryPoints}
+                  gatePosition={warehouse.gatePosition}
                   totalArea={warehouse.totalArea}
                 />
               </div>

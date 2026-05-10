@@ -189,11 +189,11 @@ const CreateWarehouse = () => {
   };
 
   // Save floor plan (step 4) and move to done
-  const handleFloorPlanSave = async (jsonString) => {
+  const handleFloorPlanSave = async (jsonString, gateString) => {
     try {
       // Thử PATCH trước (endpoint nhẹ)
       try {
-        await api.patch(`/Warehouse/${warehouseId}/boundary`, { boundaryPoints: jsonString });
+        await api.patch(`/Warehouse/${warehouseId}/boundary`, { boundaryPoints: jsonString, gatePosition: gateString });
       } catch {
         // Fallback: dùng PUT với giá trị mặc định an toàn nếu PATCH chưa có
         const res = await api.get(`/Warehouse/${warehouseId}`);
@@ -217,6 +217,7 @@ const CreateWarehouse = () => {
           height: d.height || 3,      // mặc định 3m nếu null
           pricePerM2: d.pricePerM2 || null,
           boundaryPoints: jsonString,
+          gatePosition: gateString
         });
       }
       setBoundaryJson(jsonString);
