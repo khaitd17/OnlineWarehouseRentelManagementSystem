@@ -35,4 +35,6 @@ public class UpdateWarehouseCommand : IRequest
 
     /// <summary>Polygon boundary JSON. Format: [{gx,gy},...], 1 unit = 0.5m. Null = keep existing.</summary>
     public string? BoundaryPoints { get; set; }
+    
+    public string? GatePosition { get; set; }
 }

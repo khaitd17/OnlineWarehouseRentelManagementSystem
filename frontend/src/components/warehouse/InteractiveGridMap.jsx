@@ -17,6 +17,7 @@ function isPointInPolygon(point, vs) {
 
 export default function InteractiveGridMap({ 
     boundaryPoints, 
+    gatePosition,
     totalArea, 
     gridLocations = [], 
     onCellClick,
@@ -36,6 +37,13 @@ export default function InteractiveGridMap({
             return arr;
         } catch { return null; }
     }, [boundaryPoints]);
+
+    const gatePos = useMemo(() => {
+        if (!gatePosition) return null;
+        try {
+            return typeof gatePosition === 'string' ? JSON.parse(gatePosition) : gatePosition;
+        } catch { return null; }
+    }, [gatePosition]);
 
     const isGrid = poly && poly[0].gx !== undefined;
 
@@ -244,9 +252,44 @@ export default function InteractiveGridMap({
                             </g>
                         );
                     })}
+                    
+                    {/* Gate */}
+                    {gatePos && (gatePos.gx !== undefined || gatePos.px !== undefined) && (
+                        <foreignObject 
+                            x={(gatePos.gx !== undefined ? toSVG(gatePos.gx, gatePos.gy).x : gatePos.px * cw) - 60} 
+                            y={(gatePos.gy !== undefined ? toSVG(gatePos.gx, gatePos.gy).y : gatePos.py * ch) - 20} 
+                            width={120} height={40}
+                            style={{ overflow: 'visible', pointerEvents: 'none' }}
+                        >
+                            <div style={{
+                                width: '100%', height: '100%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transform: `rotate(${gatePos.angle || 0}deg)`,
+                                transformOrigin: 'center center'
+                            }}>
+                                <div style={{
+                                    background: 'linear-gradient(135deg,#f59e0b,#d97706)',
+                                    color: '#fff',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    fontWeight: 800,
+                                    fontSize: '0.75rem',
+                                    letterSpacing: '0.5px',
+                                    boxShadow: '0 4px 10px rgba(245,158,11,0.4)',
+                                    border: '1.5px solid #fff',
+                                    whiteSpace: 'nowrap'
+                                }}>
+                                    CỔNG CHÍNH VÀO KHO
+                                </div>
+                            </div>
+                        </foreignObject>
+                    )}
                 </svg>
             </div>
-            <div style={{ display: 'flex', gap: 16, marginTop: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: 16, marginTop: '1.5rem', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic', marginRight: 4 }}>
+                    📐 Mỗi ô = 0.5m × 0.5m
+                </span>
                 {hideAxis ? (
                     // Legend for Renters (View-only)
                     [

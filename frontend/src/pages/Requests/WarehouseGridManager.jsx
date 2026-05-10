@@ -218,6 +218,7 @@ export default function WarehouseGridManager() {
                 <div style={{ flex: 1, background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', padding: 20 }}>
                     <InteractiveGridMap 
                         boundaryPoints={warehouse.boundaryPoints}
+                        gatePosition={warehouse.gatePosition}
                         totalArea={warehouse.totalArea}
                         gridLocations={filteredGridLocations}
                         onCellClick={handleCellClick}

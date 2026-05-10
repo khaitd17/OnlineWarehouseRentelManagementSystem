@@ -180,6 +180,9 @@ public class WarehouseController : ControllerBase
         if (req.BoundaryPoints != null)
             warehouse.BoundaryPoints = string.IsNullOrEmpty(req.BoundaryPoints) ? null : req.BoundaryPoints;
 
+        if (req.GatePosition != null)
+            warehouse.GatePosition = string.IsNullOrEmpty(req.GatePosition) ? null : req.GatePosition;
+
         await repo.UpdateAsync(warehouse, HttpContext.RequestAborted);
 
         Console.WriteLine($"[PatchBoundary] Warehouse {id}: saved {warehouse.BoundaryPoints?.Length ?? 0} chars");
@@ -360,4 +363,5 @@ public class WarehouseController : ControllerBase
 public class UpdateBoundaryRequest
 {
     public string? BoundaryPoints { get; set; }
+    public string? GatePosition { get; set; }
 }
