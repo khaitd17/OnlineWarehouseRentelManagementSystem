@@ -232,21 +232,6 @@ const DetailModal = ({ req, onClose }) => {
             </h2>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {req.type === 'INBOUND' && (
-              <button
-                onClick={() => setPdfOpen(true)}
-                style={{
-                  background: '#1e293b', border: 'none', cursor: 'pointer',
-                  padding: '6px 14px', borderRadius: 8,
-                  fontSize: '0.8rem', fontWeight: 700, color: '#fff',
-                  fontFamily: 'Inter, sans-serif', transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = '#0f172a'}
-                onMouseLeave={e => e.currentTarget.style.background = '#1e293b'}
-              >
-                Xem Phiếu Nhập Kho
-              </button>
-            )}
             <button onClick={onClose} style={{
               background: '#f1f5f9', border: 'none', cursor: 'pointer',
               padding: '6px 12px', borderRadius: 8,
@@ -360,7 +345,7 @@ const DetailModal = ({ req, onClose }) => {
                     </p>
                     {item.estimatedVolume && (
                       <p style={{ margin: 0, fontSize: '0.72rem', color: '#6366f1', fontWeight:600 }}>
-                        ~{item.estimatedVolume} m³
+                        Tổng thể tích: {item.estimatedVolume} m³
                       </p>
                     )}
                     {item.weight && <p style={{ margin: 0, fontSize: '0.72rem', color: '#9ca3af' }}>{item.weight} kg</p>}
@@ -646,8 +631,15 @@ const OwnerInventoryRequests = () => {
                   onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <td style={{ padding: '16px 20px', fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
-                    #{req.invReqId}
+                  <td style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: req.type === 'INBOUND' ? '#10b981' : '#f59e0b' }}>
+                      #{req.invReqId}
+                    </span>
+                    {req.requestCode && (
+                      <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: 4 }}>
+                        {req.requestCode}
+                      </div>
+                    )}
                   </td>
                   <td style={{ padding: '16px 20px', fontSize: '0.9rem', color: '#475569', fontWeight: 500 }}>
                     <div style={{ fontSize: '0.9rem', color: '#475569', fontWeight: 600 }}>

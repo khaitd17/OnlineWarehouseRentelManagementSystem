@@ -4,6 +4,8 @@ import api from '../services/axiosClient';
 import rentalService from '../services/rentalService';
 import ratingService from '../services/ratingService';
 import authService from '../services/authService';
+import favoritesService from '../services/favoritesService';
+import CustomAreaSelectorModal from '../components/warehouse/CustomAreaSelectorModal';
 import InteractiveGridMap from '../components/warehouse/InteractiveGridMap';
 
 // ─── Floor Plan Blueprint ────────────────────────────────────────────────────
@@ -194,6 +196,7 @@ const WarehouseDetailsPage = () => {
   const [showThankPopup, setShowThankPopup] = useState(false);
   const [currentRatingPage, setCurrentRatingPage] = useState(1);
   const [ratingFilter, setRatingFilter] = useState('ALL');
+  const [isFavorite, setIsFavorite] = useState(false);
   const RATINGS_PER_PAGE = 5;
   const isLoggedIn = !!localStorage.getItem('token');
   const currentUser = authService.getCurrentUser();
@@ -205,6 +208,33 @@ const WarehouseDetailsPage = () => {
   );
   // isOwner: so sánh userId với ownerId của kho (không quan tớm JWT role)
   const isOwner = currentUser && warehouseData && currentUser.userId === warehouseData.ownerId;
+
+  useEffect(() => {
+    setIsFavorite(favoritesService.isFavorite(id));
+    const handleFavChange = () => setIsFavorite(favoritesService.isFavorite(id));
+    window.addEventListener('favoritesChanged', handleFavChange);
+    return () => window.removeEventListener('favoritesChanged', handleFavChange);
+  }, [id]);
+
+  const toggleFavorite = () => {
+    if (!warehouseData) return;
+    
+    const favData = {
+      warehouseId: id,
+      name: warehouseData.name,
+      address: warehouseData.address,
+      imageUrl: warehouseData.images?.[0]?.url || warehouseData.Images?.[0]?.url || warehouseData.warehouseMedia?.[0]?.mediaUrl || warehouseData.WarehouseMedia?.[0]?.mediaUrl,
+      pricePerM2: warehouseData.pricePerM2,
+      totalArea: warehouseData.totalArea,
+      availableArea: warehouseData.availableArea,
+      is24HoursAccess: warehouseData.operatingHours && warehouseData.operatingHours.includes('24/7'),
+      averageRating: ratingsData?.averageRating || warehouseData.averageRating,
+      ratingCount: ratingsData?.totalCount || warehouseData.ratingCount,
+    };
+    
+    const isNowFavorite = favoritesService.toggleFavorite(favData);
+    setIsFavorite(isNowFavorite);
+  };
 
   useEffect(() => {
     const fetchWarehouse = async () => {
@@ -518,11 +548,13 @@ const WarehouseDetailsPage = () => {
 
         {/* Title Section */}
         <div style={{ marginBottom: '1.5rem' }}>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1e293b', marginBottom: '10px' }}>{warehouse.title}</h1>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '0.9rem' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0095c7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-              {warehouse.location}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#1e293b', margin: 0, marginBottom: '10px' }}>{warehouse.title}</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '0.9rem' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0095c7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                {warehouse.location}
+              </div>
             </div>
           </div>
         </div>
@@ -697,7 +729,7 @@ const WarehouseDetailsPage = () => {
 
           {/* LEFT: Content */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1rem' }}>
               {[
                 { label: "DIỆN TÍCH SÀN", value: `${warehouse.area} m²` },
                 { label: "LOẠI KHO", value: warehouseData?.warehouseType || "Khác" },
@@ -716,6 +748,26 @@ const WarehouseDetailsPage = () => {
                   <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a' }}>{stat.value}</div>
                 </div>
               ))}
+              
+              {/* Favorite Button as Grid Item */}
+              <button 
+                onClick={toggleFavorite}
+                style={{
+                  backgroundColor: isFavorite ? '#fee2e2' : '#fff', padding: '1.5rem 0.5rem', borderRadius: '12px', textAlign: 'center', 
+                  border: isFavorite ? '1px solid #fca5a5' : '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)', 
+                  display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s',
+                  outline: 'none'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)'; if (!isFavorite) e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.02)'; if (!isFavorite) e.currentTarget.style.backgroundColor = '#fff'; }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill={isFavorite ? "#ef4444" : "none"} stroke={isFavorite ? "#ef4444" : "#0095c7"} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'fill 0.2s, stroke 0.2s', marginBottom: '8px' }}>
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+                <div style={{ fontSize: '0.82rem', fontWeight: 800, color: isFavorite ? '#dc2626' : '#0f172a', letterSpacing: '0.04em', lineHeight: 1.4 }}>
+                  {isFavorite ? 'ĐÃ YÊU THÍCH' : 'YÊU THÍCH'}
+                </div>
+              </button>
             </div>
 
             <section>

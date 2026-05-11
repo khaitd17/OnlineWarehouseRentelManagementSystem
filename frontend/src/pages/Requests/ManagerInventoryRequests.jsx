@@ -6,7 +6,7 @@ import SignatureCanvas from '../../components/SignatureCanvas';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const INBOUND_COLOR  = '#0ea5e9';
+const INBOUND_COLOR  = '#10b981';
 const OUTBOUND_COLOR = '#f59e0b';
 const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
 
@@ -14,6 +14,7 @@ const STATUS_MAP = {
   PENDING:   { label: 'Chờ duyệt',  bg:'#fef3c7', color:'#d97706', border:'#fde68a', dot:'#f59e0b' },
   CONFIRMED: { label: 'Đã duyệt',   bg:'#dcfce7', color:'#166534', border:'#bbf7d0', dot:'#22c55e' },
   ASSIGNED:  { label: 'Đã giao',    bg:'#ede9fe', color:'#6d28d9', border:'#c4b5fd', dot:'#8b5cf6' },
+  RECEIVING: { label: 'Đang tiếp nhận', bg: '#f3e8ff', color: '#6b21a8', border: '#e9d5ff', dot: '#a855f7' },
   COMPLETED: { label: 'Hoàn thành', bg:'#f0fdf4', color:'#15803d', border:'#86efac', dot:'#16a34a' },
   REJECTED:  { label: 'Từ chối',    bg:'#fee2e2', color:'#dc2626', border:'#fecaca', dot:'#ef4444' },
 };
@@ -224,10 +225,6 @@ const DetailModal = ({ req, onClose }) => {
             <StatusBadge status={req.status}/>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <button onClick={() => setPdfOpen(true)} style={{
-              background:'#1e293b', border:'none', cursor:'pointer',
-              padding:'6px 14px', borderRadius:8, fontSize:'0.78rem', fontWeight:700, color:'#fff', fontFamily:'Inter,sans-serif'
-            }}>Xem Phiếu {req.type === 'OUTBOUND' ? 'Xuất' : 'Nhập'} Kho</button>
             <button onClick={onClose} style={{ background:'#f1f5f9', border:'none', cursor:'pointer', padding:'6px 12px', borderRadius:8, fontSize:'0.9rem', fontWeight:700, color:'#475569' }}>✕</button>
           </div>
         </div>
@@ -435,6 +432,7 @@ const ManagerInventoryRequests = () => {
     { key:'CONFIRMED', label:'Đã duyệt',   ...STATUS_MAP.CONFIRMED },
     { key:'REJECTED',  label:'Từ chối',    ...STATUS_MAP.REJECTED  },
     { key:'ASSIGNED',  label:'Đã giao',    ...STATUS_MAP.ASSIGNED  },
+    { key:'RECEIVING', label:'Đang tiếp nhận', ...STATUS_MAP.RECEIVING },
     { key:'COMPLETED', label:'Hoàn thành', ...STATUS_MAP.COMPLETED },
   ];
 
@@ -534,7 +532,7 @@ const ManagerInventoryRequests = () => {
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
               <tr style={{ background:'#f8fafc' }}>
-                {[['#ID','60px'],['Người thuê','165px'],['Hàng hóa','auto'],['Kho','130px'],['Ngày dự kiến','115px'],['Trạng thái','120px'],['Thao tác','170px','center']].map(([h,w,align])=>(
+                {[['Mã yêu cầu','80px'],['Người thuê','165px'],['Hàng hóa','auto'],['Kho','130px'],['Ngày dự kiến','115px'],['Trạng thái','120px'],['Thao tác','170px','center']].map(([h,w,align])=>(
                   <th key={h} style={{ padding:'11px 14px', textAlign:align||'left', fontSize:'0.68rem', fontWeight:700, color:'#94a3b8', letterSpacing:'0.07em', whiteSpace:'nowrap', width:w }}>{h}</th>
                 ))}
               </tr>
@@ -547,8 +545,9 @@ const ManagerInventoryRequests = () => {
 
                 return (
                   <tr key={req.invReqId} className="mgr-row" style={{ borderBottom:'1px solid #f1f5f9', transition:'background 0.15s' }}>
-                    <td style={{ padding:'13px 14px' }}>
+                    <td style={{ padding:'13px 14px', whiteSpace: 'nowrap' }}>
                       <span style={{ fontWeight:800, color:typeAccent, fontSize:'0.87rem' }}>#{req.invReqId}</span>
+                      {req.requestCode && <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontFamily:'monospace', marginTop:2 }}>{req.requestCode}</div>}
                     </td>
                     <td style={{ padding:'13px 14px' }}>
                       <p style={{ margin:0, fontSize:'0.85rem', fontWeight:600, color:'#1e293b' }}>{req.renterName||'—'}</p>
@@ -572,7 +571,6 @@ const ManagerInventoryRequests = () => {
                           Chi tiết
                         </button>
 
-                        {/* Duyệt & Từ chối - hàng dưới */}
                         {canApprove && (
                           <div style={{ display:'flex', gap:6, width:'100%' }}>
                             <button onClick={()=>setApproveReq(req)}

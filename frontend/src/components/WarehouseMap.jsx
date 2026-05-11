@@ -147,6 +147,32 @@ export default function WarehouseMap({ warehouses }) {
       <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
         {iframeSrc ? (
           <>
+            <a
+              href={`https://www.google.com/maps?q=${selected.lat},${selected.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              style={{
+                position: 'absolute', top: 12, left: 12, zIndex: 10,
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: '#fff', color: '#1a73e8',
+                fontWeight: 700, fontSize: '0.88rem',
+                padding: '8px 14px', borderRadius: 10,
+                boxShadow: '0 2px 10px rgba(0,0,0,0.18)',
+                textDecoration: 'none',
+                border: '1px solid #e8eaed',
+                transition: 'box-shadow 0.2s, background 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f1f3f4'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.22)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.18)'; }}
+            >
+              Open in Maps
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
             <iframe
               title="Google Maps"
               src={iframeSrc}

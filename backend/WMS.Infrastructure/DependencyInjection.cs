@@ -34,6 +34,9 @@ public static class DependencyInjection
         services.AddScoped<IAiAnalysisSessionRepository, AiAnalysisSessionRepository>();
         services.AddScoped<IGeminiService, GeminiService>();
 
+        // ── Receipt Note (Phiếu nhập/xuất kho) ─────────────────────
+        services.AddScoped<IReceiptNoteRepository, ReceiptNoteRepository>();
+
         // HttpClient cho Gemini API (timeout 60 giây vì xử lý ảnh lâu)
         services.AddHttpClient("Gemini", client =>
         {

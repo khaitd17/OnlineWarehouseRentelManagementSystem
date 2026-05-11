@@ -3,13 +3,15 @@ import { Link, useLocation } from "react-router-dom";
 import inventoryService from "../../services/inventoryService";
 import axiosClient from "../../services/axiosClient";
 import { ReceiptPreviewModal } from "../../components/InventoryReceiptPDF";
-
-const INBOUND_COLOR = '#0ea5e9';
+import ReceiptNotesListModal from "../../components/ReceiptNotesListModal";
+import RequestQRCode from "../../components/RequestQRCode";
+const INBOUND_COLOR = '#10b981';
 const OUTBOUND_COLOR = '#f59e0b';
 
 const STATUS_MAP = {
   PENDING:   { label: "Đang chờ",  bg: "#fef3c7", color: "#92400e", dot: "#f59e0b", border: "#fde68a" },
   CONFIRMED: { label: "Đã duyệt",  bg: "#dcfce7", color: "#166534", dot: "#22c55e", border: "#bbf7d0" },
+  RECEIVING: { label: "Đang tiếp nhận", bg: "#f3e8ff", color: "#6b21a8", border: "#e9d5ff", dot: "#a855f7" },
   COMPLETED: { label: "Hoàn thành",bg: "#dbeafe", color: "#1e40af", dot: "#3b82f6", border: "#bfdbfe" },
   REJECTED:  { label: "Từ chối",   bg: "#fee2e2", color: "#991b1b", dot: "#ef4444", border: "#fecaca" },
 };
@@ -52,6 +54,8 @@ function TabPanel({ type }) {
   const [expanded, setExpanded] = useState(null);
   const [pdfReq, setPdfReq] = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [viewNotesReq, setViewNotesReq] = useState(null);
+  const [qrReq, setQrReq] = useState(null);
   const [successMsg, setSuccessMsg] = useState(
     location.state?.created && location.state?.type === type
       ? (type === "INBOUND" ? "✅ Yêu cầu nhập kho đã được tạo!" : "✅ Yêu cầu xuất kho đã được tạo!")
@@ -193,8 +197,9 @@ function TabPanel({ type }) {
                       onMouseEnter={e => e.currentTarget.style.background = "#fafbff"}
                       onMouseLeave={e => e.currentTarget.style.background = "#fff"}>
                       {/* ID */}
-                      <td style={{ padding: "13px 14px" }}>
+                      <td style={{ padding: "13px 14px", whiteSpace: "nowrap" }}>
                         <span style={{ fontWeight: 800, color: accent, fontSize: "0.87rem" }}>#{row.invReqId}</span>
+                        {row.requestCode && <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontFamily:'monospace', marginTop:2 }}>{row.requestCode}</div>}
                       </td>
                       {/* Warehouse */}
                       <td style={{ padding: "13px 14px", maxWidth: 150 }}>
@@ -224,16 +229,30 @@ function TabPanel({ type }) {
                       {/* Actions */}
                       <td style={{ padding: "13px 14px", textAlign: "center" }}>
                         <div style={{ display:'flex', gap:6, justifyContent:'center', alignItems:'center' }}>
-                          {row.status === "COMPLETED" && (
-                            <button
-                              onClick={() => fetchAndShowPdf(row)}
-                              disabled={pdfLoading === row.invReqId}
-                              style={{ padding: "4px 10px", border: "1.5px solid #bfdbfe", background: "#eff6ff", borderRadius: 6, cursor: "pointer", color: "#1d4ed8", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap", opacity: pdfLoading === row.invReqId ? 0.6 : 1 }}
-                              onMouseEnter={e => { e.currentTarget.style.background = "#dbeafe"; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = "#eff6ff"; }}>
-                              {pdfLoading === row.invReqId ? "Đang tải..." : "Xem phiếu"}
+                          {row.requestCode && (
+                            <button onClick={() => setQrReq(row)}
+                              style={{ padding: "4px 10px", border: "1.5px solid #c7d2fe", background: "#eef2ff", borderRadius: 6, cursor: "pointer", color: "#4338ca", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = "#e0e7ff"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = "#eef2ff"; }}>
+                              QR
                             </button>
                           )}
+                          {(row.status === 'RECEIVING' || row.status === 'CONFIRMED') && row.receiptNoteCount > 0 ? (
+                            <button onClick={() => setViewNotesReq(row)} 
+                                style={{ padding: "4px 10px", border: "1.5px solid #fcd34d", background: "#fefce8", borderRadius: 6, cursor: "pointer", color: "#92400e", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
+                                onMouseEnter={e => { e.currentTarget.style.background = "#fef08a"; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = "#fefce8"; }}>
+                              Ký xác nhận
+                            </button>
+                          ) : row.receiptNoteCount > 0 ? (
+                            <button
+                              onClick={() => setViewNotesReq(row)}
+                              style={{ padding: "4px 10px", border: "1.5px solid #bfdbfe", background: "#eff6ff", borderRadius: 6, cursor: "pointer", color: "#1d4ed8", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = "#dbeafe"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = "#eff6ff"; }}>
+                              {row.receiptNoteCount} phiếu
+                            </button>
+                          ) : null}
                           {row.status === "PENDING" && (
                             <button title="Hủy yêu cầu" onClick={() => setConf({ id: row.invReqId })}
                               style={{ padding: "4px 10px", width: "auto", height: "auto", border: "1.5px solid #fecaca", background: "#fef2f2", borderRadius: 6, cursor: "pointer", color: "#dc2626", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
@@ -278,6 +297,35 @@ function TabPanel({ type }) {
 
       {conf && <Confirm msg={`Xóa yêu cầu #${conf.id}? Hành động này không thể hoàn tác.`} onOk={() => doDelete(conf.id)} onCancel={() => setConf(null)} />}
       {pdfReq && <ReceiptPreviewModal data={pdfReq} onClose={() => setPdfReq(null)} />}
+      
+      {viewNotesReq && (
+        <ReceiptNotesListModal
+          request={viewNotesReq}
+          userRole="RENTER"
+          onClose={() => setViewNotesReq(null)}
+          onUpdated={fetchData}
+        />
+      )}
+
+      {qrReq && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.65)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24, animation:'fadeIn 0.2s ease-out' }} onClick={() => setQrReq(null)}>
+          <div style={{ background:'#fff', borderRadius:28, padding:'32px 32px 40px', width:'100%', maxWidth:380, textAlign:'center', boxShadow:'0 24px 80px rgba(0,0,0,0.3)', position:'relative', animation:'slideUp 0.3s ease-out' }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setQrReq(null)} style={{ position:'absolute', top:20, right:20, background:'#f1f5f9', border:'none', width:36, height:36, borderRadius:'50%', cursor:'pointer', color:'#64748b', fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s', fontSize:'1rem' }}
+              onMouseEnter={e=>{e.currentTarget.style.background='#e2e8f0';e.currentTarget.style.color='#0f172a'}}
+              onMouseLeave={e=>{e.currentTarget.style.background='#f1f5f9';e.currentTarget.style.color='#64748b'}}>
+              ✕
+            </button>
+            <div style={{ width:56, height:56, background:'linear-gradient(135deg, #e0f2fe, #bae6fd)', borderRadius:18, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px', color:'#0284c7', boxShadow:'0 8px 16px rgba(2,132,199,0.15)' }}>
+              <span style={{ fontSize: '24px' }}>🚚</span>
+            </div>
+            
+            <h3 style={{ margin:'0 0 6px', fontSize:'1.2rem', fontWeight:900, color:'#0f172a' }}>Mã xuất trình tại kho</h3>
+            <p style={{ margin:'0 0 28px', fontSize:'0.85rem', color:'#64748b', lineHeight:1.5 }}>Lưu hình ảnh này gửi cho tài xế để đối chiếu <br/>khi xe đến cổng kho.</p>
+            
+            <RequestQRCode code={qrReq.requestCode} label="Mã yêu cầu" size={200} requestData={qrReq} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

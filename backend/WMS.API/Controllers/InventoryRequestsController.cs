@@ -15,6 +15,7 @@ using WMS.Application.Features.InventoryRequests.GetOwnerInventoryRequests;
 using WMS.Application.Features.InventoryRequests.RejectRequest;
 using WMS.Application.Features.InventoryRequests.UpdateRequest;
 using WMS.Application.Features.InventoryRequests.VerifyRequest;
+using WMS.Application.Features.InventoryRequests.Shared;
 using WMS.Domain.Interfaces;
 
 namespace WMS.API.Controllers;
@@ -119,6 +120,25 @@ public class InventoryRequestsController : ControllerBase
     {
         var result = await _mediator.Send(new GetInventoryRequestByIdQuery { Id = id });
         return result is null ? NotFound() : Ok(result);
+    }
+
+    /// <summary>
+    /// Tra cứu yêu cầu nhập/xuất bằng RequestCode — dùng khi quét mã QR.
+    /// Endpoint công khai (không cần đăng nhập) để nhân viên quét trên điện thoại.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("verify/{requestCode}")]
+    public async Task<IActionResult> VerifyByQR(string requestCode)
+    {
+        if (string.IsNullOrWhiteSpace(requestCode))
+            return BadRequest(new { message = "Mã yêu cầu không hợp lệ." });
+
+        var repo = HttpContext.RequestServices.GetRequiredService<IInventoryRequestRepository>();
+        var req = await repo.GetByRequestCodeAsync(requestCode.Trim(), HttpContext.RequestAborted);
+        if (req is null) return NotFound(new { message = "Không tìm thấy yêu cầu nào với mã này." });
+
+        var dto = InventoryRequestMapper.ToDto(req);
+        return Ok(dto);
     }
 
     [HttpPost]

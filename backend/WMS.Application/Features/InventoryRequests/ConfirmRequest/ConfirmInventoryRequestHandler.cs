@@ -62,18 +62,22 @@ public class ConfirmInventoryRequestHandler
                 $"Chỉ có thể xác nhận yêu cầu đã được duyệt (CONFIRMED/ASSIGNED). Trạng thái hiện tại: '{req.Status}'.");
 
         // 3. For each item: resolve AssetId, update inventory, create transaction
+        //    ★ FIX BUG #7: Dùng VerifiedQuantity (số thực tế) thay vì Quantity (số yêu cầu)
         foreach (var item in req.InventoryItems)
         {
-            int delta = req.Type == "OUTBOUND" ? -item.Quantity : item.Quantity;
+            // Ưu tiên số lượng đã xác minh (VerifiedQuantity), fallback về số yêu cầu
+            int actualQty = item.VerifiedQuantity ?? item.Quantity;
+
+            // Nếu VerifiedQuantity = 0 (Staff từ chối nhận item) → bỏ qua
+            if (actualQty <= 0) continue;
+
+            int delta = req.Type == "OUTBOUND" ? -actualQty : actualQty;
 
             // Update warehouse_inventory (text-based, backward compatible)
             await _invRepo.AdjustQuantityAsync(
                 req.WarehouseId, item.ItemName, item.Unit, delta, cancellationToken);
 
             // --- Resolve AssetId nếu chưa có ---
-            // Khi Renter gõ tên hàng mới (không chọn từ catalogue), AssetId = null.
-            // Lúc này ta tự động tìm hoặc tạo RenterAsset để đảm bảo renter_inventory
-            // luôn được cập nhật đầy đủ.
             int resolvedAssetId;
 
             if (item.AssetId.HasValue && item.AssetId.Value > 0)
@@ -82,7 +86,6 @@ public class ConfirmInventoryRequestHandler
             }
             else
             {
-                // Tìm asset có cùng tên thuộc renter này
                 var existingAsset = await _assetRepo.FindByNameAndRenterAsync(
                     req.RenterId, item.ItemName, cancellationToken);
 
@@ -92,7 +95,6 @@ public class ConfirmInventoryRequestHandler
                 }
                 else
                 {
-                    // Tạo mới RenterAsset từ thông tin của InventoryItem
                     var newAsset = await _assetRepo.CreateAsync(new RenterAsset
                     {
                         RenterId    = req.RenterId,
@@ -104,22 +106,21 @@ public class ConfirmInventoryRequestHandler
                     resolvedAssetId = newAsset.AssetId;
                 }
 
-                // Gắn AssetId vào item để nhất quán cho lần sau
                 item.AssetId = resolvedAssetId;
             }
 
-            // Update renter_inventory (asset-based) — luôn thực hiện với resolvedAssetId
+            // Update renter_inventory (asset-based)
             await _assetRepo.AdjustRenterInventoryAsync(
                 resolvedAssetId, req.WarehouseId, delta, cancellationToken);
 
-            // 4. Create transaction record per item
+            // 4. Create transaction record — dùng actualQty (không phải Quantity gốc)
             await _txRepo.CreateAsync(new InventoryTransaction
             {
                 InvReqId    = req.InvReqId,
                 Type        = req.Type,
                 WarehouseId = req.WarehouseId,
                 ItemName    = item.ItemName,
-                Quantity    = item.Quantity,
+                Quantity    = actualQty,
                 Unit        = item.Unit,
                 PerformedBy = cmd.StaffId,
                 Notes       = string.IsNullOrWhiteSpace(cmd.Notes) ? null : $"{(cmd.Role == "OWNER" ? "Chủ kho" : "Nhân viên")}: {cmd.Notes}",
@@ -131,12 +132,11 @@ public class ConfirmInventoryRequestHandler
         req.UpdatedAt   = DateTime.Now;
         if (!string.IsNullOrEmpty(cmd.StaffSignatureBase64))
             req.StaffSignatureBase64 = cmd.StaffSignatureBase64;
-        // Ghi lại staff thực hiện nếu chưa được giao (tự nhận việc)
         if (!req.AssignedStaffId.HasValue)
             req.AssignedStaffId = cmd.StaffId;
         await _repo.UpdateAsync(req, cancellationToken);
 
-        // Đóng UnitTask bước tiếp nhận hàng. Bước putaway/dispatch là màn hình riêng biệt.
+        // Đóng UnitTask bước tiếp nhận hàng
         if (req.Type == "INBOUND")
         {
             try { await _taskRepo.CompleteUnitTaskAsync("INBOUND", req.InvReqId, "INBOUND_RECEIVE", cmd.StaffId, cancellationToken); } catch { }

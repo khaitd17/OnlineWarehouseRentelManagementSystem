@@ -111,6 +111,9 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<AiAnalysisSession> AiAnalysisSessions { get; set; }
 
+    public virtual DbSet<ReceiptNote> ReceiptNotes { get; set; }
+
+    public virtual DbSet<ReceiptItem> ReceiptItems { get; set; }
     public virtual DbSet<WarehouseGridLocation> WarehouseGridLocations { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -522,7 +525,9 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Status, "idx_inventory_requests_status");
             entity.HasIndex(e => e.Type, "idx_inventory_requests_type");
             entity.HasIndex(e => e.WarehouseId, "idx_inventory_requests_warehouse");
+            entity.HasIndex(e => e.RequestCode, "UQ_inventory_requests_code").IsUnique().HasFilter("[request_code] IS NOT NULL");
             entity.Property(e => e.InvReqId).HasColumnName("inv_req_id");
+            entity.Property(e => e.RequestCode).HasMaxLength(30).HasColumnName("request_code").IsRequired(false);
             entity.Property(e => e.ConfirmedAt).HasColumnName("confirmed_at");
             entity.Property(e => e.ConfirmedBy).HasColumnName("confirmed_by");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
@@ -531,8 +536,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ManagerSignatureBase64).HasColumnName("manager_signature_base64").IsRequired(false);
             entity.Property(e => e.StaffSignatureBase64).HasColumnName("staff_signature_base64").IsRequired(false);
             entity.Property(e => e.DocumentUrls).HasColumnName("document_urls");
+            entity.Property(e => e.VolumeWarning).HasColumnName("volume_warning").HasDefaultValue(false);
             entity.Property(e => e.RenterId).HasColumnName("renter_id");
-            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("PENDING").HasColumnName("status");
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("PENDING").HasColumnName("status");
             entity.Property(e => e.Type).HasMaxLength(20).HasColumnName("type");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");
@@ -599,12 +605,15 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PerformedBy).HasColumnName("performed_by");
             entity.Property(e => e.Notes).HasColumnName("notes");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.ReceiptNoteId).HasColumnName("receipt_note_id").IsRequired(false);
             entity.HasOne(d => d.InvReq).WithMany().HasForeignKey(d => d.InvReqId)
                 .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_inv_transactions_request");
             entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId)
                 .OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_inv_transactions_warehouse");
             entity.HasOne(d => d.PerformedByNavigation).WithMany().HasForeignKey(d => d.PerformedBy)
                 .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_inv_transactions_performer");
+            entity.HasOne(d => d.ReceiptNote).WithMany().HasForeignKey(d => d.ReceiptNoteId)
+                .IsRequired(false).OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_inv_transactions_receipt_note");
         });
 
         modelBuilder.Entity<Payment>(entity =>
@@ -1298,6 +1307,55 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Size).HasColumnName("size");
             entity.Property(e => e.Description).HasColumnName("description");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+        });
+
+        // ── ReceiptNote (Phiếu nhập/xuất kho) ────────────────────────────
+        modelBuilder.Entity<ReceiptNote>(entity =>
+        {
+            entity.HasKey(e => e.ReceiptNoteId).HasName("PK_receipt_notes");
+            entity.ToTable("receipt_notes");
+            entity.HasIndex(e => e.InvReqId, "idx_receipt_notes_request");
+            entity.HasIndex(e => e.ReceiptCode, "UQ_receipt_notes_code").IsUnique();
+            entity.Property(e => e.ReceiptNoteId).HasColumnName("receipt_note_id");
+            entity.Property(e => e.InvReqId).HasColumnName("inv_req_id");
+            entity.Property(e => e.ReceiptCode).HasMaxLength(30).HasColumnName("receipt_code");
+            entity.Property(e => e.ReceivedByStaffId).HasColumnName("received_by_staff_id");
+            entity.Property(e => e.ReceivedAt).HasColumnName("received_at");
+            entity.Property(e => e.StaffSignatureBase64).HasColumnName("staff_signature_base64").IsRequired(false);
+            entity.Property(e => e.RenterSignatureBase64).HasColumnName("renter_signature_base64").IsRequired(false);
+            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("DRAFT").HasColumnName("status");
+            entity.Property(e => e.Notes).HasColumnName("notes").IsRequired(false);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired(false);
+            entity.HasOne(d => d.InvReq).WithMany(p => p.ReceiptNotes).HasForeignKey(d => d.InvReqId)
+                .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_receipt_notes_request");
+            entity.HasOne(d => d.ReceivedByStaff).WithMany().HasForeignKey(d => d.ReceivedByStaffId)
+                .OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_receipt_notes_staff");
+        });
+
+        // ── ReceiptItem (Chi tiết hàng trong phiếu) ──────────────────────
+        modelBuilder.Entity<ReceiptItem>(entity =>
+        {
+            entity.HasKey(e => e.ReceiptItemId).HasName("PK_receipt_items");
+            entity.ToTable("receipt_items");
+            entity.HasIndex(e => e.ReceiptNoteId, "idx_receipt_items_note");
+            entity.Property(e => e.ReceiptItemId).HasColumnName("receipt_item_id");
+            entity.Property(e => e.ReceiptNoteId).HasColumnName("receipt_note_id");
+            entity.Property(e => e.InventoryItemId).HasColumnName("inventory_item_id").IsRequired(false);
+            entity.Property(e => e.AssetId).HasColumnName("asset_id").IsRequired(false);
+            entity.Property(e => e.ItemName).HasMaxLength(255).HasColumnName("item_name");
+            entity.Property(e => e.ExpectedQuantity).HasColumnName("expected_quantity");
+            entity.Property(e => e.ReceivedQuantity).HasColumnName("received_quantity");
+            entity.Property(e => e.Unit).HasMaxLength(50).HasDefaultValue("cái").HasColumnName("unit");
+            entity.Property(e => e.VerifiedVolume).HasColumnType("decimal(10, 3)").HasColumnName("verified_volume").IsRequired(false);
+            entity.Property(e => e.VerifiedWeight).HasColumnType("decimal(10, 3)").HasColumnName("verified_weight").IsRequired(false);
+            entity.Property(e => e.Note).HasMaxLength(500).HasColumnName("note").IsRequired(false);
+            entity.HasOne(d => d.ReceiptNote).WithMany(p => p.ReceiptItems).HasForeignKey(d => d.ReceiptNoteId)
+                .OnDelete(DeleteBehavior.Cascade).HasConstraintName("FK_receipt_items_note");
+            entity.HasOne(d => d.InventoryItem).WithMany().HasForeignKey(d => d.InventoryItemId)
+                .IsRequired(false).OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_receipt_items_inv_item");
+            entity.HasOne(d => d.Asset).WithMany().HasForeignKey(d => d.AssetId)
+                .IsRequired(false).OnDelete(DeleteBehavior.NoAction).HasConstraintName("FK_receipt_items_asset");
         });
     }
 }
