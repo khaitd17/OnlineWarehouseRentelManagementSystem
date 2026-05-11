@@ -171,77 +171,49 @@ public class RentalRequestRepository : IRentalRequestRepository
 
     private DomainRentalRequest MapToDomain(DbRentalRequest dbRequest)
     {
-        // Using reflection to bypass private constructor
-#pragma warning disable SYSLIB0050 // FormatterServices obsolete warning
-        var domainRequest = (DomainRentalRequest)System.Runtime.Serialization.FormatterServices
-            .GetUninitializedObject(typeof(DomainRentalRequest));
-#pragma warning restore SYSLIB0050
+        if (dbRequest == null) return null!;
 
-        var requestIdProp = typeof(DomainRentalRequest).GetProperty("RequestId");
-        var renterIdProp = typeof(DomainRentalRequest).GetProperty("RenterId");
-        var warehouseIdProp = typeof(DomainRentalRequest).GetProperty("WarehouseId");
-        var requestedAreaProp = typeof(DomainRentalRequest).GetProperty("RequestedArea");
-        var startDateProp = typeof(DomainRentalRequest).GetProperty("StartDate");
-        var durationMonthsProp = typeof(DomainRentalRequest).GetProperty("DurationMonths");
-        var statusProp = typeof(DomainRentalRequest).GetProperty("Status");
-        var notesProp = typeof(DomainRentalRequest).GetProperty("Notes");
-        var createdAtProp = typeof(DomainRentalRequest).GetProperty("CreatedAt");
-        var reviewedByProp = typeof(DomainRentalRequest).GetProperty("ReviewedBy");
-        var reviewedAtProp = typeof(DomainRentalRequest).GetProperty("ReviewedAt");
-        var rejectionReasonProp = typeof(DomainRentalRequest).GetProperty("RejectionReason");
-        var contractImageUrlProp = typeof(DomainRentalRequest).GetProperty("ContractImageUrl");
-        var rentalAreaIdProp = typeof(DomainRentalRequest).GetProperty("RentalAreaId");
-        var warehouseProp = typeof(DomainRentalRequest).GetProperty("Warehouse");
-
-        requestIdProp?.SetValue(domainRequest, dbRequest.RequestId);
-        renterIdProp?.SetValue(domainRequest, dbRequest.RenterId);
-        warehouseIdProp?.SetValue(domainRequest, dbRequest.WarehouseId);
-        requestedAreaProp?.SetValue(domainRequest, dbRequest.RequestedArea);
-        startDateProp?.SetValue(domainRequest, dbRequest.StartDate);
-        durationMonthsProp?.SetValue(domainRequest, dbRequest.DurationMonths);
-        statusProp?.SetValue(domainRequest, dbRequest.Status);
-        notesProp?.SetValue(domainRequest, dbRequest.Notes);
-        createdAtProp?.SetValue(domainRequest, dbRequest.CreatedAt ?? DateTime.UtcNow);
-        reviewedByProp?.SetValue(domainRequest, dbRequest.ReviewedBy);
-        reviewedAtProp?.SetValue(domainRequest, dbRequest.ReviewedAt);
-        rejectionReasonProp?.SetValue(domainRequest, dbRequest.RejectionReason);
-        contractImageUrlProp?.SetValue(domainRequest, dbRequest.ContractImageUrl);
-        rentalAreaIdProp?.SetValue(domainRequest, dbRequest.RentalAreaId);
-        warehouseProp?.SetValue(domainRequest, dbRequest.Warehouse);  // Map Warehouse navigation
-
-        var isCustomAreaProp = typeof(DomainRentalRequest).GetProperty("IsCustomArea");
-        var proposedPositionXProp = typeof(DomainRentalRequest).GetProperty("ProposedPositionX");
-        var proposedPositionYProp = typeof(DomainRentalRequest).GetProperty("ProposedPositionY");
-        var proposedWidthProp = typeof(DomainRentalRequest).GetProperty("ProposedWidth");
-        var proposedLengthProp = typeof(DomainRentalRequest).GetProperty("ProposedLength");
-        var baseRentalAreaIdProp = typeof(DomainRentalRequest).GetProperty("BaseRentalAreaId");
-
-        isCustomAreaProp?.SetValue(domainRequest, dbRequest.IsCustomArea);
-        var isOwnerAssignedProp = typeof(DomainRentalRequest).GetProperty("IsOwnerAssigned");
-        isOwnerAssignedProp?.SetValue(domainRequest, dbRequest.IsOwnerAssigned);
-        proposedPositionXProp?.SetValue(domainRequest, dbRequest.ProposedPositionX);
-        proposedPositionYProp?.SetValue(domainRequest, dbRequest.ProposedPositionY);
-        proposedWidthProp?.SetValue(domainRequest, dbRequest.ProposedWidth);
-        proposedLengthProp?.SetValue(domainRequest, dbRequest.ProposedLength);
-        baseRentalAreaIdProp?.SetValue(domainRequest, dbRequest.BaseRentalAreaId);
-
-        // Extension zone (L-shape)
-        var hasExtensionZoneProp = typeof(DomainRentalRequest).GetProperty("HasExtensionZone");
-        var extensionPositionXProp = typeof(DomainRentalRequest).GetProperty("ExtensionPositionX");
-        var extensionPositionYProp = typeof(DomainRentalRequest).GetProperty("ExtensionPositionY");
-        var extensionWidthProp = typeof(DomainRentalRequest).GetProperty("ExtensionWidth");
-        var extensionLengthProp = typeof(DomainRentalRequest).GetProperty("ExtensionLength");
-
-        hasExtensionZoneProp?.SetValue(domainRequest, dbRequest.HasExtensionZone);
-        extensionPositionXProp?.SetValue(domainRequest, dbRequest.ExtensionPositionX);
-        extensionPositionYProp?.SetValue(domainRequest, dbRequest.ExtensionPositionY);
-        extensionWidthProp?.SetValue(domainRequest, dbRequest.ExtensionWidth);
-        extensionLengthProp?.SetValue(domainRequest, dbRequest.ExtensionLength);
-
-        // Multi-zone
-        var additionalZonesJsonProp = typeof(DomainRentalRequest).GetProperty("AdditionalZonesJson");
-        additionalZonesJsonProp?.SetValue(domainRequest, dbRequest.AdditionalZonesJson);
-
-        return domainRequest;
+        return new DomainRentalRequest
+        {
+            RequestId = dbRequest.RequestId,
+            RenterId = dbRequest.RenterId,
+            WarehouseId = dbRequest.WarehouseId,
+            RentalAreaId = dbRequest.RentalAreaId,
+            RequestedArea = dbRequest.RequestedArea,
+            StartDate = dbRequest.StartDate,
+            DurationMonths = dbRequest.DurationMonths,
+            Status = dbRequest.Status,
+            Notes = dbRequest.Notes,
+            CreatedAt = dbRequest.CreatedAt,
+            UpdatedAt = dbRequest.UpdatedAt,
+            ReviewedBy = dbRequest.ReviewedBy,
+            ReviewedAt = dbRequest.ReviewedAt,
+            RejectionReason = dbRequest.RejectionReason,
+            ContractImageUrl = dbRequest.ContractImageUrl,
+            
+            // Custom Area Fields
+            IsCustomArea = dbRequest.IsCustomArea,
+            IsOwnerAssigned = dbRequest.IsOwnerAssigned,
+            ProposedPositionX = dbRequest.ProposedPositionX,
+            ProposedPositionY = dbRequest.ProposedPositionY,
+            ProposedWidth = dbRequest.ProposedWidth,
+            ProposedLength = dbRequest.ProposedLength,
+            BaseRentalAreaId = dbRequest.BaseRentalAreaId,
+            
+            // Extension Zone (L-shape)
+            HasExtensionZone = dbRequest.HasExtensionZone,
+            ExtensionPositionX = dbRequest.ExtensionPositionX,
+            ExtensionPositionY = dbRequest.ExtensionPositionY,
+            ExtensionWidth = dbRequest.ExtensionWidth,
+            ExtensionLength = dbRequest.ExtensionLength,
+            
+            // Multi-zone
+            AdditionalZonesJson = dbRequest.AdditionalZonesJson,
+            
+            // Navigation
+            Warehouse = dbRequest.Warehouse,
+            Renter = dbRequest.Renter,
+            ReviewedByNavigation = dbRequest.ReviewedByNavigation
+        };
     }
 }
