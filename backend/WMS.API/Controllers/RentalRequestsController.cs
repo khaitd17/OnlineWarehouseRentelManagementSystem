@@ -12,6 +12,7 @@ using WMS.Application.Features.RentalRequests.RejectRentalRequest;
 using WMS.Application.Features.RentalRequests.CancelRentalRequest;
 using WMS.Application.Features.RentalRequests.SendRentalRequest;
 using WMS.Domain.Interfaces;
+using WMS.Domain.Exceptions;
 
 namespace WMS.API.Controllers;
 
@@ -36,13 +37,19 @@ public class RentalRequestsController : ControllerBase
 
     private int GetUserId()
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
-                     ?? User.FindFirst("sub")?.Value;
-        
-        if (string.IsNullOrEmpty(userId))
-            throw new UnauthorizedAccessException("User not found");
-        
-        return int.Parse(userId);
+        // Try multiple claim types to be safe
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)
+                          ?? User.FindFirst("sub")
+                          ?? User.FindFirst("id")
+                          ?? User.FindFirst(System.Security.Claims.ClaimTypes.Name);
+
+        if (userIdClaim == null || string.IsNullOrEmpty(userIdClaim.Value))
+            throw new UnauthorizedAccessException("User is not authenticated or user ID claim is missing");
+
+        if (!int.TryParse(userIdClaim.Value, out int userId))
+            throw new UnauthorizedAccessException($"Invalid User ID format in token: {userIdClaim.Value}");
+
+        return userId;
     }
 
     /// <summary>
@@ -62,13 +69,35 @@ public class RentalRequestsController : ControllerBase
                 requestId = requestId
             });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DuplicateRequestException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (NotEnoughAreaException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidWarehouseStateException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message, inner = ex.InnerException?.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
 
@@ -93,9 +122,19 @@ public class RentalRequestsController : ControllerBase
 
             return Ok(result);
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
 
@@ -115,7 +154,13 @@ public class RentalRequestsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
 
@@ -135,7 +180,13 @@ public class RentalRequestsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
 
@@ -159,7 +210,13 @@ public class RentalRequestsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
 
@@ -186,7 +243,7 @@ public class RentalRequestsController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            return Unauthorized(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
@@ -194,7 +251,13 @@ public class RentalRequestsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
 
@@ -219,7 +282,7 @@ public class RentalRequestsController : ControllerBase
         }
         catch (UnauthorizedAccessException ex)
         {
-            return Forbid(ex.Message);
+            return Unauthorized(new { message = ex.Message });
         }
         catch (InvalidOperationException ex)
         {
@@ -227,7 +290,13 @@ public class RentalRequestsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
 
@@ -259,7 +328,13 @@ public class RentalRequestsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
 
@@ -292,7 +367,13 @@ public class RentalRequestsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
     
@@ -351,7 +432,13 @@ public class RentalRequestsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            return StatusCode(500, new 
+            { 
+                message = "An error occurred", 
+                error = ex.Message, 
+                inner = ex.InnerException?.Message,
+                stackTrace = ex.StackTrace 
+            });
         }
     }
 
