@@ -137,7 +137,8 @@ namespace WMS.Infrastructure.Repositories
                             && e.OriginalContract != null
                             && warehouseIds.Contains(e.OriginalContract.WarehouseId)
                             && e.NewContract != null
-                            && e.NewContract.Status == RentalContractStatus.PendingOwnerSignature)
+                            && (e.NewContract.Status == RentalContractStatus.ApprovedForSigning
+                                || e.NewContract.Status == RentalContractStatus.PendingOwnerSignature))
                 .OrderByDescending(e => e.ReviewedAt)
                 .ToListAsync();
         }

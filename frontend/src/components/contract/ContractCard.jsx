@@ -14,6 +14,9 @@ const ContractCard = ({
 
   const statusMap = {
     'ACTIVE': { bg: 'linear-gradient(135deg, #dcfce7, #bbf7d0)', color: '#16a34a', text: 'Đang hoạt động', accent: '#22c55e' },
+    'NEGOTIATING': { bg: 'linear-gradient(135deg, #dbeafe, #bfdbfe)', color: '#2563eb', text: 'Đang đàm phán', accent: '#3b82f6' },
+    'REVISION_REQUESTED': { bg: 'linear-gradient(135deg, #fef3c7, #fde68a)', color: '#d97706', text: 'Yêu cầu chỉnh sửa', accent: '#f59e0b' },
+    'APPROVED_FOR_SIGNING': { bg: 'linear-gradient(135deg, #dcfce7, #bbf7d0)', color: '#16a34a', text: 'Sẵn sàng ký', accent: '#22c55e' },
     'PENDING_OWNER_SIGNATURE': { bg: '#fef3c7', color: '#d97706', text: 'Chờ chủ kho ký', accent: '#f59e0b' },
     'PENDING_RENTER_SIGNATURE': { bg: '#fef3c7', color: '#d97706', text: 'Chờ người thuê ký', accent: '#f59e0b' },
     'PENDING_PAYMENT': { bg: '#fef3c7', color: '#f59e0b', text: 'Chờ thanh toán', accent: '#f59e0b' },

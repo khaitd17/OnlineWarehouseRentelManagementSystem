@@ -16,7 +16,7 @@ public class RentalContract
     public decimal MonthlyPayment { get; private set; }
     public decimal TotalValue { get; private set; }
     public decimal? DepositAmount { get; private set; }
-    public string Status { get; private set; } = "PENDING_OWNER_SIGNATURE";
+    public string Status { get; private set; } = "DRAFT";
     public string? Terms { get; private set; }
     public string? ContractFileUrl { get; private set; }
     public string? SignedFileUrl { get; private set; }
@@ -89,10 +89,9 @@ public class RentalContract
             MonthlyPayment = monthlyPayment,
             TotalValue = totalValue,
             DepositAmount = depositAmount,
-            Status = "PENDING_OWNER_SIGNATURE",
+            Status = "DRAFT",
             Terms = terms,
-            CreatedAt = DateTime.UtcNow,
-            OwnerSignatureExpiry = DateTime.UtcNow.AddHours(48) // 48h timeout for owner to sign
+            CreatedAt = DateTime.UtcNow
         };
     }
 
@@ -104,7 +103,7 @@ public class RentalContract
 
     public void OwnerSign(string ownerSignedFileUrl, string ownerSignatureBase64)
     {
-        if (Status != "PENDING_OWNER_SIGNATURE")
+        if (Status != "APPROVED_FOR_SIGNING")
             throw new InvalidOperationException($"Cannot owner-sign contract with status {Status}");
 
         OwnerSignedFileUrl = ownerSignedFileUrl;
@@ -113,6 +112,52 @@ public class RentalContract
         Status = "PENDING_RENTER_SIGNATURE"; // Chờ xác thực ký của người thuê
         RenterSignatureExpiry = DateTime.UtcNow.AddHours(48); // 48h timeout for renter to sign
         OwnerSignatureExpiry = null; // Clear owner expiry
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkNegotiating()
+    {
+        if (Status != "DRAFT" && Status != "REVISION_REQUESTED" && Status != "NEGOTIATING")
+            throw new InvalidOperationException($"Cannot mark negotiating for contract with status {Status}");
+
+        Status = "NEGOTIATING";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RequestRevision()
+    {
+        if (Status != "NEGOTIATING" && Status != "REVISION_REQUESTED")
+            throw new InvalidOperationException($"Cannot request revision for contract with status {Status}");
+
+        Status = "REVISION_REQUESTED";
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ApproveForSigning()
+    {
+        if (Status != "NEGOTIATING" && Status != "REVISION_REQUESTED")
+            throw new InvalidOperationException($"Cannot approve for signing with status {Status}");
+
+        Status = "APPROVED_FOR_SIGNING";
+        OwnerSignatureExpiry = DateTime.UtcNow.AddHours(48);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateNegotiatedTerms(decimal monthlyPayment, decimal? depositAmount, DateTime startDate, int durationMonths, string? terms)
+    {
+        if (durationMonths < 1)
+            throw new ArgumentException("Duration must be at least 1 month");
+        if (monthlyPayment <= 0)
+            throw new ArgumentException("Monthly payment must be greater than 0");
+        if (depositAmount.HasValue && depositAmount.Value < 0)
+            throw new ArgumentException("Deposit amount cannot be negative");
+
+        StartDate = startDate;
+        EndDate = startDate.AddMonths(durationMonths);
+        MonthlyPayment = monthlyPayment;
+        DepositAmount = depositAmount;
+        TotalValue = monthlyPayment * durationMonths;
+        Terms = terms;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -373,7 +418,8 @@ public class RentalContract
         return $"RTC-{year}-{timestamp % 100000:D5}";
     }
 
-    public bool IsPendingOwnerSignature => Status == "PENDING_OWNER_SIGNATURE";
+    public bool IsPendingOwnerSignature => Status == RentalContractStatus.PendingOwnerSignature
+                                           || Status == RentalContractStatus.ApprovedForSigning;
     public bool IsPendingRenterSignature => Status == "PENDING_RENTER_SIGNATURE";
     public bool IsPendingSignature => Status == "PENDING_RENTER_SIGNATURE";
     public bool IsPendingPayment => Status == "PENDING_PAYMENT";

@@ -128,7 +128,7 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
             await _rentalRequestRepository.UpdateAsync(rentalRequest);
             Console.WriteLine($"[DEBUG] Request approved - New status: {rentalRequest.Status}");
 
-            // Create contract with PENDING_OWNER_SIGNATURE status
+            // Create contract with DRAFT status
             Console.WriteLine($"[DEBUG] Creating contract - MonthlyPayment: {request.MonthlyPayment}, StartDate: {request.StartDate}, DurationMonths: {request.DurationMonths}");
 
             var contract = RentalContract.CreateFromRequest(

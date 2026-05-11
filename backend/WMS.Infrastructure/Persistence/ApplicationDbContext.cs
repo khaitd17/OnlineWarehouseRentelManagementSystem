@@ -37,6 +37,14 @@ public class ApplicationDbContext : DbContext
 
     public virtual DbSet<ContractExtension> ContractExtensions { get; set; }
 
+    public virtual DbSet<ContractVersion> ContractVersions { get; set; }
+
+    public virtual DbSet<ContractRevisionThread> ContractRevisionThreads { get; set; }
+
+    public virtual DbSet<ContractRevisionComment> ContractRevisionComments { get; set; }
+
+    public virtual DbSet<OwnerContractTemplate> OwnerContractTemplates { get; set; }
+
     public virtual DbSet<Rating> Ratings { get; set; }
 
     public virtual DbSet<RentalRequest> RentalRequests { get; set; }
@@ -186,7 +194,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RenterId).HasColumnName("renter_id");
             entity.Property(e => e.RequestId).HasColumnName("request_id");
             entity.Property(e => e.StartDate).HasColumnName("start_date");
-            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("PENDING_OWNER_SIGNATURE").HasColumnName("status");
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("DRAFT").HasColumnName("status");
             entity.Property(e => e.OwnerSignedFileUrl).HasMaxLength(500).HasColumnName("owner_signed_file_url");
             entity.Property(e => e.OwnerSignedAt).HasColumnName("owner_signed_at");
             entity.Property(e => e.OwnerSignatureBase64).HasColumnName("owner_signature_base64");
@@ -238,6 +246,88 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.NewContract).WithMany().HasForeignKey(d => d.NewContractId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Requester).WithMany().HasForeignKey(d => d.RequesterId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Reviewer).WithMany().HasForeignKey(d => d.ReviewedBy).OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        modelBuilder.Entity<ContractVersion>(entity =>
+        {
+            entity.HasKey(e => e.VersionId);
+            entity.ToTable("contract_versions");
+            entity.HasIndex(e => e.ContractId, "idx_contract_versions_contract");
+            entity.HasIndex(e => new { e.ContractId, e.VersionNumber }, "idx_contract_versions_contract_version");
+            entity.Property(e => e.VersionId).HasColumnName("version_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.VersionNumber).HasColumnName("version_number");
+            entity.Property(e => e.SnapshotJson).HasColumnName("snapshot_json");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.HasOne(d => d.Contract).WithMany().HasForeignKey(d => d.ContractId).HasConstraintName("FK_contract_versions_contract");
+            entity.HasOne(d => d.CreatedByUser).WithMany().HasForeignKey(d => d.CreatedBy).HasConstraintName("FK_contract_versions_user");
+        });
+
+        modelBuilder.Entity<ContractRevisionThread>(entity =>
+        {
+            entity.HasKey(e => e.ThreadId);
+            entity.ToTable("contract_revision_threads");
+            entity.HasIndex(e => e.ContractId, "idx_contract_revision_threads_contract");
+            entity.Property(e => e.ThreadId).HasColumnName("thread_id");
+            entity.Property(e => e.ContractId).HasColumnName("contract_id");
+            entity.Property(e => e.Section).HasMaxLength(50).HasColumnName("section");
+            entity.Property(e => e.Status).HasMaxLength(30).HasColumnName("status").HasDefaultValue("OPEN");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(e => e.ResolvedBy).HasColumnName("resolved_by");
+            entity.Property(e => e.ResolvedAt).HasColumnName("resolved_at");
+            entity.HasOne(d => d.Contract).WithMany().HasForeignKey(d => d.ContractId).HasConstraintName("FK_contract_revision_threads_contract");
+            entity.HasOne(d => d.CreatedByUser).WithMany().HasForeignKey(d => d.CreatedBy).HasConstraintName("FK_contract_revision_threads_user");
+            entity.HasOne(d => d.ResolvedByUser).WithMany().HasForeignKey(d => d.ResolvedBy).HasConstraintName("FK_contract_revision_threads_resolved_by");
+        });
+
+        modelBuilder.Entity<ContractRevisionComment>(entity =>
+        {
+            entity.HasKey(e => e.CommentId);
+            entity.ToTable("contract_revision_comments");
+            entity.HasIndex(e => e.ThreadId, "idx_contract_revision_comments_thread");
+            entity.Property(e => e.CommentId).HasColumnName("comment_id");
+            entity.Property(e => e.ThreadId).HasColumnName("thread_id");
+            entity.Property(e => e.UserId).HasColumnName("user_id");
+            entity.Property(e => e.Message).HasColumnName("message");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.HasOne(d => d.Thread).WithMany(p => p.Comments).HasForeignKey(d => d.ThreadId).HasConstraintName("FK_contract_revision_comments_thread");
+            entity.HasOne(d => d.User).WithMany().HasForeignKey(d => d.UserId).HasConstraintName("FK_contract_revision_comments_user");
+        });
+
+        modelBuilder.Entity<OwnerContractTemplate>(entity =>
+        {
+            entity.HasKey(e => e.TemplateId);
+            entity.ToTable("owner_contract_templates");
+
+            entity.HasIndex(e => e.OwnerId, "idx_owner_contract_templates_owner");
+            entity.HasIndex(e => new { e.OwnerId, e.IsDefault }, "idx_owner_contract_templates_default");
+
+            entity.Property(e => e.TemplateId).HasColumnName("template_id");
+            entity.Property(e => e.OwnerId).HasColumnName("owner_id");
+            entity.Property(e => e.TemplateName).HasMaxLength(150).HasColumnName("template_name");
+            entity.Property(e => e.UseBasicInfoSection).HasDefaultValue(true).HasColumnName("use_basic_info_section");
+            entity.Property(e => e.UsePaymentSection).HasDefaultValue(true).HasColumnName("use_payment_section");
+            entity.Property(e => e.UseViolationSection).HasDefaultValue(true).HasColumnName("use_violation_section");
+            entity.Property(e => e.UseTerminationSection).HasDefaultValue(true).HasColumnName("use_termination_section");
+            entity.Property(e => e.UseSignatureSection).HasDefaultValue(true).HasColumnName("use_signature_section");
+            entity.Property(e => e.BasicInfoContent).HasColumnName("basic_info_content");
+            entity.Property(e => e.PaymentContent).HasColumnName("payment_content");
+            entity.Property(e => e.ViolationContent).HasColumnName("violation_content");
+            entity.Property(e => e.TerminationContent).HasColumnName("termination_content");
+            entity.Property(e => e.SignatureContent).HasColumnName("signature_content");
+            entity.Property(e => e.AdditionalTermsContent).HasColumnName("additional_terms_content");
+            entity.Property(e => e.IsDefault).HasDefaultValue(false).HasColumnName("is_default");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+
+            entity.HasOne(d => d.Owner)
+                .WithMany(p => p.OwnerContractTemplates)
+                .HasForeignKey(d => d.OwnerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_owner_contract_templates_owner");
         });
 
         modelBuilder.Entity<RentalContract>(entity =>

@@ -26,6 +26,7 @@ public class DeleteWarehouseHandler : IRequestHandler<DeleteWarehouseCommand, bo
         var contracts = await _contractRepository.GetByWarehouseIdAsync(request.WarehouseId);
         var activeStatuses = new[] 
         {
+            WMS.Domain.Enums.RentalContractStatus.ApprovedForSigning,
             WMS.Domain.Enums.RentalContractStatus.PendingOwnerSignature,
             WMS.Domain.Enums.RentalContractStatus.PendingRenterSignature,
             WMS.Domain.Enums.RentalContractStatus.Active,

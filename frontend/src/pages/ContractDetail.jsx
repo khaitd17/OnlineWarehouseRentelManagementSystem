@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
 import api from "../services/axiosClient";
@@ -12,7 +12,10 @@ import CustomAreaSelectorModal from "../components/warehouse/CustomAreaSelectorM
 
 
 const statusConfig = {
-  DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
+  DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
+  NEGOTIATING: { bg: "#dbeafe", color: "#2563eb", label: "Đang đàm phán" },
+  REVISION_REQUESTED: { bg: "#fef3c7", color: "#d97706", label: "Yêu cầu chỉnh sửa" },
+  APPROVED_FOR_SIGNING: { bg: "#dcfce7", color: "#16a34a", label: "Sẵn sàng ký" },
   PENDING_OWNER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ chủ kho ký" },
   PENDING_RENTER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ người thuê ký" },
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
@@ -45,6 +48,22 @@ const formatDate = (dateStr) => {
 const formatCurrency = (amount) => {
   if (amount == null) return "—";
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
+};
+
+const revisionSectionOptions = [
+  { value: "rental price", label: "Giá thuê" },
+  { value: "deposit", label: "Tiền đặt cọc" },
+  { value: "payment terms", label: "Điều khoản thanh toán" },
+  { value: "violation terms", label: "Điều khoản vi phạm" },
+  { value: "termination terms", label: "Điều khoản chấm dứt" },
+  { value: "other", label: "Khác" }
+];
+
+const revisionStatusDisplay = {
+  OPEN: { label: "Đang chờ", color: "#d97706", bg: "#fef3c7" },
+  ACCEPTED: { label: "Đồng ý", color: "#16a34a", bg: "#dcfce7" },
+  REJECTED: { label: "Từ chối", color: "#dc2626", bg: "#fee2e2" },
+  RESOLVED: { label: "Đã áp dụng", color: "#2563eb", bg: "#dbeafe" }
 };
 
 const InfoRow = ({ label, value }) => (
@@ -117,11 +136,35 @@ const CollapsibleSection = ({ title, isOpen, onToggle, children, accent = "#6474
 const ContractDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showSigningModal, setShowSigningModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [revisionThreads, setRevisionThreads] = useState([]);
+  const [loadingRevisions, setLoadingRevisions] = useState(false);
+  const [revisionSection, setRevisionSection] = useState("rental price");
+  const [revisionMessage, setRevisionMessage] = useState("");
+  const [replyDrafts, setReplyDrafts] = useState({});
+  const [applyingChanges, setApplyingChanges] = useState(false);
+  const [approvingSigning, setApprovingSigning] = useState(false);
+  const [sendingDraft, setSendingDraft] = useState(false);
+  const [versionHistory, setVersionHistory] = useState([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [changeForm, setChangeForm] = useState({
+    monthlyPayment: "",
+    depositAmount: "",
+    startDate: "",
+    durationMonths: "",
+    terms: ""
+  });
+  const [resolveAcceptedThreads, setResolveAcceptedThreads] = useState(true);
+  const revisionSectionLabels = revisionSectionOptions.reduce((acc, item) => {
+    acc[item.value] = item.label;
+    return acc;
+  }, {});
 
   // New states for additional features
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -152,6 +195,33 @@ const ContractDetail = () => {
   const reloadContract = () => {
     setRefreshKey(k => k + 1);
   };
+
+  const scrollToTab = (tab) => {
+    if (tab === "overview") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    const el = document.getElementById(`contract-tab-${tab}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleTabClick = (tab) => {
+    setActiveTab(tab);
+    navigate({
+      pathname: location.pathname,
+      search: `?tab=${tab}`
+    }, { replace: true });
+    scrollToTab(tab);
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab) {
+      setActiveTab(tab);
+      setTimeout(() => scrollToTab(tab), 100);
+    }
+  }, [location.search]);
 
   // Handle approve termination/close
   const handleApprove = async ({ useModalFee = false } = {}) => {
@@ -258,6 +328,15 @@ const ContractDetail = () => {
     rentalService.getContractById(id)
       .then(data => {
         setContract(data);
+        setChangeForm({
+          monthlyPayment: data?.monthlyPayment ?? "",
+          depositAmount: data?.depositAmount ?? "",
+          startDate: data?.startDate ? new Date(data.startDate).toISOString().slice(0, 10) : "",
+          durationMonths: data?.startDate && data?.endDate
+            ? Math.max(1, Math.round((new Date(data.endDate) - new Date(data.startDate)) / (1000 * 60 * 60 * 24 * 30)))
+            : "",
+          terms: data?.terms ?? ""
+        });
         // If PENDING_PAYMENT, check if a payment is already submitted
         if (data?.status === "PENDING_PAYMENT" || data?.status === "SIGNED") {
           paymentService.getPaymentsByContract(id)
@@ -291,6 +370,24 @@ const ContractDetail = () => {
       .then(res => setWarehouseInfo(res.data))
       .catch(() => {});
   }, [contract?.warehouseId]);
+
+  useEffect(() => {
+    if (!contract?.contractId) return;
+    setLoadingRevisions(true);
+    rentalService.getContractRevisionThreads(contract.contractId)
+      .then((data) => setRevisionThreads(Array.isArray(data) ? data : []))
+      .catch(() => setRevisionThreads([]))
+      .finally(() => setLoadingRevisions(false));
+  }, [contract?.contractId, refreshKey]);
+
+  useEffect(() => {
+    if (!contract?.contractId) return;
+    setLoadingVersions(true);
+    rentalService.getContractVersions(contract.contractId)
+      .then((data) => setVersionHistory(Array.isArray(data) ? data : []))
+      .catch(() => setVersionHistory([]))
+      .finally(() => setLoadingVersions(false));
+  }, [contract?.contractId, refreshKey]);
 
   // Fetch signing history
   const [signingCurrentUserId, setSigningCurrentUserId] = useState(null);
@@ -395,16 +492,128 @@ const ContractDetail = () => {
     }
   };
 
+  const handleRequestRevision = async () => {
+    if (!revisionMessage.trim()) {
+      alert("Vui lòng nhập nội dung yêu cầu chỉnh sửa");
+      return;
+    }
+    try {
+      await rentalService.requestContractRevision(contract.contractId, {
+        section: revisionSection,
+        message: revisionMessage.trim()
+      });
+      setRevisionMessage("");
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể gửi yêu cầu chỉnh sửa");
+    }
+  };
+
+  const handleSendDraft = async () => {
+    try {
+      setSendingDraft(true);
+      await rentalService.sendContractDraft(contract.contractId);
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể gửi bản nháp");
+    } finally {
+      setSendingDraft(false);
+    }
+  };
+
+  const handleReplyRevision = async (threadId) => {
+    const message = (replyDrafts[threadId] || "").trim();
+    if (!message) {
+      alert("Vui lòng nhập nội dung phản hồi");
+      return;
+    }
+    try {
+      await rentalService.replyContractRevision(threadId, message);
+      setReplyDrafts(prev => ({ ...prev, [threadId]: "" }));
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể gửi phản hồi");
+    }
+  };
+
+  const handleAcceptRevision = async (threadId) => {
+    try {
+      await rentalService.acceptContractRevision(threadId);
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể chấp nhận yêu cầu");
+    }
+  };
+
+  const handleRejectRevision = async (threadId) => {
+    try {
+      await rentalService.rejectContractRevision(threadId);
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể từ chối yêu cầu");
+    }
+  };
+
+  const handleApplyChanges = async () => {
+    if (!changeForm.monthlyPayment || Number(changeForm.monthlyPayment) <= 0) {
+      alert("Vui lòng nhập giá thuê hợp lệ");
+      return;
+    }
+    if (!changeForm.startDate) {
+      alert("Vui lòng chọn ngày bắt đầu hợp đồng");
+      return;
+    }
+    if (!changeForm.durationMonths || Number(changeForm.durationMonths) < 1) {
+      alert("Vui lòng nhập thời hạn hợp đồng hợp lệ");
+      return;
+    }
+
+    const resolveThreadIds = resolveAcceptedThreads
+      ? revisionThreads.filter(t => t.status === "ACCEPTED").map(t => t.threadId)
+      : [];
+
+    try {
+      setApplyingChanges(true);
+      await rentalService.applyContractChanges(contract.contractId, {
+        monthlyPayment: Number(changeForm.monthlyPayment),
+        depositAmount: changeForm.depositAmount === "" ? null : Number(changeForm.depositAmount),
+        startDate: changeForm.startDate,
+        durationMonths: Number(changeForm.durationMonths),
+        terms: changeForm.terms,
+        resolveThreadIds
+      });
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể áp dụng chỉnh sửa");
+    } finally {
+      setApplyingChanges(false);
+    }
+  };
+
+  const handleApproveForSigning = async () => {
+    try {
+      setApprovingSigning(true);
+      await rentalService.approveContractForSigning(contract.contractId);
+      reloadContract();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể duyệt ký");
+    } finally {
+      setApprovingSigning(false);
+    }
+  };
+
   // Access control: Determine who can sign/pay based on status and role
-  const canOwnerSign = contract?.isCurrentUserOwner && contract?.status === "PENDING_OWNER_SIGNATURE";
-  const canRenterSign = contract?.isCurrentUserRenter && 
-    (contract?.status === "DRAFT" || contract?.status === "PENDING_SIGNATURE" || contract?.status === "PENDING_RENTER_SIGNATURE");
-  const canRenterDecline = contract?.isCurrentUserRenter &&
-    (contract?.status === "DRAFT" || contract?.status === "PENDING_RENTER_SIGNATURE");
+  const canOwnerSign = contract?.isCurrentUserOwner && contract?.status === "APPROVED_FOR_SIGNING";
+  const canRenterSign = contract?.isCurrentUserRenter && contract?.status === "PENDING_RENTER_SIGNATURE";
+  const canRenterDecline = contract?.isCurrentUserRenter && contract?.status === "PENDING_RENTER_SIGNATURE";
   // canRenterPay: true only if no payment has been submitted/pending yet
   const canRenterPay = contract?.isCurrentUserRenter &&
     (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED") &&
     !hasPendingPayment;
+  const isNegotiating = ["NEGOTIATING", "REVISION_REQUESTED"].includes(contract?.status);
+  const canRequestRevision = contract?.isCurrentUserRenter && isNegotiating;
+  const canOwnerRespondRevision = contract?.isCurrentUserOwner && isNegotiating;
+  const canApproveForSigning = contract?.isCurrentUserOwner && isNegotiating;
 
   if (loading) return (
     <div style={{ padding: "5rem 2rem", textAlign: "center" }}>
@@ -524,6 +733,34 @@ const ContractDetail = () => {
         </div>
       </div>
 
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "12px 0 22px" }}>
+        {[
+          { key: "overview", label: "Tổng quan" },
+          { key: "negotiation", label: "Đàm phán" },
+          { key: "versions", label: "Lịch sử phiên bản" },
+          { key: "signing", label: "Ký hợp đồng" },
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => handleTabClick(tab.key)}
+            style={{
+              padding: "8px 16px",
+              borderRadius: 999,
+              border: activeTab === tab.key ? "1.5px solid #0ea5e9" : "1px solid #e2e8f0",
+              background: activeTab === tab.key ? "#e0f2fe" : "#fff",
+              color: activeTab === tab.key ? "#0369a1" : "#64748b",
+              fontWeight: 700,
+              fontSize: "0.8rem",
+              cursor: "pointer",
+              boxShadow: activeTab === tab.key ? "0 2px 8px rgba(14,165,233,0.25)" : "none",
+              transition: "all 0.2s ease"
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* ── Two-party info ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, animation: "cardFadeIn 0.4s ease 0.1s both" }}>
         {contract.ownerName && (
@@ -580,24 +817,27 @@ const ContractDetail = () => {
       </div>
 
       {/* Điều khoản */}
-      {contract.terms && (
-        <div style={{
-          backgroundColor: "#fff", borderRadius: 18, overflow: "hidden",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02)",
-          border: "1px solid #eef1f6", marginBottom: "1rem",
-          animation: "cardFadeIn 0.4s ease 0.3s both",
-        }}>
-          <div style={{ height: 3, background: "linear-gradient(90deg, #64748b, #64748b44, transparent)" }} />
-          <div style={{ padding: "20px 24px" }}>
-            <h2 style={{ fontSize: "0.82rem", fontWeight: 800, color: "#64748b", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-              Điều khoản hợp đồng
-            </h2>
-            <p style={{ color: "#475569", fontSize: "0.9rem", lineHeight: 1.8, whiteSpace: "pre-wrap", margin: 0 }}>
-              {contract.terms}
-            </p>
+      {(() => {
+        const termsText = (contract.terms || "").trim();
+        return (
+          <div style={{
+            backgroundColor: "#fff", borderRadius: 18, overflow: "hidden",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.02)",
+            border: "1px solid #eef1f6", marginBottom: "1rem",
+            animation: "cardFadeIn 0.4s ease 0.3s both",
+          }}>
+            <div style={{ height: 3, background: "linear-gradient(90deg, #64748b, #64748b44, transparent)" }} />
+            <div style={{ padding: "20px 24px" }}>
+              <h2 style={{ fontSize: "0.82rem", fontWeight: 800, color: "#64748b", marginBottom: 16, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Điều khoản hợp đồng
+              </h2>
+              <p style={{ color: "#475569", fontSize: "0.9rem", lineHeight: 1.8, whiteSpace: "pre-wrap", margin: 0 }}>
+                {termsText || "Chưa có điều khoản được cập nhật cho hợp đồng này."}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Ảnh / tài liệu đính kèm từ chủ kho */}
       {contract.contractImageUrl && (
@@ -637,7 +877,7 @@ const ContractDetail = () => {
       {contract.status === "DRAFT" && (
         <div style={{ marginBottom: "1rem", padding: "1rem 1.5rem", backgroundColor: "#fefce8",
           borderRadius: "12px", border: "1px solid #fde047", color: "#854d0e", fontSize: "0.9rem" }}>
-          <strong>Hợp đồng đang chờ ký.</strong> Nhấn nút bên dưới để bắt đầu quy trình ký hợp đồng.
+          <strong>Hợp đồng đang ở trạng thái bản nháp.</strong> Chủ kho cần gửi bản nháp để bắt đầu đàm phán.
         </div>
       )}
 
@@ -806,6 +1046,303 @@ const ContractDetail = () => {
         </div>
       )}
 
+      <div id="contract-tab-negotiation" style={{ scrollMarginTop: 120 }}>
+        <div style={{
+          backgroundColor: "#fff",
+          borderRadius: "18px",
+          padding: "1.5rem 2rem",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+          border: "1px solid #f1f5f9",
+          marginBottom: "1rem"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>Đàm phán điều khoản</h2>
+            <span style={{
+              padding: "4px 12px",
+              borderRadius: 999,
+              background: isNegotiating ? "#e0f2fe" : "#f1f5f9",
+              color: isNegotiating ? "#0369a1" : "#64748b",
+              fontWeight: 700,
+              fontSize: "0.75rem"
+            }}>
+              {contract.status === "DRAFT" ? "Chưa bắt đầu" : (isNegotiating ? "Đang đàm phán" : "Đã kết thúc")}
+            </span>
+          </div>
+
+          {contract.status === "DRAFT" && contract.isCurrentUserOwner && (
+            <div style={{ marginBottom: 16, padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", background: "#f8fafc" }}>
+              <div style={{ fontSize: "0.85rem", color: "#475569", marginBottom: 8 }}>
+                Hợp đồng đang ở trạng thái bản nháp. Gửi bản nháp để bắt đầu đàm phán.
+              </div>
+              <button
+                onClick={handleSendDraft}
+                disabled={sendingDraft}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: sendingDraft ? "#94a3b8" : "#2563eb",
+                  color: "#fff",
+                  fontWeight: 700,
+                  cursor: sendingDraft ? "not-allowed" : "pointer"
+                }}
+              >
+                {sendingDraft ? "Đang gửi..." : "Gửi bản nháp"}
+              </button>
+            </div>
+          )}
+
+          {canRequestRevision && (
+            <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 12, border: "1px solid #e2e8f0", background: "#f8fafc" }}>
+              <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Yêu cầu chỉnh sửa</div>
+              <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 10 }}>
+                <select
+                  value={revisionSection}
+                  onChange={(e) => setRevisionSection(e.target.value)}
+                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.85rem" }}
+                >
+                  {revisionSectionOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <textarea
+                  value={revisionMessage}
+                  onChange={(e) => setRevisionMessage(e.target.value)}
+                  rows={2}
+                  placeholder="Nhập nội dung yêu cầu chỉnh sửa..."
+                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.85rem" }}
+                />
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+                <button
+                  onClick={handleRequestRevision}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: "#2563eb",
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: "pointer"
+                  }}
+                >
+                  Gửi yêu cầu
+                </button>
+              </div>
+            </div>
+          )}
+
+          {loadingRevisions ? (
+            <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Đang tải trao đổi...</div>
+          ) : revisionThreads.length === 0 ? (
+            <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Chưa có yêu cầu chỉnh sửa nào.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {revisionThreads.map(thread => {
+                const statusMeta = revisionStatusDisplay[thread.status] || { label: thread.status, color: "#64748b", bg: "#f1f5f9" };
+                return (
+                  <div key={thread.threadId} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "12px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>
+                        {revisionSectionLabels[thread.section] || thread.section}
+                      </div>
+                      <span style={{
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        background: statusMeta.bg,
+                        color: statusMeta.color,
+                        fontSize: "0.72rem",
+                        fontWeight: 700
+                      }}>
+                        {statusMeta.label}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                      {thread.comments?.map(comment => (
+                        <div key={comment.commentId} style={{ padding: "8px 10px", borderRadius: 10, background: "#f8fafc" }}>
+                          <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0f172a" }}>{comment.userName}</div>
+                          <div style={{ fontSize: "0.85rem", color: "#334155", marginTop: 2 }}>{comment.message}</div>
+                          <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: 4 }}>
+                            {new Date(comment.createdAt).toLocaleString("vi-VN")}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {canOwnerRespondRevision && thread.status === "OPEN" && (
+                      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                        <button
+                          onClick={() => handleAcceptRevision(thread.threadId)}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#16a34a", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          Accept & Update
+                        </button>
+                        <button
+                          onClick={() => handleRejectRevision(thread.threadId)}
+                          style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #fecaca", background: "#fff", color: "#dc2626", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    )}
+
+                    {isNegotiating && (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          value={replyDrafts[thread.threadId] || ""}
+                          onChange={(e) => setReplyDrafts(prev => ({ ...prev, [thread.threadId]: e.target.value }))}
+                          placeholder="Phản hồi..."
+                          style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
+                        />
+                        <button
+                          onClick={() => handleReplyRevision(thread.threadId)}
+                          style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "#0ea5e9", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                        >
+                          Reply
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {canOwnerRespondRevision && (
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #f1f5f9" }}>
+              <div style={{ fontWeight: 800, color: "#0f172a", marginBottom: 10 }}>Áp dụng thay đổi</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                <input
+                  type="number"
+                  value={changeForm.monthlyPayment}
+                  onChange={(e) => setChangeForm(prev => ({ ...prev, monthlyPayment: e.target.value }))}
+                  placeholder="Giá thuê / tháng"
+                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
+                />
+                <input
+                  type="number"
+                  value={changeForm.depositAmount}
+                  onChange={(e) => setChangeForm(prev => ({ ...prev, depositAmount: e.target.value }))}
+                  placeholder="Tiền đặt cọc"
+                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
+                />
+                <input
+                  type="date"
+                  value={changeForm.startDate}
+                  onChange={(e) => setChangeForm(prev => ({ ...prev, startDate: e.target.value }))}
+                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
+                />
+                <input
+                  type="number"
+                  value={changeForm.durationMonths}
+                  onChange={(e) => setChangeForm(prev => ({ ...prev, durationMonths: e.target.value }))}
+                  placeholder="Thời hạn (tháng)"
+                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
+                />
+              </div>
+              <textarea
+                value={changeForm.terms}
+                onChange={(e) => setChangeForm(prev => ({ ...prev, terms: e.target.value }))}
+                rows={3}
+                placeholder="Điều khoản hợp đồng"
+                style={{ marginTop: 10, width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
+              />
+              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: "0.85rem", color: "#475569" }}>
+                <input
+                  type="checkbox"
+                  checked={resolveAcceptedThreads}
+                  onChange={(e) => setResolveAcceptedThreads(e.target.checked)}
+                />
+                Đánh dấu các yêu cầu đã đồng ý là đã áp dụng
+              </label>
+              <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                <button
+                  onClick={handleApplyChanges}
+                  disabled={applyingChanges}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: applyingChanges ? "#94a3b8" : "#2563eb",
+                    color: "#fff",
+                    fontWeight: 700,
+                    cursor: applyingChanges ? "not-allowed" : "pointer"
+                  }}
+                >
+                  {applyingChanges ? "Đang áp dụng..." : "Apply Changes"}
+                </button>
+                <button
+                  onClick={handleApproveForSigning}
+                  disabled={approvingSigning}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    border: "1px solid #10b981",
+                    background: approvingSigning ? "#d1fae5" : "#ecfdf5",
+                    color: "#047857",
+                    fontWeight: 700,
+                    cursor: approvingSigning ? "not-allowed" : "pointer"
+                  }}
+                >
+                  {approvingSigning ? "Đang duyệt..." : "Approve for signing"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div id="contract-tab-versions" style={{ scrollMarginTop: 120 }}>
+        <div style={{
+          backgroundColor: "#fff",
+          borderRadius: "18px",
+          padding: "1.5rem 2rem",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+          border: "1px solid #f1f5f9",
+          marginBottom: "1rem"
+        }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 800, color: "#0f172a", marginBottom: 12 }}>Lịch sử phiên bản</h2>
+          {loadingVersions ? (
+            <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Đang tải phiên bản...</div>
+          ) : versionHistory.length === 0 ? (
+            <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Chưa có phiên bản nào.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {versionHistory.map(version => {
+                let snapshot = {};
+                try {
+                  snapshot = JSON.parse(version.snapshotJson || "{}");
+                } catch {
+                  snapshot = {};
+                }
+                return (
+                  <div key={version.versionId} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "12px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                      <div style={{ fontWeight: 700, color: "#0f172a" }}>Version {version.versionNumber}</div>
+                      <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                        {new Date(version.createdAt).toLocaleString("vi-VN")} · {version.createdByName}
+                      </div>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+                      <div style={{ fontSize: "0.82rem", color: "#475569" }}>Giá/tháng: <strong>{formatCurrency(snapshot.MonthlyPayment ?? snapshot.monthlyPayment)}</strong></div>
+                      <div style={{ fontSize: "0.82rem", color: "#475569" }}>Tiền cọc: <strong>{formatCurrency(snapshot.DepositAmount ?? snapshot.depositAmount)}</strong></div>
+                      <div style={{ fontSize: "0.82rem", color: "#475569" }}>Ngày bắt đầu: <strong>{snapshot.StartDate ? formatDate(snapshot.StartDate) : "—"}</strong></div>
+                      <div style={{ fontSize: "0.82rem", color: "#475569" }}>Ngày kết thúc: <strong>{snapshot.EndDate ? formatDate(snapshot.EndDate) : "—"}</strong></div>
+                    </div>
+                    {snapshot.Terms && (
+                      <div style={{ marginTop: 8, fontSize: "0.82rem", color: "#334155" }}>
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>Điều khoản</div>
+                        <div style={{ whiteSpace: "pre-wrap" }}>{snapshot.Terms}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Actions Section */}
       {(canTerminate || canRequestClose) && !isPendingApproval && (
         <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
@@ -866,6 +1403,7 @@ const ContractDetail = () => {
       )}
 
       {/* Signing Button - Only for users who have permission to sign */}
+      <div id="contract-tab-signing" style={{ scrollMarginTop: 120 }}>
       {(canOwnerSign || canRenterSign) && (
         <div>
           {/* Signature Expiry Countdown */}
@@ -899,7 +1437,7 @@ const ContractDetail = () => {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0077a3"}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#0095c7"}
           >
-            {contract.status === "DRAFT" ? "Bắt đầu ký hợp đồng" : "Ký hợp đồng"}
+            Ký hợp đồng
           </button>
           
           {/* Decline button - Only for renter */}
@@ -931,6 +1469,7 @@ const ContractDetail = () => {
           )}
         </div>
       )}
+      </div>
 
       {/* Payment Button - Only for renter, only if no payment submitted yet */}
       {canRenterPay && (

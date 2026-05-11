@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import rentalService from "../services/rentalService";
 import warehouseService from "../services/warehouseService";
-import SignatureCanvas from "../components/SignatureCanvas";
+import contractTemplateService from "../services/contractTemplateService";
 import ProposedZonePreviewModal from "../components/warehouse/ProposedZonePreviewModal";
 import CustomAreaSelectorModal from "../components/warehouse/CustomAreaSelectorModal";
 import axiosClient from "../services/axiosClient";
@@ -37,6 +37,56 @@ const generateDefaultTerms = (req) => {
 4. Nếu Bên B chậm thanh toán quá 15 ngày, Bên A có quyền đơn phương chấm dứt hợp đồng.
 5. Tiền đặt cọc sẽ được hoàn trả khi hết hạn hợp đồng, sau khi trừ các khoản phí phát sinh (nếu có).
 6. Hai bên có thể thỏa thuận gia hạn hợp đồng trước khi hết hạn ít nhất 30 ngày.`;
+};
+
+const applyTemplateVariables = (content, req) => {
+  if (!content) return "";
+  const replacementMap = {
+    "{requestedArea}": `${req.requestedArea ?? ""}`,
+    "{warehouseName}": req.warehouseName ?? "",
+    "{warehouseAddress}": req.warehouseAddress ?? "",
+    "{renterName}": req.renterName ?? "",
+    "{durationMonths}": `${req.durationMonths ?? ""}`,
+    "[Diện tích thuê]": `${req.requestedArea ?? ""}`,
+    "[Tên kho]": req.warehouseName ?? "",
+    "[Địa chỉ kho]": req.warehouseAddress ?? "",
+    "[Người thuê]": req.renterName ?? "",
+    "[Thời hạn]": `${req.durationMonths ?? ""}`,
+  };
+
+  return Object.entries(replacementMap).reduce(
+    (result, [key, value]) => result.split(key).join(value),
+    content
+  );
+};
+
+const generateTermsFromTemplate = (template, req) => {
+  if (!template) return generateDefaultTerms(req);
+
+  const baseSections = [
+    template.useBasicInfoSection ? template.basicInfoContent : null,
+    template.usePaymentSection ? template.paymentContent : null,
+    template.useViolationSection ? template.violationContent : null,
+    template.useTerminationSection ? template.terminationContent : null,
+    template.useSignatureSection ? template.signatureContent : null,
+  ]
+    .map((section) => (section || "").trim())
+    .filter(Boolean)
+    .map((section) => applyTemplateVariables(section, req));
+
+  const additionalSections = (template.additionalTermsContent || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => applyTemplateVariables(line, req));
+
+  const rawSections = [...baseSections, ...additionalSections];
+
+  if (rawSections.length === 0) {
+    return generateDefaultTerms(req);
+  }
+
+  return rawSections.map((content, index) => `${index + 1}. ${content}`).join("\n");
 };
 
 // Icon helper
@@ -113,16 +163,20 @@ const PendingRentalRequests = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [createdContractId, setCreatedContractId] = useState(null);
   const [showSignatureStep, setShowSignatureStep] = useState(false);
-  const signatureCanvasRef = useRef(null);
 
   // Owner zone assignment
   const [showZoneAssignment, setShowZoneAssignment] = useState(false);
   const [zoneAssignmentData, setZoneAssignmentData] = useState(null); // warehouse data + areas for modal
   const [assignedZone, setAssignedZone] = useState(null); // { posX, posY, width, length, baseAreaId }
+  const [defaultContractTemplate, setDefaultContractTemplate] = useState(null);
 
   useEffect(() => {
     fetchRequests();
   }, [activeTab]);
+
+  useEffect(() => {
+    fetchDefaultTemplate();
+  }, []);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -148,6 +202,16 @@ const PendingRentalRequests = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDefaultTemplate = async () => {
+    try {
+      const template = await contractTemplateService.getOwnerDefaultTemplate();
+      setDefaultContractTemplate(template || null);
+    } catch (err) {
+      console.error("Không thể tải template hợp đồng mặc định:", err);
+      setDefaultContractTemplate(null);
     }
   };
 
@@ -186,7 +250,7 @@ const PendingRentalRequests = () => {
         durationMonths: req.durationMonths || "",
         monthlyPayment: calculatedMonthlyPayment.toFixed(0), // Tự động tính giá
         depositAmount: "",
-        terms: generateDefaultTerms(req),
+        terms: generateTermsFromTemplate(defaultContractTemplate, req),
         pricePerM2: pricePerM2, // Lưu giá/m2 để hiển thị
       });
       setContractImageFile(null);
@@ -230,8 +294,8 @@ const PendingRentalRequests = () => {
   };
 
   const handleApprove = async () => {
-    // If contract was already created (user went back from signature step),
-    // just show the signature step again instead of calling API
+    // If contract was already created (user went back from send draft step),
+    // just show the send draft step again instead of calling API
     if (createdContractId) {
       setShowSignatureStep(true);
       return;
@@ -321,29 +385,19 @@ const PendingRentalRequests = () => {
     }
   };
 
-  const handleOwnerSign = async () => {
-    if (!signatureCanvasRef.current || signatureCanvasRef.current.isEmpty()) {
-      alert("Vui lòng ký tên trước khi gửi hợp đồng");
-      return;
-    }
-
+  const handleSendDraft = async () => {
     try {
       setActionLoading(true);
-      const signatureBase64 = signatureCanvasRef.current.toBase64();
-      await rentalService.ownerSignContract(createdContractId, signatureBase64);
-      alert("Đã ký và gửi hợp đồng đến người thuê thành công!");
+      await rentalService.sendContractDraft(createdContractId);
+      alert("Đã gửi bản nháp hợp đồng đến người thuê!");
       closeModal();
-      fetchRequests(); // Reload list after signing
+      fetchRequests(); // Reload list after sending
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Có lỗi khi ký hợp đồng");
+      alert(err.response?.data?.message || "Có lỗi khi gửi bản nháp hợp đồng");
     } finally {
       setActionLoading(false);
     }
-  };
-
-  const handleClearSignature = () => {
-    signatureCanvasRef.current?.clear();
   };
 
   const handleReject = async () => {
@@ -382,31 +436,14 @@ const PendingRentalRequests = () => {
         <>
           <div style={{ marginBottom: "1.2rem" }}>
             <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.3rem" }}>
-              Ký hợp đồng trước khi gửi
+              Gửi bản nháp hợp đồng
             </h2>
             <p style={{ color: "#64748b", fontSize: "0.85rem", margin: 0 }}>
-              Vẽ chữ ký của bạn để hoàn tất và gửi hợp đồng đến người thuê
+              Xác nhận gửi bản nháp hợp đồng đến người thuê để bắt đầu đàm phán
             </p>
-          </div>
-
-          <div style={{ marginBottom: "1.5rem" }}>
-            <p style={{ color: "#64748b", marginBottom: "1rem", fontSize: "0.9rem" }}>
-              Vẽ chữ ký của bạn trên khung bên dưới
-            </p>
-            <SignatureCanvas ref={signatureCanvasRef} />
           </div>
 
           <div style={{ display: "flex", gap: "0.8rem", justifyContent: "flex-end", marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid #f1f5f9" }}>
-            <button
-              onClick={handleClearSignature}
-              style={{
-                padding: "0.7rem 1.5rem", borderRadius: "10px",
-                border: "1px solid #e2e8f0", backgroundColor: "#fff",
-                color: "#64748b", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem",
-              }}
-            >
-              Xóa chữ ký
-            </button>
             <button
               onClick={() => setShowSignatureStep(false)}
               disabled={actionLoading}
@@ -419,7 +456,7 @@ const PendingRentalRequests = () => {
               Quay lại
             </button>
             <button
-              onClick={handleOwnerSign}
+              onClick={handleSendDraft}
               disabled={actionLoading}
               style={{
                 padding: "0.7rem 1.5rem", borderRadius: "10px", border: "none",
@@ -428,7 +465,7 @@ const PendingRentalRequests = () => {
                 cursor: actionLoading ? "not-allowed" : "pointer", fontSize: "0.9rem",
               }}
             >
-              {actionLoading ? "Đang gửi..." : "Ký và gửi hợp đồng"}
+              {actionLoading ? "Đang gửi..." : "Gửi bản nháp"}
             </button>
           </div>
         </>

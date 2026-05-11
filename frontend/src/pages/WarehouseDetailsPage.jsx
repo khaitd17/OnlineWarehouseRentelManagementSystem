@@ -371,6 +371,18 @@ const WarehouseDetailsPage = () => {
     ownerAvatarUrl: warehouseData.ownerAvatarUrl ? `http://localhost:5276${warehouseData.ownerAvatarUrl}` : null,
   } : null;
 
+  const pricePerM2 = warehouseData?.pricePerM2 ? Number(warehouseData.pricePerM2) : 0;
+  const requestedAreaValue = parseFloat(formData.requestedArea);
+  const areaForEstimate = Number.isFinite(requestedAreaValue) && requestedAreaValue > 0
+    ? requestedAreaValue
+    : (selectedArea?.size ? Number(selectedArea.size) : 0);
+  const durationForEstimate = parseInt(formData.durationMonths, 10) || 0;
+  const estimatedMonthly = pricePerM2 > 0 && areaForEstimate > 0 ? pricePerM2 * areaForEstimate : 0;
+  const estimatedTotal = estimatedMonthly > 0 && durationForEstimate > 0
+    ? estimatedMonthly * durationForEstimate
+    : 0;
+  const estimateReady = estimatedTotal > 0;
+
 
 
   const handleInputChange = (e) => {
@@ -1182,6 +1194,34 @@ const WarehouseDetailsPage = () => {
                         value={formData.durationMonths} onChange={handleInputChange}
                         style={fieldInput}
                       />
+                    </div>
+                    <div style={{
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      background: pricePerM2 ? '#ecfeff' : '#f8fafc',
+                      border: `1px solid ${pricePerM2 ? '#bae6fd' : '#e2e8f0'}`,
+                    }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Ước tính chi phí
+                      </div>
+                      {!pricePerM2 ? (
+                        <div style={{ marginTop: 6, fontSize: '0.85rem', color: '#64748b' }}>
+                          Chưa có giá /m². Vui lòng liên hệ chủ kho để báo giá.
+                        </div>
+                      ) : !estimateReady ? (
+                        <div style={{ marginTop: 6, fontSize: '0.85rem', color: '#64748b' }}>
+                          Nhập diện tích và thời hạn thuê để xem tổng chi phí.
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 6, display: 'grid', gap: 4 }}>
+                          <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
+                            {Number(estimatedMonthly).toLocaleString('vi-VN')} đ/tháng
+                          </div>
+                          <div style={{ fontSize: '0.85rem', color: '#0f172a' }}>
+                            Tổng {durationForEstimate} tháng: <strong>{Number(estimatedTotal).toLocaleString('vi-VN')} đ</strong>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div style={fieldGroup}>
                       <label style={fieldLabel}>GHI CHÚ</label>

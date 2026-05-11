@@ -35,7 +35,8 @@ public class DeclineContractHandler : IRequestHandler<DeclineContractCommand, Un
             throw new UnauthorizedAccessException("Only renter or owner can decline this contract");
 
         // Can only decline if contract is waiting for signature
-        if (contract.Status != RentalContractStatus.PendingOwnerSignature && 
+        if (contract.Status != RentalContractStatus.ApprovedForSigning &&
+            contract.Status != RentalContractStatus.PendingOwnerSignature && 
             contract.Status != RentalContractStatus.PendingRenterSignature)
         {
             throw new InvalidOperationException($"Cannot decline contract with status {contract.Status}. Contract must be pending signature.");

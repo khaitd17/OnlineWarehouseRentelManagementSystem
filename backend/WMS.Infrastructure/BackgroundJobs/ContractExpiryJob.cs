@@ -18,7 +18,7 @@ public class ContractExpiryJob
     }
 
     /// <summary>
-    /// Auto cancel contracts PENDING_OWNER_SIGNATURE that expired (48h)
+    /// Auto cancel contracts APPROVED_FOR_SIGNING/PENDING_OWNER_SIGNATURE that expired (48h)
     /// </summary>
     public async Task CancelExpiredOwnerSignatures()
     {
@@ -29,13 +29,14 @@ public class ContractExpiryJob
         var sql = @"
             UPDATE contracts 
             SET status = @CancelledStatus, updated_at = @Now 
-            WHERE status = @PendingStatus 
+            WHERE status IN (@PendingStatus, @ApprovedStatus)
             AND updated_at IS NOT NULL 
             AND updated_at < @ExpiredLimit";
             
         var affected = await _db.Database.ExecuteSqlRawAsync(sql, 
             new Microsoft.Data.SqlClient.SqlParameter("@CancelledStatus", RentalContractStatus.Cancelled),
             new Microsoft.Data.SqlClient.SqlParameter("@PendingStatus", RentalContractStatus.PendingOwnerSignature),
+            new Microsoft.Data.SqlClient.SqlParameter("@ApprovedStatus", RentalContractStatus.ApprovedForSigning),
             new Microsoft.Data.SqlClient.SqlParameter("@ExpiredLimit", expiredLimit),
             new Microsoft.Data.SqlClient.SqlParameter("@Now", now));
 
