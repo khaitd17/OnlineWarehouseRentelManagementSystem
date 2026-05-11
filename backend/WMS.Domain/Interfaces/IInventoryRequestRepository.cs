@@ -27,6 +27,9 @@ public interface IInventoryRequestRepository
 
     Task<InventoryRequest?> GetByIdAsync(int id, CancellationToken cancellationToken);
 
+    /// <summary>Tra cứu yêu cầu bằng RequestCode (dùng cho QR verify công khai).</summary>
+    Task<InventoryRequest?> GetByRequestCodeAsync(string requestCode, CancellationToken cancellationToken);
+
     // Write
     Task<InventoryRequest> CreateAsync(InventoryRequest request, CancellationToken cancellationToken);
     Task UpdateAsync(InventoryRequest request, CancellationToken cancellationToken);

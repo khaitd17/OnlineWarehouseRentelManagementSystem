@@ -15,7 +15,11 @@ public partial class InventoryTransaction
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 
+    /// <summary>FK về phiếu nhập/xuất kho (nullable — backward-compatible với data cũ).</summary>
+    public int? ReceiptNoteId { get; set; }
+
     public virtual InventoryRequest InvReq { get; set; } = null!;
     public virtual Warehouse Warehouse { get; set; } = null!;
     public virtual User PerformedByNavigation { get; set; } = null!;
+    public virtual ReceiptNote? ReceiptNote { get; set; }
 }

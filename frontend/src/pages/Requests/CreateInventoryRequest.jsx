@@ -4,7 +4,6 @@ import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
 import renterAssetService from '../../services/renterAssetService';
 import aiService from '../../services/aiService';
-import SignatureCanvas from '../../components/SignatureCanvas';
 
 const INBOUND_COLOR = '#0ea5e9';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -114,9 +113,7 @@ function AiPhotoModal({ onClose, onImport }) {
       search: ai.name || '',
       unit: 'cái',
       qty: ai.quantity || 1,
-      estimatedVolume: ai.estimatedVolumeM3
-        ? parseFloat((ai.estimatedVolumeM3 * (ai.quantity || 1)).toFixed(3))
-        : '',
+      estimatedVolume: ai.estimatedVolumeM3 || '',
       weightPerUnit: null,
       note: '',
       isNew: true,
@@ -574,8 +571,6 @@ export default function CreateInventoryRequest() {
   const [draftSaved, setDraftSaved] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
-  const [signModalOpen, setSignModalOpen] = useState(false);
-  const signatureCanvasRef = useRef(null);
   const DRAFT_KEY = 'inv_req_draft';
 
   // Import AI-analyzed rows into the items table
@@ -652,8 +647,8 @@ export default function CreateInventoryRequest() {
   const contractedVolume = selectedWHData?.requestedArea ?? 0;
   const contractedArea   = contractedVolume; // alias for weight check in ItemRow
 
-  // Tổng thể tích ước tính từ các items đang điền
-  const totalEstimatedVol = items.reduce((sum, i) => sum + (Number(i.estimatedVolume)||0), 0);
+  // Tổng thể tích ước tính từ các items đang điền (mỗi dòng = perUnit * qty)
+  const totalEstimatedVol = items.reduce((sum, i) => sum + ((Number(i.estimatedVolume)||0) * (Number(i.qty)||1)), 0);
   const volumeUsagePercent = contractedVolume > 0 ? (totalEstimatedVol / contractedVolume) * 100 : 0;
   const isVolumeOverContract = totalEstimatedVol > contractedVolume && contractedVolume > 0;
 
@@ -712,7 +707,7 @@ export default function CreateInventoryRequest() {
         if(!s.qty || Number(s.qty) < 1){ setError(`"${asset.assetName}": Số lượng phải >= 1.`); return; }
         if(Number(s.qty) > asset.quantity){ setError(`"${asset.assetName}": Số lượng vượt tồn kho (${asset.quantity}).`); return; }
       }
-      setSignModalOpen(true);
+      submitToServer();
       return;
     }
 
@@ -722,16 +717,10 @@ export default function CreateInventoryRequest() {
       if(!it.itemName.trim()){setError('Vui lòng nhập tên hàng hóa.');return;}
       if(!it.qty||Number(it.qty)<1){setError('Số lượng phải >= 1.');return;}
     }
-    setSignModalOpen(true);
+    submitToServer();
   };
 
   const submitToServer = async () => {
-    if (!signatureCanvasRef.current || signatureCanvasRef.current.isEmpty()) {
-      setError('Vui lòng vẽ chữ ký của bạn trước khi gửi yêu cầu.');
-      return;
-    }
-    const signatureBase64 = signatureCanvasRef.current.toBase64();
-    setSignModalOpen(false);
 
     if(type === 'OUTBOUND') {
       const chosen = inventory.filter(a => selectedItems[a.assetId]?.checked);
@@ -746,7 +735,7 @@ export default function CreateInventoryRequest() {
           unit: asset.unit||'cái',
           description: selectedItems[asset.assetId].note||null,
         }));
-        await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'OUTBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processedItems, renterSignatureBase64: signatureBase64 });
+        await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'OUTBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processedItems, renterSignatureBase64: null });
         clearDraft();
         navigate('/renter-inventory-history?tab=outbound',{state:{created:true,type:'OUTBOUND'}});
       } catch(err){ setError(err?.response?.data?.message || err?.message || 'Tạo yêu cầu thất bại.'); }
@@ -766,9 +755,9 @@ export default function CreateInventoryRequest() {
           const r=await renterAssetService.createAsset({assetName:it.itemName.trim(),unit:it.unit,weightPerUnit:null});
           assetId=r.data.assetId;
         }
-        processed.push({ assetId, itemName:it.itemName.trim(), quantity:Number(it.qty), unit:it.unit, description:it.note||null, estimatedVolume: it.estimatedVolume ? Number(it.estimatedVolume) : null });
+        processed.push({ assetId, itemName:it.itemName.trim(), quantity:Number(it.qty), unit:it.unit, description:it.note||null, estimatedVolume: it.estimatedVolume ? Number(it.estimatedVolume) * Number(it.qty) : null });
       }
-      await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'INBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed, renterSignatureBase64: signatureBase64 });
+      await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'INBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed, renterSignatureBase64: null });
       clearDraft();
       navigate('/renter-inventory-history?tab=inbound',{state:{created:true,type:'INBOUND'}});
     } catch(err){ setError(err?.response?.data?.message || err?.message || 'Tạo yêu cầu thất bại.'); }
@@ -961,7 +950,7 @@ export default function CreateInventoryRequest() {
                     <table style={{ width:'100%', borderCollapse:'collapse' }}>
                       <thead>
                         <tr style={{ background:'#f8fafc' }}>
-                          {['#', 'Hàng hóa / Tài sản', 'Đơn vị', 'Số lượng', 'Thể tích ước tính (m³)', 'Ghi chú', ''].map((h,i)=>(
+                          {['#', 'Hàng hóa / Tài sản', 'Đơn vị', 'Số lượng', 'Thể tích/đơn vị (m³)', 'Ghi chú', ''].map((h,i)=>(
                             <th key={i} style={{ padding:'10px 14px', fontSize:'0.7rem', fontWeight:700, color:'#94a3b8', textAlign:'left', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
                           ))}
                         </tr>
@@ -1085,70 +1074,6 @@ export default function CreateInventoryRequest() {
         .wh-card:nth-child(3) { animation-delay: 0.12s; }
         .wh-card:nth-child(4) { animation-delay: 0.18s; }
       `}</style>
-
-      {/* Signature Modal */}
-      {signModalOpen && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={() => setSignModalOpen(false)}>
-          <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:520, boxShadow:'0 32px 80px rgba(0,0,0,0.22)', overflow:'hidden' }} onClick={e=>e.stopPropagation()}>
-
-            {/* Header */}
-            <div style={{ background: type==='INBOUND' ? 'linear-gradient(135deg,#0ea5e9,#0284c7)' : 'linear-gradient(135deg,#f59e0b,#d97706)', padding:'22px 28px' }}>
-              <p style={{ margin:0, fontSize:'1.15rem', fontWeight:800, color:'#fff', letterSpacing:'-0.01em' }}>Ký xác nhận phiếu yêu cầu</p>
-              <p style={{ margin:'4px 0 0', fontSize:'0.78rem', color:'rgba(255,255,255,0.8)', fontWeight:500 }}>
-                {type==='INBOUND' ? 'Phiếu nhập kho' : 'Phiếu xuất kho'} · {selectedWH?.name || ''}
-              </p>
-            </div>
-
-            <div style={{ padding:'24px 28px' }}>
-              {/* Info note */}
-              <div style={{ padding:'10px 14px', borderRadius:8, background:'#f0f9ff', border:'1px solid #bae6fd', marginBottom:20 }}>
-                <p style={{ margin:0, fontSize:'0.82rem', color:'#0369a1', lineHeight:1.6 }}>
-                  Chữ ký dưới đây sẽ được in là chữ ký của <strong>Người lập phiếu</strong> trong bản PDF Phiếu {type==='INBOUND'?'nhập':'xuất'} kho.
-                </p>
-              </div>
-
-              {/* Signature area label */}
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                <span style={{ fontSize:'0.75rem', fontWeight:700, color:'#475569', textTransform:'uppercase', letterSpacing:'0.06em' }}>Vùng ký tên</span>
-                <button
-                  onClick={() => signatureCanvasRef.current?.clear()}
-                  style={{ padding:'4px 12px', background:'transparent', border:'1px solid #e2e8f0', borderRadius:6, fontSize:'0.75rem', fontWeight:600, color:'#64748b', cursor:'pointer', transition:'all 0.15s' }}
-                  onMouseEnter={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.borderColor='#cbd5e1';}}
-                  onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='#e2e8f0';}}
-                >
-                  Xóa làm lại
-                </button>
-              </div>
-
-              {/* Canvas */}
-              <div style={{ border:'1.5px solid #e2e8f0', borderRadius:10, overflow:'hidden', background:'#fdfdfd' }}>
-                <SignatureCanvas ref={signatureCanvasRef} canvasProps={{width: 464, height: 180}} />
-              </div>
-              <p style={{ margin:'6px 0 16px', fontSize:'0.75rem', color:'#cbd5e1', textAlign:'center', fontWeight:500 }}>Vẽ chữ ký của bạn vào ô trên</p>
-
-              {/* Primary action */}
-              <button
-                onClick={submitToServer}
-                style={{ width:'100%', padding:'13px', background: type==='INBOUND'?'#0ea5e9':'#f59e0b', color:'#fff', border:'none', borderRadius:10, fontWeight:700, fontSize:'0.95rem', cursor:'pointer', letterSpacing:'0.01em', boxShadow: type==='INBOUND'?'0 4px 14px rgba(14,165,233,0.35)':'0 4px 14px rgba(245,158,11,0.35)', transition:'opacity 0.2s', marginBottom:10 }}
-                onMouseEnter={e=>e.currentTarget.style.opacity='0.88'}
-                onMouseLeave={e=>e.currentTarget.style.opacity='1'}
-              >
-                Xác nhận &amp; Gửi yêu cầu
-              </button>
-
-              {/* Secondary action */}
-              <button
-                onClick={() => setSignModalOpen(false)}
-                style={{ width:'100%', padding:'10px', background:'transparent', color:'#94a3b8', border:'none', cursor:'pointer', fontSize:'0.82rem', fontWeight:600, letterSpacing:'0.01em', transition:'color 0.15s' }}
-                onMouseEnter={e=>e.currentTarget.style.color='#475569'}
-                onMouseLeave={e=>e.currentTarget.style.color='#94a3b8'}
-              >
-                Hủy và quay lại
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* AI Photo Modal */}
       {aiModalOpen && type==='INBOUND' && (

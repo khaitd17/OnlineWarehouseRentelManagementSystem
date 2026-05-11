@@ -27,11 +27,15 @@ public record InventoryItemDto
 public record InventoryRequestDto
 {
     public int InvReqId { get; init; }
+    /// <summary>Mã yêu cầu — dùng để nhận diện khi nhiều xe đến (VD: INB-20260507-001).</summary>
+    public string? RequestCode { get; init; }
     public string Type { get; init; } = "";
     public string? Status { get; init; }
     public int RenterId { get; init; }
     public string RenterName { get; init; } = "";
     public string RenterEmail { get; init; } = "";
+    /// <summary>Số điện thoại người thuê — dùng cho QR verify.</summary>
+    public string? RenterPhone { get; init; }
     public int WarehouseId { get; init; }
     public string WarehouseName { get; init; } = "";
     public string? Notes { get; init; }
@@ -51,10 +55,14 @@ public record InventoryRequestDto
     public string? StaffSignatureBase64 { get; init; }
     public DateTime? UpdatedAt { get; init; }
     public int TotalItems { get; init; }
-    /// <summary>Tổng thể tích ước tính theo Renter (m³) — hiển thị cho Manager khi xem xét.</summary>
+    /// <summary>Tổng thể tích ước tính theo Renter (m³).</summary>
     public decimal? TotalEstimatedVolume { get; init; }
     /// <summary>Tổng thể tích thực tế Staff xác nhận (m³).</summary>
     public decimal? TotalVerifiedVolume { get; init; }
+    /// <summary>Cờ cảnh báo thể tích vượt ngưỡng kho.</summary>
+    public bool VolumeWarning { get; init; }
+    /// <summary>Số phiếu nhập/xuất đã tạo cho yêu cầu này.</summary>
+    public int ReceiptNoteCount { get; init; }
     public List<InventoryItemDto> Items { get; init; } = new();
 }
 
@@ -72,11 +80,13 @@ public static class InventoryRequestMapper
     public static InventoryRequestDto ToDto(InventoryRequest r) => new()
     {
         InvReqId        = r.InvReqId,
+        RequestCode     = r.RequestCode,
         Type            = r.Type,
         Status          = r.Status,
         RenterId        = r.RenterId,
         RenterName      = r.Renter?.FullName ?? "",
         RenterEmail     = r.Renter?.Email    ?? "",
+        RenterPhone     = r.Renter?.Phone,
         WarehouseId     = r.WarehouseId,
         WarehouseName   = r.Warehouse?.Name  ?? "",
         Notes           = r.Notes,
@@ -97,6 +107,8 @@ public static class InventoryRequestMapper
         AssignedAt        = r.AssignedAt,
         UpdatedAt         = r.UpdatedAt,
         TotalItems      = r.InventoryItems.Count,
+        VolumeWarning   = r.VolumeWarning,
+        ReceiptNoteCount = r.ReceiptNotes.Count,
         Items           = r.InventoryItems.Select(i => new InventoryItemDto
         {
             ItemId          = i.ItemId,

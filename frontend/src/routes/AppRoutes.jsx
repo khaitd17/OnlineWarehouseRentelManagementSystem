@@ -85,6 +85,7 @@ import SubscriptionsPage from "../pages/admin/SubscriptionsPage";
 import EquipmentManagement from "../pages/EquipmentManagement";
 import MyRatingsPage from "../pages/MyRatingsPage";
 import FavoritesPage from "../pages/FavoritesPage";
+import QRVerifyPage from "../pages/QRVerifyPage";
 import OwnerContracts from "../pages/OwnerContracts";
 
 // Contract Extension Pages
@@ -125,6 +126,9 @@ function AppRoutes() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* ── QR Verify: Public standalone page (no layout/auth needed) ── */}
+        <Route path="/verify/:requestCode" element={<QRVerifyPage />} />
+
         {/* ── PUBLIC pages: MainLayout (public navbar + footer) ── */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />

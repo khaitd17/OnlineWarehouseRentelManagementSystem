@@ -29,6 +29,7 @@ public record CreateInventoryRequestCommand : IRequest<InventoryRequestDto>
     public List<string>? DocumentUrls { get; init; }
     public List<CreateInventoryItemInput> Items { get; init; } = new();
     public DateTime? ScheduledDate { get; init; }
+    /// <summary>Giữ lại cho backward-compatible nhưng không bắt buộc ở bước tạo nữa.</summary>
     public string? RenterSignatureBase64 { get; init; }
 }
 
@@ -72,19 +73,19 @@ public class CreateInventoryRequestHandler
                 $"Kho hiện đang đóng cửa. Thời gian hoạt động: {timeStr}. Vui lòng thực hiện yêu cầu trong giờ làm việc.");
         }
 
-        // ── Dual-Constraint Validation cho INBOUND ─────────────────────────────────────────────
+        // ── Dual-Constraint Validation cho INBOUND ─────────────────────────
+        bool volumeWarning = false;
+
         if (cmd.Type.ToUpper() == "INBOUND")
         {
-            const decimal KgPerM2Limit  = 500m;    // Tải trọng sàn tiêu chuẩn kho (kg/m²)
+            const decimal KgPerM2Limit = 500m;
 
             var contractedArea = await _contractRepo.GetContractedAreaAsync(
                 cmd.RenterId, cmd.WarehouseId, cancellationToken);
 
             if (contractedArea > 0)
             {
-                // ── Tầng 1: Hard block — Trọng lượng (giới hạn vật lý sàn kho) ──────
-                // Chỉ áp dụng khi item CÓ weightPerUnit. Hàng siêu nhẹ (bút, hộp giấy...)
-                // không có weight sẽ bỏ qua và để Manager quyết định khi duyệt.
+                // ── Tầng 1: Hard block — Trọng lượng ──────────────────
                 decimal totalWeightKg = 0;
                 bool    hasWeightData = false;
 
@@ -92,7 +93,6 @@ public class CreateInventoryRequestHandler
                 {
                     decimal? wPerUnit = item.Weight;
 
-                    // Nếu có assetId, thử lấy weight từ catalogue
                     if ((wPerUnit == null || wPerUnit <= 0) && item.AssetId.HasValue && item.AssetId.Value > 0)
                     {
                         var assetForWeight = await _assetRepo.GetByIdAsync(item.AssetId.Value, cancellationToken);
@@ -116,9 +116,15 @@ public class CreateInventoryRequestHandler
                             $"Vui lòng chia thành nhiều lô nhỏ hơn hoặc liên hệ quản lý kho.");
                 }
 
-                // ── Tầng 2: Soft check — Thể tích (cảnh báo, không chặn) ─────────────────
-                // Nếu Renter điền EstimatedVolume, tổng vượt hợp đồng → cảnh báo nhưng vẫn gửi được.
-                // Manager sẽ thấy cảnh báo khi xem yêu cầu và tự quyết định có duyệt hay không.
+                // ── Tầng 2: Soft check — Thể tích (cảnh báo, không chặn) ──
+                decimal totalEstimatedVol = cmd.Items.Sum(i => i.EstimatedVolume ?? 0);
+                if (totalEstimatedVol > 0 && warehouse.AvailableVolume.HasValue && warehouse.AvailableVolume.Value > 0)
+                {
+                    if ((double)totalEstimatedVol > warehouse.AvailableVolume.Value)
+                    {
+                        volumeWarning = true; // Gắn cờ — Manager sẽ thấy khi duyệt
+                    }
+                }
             }
         }
 
@@ -131,7 +137,6 @@ public class CreateInventoryRequestHandler
             decimal? weight    = item.Weight;
             int? assetId       = item.AssetId;
 
-            // If assetId provided, lookup catalogue to auto-fill
             if (assetId.HasValue && assetId.Value > 0)
             {
                 var asset = await _assetRepo.GetByIdAsync(assetId.Value, cancellationToken);
@@ -141,7 +146,6 @@ public class CreateInventoryRequestHandler
                     throw new UnauthorizedAccessException($"Asset #{assetId.Value} không thuộc về bạn.");
 
                 itemName = asset.AssetName;
-                // Ưu tiên đơn vị user chọn trong form; chỉ dùng đơn vị từ catalogue làm fallback
                 unit     = !string.IsNullOrWhiteSpace(item.Unit) ? item.Unit : (asset.Unit ?? "cái");
                 weight   = asset.WeightPerUnit.HasValue ? asset.WeightPerUnit * item.Quantity : item.Weight;
             }
@@ -151,7 +155,6 @@ public class CreateInventoryRequestHandler
             {
                 if (assetId.HasValue && assetId.Value > 0)
                 {
-                    // Check renter_inventory
                     var inventory = await _assetRepo.GetInventoryByRenterAsync(
                         cmd.RenterId, cmd.WarehouseId, cancellationToken);
                     var ri = inventory.FirstOrDefault(x => x.AssetId == assetId.Value);
@@ -162,7 +165,6 @@ public class CreateInventoryRequestHandler
                 }
                 else
                 {
-                    // Fallback: check warehouse_inventory (text-based)
                     var inv = await _invRepo.GetAsync(cmd.WarehouseId, itemName, cancellationToken);
                     var available = inv?.Quantity ?? 0;
                     if (available < item.Quantity)
@@ -183,11 +185,19 @@ public class CreateInventoryRequestHandler
             });
         }
 
+        // ── Sinh mã RequestCode ───────────────────────────────────────────
+        var prefix = cmd.Type.ToUpper() == "OUTBOUND" ? "OUT" : "INB";
+        var dateStr = DateTime.Now.ToString("yyyyMMdd");
+        // Đếm số yêu cầu cùng loại trong ngày để sinh số thứ tự
+        var todayStart = DateTime.Today;
+        var requestCode = $"{prefix}-{dateStr}-{DateTime.Now.Ticks % 10000:D4}";
+
         var request = new InventoryRequest
         {
             RenterId    = cmd.RenterId,
             WarehouseId = cmd.WarehouseId,
             Type        = cmd.Type.ToUpper(),
+            RequestCode = requestCode,
             Notes       = string.IsNullOrWhiteSpace(cmd.Notes) ? null : $"Người thuê: {cmd.Notes}",
             DocumentUrls = cmd.DocumentUrls != null && cmd.DocumentUrls.Count > 0
                 ? System.Text.Json.JsonSerializer.Serialize(cmd.DocumentUrls)
@@ -195,12 +205,14 @@ public class CreateInventoryRequestHandler
             Status         = "PENDING",
             InventoryItems = inventoryItems,
             ScheduledDate  = cmd.ScheduledDate,
+            VolumeWarning  = volumeWarning,
+            // Chữ ký renter không bắt buộc khi tạo yêu cầu — sẽ ký trên phiếu nhập kho
             RenterSignatureBase64 = cmd.RenterSignatureBase64,
         };
 
         var created = await _repo.CreateAsync(request, cancellationToken);
 
-        // Tự động tạo WarehouseTask + UnitTasks phản chiếu luồng nghiệp vụ
+        // Tự động tạo WarehouseTask
         var taskScheduledAt = cmd.ScheduledDate ?? created.CreatedAt ?? DateTime.Now;
         await _taskRepo.CreateWorkflowTaskAsync(
             cmd.Type.ToUpper(),

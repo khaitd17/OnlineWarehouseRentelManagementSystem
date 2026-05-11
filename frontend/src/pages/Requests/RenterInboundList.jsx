@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import inventoryService from "../../services/inventoryService";
-import { ReceiptPreviewModal } from "../../components/InventoryReceiptPDF";
+import ReceiptNotesListModal from "../../components/ReceiptNotesListModal";
+import RequestQRCode from "../../components/RequestQRCode";
 
 /* ── Status config ────────────────────────────────────────────── */
 const STATUS_MAP = {
   PENDING:   { label: "Đang chờ", bg: "#fef3c7", color: "#92400e", dot: "#f59e0b" },
   CONFIRMED: { label: "Đã duyệt", bg: "#d1fae5", color: "#065f46", dot: "#10b981" },
+  RECEIVING: { label: "Đang nhận", bg: "#dbeafe", color: "#1e40af", dot: "#3b82f6" },
+  COMPLETED: { label: "Hoàn thành", bg: "#f0fdf4", color: "#15803d", dot: "#16a34a" },
   REJECTED:  { label: "Từ chối",  bg: "#fee2e2", color: "#991b1b", dot: "#ef4444" },
 };
 
@@ -49,7 +52,9 @@ export default function RenterInboundList() {
   const [search, setSearch] = useState("");
   const [sf, setSf]         = useState("Tất cả");
   const [conf, setConf]     = useState(null);
-  const [pdfReq, setPdfReq] = useState(null);
+
+  const [viewNotesReq, setViewNotesReq] = useState(null);
+  const [qrReq, setQrReq]   = useState(null);
   const [successMsg, setSuccessMsg] = useState(location.state?.created ? "Yêu cầu nhập kho đã được tạo thành công!" : "");
 
   const fetchData = useCallback(async () => {
@@ -178,22 +183,23 @@ export default function RenterInboundList() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ backgroundColor: "#f8fafc" }}>
-                <th style={th}>ID</th>
+                <th style={th}>Mã yêu cầu</th>
                 <th style={th}>Kho hàng</th>
                 <th style={th}>Mặt hàng</th>
                 <th style={{ ...th, textAlign: "right" }}>Số lượng</th>
                 <th style={th}>Trạng thái</th>
+                <th style={th}>Phiếu</th>
                 <th style={th}>Ngày tạo</th>
                 <th style={{ ...th, textAlign: "center" }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: "48px", textAlign: "center", color: "#94a3b8" }}>
+                <tr><td colSpan={8} style={{ padding: "48px", textAlign: "center", color: "#94a3b8" }}>
                   <span className="material-symbols-outlined" style={{ fontSize: "32px", display: "block", marginBottom: "8px" }}>sync</span>Đang tải...
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: "48px", textAlign: "center", color: "#94a3b8" }}>
+                <tr><td colSpan={8} style={{ padding: "48px", textAlign: "center", color: "#94a3b8" }}>
                   <span className="material-symbols-outlined" style={{ fontSize: "40px", display: "block", marginBottom: "8px" }}>inbox</span>Không tìm thấy yêu cầu nào
                 </td></tr>
               ) : filtered.map(row => {
@@ -202,7 +208,10 @@ export default function RenterInboundList() {
                 const unit = firstItem?.unit || "cái";
                 return (
                   <tr key={row.invReqId} style={{ backgroundColor: "#fff" }}>
-                    <td style={{ ...td, color: "#00b2d6", fontWeight: 700 }}>#{row.invReqId}</td>
+                    <td style={{ ...td, color: "#10b981", fontWeight: 700, whiteSpace: "nowrap" }}>
+                      <span style={{ fontSize: '0.87rem' }}>#{row.invReqId}</span>
+                      {row.requestCode && <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontFamily:'monospace', marginTop:2 }}>{row.requestCode}</div>}
+                    </td>
                     <td style={{ ...td, maxWidth: "170px" }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }}>{row.warehouseName || "—"}</div></td>
                     <td style={{ ...td, maxWidth: "200px" }}>
                       <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "#1e293b" }}>{firstItem?.itemName || "—"}</div>
@@ -210,16 +219,29 @@ export default function RenterInboundList() {
                     </td>
                     <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{totalQty.toLocaleString()} <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: "0.8rem" }}>{unit}</span></td>
                     <td style={td}><Badge s={row.status} /></td>
+                    <td style={td}>
+                      {(row.receiptNoteCount > 0) ? (
+                        <button onClick={() => setViewNotesReq(row)}
+                          style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', borderRadius:6, fontSize:'0.72rem', fontWeight:700, background:'#eef2ff', color:'#4f46e5', border:'1px solid #c7d2fe', cursor:'pointer' }}>
+                          {row.receiptNoteCount} phiếu
+                        </button>
+                      ) : (
+                        <span style={{ fontSize:'0.72rem', color:'#cbd5e1' }}>—</span>
+                      )}
+                    </td>
                     <td style={{ ...td, color: "#64748b" }}>{row.createdAt ? new Date(row.createdAt).toLocaleDateString("vi-VN") : "—"}</td>
                     <td style={{ ...td, textAlign: "center" }}>
-                      <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
-                        <button
-                          title="Xem Phiếu Nhập Kho"
-                          onClick={() => setPdfReq(row)}
-                          style={{ padding: "5px 10px", border: "1.5px solid #e2e8f0", background: "#f8fafc", borderRadius: "7px", cursor: "pointer", color: "#1e293b", fontSize: "0.75rem", fontWeight: 700, fontFamily: "Inter,sans-serif", whiteSpace: "nowrap" }}
-                        >
-                          Xem Phiếu
-                        </button>
+                      <div style={{ display: "flex", gap: "6px", justifyContent: "center", flexWrap: "wrap" }}>
+                        {row.requestCode && (
+                          <button onClick={() => setQrReq(row)} style={{ padding: "5px 10px", border: "1.5px solid #c7d2fe", background: "#eef2ff", borderRadius: "7px", cursor: "pointer", color: "#4338ca", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                            QR
+                          </button>
+                        )}
+                        {row.receiptNoteCount > 0 && (
+                          <button onClick={() => setViewNotesReq(row)} style={{ padding: "5px 10px", border: "1.5px solid #c7d2fe", background: "#eef2ff", borderRadius: "7px", cursor: "pointer", color: "#4f46e5", fontSize: "0.75rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                            {row.receiptNoteCount} phiếu
+                          </button>
+                        )}
                         {row.status === "PENDING" && (
                           <button title="Hủy / Xóa" onClick={() => setConf({ id: row.invReqId })} style={{ padding: "5px", border: "none", background: "#fff7ed", borderRadius: "7px", cursor: "pointer", color: "#ea580c", display: "flex" }}>
                             <span className="material-symbols-outlined" style={{ fontSize: "17px" }}>delete</span>
@@ -248,11 +270,35 @@ export default function RenterInboundList() {
         />
       )}
 
-      {pdfReq && (
-        <ReceiptPreviewModal
-          data={pdfReq}
-          onClose={() => setPdfReq(null)}
+
+
+      {viewNotesReq && (
+        <ReceiptNotesListModal
+          request={viewNotesReq}
+          userRole="RENTER"
+          onClose={() => setViewNotesReq(null)}
+          onUpdated={fetchData}
         />
+      )}
+
+      {qrReq && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(15,23,42,0.65)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24, animation:'fadeIn 0.2s ease-out' }} onClick={() => setQrReq(null)}>
+          <div style={{ background:'#fff', borderRadius:28, padding:'32px 32px 40px', width:'100%', maxWidth:380, textAlign:'center', boxShadow:'0 24px 80px rgba(0,0,0,0.3)', position:'relative', animation:'slideUp 0.3s ease-out' }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setQrReq(null)} style={{ position:'absolute', top:20, right:20, background:'#f1f5f9', border:'none', width:36, height:36, borderRadius:'50%', cursor:'pointer', color:'#64748b', fontWeight:900, display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s', fontSize:'1rem' }}
+              onMouseEnter={e=>{e.currentTarget.style.background='#e2e8f0';e.currentTarget.style.color='#0f172a'}}
+              onMouseLeave={e=>{e.currentTarget.style.background='#f1f5f9';e.currentTarget.style.color='#64748b'}}>
+              ✕
+            </button>
+            <div style={{ width:56, height:56, background:'linear-gradient(135deg, #e0f2fe, #bae6fd)', borderRadius:18, display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px', color:'#0284c7', boxShadow:'0 8px 16px rgba(2,132,199,0.15)' }}>
+              <span style={{ fontSize: '24px' }}>🚚</span>
+            </div>
+            
+            <h3 style={{ margin:'0 0 6px', fontSize:'1.2rem', fontWeight:900, color:'#0f172a' }}>Mã xuất trình tại kho</h3>
+            <p style={{ margin:'0 0 28px', fontSize:'0.85rem', color:'#64748b', lineHeight:1.5 }}>Lưu hình ảnh này gửi cho tài xế để đối chiếu <br/>khi xe đến cổng kho.</p>
+            
+            <RequestQRCode code={qrReq.requestCode} label="Mã yêu cầu" size={200} requestData={qrReq} />
+          </div>
+        </div>
       )}
     </div>
   );

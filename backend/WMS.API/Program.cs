@@ -111,6 +111,7 @@ builder.Services.AddScoped<IEquipmentIncidentRepository, EquipmentIncidentReposi
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionRepository, WMS.Infrastructure.Repositories.SubscriptionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionPackageRepository, WMS.Infrastructure.Repositories.SubscriptionPackageRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IReceiptNoteRepository, WMS.Infrastructure.Repositories.ReceiptNoteRepository>();
 
 // Services   
 builder.Services.AddMemoryCache();
@@ -195,7 +196,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000", "http://localhost:3001", "http://localhost:5173")
+            policy.SetIsOriginAllowed(origin => true) // Cho phép tất cả các origin để test nội bộ (LAN)
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();

@@ -172,7 +172,7 @@ export default function RenterOutboundList() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ backgroundColor: "#f8fafc" }}>
-                <th style={th}>ID</th>
+                <th style={th}>Mã yêu cầu</th>
                 <th style={th}>Kho xuất</th>
                 <th style={th}>Mặt hàng</th>
                 <th style={{ ...th, textAlign: "right" }}>Số lượng</th>
@@ -196,7 +196,10 @@ export default function RenterOutboundList() {
                 const unit = firstItem?.unit || "cái";
                 return (
                   <tr key={row.invReqId} style={{ backgroundColor: "#fff" }}>
-                    <td style={{ ...td, color: "#00b2d6", fontWeight: 700 }}>#{row.invReqId}</td>
+                    <td style={{ ...td, color: "#f59e0b", fontWeight: 700, whiteSpace: "nowrap" }}>
+                      <span style={{ fontSize: '0.87rem' }}>#{row.invReqId}</span>
+                      {row.requestCode && <div style={{ fontSize:'0.68rem', color:'#94a3b8', fontFamily:'monospace', marginTop:2 }}>{row.requestCode}</div>}
+                    </td>
                     <td style={{ ...td, maxWidth: "160px" }}><div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 500 }}>{row.warehouseName || "—"}</div></td>
                     <td style={{ ...td, maxWidth: "180px" }}>
                       <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "#1e293b" }}>{firstItem?.itemName || "—"}</div>
