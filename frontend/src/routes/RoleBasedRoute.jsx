@@ -24,8 +24,10 @@ function RoleBasedRoute({ allowedRoles }) {
     };
   }, [token]);
 
+  const location = window.location;
+
   if (!token) {
-    return <Navigate to="/auth" />;
+    return <Navigate to="/auth" state={{ mode: 'login', returnUrl: location.pathname + location.search }} />;
   }
 
   // Build set of effective roles: system role + tất cả warehouse roles

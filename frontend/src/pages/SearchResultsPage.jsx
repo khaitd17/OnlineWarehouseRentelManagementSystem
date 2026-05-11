@@ -656,7 +656,7 @@ export default function SearchResultsPage() {
                 </option>
               ))}
             </select>
-            <div className="hidden items-center rounded-lg bg-slate-100 p-1 lg:flex">
+            <div className="flex items-center rounded-lg bg-slate-100 p-1">
               <button
                 type="button"
                 onClick={() => setViewMode("list")}
@@ -679,11 +679,11 @@ export default function SearchResultsPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className={`${viewMode === "map" ? "hidden" : "block"} lg:block`}>
+        <div className={`mt-6 ${viewMode === "map" ? "grid gap-6 lg:grid-cols-[400px_minmax(0,1fr)]" : ""}`}>
+          <div className="block order-1">
             {loading ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, i) => (
+              <div className={`grid gap-4 ${viewMode === "map" ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
+                {Array.from({ length: viewMode === "map" ? 3 : 8 }).map((_, i) => (
                   <div key={i} className="h-80 animate-pulse rounded-2xl bg-slate-200" />
                 ))}
               </div>
@@ -714,7 +714,7 @@ export default function SearchResultsPage() {
                 </button>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className={`grid gap-4 ${viewMode === "map" ? "grid-cols-1" : "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"}`}>
                 {displayResults.map((w) => (
                   <WarehouseCard key={w.warehouseId} w={w} />
                 ))}
@@ -758,8 +758,8 @@ export default function SearchResultsPage() {
             )}
           </div>
 
-          <div className={`lg:block ${viewMode === "map" ? "block" : "hidden"}`}>
-            <div className="sticky top-24">
+          <div className={`${viewMode === "map" ? "block order-2 lg:order-2" : "hidden"}`}>
+            <div className="sticky top-24 h-[calc(100vh-120px)]">
               <SearchMapPanel warehouses={displayResults} />
             </div>
           </div>

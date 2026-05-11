@@ -22,12 +22,15 @@ axiosClient.interceptors.response.use(
             // Do not redirect if the request is a login attempt
             const originalUrl = error.config?.url || '';
             if (!originalUrl.includes('/auth/login')) {
+                const hadToken = !!localStorage.getItem("token");
                 // Token expired or invalid
                 localStorage.removeItem("token");
                 localStorage.removeItem("user");
                 
-                // Redirect to login page
-                window.location.href = "/auth";
+                if (hadToken) {
+                    // Redirect to login page if they were logged in but token expired
+                    window.location.href = `/auth?returnUrl=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+                }
             }
         }
         

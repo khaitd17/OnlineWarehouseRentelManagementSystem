@@ -167,14 +167,32 @@ const FloorPlanView = ({ areas, warehouseData }) => {
 const WarehouseDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    requestedArea: '',
-    startDate: '',
-    durationMonths: '',
-    notes: ''
+  const [formData, setFormData] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('pendingRentalRequest');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.id === id && parsed.formData) return parsed.formData;
+      }
+    } catch {}
+    return {
+      requestedArea: '',
+      startDate: '',
+      durationMonths: '',
+      notes: ''
+    };
   });
   const [areas, setAreas] = useState([]);
-  const [selectedArea, setSelectedArea] = useState(null); // chosen rental area
+  const [selectedArea, setSelectedArea] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('pendingRentalRequest');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.id === id && parsed.selectedArea) return parsed.selectedArea;
+      }
+    } catch {}
+    return null;
+  }); // chosen rental area
   const [warehouseData, setWarehouseData] = useState(null);
   const [gridLocations, setGridLocations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +200,16 @@ const WarehouseDetailsPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState(null);
   const [showCustomAreaModal, setShowCustomAreaModal] = useState(false);
-  const [customAreaData, setCustomAreaData] = useState(null); // { posX, posY, width, length, baseAreaId }
+  const [customAreaData, setCustomAreaData] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('pendingRentalRequest');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.id === id && parsed.customAreaData) return parsed.customAreaData;
+      }
+    } catch {}
+    return null;
+  }); // { posX, posY, width, length, baseAreaId }
   const [ratingsData, setRatingsData] = useState(null);
   const [replyText, setReplyText] = useState({});
   const [replyLoading, setReplyLoading] = useState(false);
@@ -490,6 +517,7 @@ const WarehouseDetailsPage = () => {
       setSelectedArea(null);
       setCustomAreaData(null);
       setSubmitMsg(null);
+      sessionStorage.removeItem('pendingRentalRequest');
       navigate('/my-rental-requests');
     } catch (err) {
       const msg = err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.';
@@ -500,7 +528,11 @@ const WarehouseDetailsPage = () => {
   };
 
   const handleSubmitRequest = () => {
-    if (!isLoggedIn) { navigate('/auth'); return; }
+    if (!isLoggedIn) { 
+      sessionStorage.setItem('pendingRentalRequest', JSON.stringify({ id, formData, selectedArea, customAreaData }));
+      navigate('/auth', { state: { mode: 'login', returnUrl: window.location.pathname + window.location.search } }); 
+      return; 
+    }
     // Basic validation before modal
     const duration = parseInt(formData.durationMonths);
     const today = new Date(); today.setHours(0,0,0,0);
@@ -1313,7 +1345,10 @@ const WarehouseDetailsPage = () => {
                     </>
                   ) : (
                     <button
-                      onClick={() => navigate('/auth')}
+                      onClick={() => {
+                        sessionStorage.setItem('pendingRentalRequest', JSON.stringify({ id, formData, selectedArea, customAreaData }));
+                        navigate('/auth', { state: { mode: 'login', returnUrl: window.location.pathname + window.location.search } });
+                      }}
                       style={{
                         width: '100%', backgroundColor: '#0095c7', color: '#fff',
                         padding: '14px', borderRadius: '8px', fontWeight: 700,
