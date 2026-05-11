@@ -3016,6 +3016,9 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
 
+                    b.Property<string>("GatePosition")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<double?>("Height")
                         .HasColumnType("float");
 
@@ -3194,6 +3197,59 @@ namespace WMS.Infrastructure.Migrations
                     b.HasIndex("WarehouseId");
 
                     b.ToTable("warehouse_documents", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.WarehouseGridLocation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AssetId")
+                        .HasColumnType("int")
+                        .HasColumnName("asset_id");
+
+                    b.Property<string>("Coordinates")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("coordinates");
+
+                    b.Property<string>("ItemName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("item_name");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<int?>("RenterId")
+                        .HasColumnType("int")
+                        .HasColumnName("renter_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("PK_warehouse_grid_locations");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("RenterId");
+
+                    b.HasIndex(new[] { "WarehouseId" }, "idx_warehouse_grid_locations_pos");
+
+                    b.ToTable("warehouse_grid_locations", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.WarehouseInventory", b =>
@@ -4337,6 +4393,34 @@ namespace WMS.Infrastructure.Migrations
                         .HasConstraintName("FK_warehouse_documents_warehouse");
 
                     b.Navigation("VerifiedByNavigation");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.WarehouseGridLocation", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.RenterAsset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_warehouse_grid_locations_asset");
+
+                    b.HasOne("WMS.Domain.Entities.User", "Renter")
+                        .WithMany()
+                        .HasForeignKey("RenterId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_warehouse_grid_locations_renter");
+
+                    b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_warehouse_grid_locations_wh");
+
+                    b.Navigation("Asset");
+
+                    b.Navigation("Renter");
 
                     b.Navigation("Warehouse");
                 });

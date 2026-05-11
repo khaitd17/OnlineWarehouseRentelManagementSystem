@@ -99,15 +99,22 @@ public class WarehouseController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> GetDetail(int id)
     {
-        var result = await _mediator.Send(new GetWarehouseDetailQuery
+        try 
         {
-            WarehouseId = id
-        });
+            var result = await _mediator.Send(new GetWarehouseDetailQuery
+            {
+                WarehouseId = id
+            });
 
-        if (result == null)
-            return NotFound();
+            if (result == null)
+                return NotFound();
 
-        return Ok(result);
+            return Ok(result);
+        }
+        catch (System.Exception ex)
+        {
+            return StatusCode(500, new { message = ex.ToString() });
+        }
     }
 
     [HttpGet("owner/{ownerId}")]
@@ -172,6 +179,9 @@ public class WarehouseController : ControllerBase
         // Empty string means clear; non-null means set; null means keep existing
         if (req.BoundaryPoints != null)
             warehouse.BoundaryPoints = string.IsNullOrEmpty(req.BoundaryPoints) ? null : req.BoundaryPoints;
+
+        if (req.GatePosition != null)
+            warehouse.GatePosition = string.IsNullOrEmpty(req.GatePosition) ? null : req.GatePosition;
 
         await repo.UpdateAsync(warehouse, HttpContext.RequestAborted);
 
@@ -353,4 +363,5 @@ public class WarehouseController : ControllerBase
 public class UpdateBoundaryRequest
 {
     public string? BoundaryPoints { get; set; }
+    public string? GatePosition { get; set; }
 }

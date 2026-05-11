@@ -55,7 +55,10 @@ public class GetPendingRequestsHandler : IRequestHandler<GetPendingRequestsQuery
                 ContractImageUrl = r.ContractImageUrl,
                 OwnerName = owner?.FullName ?? "",
                 OwnerEmail = owner?.Email ?? "",
-                OwnerPhone = owner?.Phone ?? ""
+                OwnerPhone = owner?.Phone ?? "",
+                // Pricing for prioritization
+                MonthlyPayment = warehouse?.PricePerM2 * (decimal)r.RequestedArea ?? 0,
+                TotalValue = (warehouse?.PricePerM2 * (decimal)r.RequestedArea ?? 0) * r.DurationMonths
             });
         }
         return result;

@@ -49,7 +49,10 @@ public class GetRentalRequestByIdHandler : IRequestHandler<GetRentalRequestByIdQ
             ReviewedByName = null,
             ReviewedAt = rentalRequest.ReviewedAt,
             RejectionReason = rentalRequest.RejectionReason,
-            ContractImageUrl = rentalRequest.ContractImageUrl
+            ContractImageUrl = rentalRequest.ContractImageUrl,
+            // Pricing for prioritization
+            MonthlyPayment = warehouse?.PricePerM2 * (decimal)rentalRequest.RequestedArea ?? 0,
+            TotalValue = (warehouse?.PricePerM2 * (decimal)rentalRequest.RequestedArea ?? 0) * rentalRequest.DurationMonths
         };
     }
 }

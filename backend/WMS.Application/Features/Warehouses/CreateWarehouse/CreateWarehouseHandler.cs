@@ -111,6 +111,7 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             Status = "DRAFT",
             PricePerM2 = request.PricePerM2,
             BoundaryPoints = string.IsNullOrEmpty(request.BoundaryPoints) ? null : request.BoundaryPoints,
+            GatePosition = string.IsNullOrEmpty(request.GatePosition) ? null : request.GatePosition,
         };
 
         var warehouseId = await _repository.CreateAsync(warehouse, cancellationToken);

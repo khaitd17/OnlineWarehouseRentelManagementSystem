@@ -93,6 +93,9 @@ public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IE
                 ExtensionLength   = r.ExtensionLength,
                 // Multi-zone
                 AdditionalZonesJson = r.AdditionalZonesJson,
+                // Pricing for prioritization
+                MonthlyPayment = warehouse?.PricePerM2 * (decimal)r.RequestedArea ?? 0,
+                TotalValue = (warehouse?.PricePerM2 * (decimal)r.RequestedArea ?? 0) * r.DurationMonths
             });
         }
         return result;

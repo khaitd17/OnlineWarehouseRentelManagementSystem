@@ -198,6 +198,11 @@ function buildMenu(systemRole, warehouses) {
       path: "/owner-inventory",
     });
     items.push({
+      icon: "map",
+      label: "Xếp hàng",
+      path: "/warehouse-grid-map",
+    });
+    items.push({
       icon: "fact_check",
       label: "Kiểm kê kho",
       path: "/owner-audit-sessions",
@@ -221,6 +226,11 @@ function buildMenu(systemRole, warehouses) {
       icon: "inventory",
       label: "Quản lí tồn kho",
       path: "/staff-inventory",
+    });
+    items.push({
+      icon: "map",
+      label: "Xếp hàng",
+      path: "/warehouse-grid-map",
     });
     items.push({
       icon: "history",
@@ -306,6 +316,11 @@ function buildMenu(systemRole, warehouses) {
       };
       if (!hasChecker) invItem.section = "KHO";
       items.push(invItem);
+      items.push({
+        icon: "map",
+        label: "Xếp hàng",
+        path: "/warehouse-grid-map",
+      });
     }
     if (hasInvOp) {
       items.push({

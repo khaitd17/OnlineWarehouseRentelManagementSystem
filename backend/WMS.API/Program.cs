@@ -114,6 +114,7 @@ builder.Services.AddScoped<IEquipmentIncidentRepository, EquipmentIncidentReposi
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, WMS.Infrastructure.Repositories.ContractExtensionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionRepository, WMS.Infrastructure.Repositories.SubscriptionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionPackageRepository, WMS.Infrastructure.Repositories.SubscriptionPackageRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseGridLocationRepository, WMS.Infrastructure.Repositories.WarehouseGridLocationRepository>();
 
 // Services   
 builder.Services.AddMemoryCache();
@@ -149,7 +150,9 @@ builder.Services.AddHangfire(config => config
             SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
             QueuePollInterval = TimeSpan.Zero,
             UseRecommendedIsolationLevel = true,
-            DisableGlobalLocks = true
+            DisableGlobalLocks = true,
+            EnableHeavyMigrations = true,
+            PrepareSchemaIfNecessary = true
         }));
 
 builder.Services.AddHangfireServer();

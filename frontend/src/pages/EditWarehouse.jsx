@@ -74,6 +74,7 @@ const EditWarehouse = () => {
   // ── Boundary polygon state ──────────────────────────────────────────
   const [showBoundaryEditor, setShowBoundaryEditor] = useState(false);
   const [boundaryJson, setBoundaryJson] = useState(null); // current saved JSON
+  const [gateJson, setGateJson] = useState(null);
 
   const DOC_TYPE_LABELS = {
     BUSINESS_LICENSE: "Giấy phép kinh doanh",
@@ -131,6 +132,7 @@ const EditWarehouse = () => {
     });
     // Load boundary points
     setBoundaryJson(res.data.boundaryPoints || null);
+    setGateJson(res.data.gatePosition || null);
   };
 
   useEffect(() => {
@@ -819,18 +821,19 @@ const EditWarehouse = () => {
               </div>
             </div>
 
-            {/* Area Management Section */}
-            <div style={{ 
-              backgroundColor: "#fff", padding: "2.5rem", borderRadius: "32px", 
-              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9" 
-            }}>
-               <RentalAreaManagement warehouseId={id} />
-            </div>
+
           </div>
 
           {/* Right Column: Map & Media */}
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem", position: "sticky", top: "20px" }}>
             
+            {/* Area Management Section */}
+            <div style={{ 
+              backgroundColor: "#fff", padding: "1.5rem", borderRadius: "32px", 
+              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9" 
+            }}>
+               <RentalAreaManagement warehouseId={id} />
+            </div>
             {/* Map Preview */}
             <div style={{ 
               backgroundColor: "#fff", padding: "1.5rem", borderRadius: "32px", 
@@ -949,10 +952,11 @@ const EditWarehouse = () => {
         <PolygonBoundaryEditor
           totalArea={parseFloat(formData.totalArea) || 0}
           initialJson={boundaryJson}
-          onSave={async (jsonString) => {
+          initialGateJson={gateJson}
+          onSave={async (jsonString, gateString) => {
             try {
               try {
-                await api.patch(`/Warehouse/${id}/boundary`, { boundaryPoints: jsonString });
+                await api.patch(`/Warehouse/${id}/boundary`, { boundaryPoints: jsonString, gatePosition: gateString });
               } catch {
                 // Fallback PUT với safe defaults
                 const res = await api.get(`/Warehouse/${id}`);
@@ -975,9 +979,11 @@ const EditWarehouse = () => {
                   height: d.height || 3,
                   pricePerM2: d.pricePerM2 || null,
                   boundaryPoints: jsonString,
+                  gatePosition: gateString,
                 });
               }
               setBoundaryJson(jsonString);
+              setGateJson(gateString);
               setShowBoundaryEditor(false);
               alert('Da luu so do kho thanh cong!');
             } catch (err) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 const DISPLAY = 460;
 const CELL_SIZE = 0.5;
@@ -13,8 +13,13 @@ const CELL_SIZE = 0.5;
  * @param {string|null} boundaryPoints — JSON string từ warehouse.boundaryPoints
  * @param {number}      totalArea      — warehouse.totalArea (m²)
  */
-export default function WarehouseFloorPlanView({ boundaryPoints, totalArea }) {
+export default function WarehouseFloorPlanView({ boundaryPoints, totalArea, gatePosition }) {
   const poly = parsePoly(boundaryPoints);
+  const gatePos = useMemo(() => {
+    if (!gatePosition) return null;
+    try { return typeof gatePosition === 'string' ? JSON.parse(gatePosition) : gatePosition; }
+    catch { return null; }
+  }, [gatePosition]);
 
   if (!poly || poly.length < 3) {
     return (
@@ -134,11 +139,40 @@ export default function WarehouseFloorPlanView({ boundaryPoints, totalArea }) {
                 stroke="#fff" strokeWidth={1.5} />
             );
           })}
+
+          {/* Cổng chính */}
+          {gatePos && isGrid && (gatePos.gx !== undefined) && (() => {
+            const gx = gatePos.gx;
+            const gy = gatePos.gy;
+            const sx = (gx - minX) * scale + pad;
+            const sy = (gy - minY) * scale + pad;
+            const angle = gatePos.angle || 0;
+            return (
+              <foreignObject x={sx - 55} y={sy - 16} width={110} height={32} style={{ overflow: 'visible', pointerEvents: 'none' }}>
+                <div style={{
+                  width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transform: `rotate(${angle}deg)`, transformOrigin: 'center center'
+                }}>
+                  <div style={{
+                    background: 'linear-gradient(135deg,#f59e0b,#d97706)', color: '#fff',
+                    padding: '3px 8px', borderRadius: '5px', fontWeight: 800, fontSize: '0.65rem',
+                    letterSpacing: '0.5px', boxShadow: '0 3px 8px rgba(245,158,11,0.4)',
+                    border: '1.5px solid #fff', whiteSpace: 'nowrap'
+                  }}>
+                    CỔNG CHÍNH VÀO KHO
+                  </div>
+                </div>
+              </foreignObject>
+            );
+          })()}
         </svg>
       </div>
 
       {/* Chú thích */}
-      <div style={{ display: 'flex', gap: 16, marginTop: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: 16, marginTop: '1.5rem', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic', marginRight: 4 }}>
+          📐 Mỗi ô = 0.5m × 0.5m
+        </span>
         {[
           ['rgba(14,165,233,0.2)', '1px solid #0095c7', 'Vung su dung'],
           ['rgba(100,116,139,0.25)', 'none', 'Ngoai bien kho'],
