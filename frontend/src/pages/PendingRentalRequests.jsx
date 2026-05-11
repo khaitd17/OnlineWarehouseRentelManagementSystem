@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import rentalService from "../services/rentalService";
 import warehouseService from "../services/warehouseService";
-import SignatureCanvas from "../components/SignatureCanvas";
+import contractTemplateService from "../services/contractTemplateService";
 import ProposedZonePreviewModal from "../components/warehouse/ProposedZonePreviewModal";
 import CustomAreaSelectorModal from "../components/warehouse/CustomAreaSelectorModal";
 import axiosClient from "../services/axiosClient";
@@ -37,6 +37,56 @@ const generateDefaultTerms = (req) => {
 4. Nếu Bên B chậm thanh toán quá 15 ngày, Bên A có quyền đơn phương chấm dứt hợp đồng.
 5. Tiền đặt cọc sẽ được hoàn trả khi hết hạn hợp đồng, sau khi trừ các khoản phí phát sinh (nếu có).
 6. Hai bên có thể thỏa thuận gia hạn hợp đồng trước khi hết hạn ít nhất 30 ngày.`;
+};
+
+const applyTemplateVariables = (content, req) => {
+  if (!content) return "";
+  const replacementMap = {
+    "{requestedArea}": `${req.requestedArea ?? ""}`,
+    "{warehouseName}": req.warehouseName ?? "",
+    "{warehouseAddress}": req.warehouseAddress ?? "",
+    "{renterName}": req.renterName ?? "",
+    "{durationMonths}": `${req.durationMonths ?? ""}`,
+    "[Diện tích thuê]": `${req.requestedArea ?? ""}`,
+    "[Tên kho]": req.warehouseName ?? "",
+    "[Địa chỉ kho]": req.warehouseAddress ?? "",
+    "[Người thuê]": req.renterName ?? "",
+    "[Thời hạn]": `${req.durationMonths ?? ""}`,
+  };
+
+  return Object.entries(replacementMap).reduce(
+    (result, [key, value]) => result.split(key).join(value),
+    content
+  );
+};
+
+const generateTermsFromTemplate = (template, req) => {
+  if (!template) return generateDefaultTerms(req);
+
+  const baseSections = [
+    template.useBasicInfoSection ? template.basicInfoContent : null,
+    template.usePaymentSection ? template.paymentContent : null,
+    template.useViolationSection ? template.violationContent : null,
+    template.useTerminationSection ? template.terminationContent : null,
+    template.useSignatureSection ? template.signatureContent : null,
+  ]
+    .map((section) => (section || "").trim())
+    .filter(Boolean)
+    .map((section) => applyTemplateVariables(section, req));
+
+  const additionalSections = (template.additionalTermsContent || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => applyTemplateVariables(line, req));
+
+  const rawSections = [...baseSections, ...additionalSections];
+
+  if (rawSections.length === 0) {
+    return generateDefaultTerms(req);
+  }
+
+  return rawSections.map((content, index) => `${index + 1}. ${content}`).join("\n");
 };
 
 // Icon helper
@@ -113,31 +163,55 @@ const PendingRentalRequests = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [createdContractId, setCreatedContractId] = useState(null);
   const [showSignatureStep, setShowSignatureStep] = useState(false);
-  const signatureCanvasRef = useRef(null);
 
   // Owner zone assignment
   const [showZoneAssignment, setShowZoneAssignment] = useState(false);
   const [zoneAssignmentData, setZoneAssignmentData] = useState(null); // warehouse data + areas for modal
   const [assignedZone, setAssignedZone] = useState(null); // { posX, posY, width, length, baseAreaId }
+  const [defaultContractTemplate, setDefaultContractTemplate] = useState(null);
 
   useEffect(() => {
     fetchRequests();
   }, [activeTab]);
+
+  useEffect(() => {
+    fetchDefaultTemplate();
+  }, []);
 
   const fetchRequests = async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await rentalService.getOwnerRequests(activeTab);
-      setRequests(data);
+      console.log(`[RentalRequests] Tab: ${activeTab}, Data:`, data);
+      
+      // Thay đổi 1: Sort tab PENDING theo tổng giá trị hợp đồng giảm dần
+      const sorted = activeTab === "PENDING"
+        ? [...data].sort((a, b) => {
+            const valA = Number(a.totalValue) || 0;
+            const valB = Number(b.totalValue) || 0;
+            return valB - valA;
+          })
+        : data;
+      setRequests(sorted);
     } catch (err) {
       console.error(err);
       setError(
         err.response?.data?.message ||
-          "Không thể tải danh sách yêu cầu"
+        "Không thể tải danh sách yêu cầu"
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDefaultTemplate = async () => {
+    try {
+      const template = await contractTemplateService.getOwnerDefaultTemplate();
+      setDefaultContractTemplate(template || null);
+    } catch (err) {
+      console.error("Không thể tải template hợp đồng mặc định:", err);
+      setDefaultContractTemplate(null);
     }
   };
 
@@ -176,7 +250,7 @@ const PendingRentalRequests = () => {
         durationMonths: req.durationMonths || "",
         monthlyPayment: calculatedMonthlyPayment.toFixed(0), // Tự động tính giá
         depositAmount: "",
-        terms: generateDefaultTerms(req),
+        terms: generateTermsFromTemplate(defaultContractTemplate, req),
         pricePerM2: pricePerM2, // Lưu giá/m2 để hiển thị
       });
       setContractImageFile(null);
@@ -220,8 +294,8 @@ const PendingRentalRequests = () => {
   };
 
   const handleApprove = async () => {
-    // If contract was already created (user went back from signature step),
-    // just show the signature step again instead of calling API
+    // If contract was already created (user went back from send draft step),
+    // just show the send draft step again instead of calling API
     if (createdContractId) {
       setShowSignatureStep(true);
       return;
@@ -239,19 +313,19 @@ const PendingRentalRequests = () => {
       alert("Vui lòng nhập thời hạn hợp đồng từ 1-120 tháng");
       return;
     }
-    
+
     // Validate Tiền đặt cọc
     const deposit = parseFloat(contractForm.depositAmount);
     const totalContractValue = calculateTotalValue(contractForm.monthlyPayment, contractForm.durationMonths);
     if (contractForm.depositAmount !== "" && (isNaN(deposit) || deposit < 0)) {
-        alert("Tiền đặt cọc không được nhỏ hơn 0.");
-        return;
+      alert("Tiền đặt cọc không được nhỏ hơn 0.");
+      return;
     }
     if (deposit > totalContractValue) {
-        alert("Tiền đặt cọc không được vượt quá tổng giá trị hợp đồng.");
-        return;
+      alert("Tiền đặt cọc không được vượt quá tổng giá trị hợp đồng.");
+      return;
     }
-    
+
     setActionLoading(true);
     try {
       let contractImageUrl = null;
@@ -280,11 +354,11 @@ const PendingRentalRequests = () => {
 
         // L-shaped extension zone
         if (assignedZone.extensionZone) {
-          payload.assignedHasExtensionZone     = true;
-          payload.assignedExtensionPositionX   = assignedZone.extensionZone.posX;
-          payload.assignedExtensionPositionY   = assignedZone.extensionZone.posY;
-          payload.assignedExtensionWidth       = assignedZone.extensionZone.width;
-          payload.assignedExtensionLength      = assignedZone.extensionZone.length;
+          payload.assignedHasExtensionZone = true;
+          payload.assignedExtensionPositionX = assignedZone.extensionZone.posX;
+          payload.assignedExtensionPositionY = assignedZone.extensionZone.posY;
+          payload.assignedExtensionWidth = assignedZone.extensionZone.width;
+          payload.assignedExtensionLength = assignedZone.extensionZone.length;
         }
 
         // Multi-zone: additional non-adjacent rectangles
@@ -311,29 +385,19 @@ const PendingRentalRequests = () => {
     }
   };
 
-  const handleOwnerSign = async () => {
-    if (!signatureCanvasRef.current || signatureCanvasRef.current.isEmpty()) {
-      alert("Vui lòng ký tên trước khi gửi hợp đồng");
-      return;
-    }
-
+  const handleSendDraft = async () => {
     try {
       setActionLoading(true);
-      const signatureBase64 = signatureCanvasRef.current.toBase64();
-      await rentalService.ownerSignContract(createdContractId, signatureBase64);
-      alert("Đã ký và gửi hợp đồng đến người thuê thành công!");
+      await rentalService.sendContractDraft(createdContractId);
+      alert("Đã gửi bản nháp hợp đồng đến người thuê!");
       closeModal();
-      fetchRequests(); // Reload list after signing
+      fetchRequests(); // Reload list after sending
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Có lỗi khi ký hợp đồng");
+      alert(err.response?.data?.message || "Có lỗi khi gửi bản nháp hợp đồng");
     } finally {
       setActionLoading(false);
     }
-  };
-
-  const handleClearSignature = () => {
-    signatureCanvasRef.current?.clear();
   };
 
   const handleReject = async () => {
@@ -372,31 +436,14 @@ const PendingRentalRequests = () => {
         <>
           <div style={{ marginBottom: "1.2rem" }}>
             <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.3rem" }}>
-              Ký hợp đồng trước khi gửi
+              Gửi bản nháp hợp đồng
             </h2>
             <p style={{ color: "#64748b", fontSize: "0.85rem", margin: 0 }}>
-              Vẽ chữ ký của bạn để hoàn tất và gửi hợp đồng đến người thuê
+              Xác nhận gửi bản nháp hợp đồng đến người thuê để bắt đầu đàm phán
             </p>
-          </div>
-
-          <div style={{ marginBottom: "1.5rem" }}>
-            <p style={{ color: "#64748b", marginBottom: "1rem", fontSize: "0.9rem" }}>
-              Vẽ chữ ký của bạn trên khung bên dưới
-            </p>
-            <SignatureCanvas ref={signatureCanvasRef} />
           </div>
 
           <div style={{ display: "flex", gap: "0.8rem", justifyContent: "flex-end", marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid #f1f5f9" }}>
-            <button
-              onClick={handleClearSignature}
-              style={{
-                padding: "0.7rem 1.5rem", borderRadius: "10px",
-                border: "1px solid #e2e8f0", backgroundColor: "#fff",
-                color: "#64748b", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem",
-              }}
-            >
-              Xóa chữ ký
-            </button>
             <button
               onClick={() => setShowSignatureStep(false)}
               disabled={actionLoading}
@@ -409,7 +456,7 @@ const PendingRentalRequests = () => {
               Quay lại
             </button>
             <button
-              onClick={handleOwnerSign}
+              onClick={handleSendDraft}
               disabled={actionLoading}
               style={{
                 padding: "0.7rem 1.5rem", borderRadius: "10px", border: "none",
@@ -418,7 +465,7 @@ const PendingRentalRequests = () => {
                 cursor: actionLoading ? "not-allowed" : "pointer", fontSize: "0.9rem",
               }}
             >
-              {actionLoading ? "Đang gửi..." : "Ký và gửi hợp đồng"}
+              {actionLoading ? "Đang gửi..." : "Gửi bản nháp"}
             </button>
           </div>
         </>
@@ -925,7 +972,7 @@ const PendingRentalRequests = () => {
           Xem xét và gửi hợp đồng hoặc từ chối các yêu cầu thuê kho
         </p>
         {!loading && requests.length > 0 && (
-          <div style={{ display: "flex", gap: 24, marginTop: 20, position: "relative" }}>
+          <div style={{ display: "flex", gap: 16, marginTop: 20, position: "relative", flexWrap: "wrap" }}>
             <div style={{
               padding: "10px 20px", borderRadius: 12,
               background: "rgba(255,255,255,0.08)",
@@ -937,6 +984,26 @@ const PendingRentalRequests = () => {
                 {activeTab === "PENDING" ? "Chờ duyệt" : "Đã duyệt"}
               </div>
             </div>
+            {/* Thay đổi 7: Stat giá trị cao nhất (chỉ tab PENDING) */}
+            {activeTab === "PENDING" && (() => {
+              const top = requests[0];
+              const topVal = top?.totalValue || 0;
+              return topVal > 0 ? (
+                <div style={{
+                  padding: "10px 20px", borderRadius: 12,
+                  background: "rgba(245,158,11,0.18)",
+                  backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(245,158,11,0.35)",
+                }}>
+                  <div style={{ fontSize: "1rem", fontWeight: 800, color: "#fbbf24", lineHeight: 1.3 }}>
+                    {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(topVal)}
+                  </div>
+                  <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "rgba(253,211,77,0.85)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    ⭐ Giá trị cao nhất
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
         )}
       </div>
@@ -1016,22 +1083,35 @@ const PendingRentalRequests = () => {
           {requests.map((req, idx) => {
             const status = statusColors[req.status] || { bg: "#f1f5f9", color: "#64748b", label: req.status };
             const accentColor = req.status === "PENDING" ? "#f59e0b" : req.status === "APPROVED" ? "#22c55e" : "#94a3b8";
+            // Thay đổi 2: Xác định card ưu tiên cao nhất (Top 1 sau khi sort)
+            const totalValue = Number(req.totalValue) || 0;
+            const isTopPriority = activeTab === "PENDING" && idx === 0 && totalValue > 0;
             return (
               <div
                 key={req.requestId}
                 className="ow-card"
                 style={{
-                  background: "#fff", borderRadius: 18,
+                  // Thay đổi 3: Card top 1 có viền vàng + nền amber nhạt
+                  background: isTopPriority
+                    ? "linear-gradient(180deg, #fffbeb 0%, #fff 100px)"
+                    : "#fff",
+                  borderRadius: 18,
                   overflow: "hidden",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03)",
-                  border: "1px solid #eef1f6",
+                  boxShadow: isTopPriority
+                    ? "0 8px 32px rgba(245,158,11,0.2), 0 2px 8px rgba(0,0,0,0.06)"
+                    : "0 2px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03)",
+                  border: isTopPriority
+                    ? "2px solid #fbbf24"
+                    : "1px solid #eef1f6",
                   animation: `cardIn 0.4s ease ${idx * 0.06}s both`,
                 }}
               >
-                {/* Top accent bar */}
+                {/* Thay đổi 4: Top accent bar — vàng cho card top 1 */}
                 <div style={{
-                  height: 4,
-                  background: `linear-gradient(90deg, ${accentColor}, ${accentColor}88, transparent)`,
+                  height: isTopPriority ? 5 : 4,
+                  background: isTopPriority
+                    ? "linear-gradient(90deg, #f59e0b, #fbbf24 40%, #fde68a 70%, transparent)"
+                    : `linear-gradient(90deg, ${accentColor}, ${accentColor}88, transparent)`,
                 }} />
 
                 <div style={{ padding: "22px 28px 0" }}>
@@ -1041,7 +1121,7 @@ const PendingRentalRequests = () => {
                     alignItems: "flex-start", gap: 16, marginBottom: 18,
                   }}>
                     <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
                         <span style={{
                           fontSize: "0.72rem", fontWeight: 800,
                           color: accentColor, letterSpacing: "0.08em", textTransform: "uppercase",
@@ -1056,6 +1136,21 @@ const PendingRentalRequests = () => {
                         }}>
                           {status.label}
                         </span>
+                        {/* Thay đổi 5: Badge ưu tiên cao nhất */}
+                        {isTopPriority && (
+                          <span style={{
+                            padding: "3px 12px", borderRadius: 20,
+                            background: "linear-gradient(90deg, #f59e0b, #d97706)",
+                            color: "#fff",
+                            fontSize: "0.7rem", fontWeight: 800,
+                            letterSpacing: "0.03em",
+                            display: "flex", alignItems: "center", gap: 3,
+                            boxShadow: "0 2px 8px rgba(245,158,11,0.4)",
+                            whiteSpace: "nowrap",
+                          }}>
+                            ⭐ Ưu tiên cao nhất
+                          </span>
+                        )}
                       </div>
                       <h3 style={{
                         fontSize: "1.18rem", fontWeight: 800, color: "#0f172a",
@@ -1090,28 +1185,37 @@ const PendingRentalRequests = () => {
                       { label: "Diện tích yêu cầu", value: `${req.requestedArea} m²` },
                       req.isCustomArea
                         ? (() => {
-                            const ownerAssigned = !!req.isOwnerAssigned;
-                            const label = ownerAssigned ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ";
-                            const w = req.proposedWidth;
-                            const l = req.proposedLength;
-                            let value = `${w}m × ${l}m`;
-                            if (req.additionalZonesJson) {
-                              try {
-                                const addZones = JSON.parse(req.additionalZonesJson);
-                                value = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m²`;
-                              } catch(e) {}
-                            }
-                            return {
-                              label,
-                              value,
-                              highlighted: ownerAssigned,
-                              customZone: !ownerAssigned,
-                              ownerZone: ownerAssigned,
-                            };
-                          })()
+                          const ownerAssigned = !!req.isOwnerAssigned;
+                          const label = ownerAssigned ? "Khu vực chủ kho đã sắp xếp" : "Khu vực người thuê tự vẽ";
+                          const w = req.proposedWidth;
+                          const l = req.proposedLength;
+                          let value = `${w}m × ${l}m`;
+                          if (req.additionalZonesJson) {
+                            try {
+                              const addZones = JSON.parse(req.additionalZonesJson);
+                              value = `${1 + addZones.length} vùng — Tổng ${req.requestedArea} m²`;
+                            } catch (e) { }
+                          }
+                          return {
+                            label,
+                            value,
+                            highlighted: ownerAssigned,
+                            customZone: !ownerAssigned,
+                            ownerZone: ownerAssigned,
+                          };
+                        })()
                         : (req.rentalAreaName ? { label: "Ô khu đã chọn", value: `${req.rentalAreaName} — ${req.rentalAreaSize} m²`, highlighted: true } : null),
                       { label: "Thời hạn", value: `${req.durationMonths} tháng` },
                       { label: "Ngày bắt đầu", value: formatDate(req.startDate) },
+                      // Thay đổi 6: Chip tổng giá trị hợp đồng
+                      totalValue > 0
+                        ? {
+                          label: "Tổng giá trị HĐ",
+                          value: new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(totalValue),
+                          highlighted: isTopPriority,
+                          isTotalValue: true,
+                        }
+                        : null,
                     ].filter(Boolean).map(item => (
                       <div key={item.label} style={{
                         padding: "8px 14px", borderRadius: 10,

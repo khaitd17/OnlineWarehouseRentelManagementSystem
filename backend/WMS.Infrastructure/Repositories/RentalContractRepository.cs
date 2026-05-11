@@ -108,6 +108,11 @@ public class RentalContractRepository : IRentalContractRepository
 
         dbContract.Status = contract.Status;
         dbContract.UpdatedAt = DateTime.UtcNow;
+        dbContract.StartDate = DateOnly.FromDateTime(contract.StartDate);
+        dbContract.EndDate = DateOnly.FromDateTime(contract.EndDate);
+        dbContract.MonthlyPayment = contract.MonthlyPayment;
+        dbContract.TotalValue = contract.TotalValue;
+        dbContract.DepositAmount = contract.DepositAmount;
         dbContract.ContractUrl = contract.ContractFileUrl;
         dbContract.SignedFileUrl = contract.SignedFileUrl;
         dbContract.SignedAt = contract.SignedAt;

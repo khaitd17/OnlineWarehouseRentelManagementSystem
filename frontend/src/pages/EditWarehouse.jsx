@@ -5,6 +5,8 @@ import { uploadWarehouseImage, uploadWarehouseDocument, getWarehouseDocuments, d
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import RentalAreaManagement from "../components/warehouse/RentalAreaManagement";
+import PolygonBoundaryEditor from "../components/warehouse/PolygonBoundaryEditor";
+import { parseBoundary } from "../utils/polygonUtils";
 
 const customMarkerIcon = new L.Icon({
   iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png",
@@ -69,6 +71,11 @@ const EditWarehouse = () => {
   const [docUploadLoading, setDocUploadLoading] = useState(false);
   const [pendingDocDeletes, setPendingDocDeletes] = useState([]);
 
+  // ── Boundary polygon state ──────────────────────────────────────────
+  const [showBoundaryEditor, setShowBoundaryEditor] = useState(false);
+  const [boundaryJson, setBoundaryJson] = useState(null); // current saved JSON
+  const [gateJson, setGateJson] = useState(null);
+
   const DOC_TYPE_LABELS = {
     BUSINESS_LICENSE: "Giấy phép kinh doanh",
     WAREHOUSE_CERT: "Giấy chứng nhận quyền sử dụng kho",
@@ -123,6 +130,9 @@ const EditWarehouse = () => {
       height: res.data.height ?? res.data.Height ?? "",
       pricePerM2: res.data.pricePerM2 ?? res.data.PricePerM2 ?? ""
     });
+    // Load boundary points
+    setBoundaryJson(res.data.boundaryPoints || null);
+    setGateJson(res.data.gatePosition || null);
   };
 
   useEffect(() => {
@@ -758,18 +768,72 @@ const EditWarehouse = () => {
               </button>
             </form>
 
-            {/* Area Management Section */}
-            <div style={{ 
-              backgroundColor: "#fff", padding: "2.5rem", borderRadius: "32px", 
-              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9" 
+            {/* Boundary Shape Section */}
+            <div style={{
+              backgroundColor: "#fff", padding: "2rem", borderRadius: "24px",
+              boxShadow: "0 10px 30px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9"
             }}>
-               <RentalAreaManagement warehouseId={id} />
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: "1rem" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#1e293b" }}>
+                    Sơ đồ kho
+                  </h3>
+                  <p style={{ margin: "4px 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
+                    {boundaryJson
+                      ? `Đã có biên — ${parseBoundary(boundaryJson)?.length || 0} điểm`
+                      : 'Mặc định: hình chữ nhật đầy đủ (chưa vẽ biên)'}
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowBoundaryEditor(true)}
+                    style={{
+                      padding: "9px 18px", borderRadius: "10px", fontWeight: 700,
+                      fontSize: "0.88rem", cursor: "pointer", border: "none",
+                      background: "linear-gradient(135deg,#0095c7,#0284c7)",
+                      color: "#fff", boxShadow: "0 4px 12px rgba(0,149,199,0.25)"
+                    }}
+                  >
+                    {boundaryJson ? 'Chỉnh sửa sơ đồ' : 'Vẽ sơ đồ kho'}
+                  </button>
+                  {boundaryJson && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm('Xóa sơ đồ kho? Kho sẽ hiển thị hình chữ nhật đầy đủ.')) return;
+                        try {
+                          await api.patch(`/Warehouse/${id}/boundary`, { boundaryPoints: '' });
+                          setBoundaryJson(null);
+                          alert('Đã xóa sơ đồ kho.');
+                        } catch (err) { alert('Lỗi khi xóa sơ đồ: ' + (err.response?.data?.message || err.message)); }
+                      }}
+                      style={{
+                        padding: "9px 18px", borderRadius: "10px", fontWeight: 700,
+                        fontSize: "0.88rem", cursor: "pointer",
+                        border: "1px solid #fca5a5", background: "#fff5f5", color: "#dc2626"
+                      }}
+                    >
+                      Xóa sơ đồ
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
+
+
           </div>
 
           {/* Right Column: Map & Media */}
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem", position: "sticky", top: "20px" }}>
             
+            {/* Area Management Section */}
+            <div style={{ 
+              backgroundColor: "#fff", padding: "1.5rem", borderRadius: "32px", 
+              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9" 
+            }}>
+               <RentalAreaManagement warehouseId={id} />
+            </div>
             {/* Map Preview */}
             <div style={{ 
               backgroundColor: "#fff", padding: "1.5rem", borderRadius: "32px", 
@@ -882,6 +946,53 @@ const EditWarehouse = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Polygon Boundary Editor Modal ── */}
+      {showBoundaryEditor && (
+        <PolygonBoundaryEditor
+          totalArea={parseFloat(formData.totalArea) || 0}
+          initialJson={boundaryJson}
+          initialGateJson={gateJson}
+          onSave={async (jsonString, gateString) => {
+            try {
+              try {
+                await api.patch(`/Warehouse/${id}/boundary`, { boundaryPoints: jsonString, gatePosition: gateString });
+              } catch {
+                // Fallback PUT với safe defaults
+                const res = await api.get(`/Warehouse/${id}`);
+                const d = res.data;
+                await api.put(`/Warehouse/${id}`, {
+                  warehouseId: parseInt(id),
+                  ownerId: d.ownerId,
+                  name: d.name,
+                  address: d.address,
+                  warehouseType: d.warehouseType || 'Khác',
+                  lat: d.lat || null, lng: d.lng || null,
+                  description: d.description || '',
+                  is24HoursAccess: d.is24HoursAccess ?? true,
+                  openTime: d.is24HoursAccess ? null : d.openTime,
+                  closeTime: d.is24HoursAccess ? null : d.closeTime,
+                  operatingHours: d.operatingHours || '24/7',
+                  status: d.status,
+                  mainDoorDirection: d.mainDoorDirection || null,
+                  totalArea: d.totalArea || 100,
+                  height: d.height || 3,
+                  pricePerM2: d.pricePerM2 || null,
+                  boundaryPoints: jsonString,
+                  gatePosition: gateString,
+                });
+              }
+              setBoundaryJson(jsonString);
+              setGateJson(gateString);
+              setShowBoundaryEditor(false);
+              alert('Da luu so do kho thanh cong!');
+            } catch (err) {
+              alert('Loi khi luu so do: ' + (err.response?.data?.message || err.message));
+            }
+          }}
+          onCancel={() => setShowBoundaryEditor(false)}
+        />
+      )}
     </div>
   );
 };

@@ -342,7 +342,7 @@ namespace WMS.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)")
-                        .HasDefaultValue("PENDING_OWNER_SIGNATURE")
+                        .HasDefaultValue("DRAFT")
                         .HasColumnName("status");
 
                     b.Property<DateTime?>("TerminatedAt")
@@ -527,6 +527,103 @@ namespace WMS.Infrastructure.Migrations
                     b.ToTable("contract_logs", (string)null);
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.ContractRevisionComment", b =>
+                {
+                    b.Property<int>("CommentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("comment_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("CommentId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("message");
+
+                    b.Property<int>("ThreadId")
+                        .HasColumnType("int")
+                        .HasColumnName("thread_id");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("CommentId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex(new[] { "ThreadId" }, "idx_contract_revision_comments_thread");
+
+                    b.ToTable("contract_revision_comments", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ContractRevisionThread", b =>
+                {
+                    b.Property<int>("ThreadId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("thread_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ThreadId"));
+
+                    b.Property<int>("ContractId")
+                        .HasColumnType("int")
+                        .HasColumnName("contract_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("resolved_at");
+
+                    b.Property<int?>("ResolvedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("resolved_by");
+
+                    b.Property<string>("Section")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasColumnName("section");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasDefaultValue("OPEN")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ThreadId");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("ResolvedBy");
+
+                    b.HasIndex(new[] { "ContractId" }, "idx_contract_revision_threads_contract");
+
+                    b.ToTable("contract_revision_threads", (string)null);
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.ContractVerification", b =>
                 {
                     b.Property<int>("VerificationId")
@@ -578,6 +675,49 @@ namespace WMS.Infrastructure.Migrations
                     b.HasIndex(new[] { "UserId" }, "idx_cv_user");
 
                     b.ToTable("contract_verifications", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ContractVersion", b =>
+                {
+                    b.Property<int>("VersionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("version_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VersionId"));
+
+                    b.Property<int>("ContractId")
+                        .HasColumnType("int")
+                        .HasColumnName("contract_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("snapshot_json");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("int")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("VersionId");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex(new[] { "ContractId" }, "idx_contract_versions_contract");
+
+                    b.HasIndex(new[] { "ContractId", "VersionNumber" }, "idx_contract_versions_contract_version");
+
+                    b.ToTable("contract_versions", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.Equipment", b =>
@@ -1219,6 +1359,104 @@ namespace WMS.Infrastructure.Migrations
                     b.HasIndex(new[] { "UserId" }, "idx_notifications_user");
 
                     b.ToTable("notifications", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.OwnerContractTemplate", b =>
+                {
+                    b.Property<int>("TemplateId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("template_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TemplateId"));
+
+                    b.Property<string>("AdditionalTermsContent")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("additional_terms_content");
+
+                    b.Property<string>("BasicInfoContent")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("basic_info_content");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_default");
+
+                    b.Property<int>("OwnerId")
+                        .HasColumnType("int")
+                        .HasColumnName("owner_id");
+
+                    b.Property<string>("PaymentContent")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("payment_content");
+
+                    b.Property<string>("SignatureContent")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("signature_content");
+
+                    b.Property<string>("TemplateName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)")
+                        .HasColumnName("template_name");
+
+                    b.Property<string>("TerminationContent")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("termination_content");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.Property<bool>("UseBasicInfoSection")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("use_basic_info_section");
+
+                    b.Property<bool>("UsePaymentSection")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("use_payment_section");
+
+                    b.Property<bool>("UseSignatureSection")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("use_signature_section");
+
+                    b.Property<bool>("UseTerminationSection")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("use_termination_section");
+
+                    b.Property<bool>("UseViolationSection")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true)
+                        .HasColumnName("use_violation_section");
+
+                    b.Property<string>("ViolationContent")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("violation_content");
+
+                    b.HasKey("TemplateId");
+
+                    b.HasIndex(new[] { "OwnerId", "IsDefault" }, "idx_owner_contract_templates_default");
+
+                    b.HasIndex(new[] { "OwnerId" }, "idx_owner_contract_templates_owner");
+
+                    b.ToTable("owner_contract_templates", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.PasswordResetToken", b =>
@@ -2761,6 +2999,9 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("float")
                         .HasColumnName("available_volume");
 
+                    b.Property<string>("BoundaryPoints")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<TimeSpan?>("CloseTime")
                         .HasColumnType("time")
                         .HasColumnName("close_time");
@@ -2774,6 +3015,9 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("description");
+
+                    b.Property<string>("GatePosition")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<double?>("Height")
                         .HasColumnType("float");
@@ -2953,6 +3197,59 @@ namespace WMS.Infrastructure.Migrations
                     b.HasIndex("WarehouseId");
 
                     b.ToTable("warehouse_documents", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.WarehouseGridLocation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AssetId")
+                        .HasColumnType("int")
+                        .HasColumnName("asset_id");
+
+                    b.Property<string>("Coordinates")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("coordinates");
+
+                    b.Property<string>("ItemName")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("item_name");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int")
+                        .HasColumnName("quantity");
+
+                    b.Property<int?>("RenterId")
+                        .HasColumnType("int")
+                        .HasColumnName("renter_id");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("WarehouseId")
+                        .HasColumnType("int")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("PK_warehouse_grid_locations");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("RenterId");
+
+                    b.HasIndex(new[] { "WarehouseId" }, "idx_warehouse_grid_locations_pos");
+
+                    b.ToTable("warehouse_grid_locations", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.WarehouseInventory", b =>
@@ -3520,6 +3817,77 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Reviewer");
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.ContractRevisionComment", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.ContractRevisionThread", "Thread")
+                        .WithMany("Comments")
+                        .HasForeignKey("ThreadId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_contract_revision_comments_thread");
+
+                    b.HasOne("WMS.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_contract_revision_comments_user");
+
+                    b.Navigation("Thread");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ContractRevisionThread", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.Contract", "Contract")
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_contract_revision_threads_contract");
+
+                    b.HasOne("WMS.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_contract_revision_threads_user");
+
+                    b.HasOne("WMS.Domain.Entities.User", "ResolvedByUser")
+                        .WithMany()
+                        .HasForeignKey("ResolvedBy")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_contract_revision_threads_resolved_by");
+
+                    b.Navigation("Contract");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("ResolvedByUser");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ContractVersion", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.Contract", "Contract")
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_contract_versions_contract");
+
+                    b.HasOne("WMS.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_contract_versions_user");
+
+                    b.Navigation("Contract");
+
+                    b.Navigation("CreatedByUser");
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.Equipment", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.RentalArea", "RentalArea")
@@ -3720,6 +4088,17 @@ namespace WMS.Infrastructure.Migrations
                         .HasConstraintName("FK_notifications_user");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.OwnerContractTemplate", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.User", "Owner")
+                        .WithMany("OwnerContractTemplates")
+                        .HasForeignKey("OwnerId")
+                        .IsRequired()
+                        .HasConstraintName("FK_owner_contract_templates_owner");
+
+                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.PasswordResetToken", b =>
@@ -4018,6 +4397,34 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.WarehouseGridLocation", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.RenterAsset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_warehouse_grid_locations_asset");
+
+                    b.HasOne("WMS.Domain.Entities.User", "Renter")
+                        .WithMany()
+                        .HasForeignKey("RenterId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_warehouse_grid_locations_renter");
+
+                    b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_warehouse_grid_locations_wh");
+
+                    b.Navigation("Asset");
+
+                    b.Navigation("Renter");
+
+                    b.Navigation("Warehouse");
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.WarehouseInventory", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
@@ -4173,6 +4580,11 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Ratings");
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.ContractRevisionThread", b =>
+                {
+                    b.Navigation("Comments");
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.Equipment", b =>
                 {
                     b.Navigation("History");
@@ -4230,6 +4642,8 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("InventoryRequestConfirmedByNavigations");
 
                     b.Navigation("InventoryRequestRenters");
+
+                    b.Navigation("OwnerContractTemplates");
 
                     b.Navigation("Ratings");
 

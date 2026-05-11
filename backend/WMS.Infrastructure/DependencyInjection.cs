@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IRentalAreaRepository, RentalAreaRepository>();
         services.AddScoped<ISepayService, SepayService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddScoped<IWarehouseGridLocationRepository, WarehouseGridLocationRepository>();
 
         // ── AI Analysis Feature ─────────────────────────────────────
         services.AddScoped<IAiAnalysisSessionRepository, AiAnalysisSessionRepository>();

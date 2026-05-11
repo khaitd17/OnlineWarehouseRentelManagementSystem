@@ -47,4 +47,8 @@ public class RentalRequestDto
 
     // Multi-zone (additional non-adjacent rectangles as JSON array)
     public string? AdditionalZonesJson { get; set; }
+
+    // Pricing for prioritization
+    public decimal? MonthlyPayment { get; set; }
+    public decimal? TotalValue { get; set; }
 }

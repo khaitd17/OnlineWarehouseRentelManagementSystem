@@ -108,6 +108,51 @@ const rentalService = {
     return response.data;
   },
 
+  sendContractDraft: async (contractId) => {
+    const response = await axiosClient.post(`/rental-contracts/${contractId}/send-draft`);
+    return response.data;
+  },
+
+  requestContractRevision: async (contractId, payload) => {
+    const response = await axiosClient.post(`/rental-contracts/${contractId}/request-revision`, payload);
+    return response.data;
+  },
+
+  replyContractRevision: async (threadId, message) => {
+    const response = await axiosClient.post(`/rental-contracts/revision-threads/${threadId}/reply`, { message });
+    return response.data;
+  },
+
+  acceptContractRevision: async (threadId) => {
+    const response = await axiosClient.post(`/rental-contracts/revision-threads/${threadId}/accept`);
+    return response.data;
+  },
+
+  rejectContractRevision: async (threadId) => {
+    const response = await axiosClient.post(`/rental-contracts/revision-threads/${threadId}/reject`);
+    return response.data;
+  },
+
+  applyContractChanges: async (contractId, payload) => {
+    const response = await axiosClient.post(`/rental-contracts/${contractId}/apply-changes`, payload);
+    return response.data;
+  },
+
+  approveContractForSigning: async (contractId) => {
+    const response = await axiosClient.post(`/rental-contracts/${contractId}/approve-for-signing`);
+    return response.data;
+  },
+
+  getContractRevisionThreads: async (contractId) => {
+    const response = await axiosClient.get(`/rental-contracts/${contractId}/revision-threads`);
+    return response.data;
+  },
+
+  getContractVersions: async (contractId) => {
+    const response = await axiosClient.get(`/rental-contracts/${contractId}/versions`);
+    return response.data;
+  },
+
   sendContractOtp: async (contractId) => {
     const response = await axiosClient.post(`/rental-contracts/${contractId}/send-otp`);
     return response.data;
@@ -344,6 +389,24 @@ const rentalService = {
         icon: '📝',
         description: 'Hợp đồng đang được soạn thảo'
       },
+      'NEGOTIATING': {
+        text: 'Đang đàm phán',
+        color: 'blue',
+        icon: '💬',
+        description: 'Hai bên đang trao đổi điều khoản'
+      },
+      'REVISION_REQUESTED': {
+        text: 'Yêu cầu chỉnh sửa',
+        color: 'orange',
+        icon: '🛠️',
+        description: 'Có yêu cầu chỉnh sửa điều khoản'
+      },
+      'APPROVED_FOR_SIGNING': {
+        text: 'Sẵn sàng ký',
+        color: 'teal',
+        icon: '✅',
+        description: 'Hợp đồng đã được duyệt để ký'
+      },
       'PENDING_OWNER_SIGNATURE': {
         text: 'Chờ chủ kho ký',
         color: 'orange',
@@ -567,7 +630,7 @@ const rentalService = {
 
     switch (action) {
       case 'sign':
-        if (contract.status !== 'PENDING_SIGNATURE' || !isRenter) {
+        if (contract.status !== 'PENDING_RENTER_SIGNATURE' || !isRenter) {
           return { allowed: false, reason: 'Không thể ký hợp đồng ở trạng thái này' };
         }
         break;

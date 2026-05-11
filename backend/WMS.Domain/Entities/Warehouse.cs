@@ -30,9 +30,21 @@ public partial class Warehouse
     public double? Length { get; set; }
     /// <summary>Chiều cao kho (m) — bắt buộc từ v2, dùng để hiển thị thông tin kho.</summary>
     public double? Height { get; set; }
+
+    /// <summary>
+    /// Polygon boundary của kho dưới dạng JSON grid coordinates.
+    /// Format: [{"gx":int,"gy":int},...] — mỗi ô = 0.5m × 0.5m.
+    /// Null = fallback hình chữ nhật đầy đủ (backward compatible).
+    /// </summary>
+    public string? BoundaryPoints { get; set; }
+
     public string? MainDoorDirection { get; set; }
 
+    /// <summary>Vị trí cổng chính trên bản đồ. JSON: {"px":0.5,"py":1.0}</summary>
+    public string? GatePosition { get; set; }
+
     public double AvailableArea { get; set; }
+
 
     /// <summary>Thể tích còn trống (m³) – dùng cho AI gợi ý kho theo đồ vật.</summary>
     public double? AvailableVolume { get; set; }

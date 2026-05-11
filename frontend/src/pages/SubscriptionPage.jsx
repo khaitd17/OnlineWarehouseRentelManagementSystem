@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { Card, Button, Modal, Spin, Typography, Space, message, Row, Col } from 'antd';
-import { CheckCircleOutlined, StarOutlined, RocketOutlined } from '@ant-design/icons';
+import { Button, Modal, Spin, Typography, Space, message, Row, Col } from 'antd';
+import { CheckCircleOutlined, StarOutlined, RocketOutlined, PlusCircleOutlined, HomeOutlined } from '@ant-design/icons';
 import subscriptionService from '../services/subscriptionService';
 import authService from '../services/authService';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text, Paragraph } = Typography;
 
 const SubscriptionPage = () => {
+  const navigate = useNavigate();
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [packages, setPackages] = useState([]);
@@ -85,11 +88,8 @@ const SubscriptionPage = () => {
         subscriptionService.getSubscriptionStatus()
           .then(res => { if (res.data?.success !== undefined) setCurrentStatus(res.data); })
           .catch(() => {});
-        Modal.success({
-          title: 'Thanh toán thành công!',
-          content: `Gói ${targetPlan} đã được kích hoạt. Hãy tận hưởng nhé!`,
-          onOk: () => { window.location.href = '/owner-dashboard'; }
-        });
+        // Hiển thị modal thành công cho phép user chọn tạo kho hoặc về dashboard
+        setSuccessModalVisible(true);
       }
     };
     window.addEventListener('authChange', handleAuthChange);
@@ -399,6 +399,63 @@ const SubscriptionPage = () => {
             <Spin size="large" />
           </div>
         )}
+      </Modal>
+
+      {/* ── Modal Thanh toán thành công ── */}
+      <Modal
+        open={successModalVisible}
+        onCancel={() => { setSuccessModalVisible(false); navigate('/owner-dashboard'); }}
+        footer={null}
+        width={480}
+        centered
+        closable={false}
+        maskClosable={false}
+      >
+        <div style={{ textAlign: 'center', padding: '24px 16px' }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 20px', boxShadow: '0 8px 20px rgba(16,185,129,0.25)'
+          }}>
+            <CheckCircleOutlined style={{ fontSize: 40, color: '#10b981' }} />
+          </div>
+          <h2 style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>
+            Thanh toán thành công!
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '1rem', marginBottom: 28 }}>
+            Gói <strong style={{ color: '#0ea5e9' }}>{targetPlan}</strong> đã được kích hoạt.
+            Bạn có muốn tạo kho ngay bây giờ không?
+          </p>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Button
+              size="large"
+              block
+              onClick={() => { setSuccessModalVisible(false); navigate('/owner-dashboard'); }}
+              style={{
+                height: 52, borderRadius: 12, fontWeight: 600, fontSize: '0.95rem',
+                border: '1.5px solid #e2e8f0', color: '#475569'
+              }}
+              icon={<HomeOutlined />}
+            >
+              Về trang quản lý
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              block
+              onClick={() => { setSuccessModalVisible(false); navigate('/create-warehouse'); }}
+              style={{
+                height: 52, borderRadius: 12, fontWeight: 700, fontSize: '0.95rem',
+                background: 'linear-gradient(90deg, #0ea5e9 0%, #6366f1 100%)',
+                border: 'none', boxShadow: '0 6px 20px rgba(14,165,233,0.3)'
+              }}
+              icon={<PlusCircleOutlined />}
+            >
+              Tạo kho ngay
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <style>{`

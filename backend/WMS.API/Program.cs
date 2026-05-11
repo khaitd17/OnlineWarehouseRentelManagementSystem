@@ -98,6 +98,9 @@ builder.Services.AddScoped<IEquipmentRepository, EquipmentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.INotificationRepository, WMS.Infrastructure.Repositories.NotificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVerificationRepository, WMS.Infrastructure.Repositories.ContractVerificationRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IContractLogRepository, WMS.Infrastructure.Repositories.ContractLogRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IContractVersionRepository, WMS.Infrastructure.Repositories.ContractVersionRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IContractRevisionThreadRepository, WMS.Infrastructure.Repositories.ContractRevisionThreadRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IContractRevisionCommentRepository, WMS.Infrastructure.Repositories.ContractRevisionCommentRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.ICancellationLogRepository, WMS.Infrastructure.Repositories.CancellationLogRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IRefundRepository, WMS.Infrastructure.Repositories.RefundRepository>();
 builder.Services.AddScoped<IStaffShiftRepository, StaffShiftRepository>();
@@ -112,6 +115,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IContractExtensionRepository, W
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionRepository, WMS.Infrastructure.Repositories.SubscriptionRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.ISubscriptionPackageRepository, WMS.Infrastructure.Repositories.SubscriptionPackageRepository>();
 builder.Services.AddScoped<WMS.Domain.Interfaces.IReceiptNoteRepository, WMS.Infrastructure.Repositories.ReceiptNoteRepository>();
+builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseGridLocationRepository, WMS.Infrastructure.Repositories.WarehouseGridLocationRepository>();
 
 // Services   
 builder.Services.AddMemoryCache();
@@ -147,7 +151,9 @@ builder.Services.AddHangfire(config => config
             SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
             QueuePollInterval = TimeSpan.Zero,
             UseRecommendedIsolationLevel = true,
-            DisableGlobalLocks = true
+            DisableGlobalLocks = true,
+            EnableHeavyMigrations = true,
+            PrepareSchemaIfNecessary = true
         }));
 
 builder.Services.AddHangfireServer();

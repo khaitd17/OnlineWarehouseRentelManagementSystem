@@ -107,6 +107,13 @@ public class UpdateWarehouseHandler : IRequestHandler<UpdateWarehouseCommand>
         warehouse.MainDoorDirection = request.MainDoorDirection;
         warehouse.PricePerM2       = incomingPrice ?? currentPrice;
 
+        // BoundaryPoints: null in request means "keep existing"; explicit empty string means "clear"
+        if (request.BoundaryPoints != null)
+            warehouse.BoundaryPoints = request.BoundaryPoints == "" ? null : request.BoundaryPoints;
+
+        if (request.GatePosition != null)
+            warehouse.GatePosition = request.GatePosition == "" ? null : request.GatePosition;
+
         // Price changes no longer require admin re-approval – save directly
         warehouse.Status            = request.Status ?? warehouse.Status;
         warehouse.SubmissionType    = "NEW";

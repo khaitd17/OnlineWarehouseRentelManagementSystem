@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../services/axiosClient';
 import authService from '../../services/authService';
 import { ReceiptPreviewModal } from '../../components/InventoryReceiptPDF';
@@ -180,6 +181,7 @@ const DetailModal = ({ req, onClose }) => {
 
 /* ── Main Component ─────────────────────────────────────────── */
 const StaffInventoryRequestsNew = ({ defaultTab = 'INBOUND' }) => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab]     = useState(defaultTab);
   const [data, setData]               = useState({ items:[], totalCount:0, totalPages:0 });
   const [loading, setLoading]         = useState(false);
@@ -425,6 +427,15 @@ const StaffInventoryRequestsNew = ({ defaultTab = 'INBOUND' }) => {
                             </button>
                           )}
                         </div>
+
+                        {req.status === 'COMPLETED' && (
+                          <button onClick={()=>navigate(`/warehouse-grid/${req.invReqId}`)}
+                            style={{ width:'100%', padding:'5px 11px', border:'1.5px solid #3b82f6', background:'#eff6ff', borderRadius:8, cursor:'pointer', color:'#2563eb', fontSize:'0.75rem', fontWeight:700 }}
+                            onMouseEnter={e=>{e.currentTarget.style.background='#dbeafe';}}
+                            onMouseLeave={e=>{e.currentTarget.style.background='#eff6ff';}}>
+                            {req.type === 'INBOUND' ? 'Xếp hàng lên vị trí' : 'Gỡ hàng khỏi vị trí'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

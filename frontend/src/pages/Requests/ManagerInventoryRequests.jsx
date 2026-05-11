@@ -4,6 +4,7 @@ import authService from '../../services/authService';
 import { ReceiptPreviewModal } from '../../components/InventoryReceiptPDF';
 import SignatureCanvas from '../../components/SignatureCanvas';
 import { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const INBOUND_COLOR  = '#10b981';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -348,6 +349,7 @@ const DetailModal = ({ req, onClose }) => {
 
 /* ── Main Component ─────────────────────────────────────────────────── */
 const ManagerInventoryRequests = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab]   = useState('INBOUND');
   const [data, setData]             = useState({ items:[], totalCount:0, totalPages:0 });
   const [loading, setLoading]       = useState(false);
@@ -584,6 +586,24 @@ const ManagerInventoryRequests = () => {
                               Từ chối
                             </button>
                           </div>
+                        )}
+
+                        {!canApprove && (
+                          <span style={{ fontSize:'0.73rem', color:'#94a3b8', fontStyle:'italic', padding:'2px 0' }}>
+                            {req.status === 'CONFIRMED' ? 'Đã duyệt' :
+                             req.status === 'REJECTED'  ? 'Đã từ chối' :
+                             req.status === 'ASSIGNED'  ? 'Đang xử lý' :
+                             req.status === 'COMPLETED' ? 'Hoàn thành' : req.status}
+                          </span>
+                        )}
+
+                        {req.status === 'COMPLETED' && (
+                          <button onClick={()=>navigate(`/warehouse-grid-map`, { state: { autoEditMode: true } })}
+                            style={{ width:'100%', padding:'5px 11px', border:'1.5px solid #3b82f6', background:'#eff6ff', borderRadius:8, cursor:'pointer', color:'#2563eb', fontSize:'0.75rem', fontWeight:700, marginTop:4 }}
+                            onMouseEnter={e=>{e.currentTarget.style.background='#dbeafe';}}
+                            onMouseLeave={e=>{e.currentTarget.style.background='#eff6ff';}}>
+                            {req.type === 'INBOUND' ? 'Phân bổ vị trí kho' : 'Xử lý gỡ hàng'}
+                          </button>
                         )}
                       </div>
                     </td>

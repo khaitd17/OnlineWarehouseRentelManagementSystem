@@ -1,48 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Rnd } from "react-rnd";
 import api from "../../services/axiosClient";
-
-// ── Gate sizing constants ──────────────────────────────────────────────────
-const GATE_LONG  = 140; // px along the wall
-const GATE_SHORT =  30; // px protruding out from wall
-
-const defaultGatePos = { side: 'bottom', ratio: 0.5 };
-
-function snapToPerimeter(mx, my, cw, ch) {
-  const clampedTop    = { side: 'top',    ratio: Math.min(1, Math.max(0, mx / cw)), dist: Math.abs(my) };
-  const clampedBottom = { side: 'bottom', ratio: Math.min(1, Math.max(0, mx / cw)), dist: Math.abs(my - ch) };
-  const clampedLeft   = { side: 'left',   ratio: Math.min(1, Math.max(0, my / ch)), dist: Math.abs(mx) };
-  const clampedRight  = { side: 'right',  ratio: Math.min(1, Math.max(0, my / ch)), dist: Math.abs(mx - cw) };
-  return [clampedTop, clampedBottom, clampedLeft, clampedRight]
-    .sort((a, b) => a.dist - b.dist)[0];
-}
-
-function gateStyle(pos, cw, ch, isDragging) {
-  const { side, ratio } = pos;
-  const isH = side === 'top' || side === 'bottom';
-  let top, left;
-  if (side === 'top')         { top = -GATE_SHORT; left = ratio * cw - GATE_LONG / 2; }
-  else if (side === 'bottom') { top = ch;           left = ratio * cw - GATE_LONG / 2; }
-  else if (side === 'left')   { left = -GATE_SHORT; top  = ratio * ch - GATE_LONG / 2; }
-  else                        { left = cw;           top  = ratio * ch - GATE_LONG / 2; }
-  return {
-    position: 'absolute', top, left,
-    width:  isH ? GATE_LONG : GATE_SHORT,
-    height: isH ? GATE_SHORT : GATE_LONG,
-    background: 'linear-gradient(135deg,#f59e0b,#d97706)',
-    color: '#fff', fontWeight: 800, fontSize: '11px', letterSpacing: '0.06em',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', whiteSpace: 'nowrap',
-    boxShadow: '0 4px 12px rgba(245,158,11,0.45)', zIndex: 20, userSelect: 'none',
-    cursor: isDragging ? 'grabbing' : 'grab',
-    transition: isDragging ? 'none' : 'top 0.15s, left 0.15s',
-    borderTopLeftRadius:     (side === 'bottom' || side === 'right') ? 8 : 0,
-    borderTopRightRadius:    (side === 'bottom' || side === 'left')  ? 8 : 0,
-    borderBottomLeftRadius:  (side === 'top'    || side === 'right') ? 8 : 0,
-    borderBottomRightRadius: (side === 'top'    || side === 'left')  ? 8 : 0,
-    writingMode: (!isH) ? 'vertical-lr' : undefined,
-    transform:   (side === 'left') ? 'rotate(180deg)' : undefined,
-  };
-}
+import { parseBoundary, buildMaskPath, buildPolygonPoints, getGridDimensions, CELL_SIZE } from "../../utils/polygonUtils";
 
 // ── Auto-generate zones ────────────────────────────────────────────────────
 function buildAutoZones(warehouse, zoneW, zoneL, zoneH, existingCount) {
@@ -82,52 +41,19 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
   const [autoGenerating, setAutoGenerating] = useState(false);
   const [autoPreview, setAutoPreview] = useState([]);
 
-  // Gate drag
-  const [gatePos, setGatePos] = useState(() => {
-    try {
-      const s = localStorage.getItem(`gatePos_${warehouseId}`);
-      return s ? JSON.parse(s) : defaultGatePos;
-    } catch { return defaultGatePos; }
-  });
-  const [isDraggingGate, setIsDraggingGate] = useState(false);
-  const canvasWrapperRef = useRef(null);
-
-  const saveGatePos = useCallback((pos) => {
-    setGatePos(pos);
-    try { localStorage.setItem(`gatePos_${warehouseId}`, JSON.stringify(pos)); } catch {}
-  }, [warehouseId]);
-
-  const handleGateMouseDown = useCallback((e) => {
-    if (viewOnly) return;
-    e.preventDefault(); e.stopPropagation();
-    setIsDraggingGate(true);
-  }, [viewOnly]);
-
+  // Gate state from DB
+  const [gatePos, setGatePos] = useState(null);
   useEffect(() => {
-    if (!isDraggingGate) return;
-    const onMove = (e) => {
-      const wrapper = canvasWrapperRef.current; if (!wrapper) return;
-      const rect = wrapper.getBoundingClientRect();
-      const mx = (e.clientX || e.touches?.[0]?.clientX) - rect.left;
-      const my = (e.clientY || e.touches?.[0]?.clientY) - rect.top;
-      const snapped = snapToPerimeter(mx, my, wrapper.offsetWidth, wrapper.offsetHeight);
-      setGatePos({ side: snapped.side, ratio: snapped.ratio });
-    };
-    const onUp = (e) => {
-      setIsDraggingGate(false);
-      const wrapper = canvasWrapperRef.current; if (!wrapper) return;
-      const rect = wrapper.getBoundingClientRect();
-      const mx = (e.clientX || e.changedTouches?.[0]?.clientX) - rect.left;
-      const my = (e.clientY || e.changedTouches?.[0]?.clientY) - rect.top;
-      saveGatePos(snapToPerimeter(mx, my, wrapper.offsetWidth, wrapper.offsetHeight));
-    };
-    window.addEventListener('mousemove', onMove); window.addEventListener('mouseup', onUp);
-    window.addEventListener('touchmove', onMove); window.addEventListener('touchend', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onUp);
-    };
-  }, [isDraggingGate, saveGatePos]);
+    if (warehouse?.gatePosition) {
+      try {
+        setGatePos(JSON.parse(warehouse.gatePosition));
+      } catch {}
+    } else {
+      setGatePos(null);
+    }
+  }, [warehouse?.gatePosition]);
+
+  const canvasWrapperRef = useRef(null);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -345,15 +271,37 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
   // ── Render ──────────────────────────────────────────────────────────────
   if(loading) return <p style={{color:'#64748b'}}>Đang tải sơ đồ 2D...</p>;
 
-  const whW = parseFloat(warehouse?.width ?? warehouse?.Width ?? 0) || 0;
-  const whL = parseFloat(warehouse?.length ?? warehouse?.Length ?? 0) || 0;
-  // Derive warehouse height from TotalArea (m³) / (W × L) since Height is not stored separately
-  const whH = (warehouse?.totalArea && whW && whL)
-    ? Math.round((warehouse.totalArea / (whW * whL)) * 10) / 10
-    : 0;
+  // Try legacy width/length first, fall back to boundary polygon or totalArea square root
+  let whW = parseFloat(warehouse?.width ?? warehouse?.Width ?? 0) || 0;
+  let whL = parseFloat(warehouse?.length ?? warehouse?.Length ?? 0) || 0;
+
+  // ── Boundary polygon (from BoundaryPoints JSON) ──────────────────────────
+  const boundary = parseBoundary(warehouse?.boundaryPoints);
+  const cellPx = scale * CELL_SIZE;
+
+  // If no legacy width/length, derive from boundary polygon or totalArea
+  if (!whW || !whL) {
+    if (boundary && boundary.length >= 3) {
+      const { cols, rows } = getGridDimensions(boundary);
+      whW = cols * CELL_SIZE;  // each grid cell = 0.5m
+      whL = rows * CELL_SIZE;
+    }
+    
+    // If STILL no usable dimensions (e.g. boundary was legacy px/py format with no gx)
+    if (!whW || !whL) {
+      // Last resort: assume square from totalArea
+      const area = parseFloat(warehouse?.totalArea ?? 0);
+      if (area > 0) {
+        whW = Math.ceil(Math.sqrt(area));
+        whL = Math.ceil(area / whW);
+      }
+    }
+  }
+
+  const whH = (warehouse?.height ?? warehouse?.Height) ? parseFloat(warehouse?.height ?? warehouse?.Height) : 0;
   const cw=whW*scale, ch=whL*scale;
 
-  // Guard: dimensions not saved yet
+  // Guard: still no usable dimensions
   if (!whW || !whL) {
     return (
       <div style={{marginTop:'2rem',backgroundColor:'#fff',padding:'2.5rem',borderRadius:'24px',boxShadow:'0 10px 40px rgba(0,0,0,0.05)'}}>
@@ -361,19 +309,20 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
           <span className="material-symbols-outlined" style={{fontSize:'2.5rem',color:'#d97706',display:'block',marginBottom:'1rem'}}>info</span>
           <h3 style={{margin:'0 0 0.5rem',color:'#92400e',fontSize:'1.1rem',fontWeight:800}}>Chưa có thông tin kích thước kho</h3>
           <p style={{margin:0,color:'#b45309',fontSize:'0.9rem',lineHeight:1.6}}>
-            Vui lòng <strong>lưu thông tin kho</strong> với <strong>Chiều rộng</strong> và <strong>Chiều dài</strong> đầy đủ ở form bên trên trước khi tạo sơ đồ khu vực.
+            Vui lòng lưu thông tin kho với <strong>Diện tích sàn</strong> hợp lệ hoặc vẽ <strong>sơ đồ kho</strong> trước khi tạo sơ đồ khu vực.
           </p>
         </div>
       </div>
     );
   }
 
+
   const containerStyle = {
     position:'absolute', top:0, left:0,
     width:`${cw}px`, height:`${ch}px`,
     backgroundColor:'#f8fafc',
     backgroundImage:'linear-gradient(#e2e8f0 1px,transparent 1px),linear-gradient(90deg,#e2e8f0 1px,transparent 1px)',
-    backgroundSize:`${scale}px ${scale}px`,
+    backgroundSize:`${scale/2}px ${scale/2}px`,
     border:'3px solid #64748b', borderRadius:'8px',
     boxShadow:'inset 0 0 10px rgba(0,0,0,0.05)',
     pointerEvents:'none',
@@ -385,24 +334,6 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
       {/* ── EDIT MODE header ── */}
       {!viewOnly && (
         <>
-          <div style={{background:'#f0f9ff',border:'1px solid #e0f2fe',padding:'12px 20px',borderRadius:'16px',marginBottom:'2rem',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
-            <div style={{display:'flex',gap:'25px',alignItems:'center',flexWrap:'wrap'}}>
-              {[['drag_pan','Di chuyển: Kéo thả'],['aspect_ratio','Kích thước: Kéo góc'],['edit_square','Sửa: Nháy đúp'],['open_with','Cổng: Kéo ra cạnh kho']].map(([icon,label])=>(
-                <div key={icon} style={{display:'flex',alignItems:'center',gap:'6px',color:'#0369a1',fontSize:'0.88rem',fontWeight:600}}>
-                  <span className="material-symbols-outlined" style={{fontSize:'18px'}}>{icon}</span> {label}
-                </div>
-              ))}
-            </div>
-            <div style={{display:'flex',gap:'20px'}}>
-              {[['rgba(14,165,233,0.1)','1.5px dashed #0369a1','Trống'],['rgba(245,158,11,0.1)','1.5px solid #b45309','Đã thuê'],['linear-gradient(135deg,#f59e0b,#d97706)','none','Cổng vào']].map(([bg,border,label])=>(
-                <div key={label} style={{display:'flex',gap:6,alignItems:'center'}}>
-                  <div style={{width:12,height:12,background:bg,border,borderRadius:'2px'}}/>
-                  <span style={{fontSize:'0.8rem',color:'#64748b',fontWeight:500}}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:'1.5rem',flexWrap:'wrap',gap:'1rem'}}>
             <div>
               <h2 style={{fontSize:'1.4rem',fontWeight:700,margin:0,color:'#0f172a'}}>Bản đồ Khu vực</h2>
@@ -410,15 +341,8 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
                 <span style={{fontSize:'0.9rem',fontWeight:600,color:'#475569'}}>Thu phóng (Zoom):</span>
                 <input type="range" min="10" max="80" step="5" value={scale} onChange={e=>setScale(Number(e.target.value))} style={{cursor:'pointer',accentColor:'#0ea5e9'}}/>
                 <span style={{fontSize:'0.85rem',color:'#64748b',fontWeight:600}}>Tỷ lệ: 1m = {scale}px</span>
+                <span style={{fontSize:'0.78rem',color:'#94a3b8',fontStyle:'italic',marginLeft:8}}>📐 Mỗi ô lưới = 0.5m × 0.5m</span>
               </div>
-            </div>
-            <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
-              <button
-                onClick={openCreateForm}
-                style={{padding:'12px 20px',background:'linear-gradient(135deg,#0284c7 0%,#00b2d6 100%)',color:'#fff',borderRadius:'10px',border:'none',cursor:'pointer',fontWeight:'bold',boxShadow:'0 4px 10px rgba(14,165,233,0.3)',fontSize:'0.9rem'}}
-              >
-                + Thêm thủ công
-              </button>
             </div>
           </div>
         </>
@@ -432,6 +356,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
             <p style={{fontSize:'0.82rem',color:'#94a3b8',margin:'4px 0 0',fontStyle:'italic'}}>Chỉ xem — Chỉnh sửa trong trang "Chỉnh sửa kho"</p>
           </div>
           <div style={{display:'flex',gap:'16px',alignItems:'center'}}>
+            <span style={{fontSize:'0.75rem',color:'#94a3b8',fontStyle:'italic',marginRight:4}}>📐 Mỗi ô = 0.5m × 0.5m</span>
             {[['rgba(14,165,233,0.18)','1.5px dashed #0369a1','Còn trống'],['rgba(245,158,11,0.18)','1.5px solid #b45309','Đã thuê']].map(([bg,border,label])=>(
               <div key={label} style={{display:'flex',gap:6,alignItems:'center'}}>
                 <div style={{width:14,height:14,background:bg,border,borderRadius:'3px'}}/>
@@ -454,11 +379,37 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
             </div>
             <div ref={canvasWrapperRef} style={{position:'relative',width:`${cw}px`,height:`${ch}px`,flexShrink:0}}>
               <div style={containerStyle}/>
+
+              {/* ── Boundary polygon mask overlay (visual only, no booking impact) ── */}
+              {boundary && (
+                <svg style={{
+                  position:'absolute', top:0, left:0,
+                  width:cw, height:ch,
+                  pointerEvents:'none',
+                  zIndex:10,
+                  overflow:'visible',
+                }}>
+                  {/* Grey-out outside boundary using SVG evenodd fill rule */}
+                  <path
+                    fillRule="evenodd"
+                    fill="rgba(100,116,139,0.45)"
+                    d={buildMaskPath(boundary, cw, ch, cellPx)}
+                  />
+                  {/* Boundary outline — blue dashed */}
+                  <polygon
+                    points={buildPolygonPoints(boundary, cw, ch, cellPx)}
+                    fill="none"
+                    stroke="#0095c7"
+                    strokeWidth={2}
+                    strokeDasharray="6 3"
+                  />
+                </svg>
+              )}
+
               <div style={{position:'absolute',top:0,left:0,width:`${cw}px`,height:`${ch}px`,overflow:'hidden'}}>
                 {areas.length===0 && !viewOnly && (
                   <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,textAlign:'center',pointerEvents:'none'}}>
-                    <div style={{fontSize:'0.85rem',fontWeight:700,color:'#94a3b8'}}>Chưa có khu vực nào</div>
-                    <div style={{fontSize:'0.78rem',color:'#cbd5e1',maxWidth:220}}>Bấm "Tạo sơ đồ tự động" để hệ thống gen ô khu, hoặc "Thêm thủ công"</div>
+                    <div style={{fontSize:'0.85rem',fontWeight:700,color:'#94a3b8'}}>Chưa có sơ đồ kho</div>
                   </div>
                 )}
                 {areas.map(a=>{
@@ -514,14 +465,28 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
                 })}
               </div>
               {/* Gate */}
-              <div
-                onMouseDown={handleGateMouseDown}
-                onTouchStart={handleGateMouseDown}
-                title={viewOnly?'Cổng chính vào kho':'Kéo để di chuyển cổng vào'}
-                style={gateStyle(gatePos,cw,ch,isDraggingGate)}
-              >
-                CỔNG CHÍNH VÀO KHO
-              </div>
+              {gatePos && (gatePos.gx !== undefined || gatePos.px !== undefined) && (
+                <div style={{
+                  position: 'absolute',
+                  left: gatePos.gx !== undefined ? `${(gatePos.gx * 0.5) * scale}px` : `${gatePos.px * cw}px`,
+                  top: gatePos.gy !== undefined ? `${(gatePos.gy * 0.5) * scale}px` : `${gatePos.py * ch}px`,
+                  transform: `translate(-50%, -50%) rotate(${gatePos.angle || 0}deg)`,
+                  background: 'linear-gradient(135deg,#f59e0b,#d97706)',
+                  color: '#fff',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  fontWeight: 800,
+                  fontSize: '0.75rem',
+                  letterSpacing: '0.5px',
+                  boxShadow: '0 4px 10px rgba(245,158,11,0.4)',
+                  border: '1.5px solid #fff',
+                  whiteSpace: 'nowrap',
+                  pointerEvents: 'none',
+                  zIndex: 20
+                }}>
+                  CỔNG CHÍNH VÀO KHO
+                </div>
+              )}
             </div>
           </div>
         </div>

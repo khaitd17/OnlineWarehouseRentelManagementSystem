@@ -13,6 +13,7 @@ using WMS.Application.Features.RentalContracts.GetContractLogs;
 using WMS.Application.Features.RentalContracts.OwnerSignContract;
 using WMS.Application.Features.RentalContracts.DeclineContract;
 using WMS.Application.Features.RentalContracts.ExtendContract;
+using WMS.Application.Features.RentalContracts.Negotiations;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
 
@@ -272,6 +273,260 @@ public class RentalContractsController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "An error occurred", error = ex.Message, detail = ex.ToString() });
+        }
+    }
+
+    [HttpPost("{id}/send-draft")]
+    public async Task<IActionResult> SendContractDraft(int id)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _mediator.Send(new SendContractDraftCommand
+            {
+                ContractId = id,
+                UserId = userId
+            });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/request-revision")]
+    public async Task<IActionResult> RequestRevision(int id, [FromBody] RequestRevisionDto body)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _mediator.Send(new RequestContractRevisionCommand
+            {
+                ContractId = id,
+                UserId = userId,
+                Section = body.Section,
+                Message = body.Message
+            });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpPost("revision-threads/{threadId}/reply")]
+    public async Task<IActionResult> ReplyRevision(int threadId, [FromBody] ReplyRevisionDto body)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await _mediator.Send(new ReplyContractRevisionCommand
+            {
+                ThreadId = threadId,
+                UserId = userId,
+                Message = body.Message
+            });
+            return Ok(new { message = "Reply submitted" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpPost("revision-threads/{threadId}/accept")]
+    public async Task<IActionResult> AcceptRevision(int threadId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await _mediator.Send(new UpdateContractRevisionStatusCommand
+            {
+                ThreadId = threadId,
+                UserId = userId,
+                Status = "ACCEPTED"
+            });
+            return Ok(new { message = "Revision accepted" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpPost("revision-threads/{threadId}/reject")]
+    public async Task<IActionResult> RejectRevision(int threadId)
+    {
+        try
+        {
+            var userId = GetUserId();
+            await _mediator.Send(new UpdateContractRevisionStatusCommand
+            {
+                ThreadId = threadId,
+                UserId = userId,
+                Status = "REJECTED"
+            });
+            return Ok(new { message = "Revision rejected" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/apply-changes")]
+    public async Task<IActionResult> ApplyChanges(int id, [FromBody] ApplyContractChangesDto body)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _mediator.Send(new ApplyContractChangesCommand
+            {
+                ContractId = id,
+                UserId = userId,
+                MonthlyPayment = body.MonthlyPayment,
+                DepositAmount = body.DepositAmount,
+                StartDate = body.StartDate,
+                DurationMonths = body.DurationMonths,
+                Terms = body.Terms,
+                ResolveThreadIds = body.ResolveThreadIds
+            });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/approve-for-signing")]
+    public async Task<IActionResult> ApproveForSigning(int id)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _mediator.Send(new ApproveContractForSigningCommand
+            {
+                ContractId = id,
+                UserId = userId
+            });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpGet("{id}/revision-threads")]
+    public async Task<IActionResult> GetRevisionThreads(int id)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _mediator.Send(new GetContractRevisionThreadsQuery
+            {
+                ContractId = id,
+                UserId = userId
+            });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+        }
+    }
+
+    [HttpGet("{id}/versions")]
+    public async Task<IActionResult> GetContractVersions(int id)
+    {
+        try
+        {
+            var userId = GetUserId();
+            var result = await _mediator.Send(new GetContractVersionsQuery
+            {
+                ContractId = id,
+                UserId = userId
+            });
+            return Ok(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
         }
     }
 
@@ -695,6 +950,27 @@ public class SignContractRequest
 public class DeclineContractDto
 {
     public string Reason { get; set; } = null!;
+}
+
+public class RequestRevisionDto
+{
+    public string Section { get; set; } = null!;
+    public string Message { get; set; } = null!;
+}
+
+public class ReplyRevisionDto
+{
+    public string Message { get; set; } = null!;
+}
+
+public class ApplyContractChangesDto
+{
+    public decimal MonthlyPayment { get; set; }
+    public decimal? DepositAmount { get; set; }
+    public DateTime StartDate { get; set; }
+    public int DurationMonths { get; set; }
+    public string? Terms { get; set; }
+    public List<int>? ResolveThreadIds { get; set; }
 }
 
 public class ExtendContractRequest

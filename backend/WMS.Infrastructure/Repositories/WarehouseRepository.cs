@@ -36,6 +36,7 @@ public class WarehouseRepository : IWarehouseRepository
             MainDoorDirection = warehouse.MainDoorDirection,
             PricePerM2 = warehouse.PricePerM2,
             Status = warehouse.Status,
+            GatePosition = warehouse.GatePosition,
             CreatedAt = warehouse.CreatedAt
         };
 
@@ -94,6 +95,8 @@ public async Task<Warehouse?> GetByIdAsync(
         RejectionReason = entity.RejectionReason,
         SubmissionType = entity.SubmissionType ?? "NEW",
         PendingChangeNote = entity.PendingChangeNote,
+        BoundaryPoints = entity.BoundaryPoints,
+        GatePosition = entity.GatePosition,
         WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
         {
             MediaId = m.MediaId,
@@ -144,6 +147,7 @@ public async Task<Warehouse?> GetByIdAsync(
             MainDoorDirection = entity.MainDoorDirection,
             PricePerM2 = entity.PricePerM2,
             Status = entity.Status ?? "UNKNOWN",
+            GatePosition = entity.GatePosition,
             CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
             WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
             {
@@ -182,6 +186,8 @@ public async Task<Warehouse?> GetByIdAsync(
         entity.Status               = warehouse.Status ?? entity.Status;
         entity.SubmissionType       = warehouse.SubmissionType ?? "NEW";
         entity.PendingChangeNote    = warehouse.PendingChangeNote;
+        entity.BoundaryPoints       = warehouse.BoundaryPoints;
+        entity.GatePosition         = warehouse.GatePosition;
         entity.UpdatedAt            = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -281,6 +287,7 @@ public async Task<Warehouse?> GetByIdAsync(
             CloseTime = entity.CloseTime,
             PricePerM2 = entity.PricePerM2,
             Status = entity.Status ?? "UNKNOWN",
+            GatePosition = entity.GatePosition,
             CreatedAt = entity.CreatedAt ?? DateTime.UtcNow,
             WarehouseMedia = entity.WarehouseMedia.Select(m => new WarehouseMedium
             {

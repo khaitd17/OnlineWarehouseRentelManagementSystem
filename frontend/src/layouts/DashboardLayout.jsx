@@ -370,7 +370,17 @@ const DashboardLayout = () => {
     }
 
     if (referenceId) {
-      if (notificationTypeUpper === 'CONTRACT_APPROVED' ||
+      if (notificationTypeUpper === 'CONTRACT_DRAFT_SENT' ||
+          notificationTypeUpper === 'CONTRACT_REVISION_REQUESTED' ||
+          notificationTypeUpper === 'CONTRACT_REVISION_REPLIED' ||
+          notificationTypeUpper === 'CONTRACT_REVISION_ACCEPTED' ||
+          notificationTypeUpper === 'CONTRACT_REVISION_REJECTED') {
+        navigate(`/contracts/${referenceId}?tab=negotiation`);
+      } else if (notificationTypeUpper === 'CONTRACT_VERSION_CREATED') {
+        navigate(`/contracts/${referenceId}?tab=versions`);
+      } else if (notificationTypeUpper === 'CONTRACT_READY_FOR_SIGNING') {
+        navigate(`/contracts/${referenceId}?tab=signing`);
+      } else if (notificationTypeUpper === 'CONTRACT_APPROVED' ||
           notificationTypeUpper === 'CONTRACT_SENT' ||
           notificationTypeUpper === 'CONTRACT_SIGNED') {
         navigate(`/contracts/${referenceId}`);

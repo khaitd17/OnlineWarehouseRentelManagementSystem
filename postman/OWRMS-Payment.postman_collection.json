@@ -1,0 +1,890 @@
+{
+  "info": {
+    "_postman_id": "f95bc3a5-c553-4660-8569-6f86798fc814",
+    "name": "OWRMS - Payment API Full Test",
+    "description": "Full payment feature tests: contract bootstrap, bank transfer, webhook, cash confirmation, retry, history, and security checks.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('startDate') || pm.environment.get('startDate') === 'AUTO') {",
+          "  const d = new Date();",
+          "  d.setDate(d.getDate() + 7);",
+          "  pm.environment.set('startDate', d.toISOString());",
+          "}",
+          "if (!pm.environment.get('signatureBase64')) {",
+          "  pm.environment.set('signatureBase64', 'c2lnbmF0dXJl');",
+          "}",
+          "if (!pm.environment.get('cashRejectReason')) {",
+          "  pm.environment.set('cashRejectReason', 'Cash proof not valid');",
+          "}",
+          "if (!pm.collectionVariables.get('webhookTransactionId')) {",
+          "  pm.collectionVariables.set('webhookTransactionId', String(Date.now()));",
+          "}",
+          "pm.collectionVariables.set('runAt', new Date().toISOString());"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "tokenRenter", "value": "" },
+    { "key": "tokenOwner", "value": "" },
+    { "key": "warehouseId", "value": "" },
+    { "key": "rentalAreaId", "value": "" },
+    { "key": "requestIdPayment", "value": "" },
+    { "key": "contractIdPayment", "value": "" },
+    { "key": "paymentIdBank", "value": "" },
+    { "key": "paymentCodeBank", "value": "" },
+    { "key": "cashPaymentIdApprove", "value": "" },
+    { "key": "cashPaymentIdReject", "value": "" },
+    { "key": "webhookTransactionId", "value": "" },
+    { "key": "runAt", "value": "" },
+    { "key": "paymentStatusPollAttempt", "value": "0" }
+  ],
+  "item": [
+    {
+      "name": "01 - Auth And Contract Bootstrap",
+      "item": [
+        {
+          "name": "Login Renter",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{renterEmail}}\",\n  \"password\": \"{{renterPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login renter status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const token = b.token ?? b.Token ?? b.data?.token ?? b.data?.Token;",
+                  "pm.expect(token, 'Missing renter token').to.be.a('string').and.not.empty;",
+                  "pm.collectionVariables.set('tokenRenter', token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login Owner",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ownerEmail}}\",\n  \"password\": \"{{ownerPassword}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login owner status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const token = b.token ?? b.Token ?? b.data?.token ?? b.data?.Token;",
+                  "pm.expect(token, 'Missing owner token').to.be.a('string').and.not.empty;",
+                  "pm.collectionVariables.set('tokenOwner', token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Approved Warehouses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/warehouse/approved?limit=10"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Approved warehouse status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const list = Array.isArray(b) ? b : (b.data ?? b.items ?? b.result ?? b.warehouses ?? []);",
+                  "pm.expect(Array.isArray(list), 'Warehouse list should be array').to.eql(true);",
+                  "pm.expect(list.length, 'No approved warehouse found').to.be.greaterThan(0);",
+                  "const w = list[0];",
+                  "const warehouseId = w.id ?? w.warehouseId ?? w.Id ?? w.WarehouseId;",
+                  "pm.expect(warehouseId, 'Missing warehouseId').to.exist;",
+                  "pm.collectionVariables.set('warehouseId', String(warehouseId));",
+                  "pm.environment.set('warehouseId', String(warehouseId));",
+                  "const areas = w.rentalAreas ?? w.RentalAreas ?? w.areas ?? w.Areas ?? [];",
+                  "if (Array.isArray(areas) && areas.length > 0) {",
+                  "  const areaId = areas[0].id ?? areas[0].rentalAreaId ?? areas[0].Id ?? areas[0].RentalAreaId;",
+                  "  if (areaId) {",
+                  "    pm.collectionVariables.set('rentalAreaId', String(areaId));",
+                  "    pm.environment.set('rentalAreaId', String(areaId));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Request For Payment Scenario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  warehouseId: Number(pm.collectionVariables.get('warehouseId') || pm.environment.get('warehouseId')),",
+                  "  requestedArea: Number(pm.environment.get('requestedArea')),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths')),",
+                  "  notes: 'Payment scenario bootstrap request'",
+                  "};",
+                  "const areaRaw = pm.collectionVariables.get('rentalAreaId') || pm.environment.get('rentalAreaId');",
+                  "if (areaRaw) { payload.rentalAreaId = Number(areaRaw); }",
+                  "pm.variables.set('createReqPaymentBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{createReqPaymentBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create payment scenario request status 200/201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const b = pm.response.json();",
+                  "const id = b.requestId ?? b.id ?? b.data?.requestId ?? b.data?.id ?? b.result?.id;",
+                  "pm.expect(id, 'Missing requestIdPayment').to.exist;",
+                  "pm.collectionVariables.set('requestIdPayment', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send Request For Payment Scenario",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-requests/{{requestIdPayment}}/send"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Send payment scenario request status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve Request For Payment Scenario",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const payload = {",
+                  "  requestId: Number(pm.collectionVariables.get('requestIdPayment')),",
+                  "  contractImageUrl: pm.environment.get('contractImageUrl'),",
+                  "  monthlyPayment: Number(pm.environment.get('monthlyPayment')),",
+                  "  depositAmount: Number(pm.environment.get('depositAmount')),",
+                  "  terms: pm.environment.get('contractTerms'),",
+                  "  startDate: pm.environment.get('startDate'),",
+                  "  durationMonths: Number(pm.environment.get('durationMonths'))",
+                  "};",
+                  "pm.variables.set('approvePaymentBody', JSON.stringify(payload, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{{approvePaymentBody}}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-requests/{{requestIdPayment}}/approve"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Approve payment scenario status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const contractId = b.contractId ?? b.id ?? b.data?.contractId ?? b.data?.id ?? b.result?.contractId;",
+                  "pm.expect(contractId, 'Missing contractIdPayment').to.exist;",
+                  "pm.collectionVariables.set('contractIdPayment', String(contractId));",
+                  "pm.environment.set('contractId', String(contractId));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdPayment}}/send-otp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Send OTP status 200/204', function () { pm.expect([200, 204]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otpCode\": \"{{otpCode}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdPayment}}/verify-otp"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Verify OTP status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Sign Contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signatureBase64\": \"{{signatureBase64}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdPayment}}/owner-sign"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Owner sign status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renter Sign Contract",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"signatureBase64\": \"{{signatureBase64}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/rental-contracts/{{contractIdPayment}}/sign"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Renter sign status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Bank Transfer Flow",
+      "item": [
+        {
+          "name": "Create Bank Transfer Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": {{contractIdPayment}},\n  \"paymentType\": \"DEPOSIT\",\n  \"paymentMethod\": \"BANK_TRANSFER\",\n  \"amountOverride\": {{depositAmount}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/create"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create bank payment status 200/201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const b = pm.response.json();",
+                  "const paymentId = b.paymentId ?? b.id ?? b.data?.paymentId ?? b.data?.id;",
+                  "const paymentCode = b.paymentCode ?? b.code ?? b.data?.paymentCode;",
+                  "pm.expect(paymentId, 'Missing paymentIdBank').to.exist;",
+                  "pm.expect(paymentCode, 'Missing paymentCodeBank').to.exist;",
+                  "pm.collectionVariables.set('paymentIdBank', String(paymentId));",
+                  "pm.collectionVariables.set('paymentCodeBank', String(paymentCode));",
+                  "pm.environment.set('paymentId', String(paymentId));",
+                  "pm.environment.set('paymentCode', String(paymentCode));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get QR Info",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/payments/{{paymentIdBank}}/qr-info"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('QR info status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const qr = b.qrImageUrl ?? b.QrImageUrl ?? b.data?.qrImageUrl ?? b.qrCodeUrl;",
+                  "pm.expect(qr, 'qrImageUrl is missing').to.be.a('string').and.not.empty;"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Payment Status Before Webhook",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/payments/{{paymentIdBank}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status endpoint before webhook 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simulate SePay Webhook",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('webhookTransactionId', String(Date.now()));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{webhookTransactionId}},\n  \"gateway\": \"SEPAY\",\n  \"transactionDate\": \"{{runAt}}\",\n  \"accountNumber\": \"1234567890\",\n  \"code\": \"00\",\n  \"content\": \"{{paymentCodeBank}}\",\n  \"transferType\": \"IN\",\n  \"transferAmount\": {{depositAmount}},\n  \"accumulated\": {{depositAmount}},\n  \"subAccount\": null,\n  \"referenceCode\": \"PM-{{webhookTransactionId}}\",\n  \"description\": \"Postman webhook simulation\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/sepay-webhook"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Webhook status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const success = b.success ?? b.Success;",
+                  "if (success !== undefined) {",
+                  "  pm.test('Webhook success type boolean', function () { pm.expect(typeof success).to.eql('boolean'); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Duplicate Webhook Same Transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{webhookTransactionId}},\n  \"gateway\": \"SEPAY\",\n  \"transactionDate\": \"{{runAt}}\",\n  \"accountNumber\": \"1234567890\",\n  \"code\": \"00\",\n  \"content\": \"{{paymentCodeBank}}\",\n  \"transferType\": \"IN\",\n  \"transferAmount\": {{depositAmount}},\n  \"accumulated\": {{depositAmount}},\n  \"subAccount\": null,\n  \"referenceCode\": \"PM-{{webhookTransactionId}}\",\n  \"description\": \"Postman duplicate webhook simulation\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/sepay-webhook"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Duplicate webhook still 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Payment Status After Webhook",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/payments/{{paymentIdBank}}/status"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status endpoint after webhook 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const status = String(b.status ?? b.Status ?? b.data?.status ?? '').toUpperCase();",
+                  "pm.expect(status, 'Payment status missing').to.not.eql('');",
+                  "pm.test('Status is valid', function () {",
+                  "  pm.expect(['PENDING', 'COMPLETED', 'FAILED', 'EXPIRED', 'PENDING_CONFIRMATION']).to.include(status);",
+                  "});",
+                  "const attempt = Number(pm.collectionVariables.get('paymentStatusPollAttempt') || '0');",
+                  "if (status !== 'COMPLETED' && attempt < 3) {",
+                  "  pm.collectionVariables.set('paymentStatusPollAttempt', String(attempt + 1));",
+                  "  postman.setNextRequest('Get Payment Status After Webhook');",
+                  "} else {",
+                  "  pm.collectionVariables.unset('paymentStatusPollAttempt');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Payments By Contract",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/payments/contract/{{contractIdPayment}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Payments by contract status 200', function () { pm.response.to.have.status(200); });",
+                  "const b = pm.response.json();",
+                  "const list = Array.isArray(b) ? b : (b.data ?? b.items ?? b.result ?? []);",
+                  "if (Array.isArray(list) && list.length > 0) {",
+                  "  const pid = Number(pm.collectionVariables.get('paymentIdBank'));",
+                  "  const found = list.some(x => Number(x.id ?? x.paymentId ?? x.Id ?? x.PaymentId) === pid);",
+                  "  pm.test('Created bank payment exists in contract list', function () { pm.expect(found).to.eql(true); });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payment History",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/payments/history?page=1&pageSize=20"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Payment history status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Cash Flow",
+      "item": [
+        {
+          "name": "Create Cash Payment For Approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": {{contractIdPayment}},\n  \"paymentType\": \"MONTHLY\",\n  \"paymentMethod\": \"CASH\",\n  \"amount\": {{monthlyPayment}},\n  \"status\": \"PENDING_CONFIRMATION\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/cash"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create cash payment approve path 200/201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const b = pm.response.json();",
+                  "const id = b.paymentId ?? b.id ?? b.data?.paymentId ?? b.data?.id;",
+                  "pm.expect(id, 'Missing cashPaymentIdApprove').to.exist;",
+                  "pm.collectionVariables.set('cashPaymentIdApprove', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Pending Cash Confirmations",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/payments/pending-confirmation"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pending cash confirmations status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Confirm Cash Approve",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isApproved\": true,\n  \"rejectionReason\": \"\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/{{cashPaymentIdApprove}}/confirm"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Confirm cash approve status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Cash Payment For Reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": {{contractIdPayment}},\n  \"paymentType\": \"MONTHLY\",\n  \"paymentMethod\": \"CASH\",\n  \"amount\": {{monthlyPayment}},\n  \"status\": \"PENDING_CONFIRMATION\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/cash"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create cash payment reject path 200/201', function () { pm.expect([200, 201]).to.include(pm.response.code); });",
+                  "const b = pm.response.json();",
+                  "const id = b.paymentId ?? b.id ?? b.data?.paymentId ?? b.data?.id;",
+                  "pm.expect(id, 'Missing cashPaymentIdReject').to.exist;",
+                  "pm.collectionVariables.set('cashPaymentIdReject', String(id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Confirm Cash Reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isApproved\": false,\n  \"rejectionReason\": \"{{cashRejectReason}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/{{cashPaymentIdReject}}/confirm"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Confirm cash reject status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner Cash Confirmation List",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenOwner}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/payments/cash-confirmation-list"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Cash confirmation list status 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Retry And Security",
+      "item": [
+        {
+          "name": "Retry Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" }
+            ],
+            "url": "{{baseUrl}}/payments/{{paymentIdBank}}/retry"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Retry returns known code', function () { pm.expect([200, 400, 404, 409]).to.include(pm.response.code); });",
+                  "if ([200, 400, 409].includes(pm.response.code)) {",
+                  "  const b = pm.response.json();",
+                  "  const success = b.success ?? b.Success;",
+                  "  if (success !== undefined) {",
+                  "    pm.test('Retry success key is boolean', function () { pm.expect(typeof success).to.eql('boolean'); });",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Payment Invalid Method (Expect 400/422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": {{contractIdPayment}},\n  \"paymentType\": \"DEPOSIT\",\n  \"paymentMethod\": \"INVALID_METHOD\",\n  \"amountOverride\": {{depositAmount}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/create"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid method should fail', function () { pm.expect([400, 422]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Payment Without Token (Expect 401/403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contractId\": {{contractIdPayment}},\n  \"paymentType\": \"DEPOSIT\",\n  \"paymentMethod\": \"BANK_TRANSFER\",\n  \"amountOverride\": {{depositAmount}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/create"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthorized expected', function () { pm.expect([401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Renter Confirm Cash (Expect 401/403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{tokenRenter}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json", "type": "text" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isApproved\": true,\n  \"rejectionReason\": \"\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/payments/{{cashPaymentIdReject}}/confirm"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Renter confirm cash should be blocked', function () { pm.expect([401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

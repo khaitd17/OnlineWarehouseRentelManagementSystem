@@ -42,6 +42,9 @@ const ContractCard: React.FC<ContractCardProps> = ({
   const getStatusDisplay = (status: string) => {
     const statusMap: Record<string, { color: string; text: string }> = {
       'ACTIVE': { color: 'success', text: 'Đang hoạt động' },
+      'NEGOTIATING': { color: 'processing', text: 'Đang đàm phán' },
+      'REVISION_REQUESTED': { color: 'warning', text: 'Yêu cầu chỉnh sửa' },
+      'APPROVED_FOR_SIGNING': { color: 'success', text: 'Sẵn sàng ký' },
       'PENDING_OWNER_SIGNATURE': { color: 'warning', text: 'Chờ chủ kho ký' },
       'PENDING_RENTER_SIGNATURE': { color: 'warning', text: 'Chờ người thuê ký' },
       'PENDING_PAYMENT': { color: 'processing', text: 'Chờ thanh toán' },

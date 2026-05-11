@@ -7,11 +7,10 @@ using static WMS.Application.Interfaces.IUserRepository;
 
 namespace WMS.UnitTests.RentalContracts;
 
-// Unit tests: SignContractHandler – 6 test cases (UTCID01–06)
+// Unit tests: SignContractHandler – 4 test cases (UTCID01–04)
 public class SignContractHandlerTests
 {
     private readonly Mock<IRentalContractRepository>       _contractRepoMock;
-    private readonly Mock<IContractVerificationRepository> _verificationRepoMock;
     private readonly Mock<IContractLogRepository>          _logRepoMock;
     private readonly Mock<IPdfService>                     _pdfServiceMock;
     private readonly Mock<INotificationRepository>         _notificationRepoMock;
@@ -25,7 +24,6 @@ public class SignContractHandlerTests
     public SignContractHandlerTests()
     {
         _contractRepoMock       = new Mock<IRentalContractRepository>();
-        _verificationRepoMock   = new Mock<IContractVerificationRepository>();
         _logRepoMock            = new Mock<IContractLogRepository>();
         _pdfServiceMock         = new Mock<IPdfService>();
         _notificationRepoMock   = new Mock<INotificationRepository>();
@@ -37,7 +35,6 @@ public class SignContractHandlerTests
 
         _handler = new SignContractHandler(
             _contractRepoMock.Object,
-            _verificationRepoMock.Object,
             _logRepoMock.Object,
             _pdfServiceMock.Object,
             _notificationRepoMock.Object,
@@ -70,9 +67,6 @@ public class SignContractHandlerTests
         typeof(RentalContract).GetProperty(nameof(RentalContract.EquipmentUsageLogs))!.SetValue(c, new List<EquipmentHistory>());
         return c;
     }
-
-    private static ContractVerification BuildVerification(bool isVerified = true)
-        => new() { VerificationId = 1, ContractId = 1, UserId = 10, OtpCode = "123456", IsVerified = isVerified, ExpiresAt = DateTime.UtcNow.AddMinutes(10) };
 
     private static Warehouse BuildWarehouse(int warehouseId = 5, int ownerId = 99)
         => new() { WarehouseId = warehouseId, OwnerId = ownerId, Name = "Kho A", Address = "123" };
@@ -139,44 +133,14 @@ public class SignContractHandlerTests
         Assert.Contains(wrongStatus, ex.Message);
     }
 
-    // UTCID04 – (B) OTP record không tồn tại → InvalidOperationException
-    [Fact]
-    public async Task Handle_OtpVerificationNotFound_ThrowsInvalidOperationException()
-    {
-        var contract = BuildContract(renterId: 10);
-        _contractRepoMock.Setup(r => r.GetByIdAsync(contract.ContractId)).ReturnsAsync(contract);
-        _verificationRepoMock.Setup(v => v.GetLatestByContractAndUserAsync(contract.ContractId, 10)).ReturnsAsync((ContractVerification?)null);
-
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _handler.Handle(BuildCommand(userId: 10), CancellationToken.None));
-
-        Assert.Equal("OTP verification required before signing", ex.Message);
-    }
-
-    // UTCID05 – (N) OTP tồn tại nhưng chưa verified → InvalidOperationException
-    [Fact]
-    public async Task Handle_OtpNotVerified_ThrowsInvalidOperationException()
-    {
-        var contract = BuildContract(renterId: 10);
-        _contractRepoMock.Setup(r => r.GetByIdAsync(contract.ContractId)).ReturnsAsync(contract);
-        _verificationRepoMock.Setup(v => v.GetLatestByContractAndUserAsync(contract.ContractId, 10)).ReturnsAsync(BuildVerification(isVerified: false));
-
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => _handler.Handle(BuildCommand(userId: 10), CancellationToken.None));
-
-        Assert.Equal("OTP not verified. Please verify OTP first.", ex.Message);
-    }
-
-    // UTCID06 – (N) Happy path: ký thành công → trả SignContractResult, log, notify cả Renter và Owner
+    // UTCID04 – (N) Happy path: ký thành công → trả SignContractResult, log, notify cả Renter và Owner
     [Fact]
     public async Task Handle_ValidSign_ReturnsResult_AndLogsAndNotifiesBothParties()
     {
         const int renterId = 10, ownerId = 99;
         var contract     = BuildContract(renterId: renterId, warehouseId: 5);
-        var verification = BuildVerification(isVerified: true);
 
         _contractRepoMock.Setup(r => r.GetByIdAsync(contract.ContractId)).ReturnsAsync(contract);
-        _verificationRepoMock.Setup(v => v.GetLatestByContractAndUserAsync(contract.ContractId, renterId)).ReturnsAsync(verification);
         SetupHappyPath(contract);
 
         var result = await _handler.Handle(BuildCommand(userId: renterId), CancellationToken.None);
