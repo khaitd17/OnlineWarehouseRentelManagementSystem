@@ -3,7 +3,10 @@ import { useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
 
 const statusConfig = {
-  DRAFT: { bg: "#f1f5f9", color: "#64748b", label: "Chờ ký" },
+  DRAFT: { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
+  NEGOTIATING: { bg: "#dbeafe", color: "#2563eb", label: "Đang đàm phán" },
+  REVISION_REQUESTED: { bg: "#fef3c7", color: "#d97706", label: "Yêu cầu chỉnh sửa" },
+  APPROVED_FOR_SIGNING: { bg: "#dcfce7", color: "#16a34a", label: "Sẵn sàng ký" },
   PENDING_OWNER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ chủ kho ký" },
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
   SIGNED: { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
@@ -77,7 +80,10 @@ const MyContracts = () => {
 
   // Count stats
   const activeCount = contracts.filter(c => c.status === "ACTIVE").length;
-  const pendingCount = contracts.filter(c => ["DRAFT", "PENDING_OWNER_SIGNATURE", "PENDING_SIGNATURE", "SIGNED", "PENDING_PAYMENT"].includes(c.status)).length;
+  const pendingCount = contracts.filter(c =>
+    ["DRAFT", "NEGOTIATING", "REVISION_REQUESTED", "APPROVED_FOR_SIGNING", "PENDING_OWNER_SIGNATURE", "PENDING_RENTER_SIGNATURE", "SIGNED", "PENDING_PAYMENT"]
+      .includes(c.status)
+  ).length;
   const closedCount = contracts.filter(c => ["COMPLETED", "CLOSED", "EXPIRED", "TERMINATED", "CANCELLED", "CANCELLED_BY_USER"].includes(c.status)).length;
 
   if (loading) {

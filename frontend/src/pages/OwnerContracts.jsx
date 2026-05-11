@@ -5,6 +5,9 @@ import contractTemplateService from "../services/contractTemplateService";
 
 const statusConfig = {
   DRAFT: { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
+  NEGOTIATING: { bg: "#dbeafe", color: "#2563eb", label: "Đang đàm phán" },
+  REVISION_REQUESTED: { bg: "#fef3c7", color: "#d97706", label: "Yêu cầu chỉnh sửa" },
+  APPROVED_FOR_SIGNING: { bg: "#dcfce7", color: "#16a34a", label: "Sẵn sàng ký" },
   PENDING_RENTER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ người thuê ký" },
   PENDING_OWNER_SIGNATURE: { bg: "#dbeafe", color: "#2563eb", label: "Chờ chủ kho ký" },
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },

@@ -38,9 +38,10 @@ public class ExpireSignaturesJob
         var ownerSignatureExpired = await _context.RentalContracts
             .Include(c => c.Renter)
             .Include(c => c.Warehouse)
-            .Where(c => c.Status == RentalContractStatus.PendingOwnerSignature
+            .Where(c => (c.Status == RentalContractStatus.PendingOwnerSignature
+                      || c.Status == RentalContractStatus.ApprovedForSigning)
                      && c.OwnerSignatureExpiry.HasValue
-                     && c.OwnerSignatureExpiry.Value < now)
+                      && c.OwnerSignatureExpiry.Value < now)
             .ToListAsync();
 
         foreach (var contract in ownerSignatureExpired)

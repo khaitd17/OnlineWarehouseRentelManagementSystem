@@ -9,7 +9,6 @@ namespace WMS.Application.Features.RentalContracts.SignContract;
 public class SignContractHandler : IRequestHandler<SignContractCommand, SignContractResult>
 {
     private readonly IRentalContractRepository _contractRepo;
-    private readonly IContractVerificationRepository _verificationRepo;
     private readonly IContractLogRepository _logRepo;
     private readonly IPdfService _pdfService;
     private readonly INotificationRepository _notificationRepo;
@@ -21,7 +20,6 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
 
     public SignContractHandler(
         IRentalContractRepository contractRepo,
-        IContractVerificationRepository verificationRepo,
         IContractLogRepository logRepo,
         IPdfService pdfService,
         INotificationRepository notificationRepo,
@@ -32,7 +30,6 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         IEquipmentRepository equipmentRepo)
     {
         _contractRepo = contractRepo;
-        _verificationRepo = verificationRepo;
         _logRepo = logRepo;
         _pdfService = pdfService;
         _notificationRepo = notificationRepo;
@@ -53,13 +50,6 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
 
         if (contract.Status != "PENDING_RENTER_SIGNATURE")
             throw new InvalidOperationException($"Cannot sign contract with status {contract.Status}");
-
-        // Verify OTP was completed
-        var verification = await _verificationRepo.GetLatestByContractAndUserAsync(request.ContractId, request.UserId)
-            ?? throw new InvalidOperationException("OTP verification required before signing");
-
-        if (!verification.IsVerified)
-            throw new InvalidOperationException("OTP not verified. Please verify OTP first.");
 
         // Tạo PDF đã ký trong một bước duy nhất (tránh lỗi khi mở lại PDF)
         var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, cancellationToken);

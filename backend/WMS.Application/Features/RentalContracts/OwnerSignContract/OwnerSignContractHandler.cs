@@ -41,7 +41,7 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
         if (warehouse.OwnerId != request.OwnerId)
             throw new UnauthorizedAccessException("Only warehouse owner can sign the contract");
 
-        if (contract.Status != "PENDING_OWNER_SIGNATURE")
+        if (contract.Status != "APPROVED_FOR_SIGNING")
             throw new InvalidOperationException($"Cannot owner-sign contract with status {contract.Status}");
 
         // Generate PDF with owner signature

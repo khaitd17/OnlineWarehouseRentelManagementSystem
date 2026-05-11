@@ -17,6 +17,9 @@ public static class RentalContractStatus
 {
     // Existing
     public const string Draft = "DRAFT";
+    public const string Negotiating = "NEGOTIATING";
+    public const string RevisionRequested = "REVISION_REQUESTED";
+    public const string ApprovedForSigning = "APPROVED_FOR_SIGNING";
     public const string PendingOwnerSignature = "PENDING_OWNER_SIGNATURE";
     public const string PendingRenterSignature = "PENDING_RENTER_SIGNATURE";
     public const string Active = "ACTIVE";
@@ -44,6 +47,14 @@ public static class RentalContractStatus
     public const string CancelledNoPayment = "CANCELLED_NO_PAYMENT";
     public const string ExpiredSignature = "EXPIRED_SIGNATURE";
     public const string ExpiredPayment = "EXPIRED_PAYMENT";
+}
+
+public static class ContractRevisionStatus
+{
+    public const string Open = "OPEN";
+    public const string Accepted = "ACCEPTED";
+    public const string Rejected = "REJECTED";
+    public const string Resolved = "RESOLVED";
 }
 
 public static class PaymentStatus
