@@ -446,7 +446,10 @@ const AuthPage = () => {
         await authService.googleLogin({ email: googleUser.email, fullName: googleUser.name, googleId: googleUser.sub, avatarUrl: googleUser.picture });
         window.dispatchEvent(new Event('authChange'));
         const user = authService.getCurrentUser();
-        if ((user?.role || user?.roleName || '').toUpperCase() === 'ADMIN') {
+        const returnUrl = location.state?.returnUrl || new URLSearchParams(location.search).get('returnUrl');
+        if (returnUrl) {
+          navigate(returnUrl, { replace: true });
+        } else if ((user?.role || user?.roleName || '').toUpperCase() === 'ADMIN') {
           navigate('/admin');
         } else {
           navigate('/');
@@ -510,6 +513,11 @@ const AuthPage = () => {
     setLoading(true); setError('');
     try {
       const redirectAfterAuth = () => {
+        const returnUrl = location.state?.returnUrl || new URLSearchParams(location.search).get('returnUrl');
+        if (returnUrl) {
+          navigate(returnUrl, { replace: true });
+          return;
+        }
         const user = authService.getCurrentUser();
         if ((user?.role || user?.roleName || '').toUpperCase() === 'ADMIN') {
           navigate('/admin');
@@ -598,7 +606,12 @@ const AuthPage = () => {
       // Auto login after successful registration
       await authService.login(formData.email, formData.password);
       window.dispatchEvent(new Event('authChange'));
-      navigate('/');
+      const returnUrl = location.state?.returnUrl || new URLSearchParams(location.search).get('returnUrl');
+      if (returnUrl) {
+        navigate(returnUrl, { replace: true });
+      } else {
+        navigate('/');
+      }
     } catch {
       setOtpError('Có lỗi xảy ra. Vui lòng thử lại.');
     } finally {

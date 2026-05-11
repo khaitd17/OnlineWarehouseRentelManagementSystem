@@ -697,7 +697,7 @@ const MainLayout = () => {
         ) : (
           <div className="drawer-actions">
             <Link to="/post-warehouse" className="btn-post" style={{ textAlign: 'center', display: 'block' }}>Đăng tin cho thuê</Link>
-            <button className="btn-login" style={{ width: '100%' }} onClick={() => navigate('/auth', { state: { mode: 'login' } })}>Đăng nhập</button>
+            <button className="btn-login" style={{ width: '100%' }} onClick={() => navigate('/auth', { state: { mode: 'login', returnUrl: location.pathname + location.search } })}>Đăng nhập</button>
           </div>
         )}
       </div>
@@ -790,7 +790,7 @@ const MainLayout = () => {
           ) : (
             <>
               <Link to="/post-warehouse" className="btn-post">Đăng tin cho thuê</Link>
-              <button className="btn-login" onClick={() => navigate('/auth', { state: { mode: 'login' } })}>Đăng nhập</button>
+              <button className="btn-login" onClick={() => navigate('/auth', { state: { mode: 'login', returnUrl: location.pathname + location.search } })}>Đăng nhập</button>
             </>
           )}
         </div>

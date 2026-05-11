@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getFeaturedWarehouses } from '../services/warehouseService';
 import { readSearchDraft, writeSearchDraft } from '../utils/searchDraft';
+import WarehouseCard from '../components/WarehouseCard';
 
 const HOME_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -807,6 +808,7 @@ const HomePage = () => {
     if (provinceInput) params.set('province', provinceInput);
     if (selectedArea)  params.set('maxArea', selectedArea);
     if (warehouseType) params.set('warehouseType', warehouseType);
+    window.scrollTo(0, 0);
     navigate(`/search?${params.toString()}`);
   };
 
@@ -947,7 +949,7 @@ const HomePage = () => {
           <FadeSection>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '18px' }}>
               {categories.map((cat, idx) => (
-                <div key={idx} className="cat-card" onClick={() => navigate(`/search?warehouseType=${encodeURIComponent(cat.name)}`)}>
+                <div key={idx} className="cat-card" onClick={() => { window.scrollTo(0, 0); navigate(`/search?warehouseType=${encodeURIComponent(cat.name)}`); }}>
                   <div className="cat-icon" style={{ background: cat.bg, boxShadow: `0 8px 20px ${cat.shadow}` }}>
                     {cat.icon}
                   </div>
@@ -972,7 +974,7 @@ const HomePage = () => {
                 <h2 className="section-title">Kho bãi được đề xuất</h2>
                 <p className="section-desc">Được đánh giá cao bởi các doanh nghiệp và đối tác</p>
               </div>
-              <Link to="/search" style={{ color: '#0ea5e9', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+              <Link onClick={() => window.scrollTo(0, 0)} to="/search" style={{ color: '#0ea5e9', fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
                 Xem tất cả
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
               </Link>
@@ -986,45 +988,8 @@ const HomePage = () => {
               <p style={{ color: '#64748b', gridColumn: '1/-1', textAlign: 'center', padding: '4rem 0', fontSize: '1rem' }}>Chưa có kho bãi nào được duyệt.</p>
             ) : (
               warehouses.map((w, i) => (
-                <FadeSection key={w.warehouseId} style={{ transitionDelay: `${i * 0.08}s` }}>
-                  <Link to={`/warehouse/${w.warehouseId}`} className="wh-card">
-                    <div className="wh-img-wrap">
-                      <img
-                        src={!w.imageUrl ? 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=800'
-                          : w.imageUrl.startsWith('http') ? w.imageUrl
-                          : `http://localhost:5276${w.imageUrl}`}
-                        alt={w.name}
-                      />
-                      <div className="wh-img-overlay" />
-                      <div className="wh-badge">Nổi bật</div>
-                    </div>
-                    <div className="wh-body">
-                      <h3 className="wh-title">{w.name}</h3>
-                      <p className="wh-addr">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                        {w.address}
-                      </p>
-                      {w.description && <p className="wh-desc">{w.description}</p>}
-                      {w.pricePerM2 && (
-                        <div className="wh-price-tag">
-                          <strong>{Number(w.pricePerM2).toLocaleString('vi-VN')} đ</strong>/m²/tháng
-                        </div>
-                      )}
-                      <div className="wh-footer">
-                        <div>
-                          <div className="wh-area-label">Diện tích sàn</div>
-                          <div className="wh-area-value">{w.totalArea} m²</div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div className="wh-area-label">Còn trống</div>
-                          <div>
-                            <span className="wh-avail-value">{w.availableArea}</span>
-                            <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}> m²</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
+                <FadeSection key={w.warehouseId} style={{ transitionDelay: `${i * 0.08}s`, height: '100%' }}>
+                  <WarehouseCard w={w} />
                 </FadeSection>
               ))
             )}
@@ -1070,8 +1035,8 @@ const HomePage = () => {
               Tạo tài khoản miễn phí để lưu danh sách yêu thích, nhận báo giá chi tiết và lên lịch xem kho thực tế.
             </p>
             <div className="cta-btns">
-              <Link to="/auth" className="btn-cta-primary">Đăng ký miễn phí</Link>
-              <Link to="/search" className="btn-cta-secondary">Khám phá kho bãi</Link>
+              <Link onClick={() => window.scrollTo(0, 0)} to="/auth" className="btn-cta-primary">Đăng ký miễn phí</Link>
+              <Link onClick={() => window.scrollTo(0, 0)} to="/search" className="btn-cta-secondary">Khám phá kho bãi</Link>
             </div>
           </div>
         </FadeSection>

@@ -999,7 +999,7 @@ const PendingRentalRequests = () => {
                     {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(topVal)}
                   </div>
                   <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "rgba(253,211,77,0.85)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    ⭐ Giá trị cao nhất
+                    Giá trị cao nhất
                   </div>
                 </div>
               ) : null;
@@ -1148,7 +1148,7 @@ const PendingRentalRequests = () => {
                             boxShadow: "0 2px 8px rgba(245,158,11,0.4)",
                             whiteSpace: "nowrap",
                           }}>
-                            ⭐ Ưu tiên cao nhất
+                            Ưu tiên cao nhất
                           </span>
                         )}
                       </div>
