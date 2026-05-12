@@ -58,6 +58,8 @@ public partial class Contract
     public bool OwnerApprovedTermination { get; set; }
     public decimal? EarlyTerminationFee { get; set; }
 
+    public virtual PaymentTerm? PaymentTerm { get; set; }
+
     public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
 
     public virtual ICollection<Rating> Ratings { get; set; } = new List<Rating>();

@@ -11,6 +11,8 @@ public class ApplyContractChangesCommand : IRequest<ApplyContractChangesResult>
     public DateTime StartDate { get; set; }
     public int DurationMonths { get; set; }
     public string? Terms { get; set; }
+    public int MonthsPerTerm { get; set; } = 1;
+    public int AllowedOverdueDays { get; set; } = 7;
     public List<int>? ResolveThreadIds { get; set; }
 }
 

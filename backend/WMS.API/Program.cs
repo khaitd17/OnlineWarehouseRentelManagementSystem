@@ -163,6 +163,7 @@ builder.Services.Configure<WMS.Infrastructure.Services.SepaySettings>(builder.Co
 builder.Services.AddScoped<ContractNotificationJob>();
 builder.Services.AddScoped<ContractExpiryJob>();
 builder.Services.AddScoped<SubscriptionExpiryJob>();
+builder.Services.AddScoped<MonthlyPaymentJob>();
 
 // JWT Authentication
 builder.Services.AddAuthentication(options =>
@@ -302,6 +303,12 @@ RecurringJob.AddOrUpdate<ContractNotificationJob>(
 //     job => job.ProcessAllExpiries(),
 //     "*/30 * * * *",  // Run every 30 minutes
 //     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+RecurringJob.AddOrUpdate<MonthlyPaymentJob>(
+    "create-monthly-payments",
+    job => job.CreateUpcomingPayments(),
+    "* * * * *",  // Run every 1 minute for testing (Hangfire does not support < 1 min natively)
+    new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Subscription expiry check — chạy hàng ngày lúc 0:00 UTC
 RecurringJob.AddOrUpdate<SubscriptionExpiryJob>(

@@ -17,6 +17,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
     private readonly IUserRepository _userRepo;
     private readonly IRentalRequestRepository _rentalRequestRepo;
     private readonly IEquipmentRepository _equipmentRepo;
+    private readonly IRentalPaymentRepository _paymentRepo;
 
     public SignContractHandler(
         IRentalContractRepository contractRepo,
@@ -27,7 +28,8 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         IWarehouseRepository warehouseRepo,
         IUserRepository userRepo,
         IRentalRequestRepository rentalRequestRepo,
-        IEquipmentRepository equipmentRepo)
+        IEquipmentRepository equipmentRepo,
+        IRentalPaymentRepository paymentRepo)
     {
         _contractRepo = contractRepo;
         _logRepo = logRepo;
@@ -38,6 +40,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         _userRepo = userRepo;
         _rentalRequestRepo = rentalRequestRepo;
         _equipmentRepo = equipmentRepo;
+        _paymentRepo = paymentRepo;
     }
 
     public async Task<SignContractResult> Handle(SignContractCommand request, CancellationToken cancellationToken)
@@ -80,9 +83,39 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
 
         // Update contract domain
         contract.SetContractFileUrl(signedFileUrl);
-        contract.Sign(signedFileUrl, request.SignatureBase64);  // SIGNED
-        contract.MarkPendingPayment(5.0/60.0);  // SIGNED → PENDING_PAYMENT (5 minutes expiry for testing)
+        contract.Sign(signedFileUrl, request.SignatureBase64);  // Status -> ACTIVE
+        contract.ForceActivate(); // Ensures it bypasses PENDING_PAYMENT if any previous logic set it
         await _contractRepo.UpdateAsync(contract);
+
+        // Generate the first bill based on PaymentTerm (pro-rated if needed)
+        // Fetch full contract to get PaymentTerm
+        var fullContractInfo = await _contractRepo.GetByIdWithDetailsAsync(contract.ContractId);
+        
+        int monthsPerTerm = fullContractInfo?.PaymentTerm?.MonthsPerTerm ?? 1;
+        int overdueDays = fullContractInfo?.PaymentTerm?.AllowedOverdueDays ?? 7;
+
+        var totalDays = (contract.EndDate - contract.StartDate).Days;
+        var firstTermEndDate = contract.StartDate.AddMonths(monthsPerTerm);
+        if (firstTermEndDate > contract.EndDate)
+            firstTermEndDate = contract.EndDate;
+            
+        var termDays = (firstTermEndDate - contract.StartDate).Days;
+        var proratedAmount = (contract.MonthlyPayment / 30) * termDays;
+        
+        // If contract starts within 5 days or in the past, create bill now
+        if ((contract.StartDate - DateTime.UtcNow).TotalDays <= 5)
+        {
+            var payment = RentalPayment.Create(
+                contractId: contract.ContractId,
+                amount: Math.Round(proratedAmount, 2),
+                paymentType: "MONTHLY",
+                expiryHours: overdueDays * 24
+            );
+            await _paymentRepo.AddAsync(payment);
+            await _paymentRepo.SaveChangesAsync();
+            payment.SetPaymentCode();
+            await _paymentRepo.UpdatePaymentCodeAsync(payment.PaymentId, payment.PaymentCode);
+        }
 
         // Update Equipments to IN_USE
         var fullContract = await _contractRepo.GetWithEquipmentsByIdAsync(contract.ContractId);

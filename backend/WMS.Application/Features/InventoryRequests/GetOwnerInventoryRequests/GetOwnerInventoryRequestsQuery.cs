@@ -28,6 +28,8 @@ public class InventoryRequestDto
     public string? Status { get; set; }
     public string RenterName { get; set; } = null!;
     public string RenterEmail { get; set; } = null!;
+    public int RenterId { get; set; }
+    public bool HasUnpaidBills { get; set; }
     public int WarehouseId { get; set; }
     public string WarehouseName { get; set; } = null!;
     public DateTime? CreatedAt { get; set; }

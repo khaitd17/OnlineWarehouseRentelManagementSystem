@@ -15,4 +15,5 @@ public interface IRentalPaymentRepository
     /// <summary>Atomically update only the payment_code field without full EF tracking overhead.</summary>
     Task UpdatePaymentCodeAsync(int paymentId, string paymentCode);
     Task SaveChangesAsync();
+    Task<bool> HasUnpaidBillsAsync(int renterId, int warehouseId);
 }
