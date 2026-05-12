@@ -39,6 +39,7 @@ public record InventoryRequestDto
     public int WarehouseId { get; init; }
     public string WarehouseName { get; init; } = "";
     public string? Notes { get; init; }
+    public bool HasUnpaidBills { get; set; }
     public List<string>? DocumentUrls { get; init; }
     public DateTime? CreatedAt { get; init; }
     public DateTime? ConfirmedAt { get; init; }

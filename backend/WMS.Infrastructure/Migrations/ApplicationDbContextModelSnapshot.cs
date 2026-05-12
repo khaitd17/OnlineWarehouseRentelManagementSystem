@@ -1172,6 +1172,11 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("renter_signature_base64");
 
+                    b.Property<string>("RequestCode")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("request_code");
+
                     b.Property<DateTime?>("ScheduledDate")
                         .HasColumnType("datetime2");
 
@@ -1181,8 +1186,8 @@ namespace WMS.Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
                         .HasDefaultValue("PENDING")
                         .HasColumnName("status");
 
@@ -1198,6 +1203,12 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnName("updated_at")
                         .HasDefaultValueSql("(getdate())");
 
+                    b.Property<bool>("VolumeWarning")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false)
+                        .HasColumnName("volume_warning");
+
                     b.Property<int>("WarehouseId")
                         .HasColumnType("int")
                         .HasColumnName("warehouse_id");
@@ -1208,6 +1219,10 @@ namespace WMS.Infrastructure.Migrations
                     b.HasIndex("AssignedStaffId");
 
                     b.HasIndex("ConfirmedBy");
+
+                    b.HasIndex(new[] { "RequestCode" }, "UQ_inventory_requests_code")
+                        .IsUnique()
+                        .HasFilter("[request_code] IS NOT NULL");
 
                     b.HasIndex(new[] { "CreatedAt" }, "idx_inventory_requests_created_at");
 
@@ -1264,6 +1279,10 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasColumnName("quantity");
 
+                    b.Property<int?>("ReceiptNoteId")
+                        .HasColumnType("int")
+                        .HasColumnName("receipt_note_id");
+
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -1288,6 +1307,8 @@ namespace WMS.Infrastructure.Migrations
                     b.HasIndex("InvReqId");
 
                     b.HasIndex("PerformedBy");
+
+                    b.HasIndex("ReceiptNoteId");
 
                     b.HasIndex(new[] { "CreatedAt" }, "idx_inv_transactions_created");
 
@@ -1585,6 +1606,31 @@ namespace WMS.Infrastructure.Migrations
                     b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.PaymentTerm", b =>
+                {
+                    b.Property<int>("TermId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("TermId"));
+
+                    b.Property<int>("AllowedOverdueDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ContractId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MonthsPerTerm")
+                        .HasColumnType("int");
+
+                    b.HasKey("TermId");
+
+                    b.HasIndex("ContractId")
+                        .IsUnique();
+
+                    b.ToTable("PaymentTerms");
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.Rating", b =>
                 {
                     b.Property<int>("RatingId")
@@ -1659,6 +1705,144 @@ namespace WMS.Infrastructure.Migrations
                         });
 
                     b.HasAnnotation("SqlServer:UseSqlOutputClause", false);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ReceiptItem", b =>
+                {
+                    b.Property<int>("ReceiptItemId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("receipt_item_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReceiptItemId"));
+
+                    b.Property<int?>("AssetId")
+                        .HasColumnType("int")
+                        .HasColumnName("asset_id");
+
+                    b.Property<int>("ExpectedQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("expected_quantity");
+
+                    b.Property<int?>("InventoryItemId")
+                        .HasColumnType("int")
+                        .HasColumnName("inventory_item_id");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .HasColumnName("item_name");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)")
+                        .HasColumnName("note");
+
+                    b.Property<int>("ReceiptNoteId")
+                        .HasColumnType("int")
+                        .HasColumnName("receipt_note_id");
+
+                    b.Property<int>("ReceivedQuantity")
+                        .HasColumnType("int")
+                        .HasColumnName("received_quantity");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)")
+                        .HasDefaultValue("cái")
+                        .HasColumnName("unit");
+
+                    b.Property<decimal?>("VerifiedVolume")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("verified_volume");
+
+                    b.Property<decimal?>("VerifiedWeight")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("verified_weight");
+
+                    b.HasKey("ReceiptItemId")
+                        .HasName("PK_receipt_items");
+
+                    b.HasIndex("AssetId");
+
+                    b.HasIndex("InventoryItemId");
+
+                    b.HasIndex(new[] { "ReceiptNoteId" }, "idx_receipt_items_note");
+
+                    b.ToTable("receipt_items", (string)null);
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ReceiptNote", b =>
+                {
+                    b.Property<int>("ReceiptNoteId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasColumnName("receipt_note_id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ReceiptNoteId"));
+
+                    b.Property<DateTime?>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("(getdate())");
+
+                    b.Property<int>("InvReqId")
+                        .HasColumnType("int")
+                        .HasColumnName("inv_req_id");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("ReceiptCode")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasColumnName("receipt_code");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("received_at");
+
+                    b.Property<int>("ReceivedByStaffId")
+                        .HasColumnType("int")
+                        .HasColumnName("received_by_staff_id");
+
+                    b.Property<string>("RenterSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("renter_signature_base64");
+
+                    b.Property<string>("StaffSignatureBase64")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("staff_signature_base64");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("DRAFT")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("ReceiptNoteId")
+                        .HasName("PK_receipt_notes");
+
+                    b.HasIndex("ReceivedByStaffId");
+
+                    b.HasIndex(new[] { "ReceiptCode" }, "UQ_receipt_notes_code")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "InvReqId" }, "idx_receipt_notes_request");
+
+                    b.ToTable("receipt_notes", (string)null);
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.Refund", b =>
@@ -4064,6 +4248,12 @@ namespace WMS.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_inv_transactions_performer");
 
+                    b.HasOne("WMS.Domain.Entities.ReceiptNote", "ReceiptNote")
+                        .WithMany()
+                        .HasForeignKey("ReceiptNoteId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_inv_transactions_receipt_note");
+
                     b.HasOne("WMS.Domain.Entities.Warehouse", "Warehouse")
                         .WithMany()
                         .HasForeignKey("WarehouseId")
@@ -4074,6 +4264,8 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("InvReq");
 
                     b.Navigation("PerformedByNavigation");
+
+                    b.Navigation("ReceiptNote");
 
                     b.Navigation("Warehouse");
                 });
@@ -4125,6 +4317,17 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Contract");
                 });
 
+            modelBuilder.Entity("WMS.Domain.Entities.PaymentTerm", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.RentalContract", "Contract")
+                        .WithOne("PaymentTerm")
+                        .HasForeignKey("WMS.Domain.Entities.PaymentTerm", "ContractId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Contract");
+                });
+
             modelBuilder.Entity("WMS.Domain.Entities.Rating", b =>
                 {
                     b.HasOne("WMS.Domain.Entities.Contract", "Contract")
@@ -4151,6 +4354,55 @@ namespace WMS.Infrastructure.Migrations
                     b.Navigation("Renter");
 
                     b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ReceiptItem", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.RenterAsset", "Asset")
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_receipt_items_asset");
+
+                    b.HasOne("WMS.Domain.Entities.InventoryItem", "InventoryItem")
+                        .WithMany()
+                        .HasForeignKey("InventoryItemId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .HasConstraintName("FK_receipt_items_inv_item");
+
+                    b.HasOne("WMS.Domain.Entities.ReceiptNote", "ReceiptNote")
+                        .WithMany("ReceiptItems")
+                        .HasForeignKey("ReceiptNoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_receipt_items_note");
+
+                    b.Navigation("Asset");
+
+                    b.Navigation("InventoryItem");
+
+                    b.Navigation("ReceiptNote");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ReceiptNote", b =>
+                {
+                    b.HasOne("WMS.Domain.Entities.InventoryRequest", "InvReq")
+                        .WithMany("ReceiptNotes")
+                        .HasForeignKey("InvReqId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_receipt_notes_request");
+
+                    b.HasOne("WMS.Domain.Entities.User", "ReceivedByStaff")
+                        .WithMany()
+                        .HasForeignKey("ReceivedByStaffId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired()
+                        .HasConstraintName("FK_receipt_notes_staff");
+
+                    b.Navigation("InvReq");
+
+                    b.Navigation("ReceivedByStaff");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.Refund", b =>
@@ -4602,11 +4854,23 @@ namespace WMS.Infrastructure.Migrations
             modelBuilder.Entity("WMS.Domain.Entities.InventoryRequest", b =>
                 {
                     b.Navigation("InventoryItems");
+
+                    b.Navigation("ReceiptNotes");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.ReceiptNote", b =>
+                {
+                    b.Navigation("ReceiptItems");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.RentalArea", b =>
                 {
                     b.Navigation("Equipments");
+                });
+
+            modelBuilder.Entity("WMS.Domain.Entities.RentalContract", b =>
+                {
+                    b.Navigation("PaymentTerm");
                 });
 
             modelBuilder.Entity("WMS.Domain.Entities.RentalRequest", b =>

@@ -32,6 +32,7 @@ public class RentalContractRepository : IRentalContractRepository
         var dbContract = await _context.Contracts
             .Include(c => c.Renter)
             .Include(c => c.Warehouse)
+            .Include(c => c.PaymentTerm)
             .FirstOrDefaultAsync(c => c.ContractId == contractId);
 
         return dbContract != null ? MapToDomain(dbContract) : null;
@@ -93,6 +94,15 @@ public class RentalContractRepository : IRentalContractRepository
             CreatedAt = contract.CreatedAt
         };
 
+        if (contract.PaymentTerm != null)
+        {
+            dbContract.PaymentTerm = new PaymentTerm
+            {
+                MonthsPerTerm = contract.PaymentTerm.MonthsPerTerm,
+                AllowedOverdueDays = contract.PaymentTerm.AllowedOverdueDays
+            };
+        }
+
         _context.Contracts.Add(dbContract);
         await _context.SaveChangesAsync();
 
@@ -130,6 +140,27 @@ public class RentalContractRepository : IRentalContractRepository
         dbContract.TerminationReason = contract.TerminationReason;
         dbContract.EarlyTerminationFee = contract.EarlyTerminationFee;
         dbContract.TerminatedAt = contract.TerminatedAt;
+
+        if (contract.PaymentTerm != null)
+        {
+            // PaymentTerm requires an Include to be loaded, but if we assume the relation, we update it.
+            // Wait, we need to explicitly get the payment term or attach it.
+            var existingPaymentTerm = await _context.PaymentTerms.FirstOrDefaultAsync(p => p.ContractId == contract.ContractId);
+            if (existingPaymentTerm != null)
+            {
+                existingPaymentTerm.MonthsPerTerm = contract.PaymentTerm.MonthsPerTerm;
+                existingPaymentTerm.AllowedOverdueDays = contract.PaymentTerm.AllowedOverdueDays;
+            }
+            else
+            {
+                dbContract.PaymentTerm = new PaymentTerm
+                {
+                    ContractId = contract.ContractId,
+                    MonthsPerTerm = contract.PaymentTerm.MonthsPerTerm,
+                    AllowedOverdueDays = contract.PaymentTerm.AllowedOverdueDays
+                };
+            }
+        }
 
         await _context.SaveChangesAsync();
     }
@@ -504,6 +535,13 @@ public class RentalContractRepository : IRentalContractRepository
         terminationReasonProp?.SetValue(domainContract, dbContract.TerminationReason);
         earlyTerminationFeeProp?.SetValue(domainContract, dbContract.EarlyTerminationFee);
         terminatedAtProp?.SetValue(domainContract, dbContract.TerminatedAt);
+
+        // Map PaymentTerm if loaded
+        if (dbContract.PaymentTerm != null)
+        {
+            var paymentTermProp = typeof(DomainRentalContract).GetProperty("PaymentTerm");
+            paymentTermProp?.SetValue(domainContract, dbContract.PaymentTerm);
+        }
 
         return domainContract;
     }

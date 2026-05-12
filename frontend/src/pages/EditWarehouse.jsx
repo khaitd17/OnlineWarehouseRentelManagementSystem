@@ -824,16 +824,10 @@ const EditWarehouse = () => {
 
           </div>
 
-          {/* Right Column: Map & Media */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "2rem", position: "sticky", top: "20px" }}>
+          {/* Right Column: Map, Media & Areas */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
             
-            {/* Area Management Section */}
-            <div style={{ 
-              backgroundColor: "#fff", padding: "1.5rem", borderRadius: "32px", 
-              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9" 
-            }}>
-               <RentalAreaManagement warehouseId={id} />
-            </div>
+
             {/* Map Preview */}
             <div style={{ 
               backgroundColor: "#fff", padding: "1.5rem", borderRadius: "32px", 
@@ -943,6 +937,19 @@ const EditWarehouse = () => {
                 );
               })()}
             </div>
+
+            {/* Area Management Section (Moved to right column) */}
+            <div style={{ 
+              backgroundColor: "#fff", padding: "2rem", borderRadius: "32px", 
+              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9"
+            }}>
+              <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem", fontWeight: 800, color: "#1e293b", display: "flex", alignItems: "center", gap: "10px" }}>
+                <span className="material-symbols-outlined" style={{ color: "#00b2d6" }}>grid_view</span>
+                Quản lý khu vực & diện tích
+              </h3>
+              <RentalAreaManagement warehouseId={id} />
+            </div>
+
           </div>
         </div>
       </div>

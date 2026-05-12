@@ -409,7 +409,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
               <div style={{position:'absolute',top:0,left:0,width:`${cw}px`,height:`${ch}px`,overflow:'hidden'}}>
                 {areas.length===0 && !viewOnly && (
                   <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,textAlign:'center',pointerEvents:'none'}}>
-                    <div style={{fontSize:'0.85rem',fontWeight:700,color:'#94a3b8'}}>Chưa có sơ đồ kho</div>
+                    <div style={{fontSize:'0.85rem',fontWeight:700,color:'#94a3b8'}}>Chưa có khu vực cho thuê</div>
                   </div>
                 )}
                 {areas.map(a=>{

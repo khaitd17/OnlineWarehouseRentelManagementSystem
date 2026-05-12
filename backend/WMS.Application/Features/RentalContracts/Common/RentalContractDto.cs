@@ -58,4 +58,8 @@ public class RentalContractDto
     public bool OwnerApprovedTermination { get; set; }
     public string? TerminationReason { get; set; }
     public decimal? EarlyTerminationFee { get; set; }
+    
+    // Payment term fields
+    public int MonthsPerTerm { get; set; } = 1;
+    public int AllowedOverdueDays { get; set; } = 7;
 }

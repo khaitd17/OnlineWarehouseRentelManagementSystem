@@ -32,6 +32,7 @@ public class ApplicationDbContext : DbContext
     public virtual DbSet<RentalPayment> RentalPayments { get; set; }
 
     public virtual DbSet<RentalContract> RentalContracts { get; set; }
+    public virtual DbSet<PaymentTerm> PaymentTerms { get; set; }
 
     public virtual DbSet<WarehouseReturn> WarehouseReturns { get; set; }
 
@@ -213,6 +214,7 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.Renter).WithMany(p => p.Contracts).HasForeignKey(d => d.RenterId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_contracts_renter");
             entity.HasOne(d => d.Request).WithMany(p => p.Contracts).HasForeignKey(d => d.RequestId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_contracts_request");
             entity.HasOne(d => d.Warehouse).WithMany(p => p.Contracts).HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull).HasConstraintName("FK_contracts_warehouse");
+            entity.HasOne(d => d.PaymentTerm).WithOne().HasForeignKey<PaymentTerm>(p => p.ContractId).OnDelete(DeleteBehavior.Cascade);
 
             // TODO: Fix Contract entity configuration - temporary comment out due to type resolution issues
             // Configure many-to-many relationship with Equipment
@@ -369,6 +371,7 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(d => d.RentalRequest).WithMany().HasForeignKey(d => d.RentalRequestId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Renter).WithMany().HasForeignKey(d => d.RenterId).OnDelete(DeleteBehavior.ClientSetNull);
             entity.HasOne(d => d.Warehouse).WithMany().HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.ClientSetNull);
+            entity.HasOne(d => d.PaymentTerm).WithOne(p => p.Contract).HasForeignKey<PaymentTerm>(p => p.ContractId).OnDelete(DeleteBehavior.Cascade);
             // Ignore unmapped navigation collections to prevent EF Core from generating phantom FK columns
             entity.Ignore(e => e.IncludedEquipments);
             entity.Ignore(e => e.EquipmentUsageLogs);

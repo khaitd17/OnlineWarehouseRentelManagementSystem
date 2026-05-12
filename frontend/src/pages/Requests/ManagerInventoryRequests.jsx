@@ -552,6 +552,11 @@ const ManagerInventoryRequests = () => {
                     <td style={{ padding:'13px 14px' }}>
                       <p style={{ margin:0, fontSize:'0.85rem', fontWeight:600, color:'#1e293b' }}>{req.renterName||'—'}</p>
                       <p style={{ margin:0, fontSize:'0.72rem', color:'#94a3b8' }}>{req.renterEmail||''}</p>
+                      {req.hasUnpaidBills && (
+                        <p style={{ margin:'4px 0 0', fontSize:'0.72rem', color:'#ef4444', fontWeight:700, display:'flex', alignItems:'center', gap:4 }}>
+                          <span style={{width:6, height:6, borderRadius:'50%', background:'#ef4444'}}></span> Nợ cước
+                        </p>
+                      )}
                     </td>
                     <td style={{ padding:'13px 14px' }}>
                       <div style={{ fontWeight:600, color:'#1e293b', fontSize:'0.85rem' }}>{firstItem?.itemName||'—'}</div>

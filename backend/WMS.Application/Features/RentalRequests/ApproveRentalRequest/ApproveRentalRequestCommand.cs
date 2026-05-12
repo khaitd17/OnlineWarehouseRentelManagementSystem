@@ -12,6 +12,8 @@ public class ApproveRentalRequestCommand : IRequest<int>
     public string? Terms { get; set; }
     public DateTime? StartDate { get; set; }
     public int? DurationMonths { get; set; }
+    public int MonthsPerTerm { get; set; } = 1;
+    public int AllowedOverdueDays { get; set; } = 7;
     // Note: OwnerSignatureBase64 removed - owner signs via separate endpoint after contract creation
 
     // ── Owner-assigned zone (when renter did not pick a zone) ──

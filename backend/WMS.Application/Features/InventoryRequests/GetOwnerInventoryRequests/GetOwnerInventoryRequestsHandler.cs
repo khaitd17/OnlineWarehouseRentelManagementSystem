@@ -7,10 +7,12 @@ public class GetOwnerInventoryRequestsHandler
     : IRequestHandler<GetOwnerInventoryRequestsQuery, OwnerInventoryRequestsResult>
 {
     private readonly IInventoryRequestRepository _repo;
+    private readonly IRentalPaymentRepository _paymentRepo;
 
-    public GetOwnerInventoryRequestsHandler(IInventoryRequestRepository repo)
+    public GetOwnerInventoryRequestsHandler(IInventoryRequestRepository repo, IRentalPaymentRepository paymentRepo)
     {
         _repo = repo;
+        _paymentRepo = paymentRepo;
     }
 
     public async Task<OwnerInventoryRequestsResult> Handle(
@@ -33,6 +35,7 @@ public class GetOwnerInventoryRequestsHandler
             Status     = r.Status,
             RenterName  = r.Renter?.FullName ?? "",
             RenterEmail = r.Renter?.Email    ?? "",
+            RenterId    = r.RenterId,
             WarehouseId   = r.WarehouseId,
             WarehouseName = r.Warehouse?.Name ?? "",
             CreatedAt   = r.CreatedAt,
@@ -57,6 +60,12 @@ public class GetOwnerInventoryRequestsHandler
             AssignedNote       = r.AssignedNote,
             UpdatedAt          = r.UpdatedAt,
         }).ToList();
+
+        // Map HasUnpaidBills (can optimize later to avoid N+1 if needed)
+        foreach (var dto in dtos)
+        {
+            dto.HasUnpaidBills = await _paymentRepo.HasUnpaidBillsAsync(dto.RenterId, dto.WarehouseId);
+        }
 
         return new OwnerInventoryRequestsResult
         {

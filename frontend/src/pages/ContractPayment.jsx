@@ -96,6 +96,7 @@ const ContractPayment = () => {
       // IMPORTANT: expiredAt from API is UTC, must parse as UTC to avoid timezone shift
       const isStillValid = (p) => {
         if (p.status !== 'PENDING' && p.status !== 'RETRY_PENDING') return false;
+        if (p.paymentType === 'MONTHLY') return true; // MONTHLY payments are always payable even if overdue
         if (!p.expiredAt) return true;
         const expiryStr = typeof p.expiredAt === 'string' && !p.expiredAt.endsWith('Z') && !p.expiredAt.includes('+')
           ? p.expiredAt + 'Z'
@@ -334,7 +335,9 @@ const ContractPayment = () => {
           key={payment.paymentId}
           expiryDate={payment.expiredAt}
           onExpired={() => {
-            setPaymentStatus('EXPIRED');
+            if (payment?.paymentType !== 'MONTHLY') {
+              setPaymentStatus('EXPIRED');
+            }
           }}
           warningThresholdMinutes={15}
           className="mb-4"

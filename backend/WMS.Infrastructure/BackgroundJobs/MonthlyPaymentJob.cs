@@ -39,13 +39,14 @@ public class MonthlyPaymentJob
         _logger.LogInformation("Starting MonthlyPaymentJob...");
 
         var now = DateTime.UtcNow;
-        var advanceNoticeDays = 7; // Create payment 7 days before due date
+        var advanceNoticeDays = 5; // Create payment 5 days before due date
         var createdCount = 0;
 
         // Find active contracts
         var activeContracts = await _context.RentalContracts
             .Include(c => c.Renter)
             .Include(c => c.Warehouse)
+            .Include(c => c.PaymentTerm)
             .Where(c => c.Status == RentalContractStatus.Active)
             .ToListAsync();
 
@@ -67,26 +68,30 @@ public class MonthlyPaymentJob
                     continue;
                 }
 
-                // Check if payment already exists for this period (use CreatedAt month instead of DueDate)
-                var paymentMonth = nextDueDate.Value.Month;
-                var paymentYear = nextDueDate.Value.Year;
+                // To prevent duplicate bills for the same period, we check if there's any payment
+                // created within the last 15 days, or just check the total number of payments.
                 var existingPayment = await _context.RentalPayments
-                    .FirstOrDefaultAsync(p => p.ContractId == contract.ContractId
-                                           && p.PaymentType == "MONTHLY"
-                                           && p.CreatedAt.Month == paymentMonth
-                                           && p.CreatedAt.Year == paymentYear);
+                    .OrderByDescending(p => p.CreatedAt)
+                    .FirstOrDefaultAsync(p => p.ContractId == contract.ContractId && p.PaymentType == "MONTHLY");
 
                 if (existingPayment != null)
                 {
-                    continue;
+                    // If the most recent payment was created recently (e.g. within the last 15 days), 
+                    // it means we already generated the bill for this upcoming cycle.
+                    if ((now - existingPayment.CreatedAt).TotalDays < 15)
+                    {
+                        continue;
+                    }
                 }
+
+                var overdueDays = contract.PaymentTerm?.AllowedOverdueDays ?? 7;
 
                 // Create new monthly payment
                 var payment = RentalPayment.Create(
                     contractId: contract.ContractId,
-                    amount: contract.MonthlyPayment,
+                    amount: contract.MonthlyPayment * (contract.PaymentTerm?.MonthsPerTerm ?? 1),
                     paymentType: "MONTHLY",
-                    expiryHours: 168 // 7 days to pay
+                    expiryHours: overdueDays * 24
                 );
 
                 _context.RentalPayments.Add(payment);
@@ -190,24 +195,30 @@ public class MonthlyPaymentJob
         var startDate = contract.StartDate;
         var now = DateTime.UtcNow;
 
-        // Skip if contract hasn't started yet
         if (startDate > now)
             return null;
 
-        // Find the next payment due date (monthly on the same day as start date)
-        var currentMonth = new DateTime(now.Year, now.Month, 1);
-        var dayOfPayment = Math.Min(startDate.Day, DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
-        var nextDue = new DateTime(currentMonth.Year, currentMonth.Month, dayOfPayment);
+        int monthsPerTerm = contract.PaymentTerm?.MonthsPerTerm ?? 1;
 
-        // If we've passed this month's due date, use next month
-        if (nextDue <= now)
+        // Tính tổng số tháng chênh lệch theo lịch
+        int monthsSinceStart = ((now.Year - startDate.Year) * 12) + now.Month - startDate.Month;
+
+        // Hàm AddMonths xử lý hoàn hảo trường hợp cuối tháng (VD: 31/1 -> 28/2 -> 31/3)
+        var currentAnniversary = startDate.AddMonths(monthsSinceStart);
+
+        // Nếu ngày/giờ hiện tại nhỏ hơn ngày mốc kỷ niệm trong tháng này, lùi lại 1 tháng
+        if (now.Date < currentAnniversary.Date)
         {
-            currentMonth = currentMonth.AddMonths(1);
-            dayOfPayment = Math.Min(startDate.Day, DateTime.DaysInMonth(currentMonth.Year, currentMonth.Month));
-            nextDue = new DateTime(currentMonth.Year, currentMonth.Month, dayOfPayment);
+            monthsSinceStart--;
         }
 
-        // Check if contract has ended
+        // Xác định chúng ta đang ở kỳ thanh toán thứ mấy
+        int currentTermIndex = monthsSinceStart / monthsPerTerm;
+
+        // Tính mốc ngày đến hạn của kỳ tiếp theo
+        int nextTermStartMonths = (currentTermIndex + 1) * monthsPerTerm;
+        var nextDue = startDate.AddMonths(nextTermStartMonths);
+
         if (nextDue > contract.EndDate)
         {
             return null;
