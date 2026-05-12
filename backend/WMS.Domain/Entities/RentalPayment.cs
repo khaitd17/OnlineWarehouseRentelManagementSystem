@@ -15,6 +15,12 @@ public class RentalPayment
     public string PaymentMethod { get; set; } = "BANK_TRANSFER"; // BANK_TRANSFER, CASH
     public int? SepayTransactionId { get; private set; }
     public string? SepayReferenceCode { get; private set; }
+    public string? TransactionCode { get; set; }
+    public string? ProofUrl { get; set; }
+    public string? ProofNote { get; set; }
+    public DateTime? ProofSubmittedAt { get; set; }
+    public string? ProofRequestReason { get; set; }
+    public DateTime? ProofRequestedAt { get; set; }
     public DateTime? PaidAt { get; private set; }
     public DateTime? ExpiredAt { get; private set; }
     public DateTime CreatedAt { get; private set; }
@@ -131,6 +137,25 @@ public class RentalPayment
 
     // Check if payment is pending
     public bool IsPending => Status == PaymentStatus.Pending;
+
+    public void UpdatePaymentProof(string? transactionCode, string? proofUrl, string? proofNote)
+    {
+        TransactionCode = transactionCode;
+        ProofUrl = proofUrl;
+        ProofNote = proofNote;
+        ProofSubmittedAt = DateTime.UtcNow;
+        ProofRequestReason = null;
+        ProofRequestedAt = null;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RequestProofReupload(string? reason)
+    {
+        Status = PaymentStatus.ReuploadRequested;
+        ProofRequestReason = reason;
+        ProofRequestedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
     
     // NEW - Retry methods
     public void IncrementRetry()

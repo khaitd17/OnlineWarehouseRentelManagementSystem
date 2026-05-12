@@ -15,6 +15,12 @@ public class PaymentDto
     public string? PaymentMethod { get; set; }
     public decimal Amount { get; set; }
     public string Status { get; set; } = null!;
+    public string? TransactionCode { get; set; }
+    public string? ProofUrl { get; set; }
+    public string? ProofNote { get; set; }
+    public DateTime? ProofSubmittedAt { get; set; }
+    public DateTime? ProofRequestedAt { get; set; }
+    public string? ProofRequestReason { get; set; }
     public DateTime? PaidAt { get; set; }
     public DateTime? ExpiredAt { get; set; }
     public DateTime CreatedAt { get; set; }

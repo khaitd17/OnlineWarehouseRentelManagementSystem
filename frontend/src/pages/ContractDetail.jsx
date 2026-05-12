@@ -186,6 +186,7 @@ const ContractDetail = () => {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [terminationFee, setTerminationFee] = useState('');
   const [hasPendingPayment, setHasPendingPayment] = useState(false);
+  const [reuploadPayment, setReuploadPayment] = useState(null);
 
   // Floor plan state
   const [warehouseInfo, setWarehouseInfo] = useState(null);
@@ -342,16 +343,22 @@ const ContractDetail = () => {
           paymentService.getPaymentsByContract(id)
             .then(payments => {
               if (Array.isArray(payments)) {
+                const manualPayments = payments.filter(p =>
+                  p.paymentMethod === "CASH" || p.paymentMethod === "BANK_TRANSFER"
+                );
+                const reuploadRequestedPayment = manualPayments.find(p => p.status === "REUPLOAD_REQUESTED");
                 // Trường hợp 1: Thanh toán tiền mặt đã gửi, chờ chủ kho xác nhận
-                const cashPending = payments.some(p => p.paymentMethod === "CASH" && p.status === "PENDING_CONFIRMATION");
+                const cashPending = manualPayments.some(p => p.status === "PENDING_CONFIRMATION");
                 // Trường hợp 2: Thanh toán online đã hoàn tất (ngân hàng xác nhận) nhưng contract chưa update
                 const onlineCompleted = payments.some(p => p.paymentMethod !== "CASH" && p.status === "COMPLETED");
+                setReuploadPayment(reuploadRequestedPayment || null);
                 setHasPendingPayment(cashPending || onlineCompleted);
               }
             })
             .catch(() => {}); // silently ignore
         } else {
           setHasPendingPayment(false);
+          setReuploadPayment(null);
         }
       })
       .catch((err) => {
@@ -606,6 +613,7 @@ const ContractDetail = () => {
   const canOwnerSign = contract?.isCurrentUserOwner && contract?.status === "APPROVED_FOR_SIGNING";
   const canRenterSign = contract?.isCurrentUserRenter && contract?.status === "PENDING_RENTER_SIGNATURE";
   const canRenterDecline = contract?.isCurrentUserRenter && contract?.status === "PENDING_RENTER_SIGNATURE";
+  const hasReuploadRequest = Boolean(reuploadPayment);
   // canRenterPay: true only if no payment has been submitted/pending yet
   const canRenterPay = contract?.isCurrentUserRenter &&
     (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED") &&
@@ -1483,7 +1491,20 @@ const ContractDetail = () => {
             fontSize: "0.9rem",
             marginBottom: "1rem"
           }}>
-            <strong>Hợp đồng đã ký thành công!</strong> Vui lòng thanh toán để kích hoạt hợp đồng.
+            {hasReuploadRequest ? (
+              <>
+                <strong>Chủ kho yêu cầu tải lại chứng từ thanh toán.</strong> Vui lòng cập nhật và gửi lại xác nhận.
+                {reuploadPayment?.proofRequestReason && (
+                  <div style={{ marginTop: 6, fontSize: "0.85rem" }}>
+                    <strong>Lý do:</strong> {reuploadPayment.proofRequestReason}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <strong>Hợp đồng đã ký thành công!</strong> Vui lòng thanh toán để kích hoạt hợp đồng.
+              </>
+            )}
           </div>
           <button
             onClick={() => navigate(`/contracts/${id}/payment`)}
@@ -1502,7 +1523,7 @@ const ContractDetail = () => {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#15803d"}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#16a34a"}
           >
-            Thanh toán ngay
+            {hasReuploadRequest ? "Gửi lại chứng từ" : "Thanh toán ngay"}
           </button>
         </div>
       )}

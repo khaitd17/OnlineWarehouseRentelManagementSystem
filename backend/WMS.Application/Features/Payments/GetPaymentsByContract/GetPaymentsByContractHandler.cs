@@ -24,6 +24,12 @@ public class GetPaymentsByContractHandler : IRequestHandler<GetPaymentsByContrac
             PaymentMethod = p.PaymentMethod,
             Amount = p.Amount,
             Status = p.Status,
+            TransactionCode = p.TransactionCode,
+            ProofUrl = p.ProofUrl,
+            ProofNote = p.ProofNote,
+            ProofSubmittedAt = p.ProofSubmittedAt.HasValue ? DateTime.SpecifyKind(p.ProofSubmittedAt.Value, DateTimeKind.Utc) : null,
+            ProofRequestedAt = p.ProofRequestedAt.HasValue ? DateTime.SpecifyKind(p.ProofRequestedAt.Value, DateTimeKind.Utc) : null,
+            ProofRequestReason = p.ProofRequestReason,
             PaidAt = p.PaidAt.HasValue ? DateTime.SpecifyKind(p.PaidAt.Value, DateTimeKind.Utc) : null,
             ExpiredAt = p.ExpiredAt.HasValue ? DateTime.SpecifyKind(p.ExpiredAt.Value, DateTimeKind.Utc) : null,
             CreatedAt = DateTime.SpecifyKind(p.CreatedAt, DateTimeKind.Utc)

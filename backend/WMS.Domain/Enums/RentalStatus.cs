@@ -69,6 +69,7 @@ public static class PaymentStatus
     // NEW - Cancel tracking
     public const string CancelledByUser = "CANCELLED_BY_USER";
     public const string PendingConfirmation = "PENDING_CONFIRMATION"; // Cash payment
+    public const string ReuploadRequested = "REUPLOAD_REQUESTED";
     public const string RetryPending = "RETRY_PENDING";
 }
 

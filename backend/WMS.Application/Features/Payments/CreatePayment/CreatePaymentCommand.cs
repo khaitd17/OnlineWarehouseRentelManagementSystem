@@ -11,6 +11,9 @@ public class CreatePaymentCommand : IRequest<CreatePaymentResult>
     public decimal? AmountOverride { get; set; }
     public string PaymentMethod { get; set; } = "BANK_TRANSFER"; // BANK_TRANSFER, CASH
     public string? Status { get; set; } // null = use default (PENDING), or PENDING_CONFIRMATION for cash
+    public string? TransactionCode { get; set; }
+    public string? ProofUrl { get; set; }
+    public string? ProofNote { get; set; }
 }
 
 public class CreatePaymentResult
