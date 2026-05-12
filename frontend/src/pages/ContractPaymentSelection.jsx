@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
@@ -21,11 +21,24 @@ const ContractPaymentSelection = () => {
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [confirmingCash, setConfirmingCash] = useState(false);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [submittingProof, setSubmittingProof] = useState(false);
+  const [showProofModal, setShowProofModal] = useState(false);
   const [cashPaymentSuccess, setCashPaymentSuccess] = useState(false);
   const [extensionInfo, setExtensionInfo] = useState(null);
   const [hoveredMethod, setHoveredMethod] = useState(null);
+  const [manualPayment, setManualPayment] = useState(null);
+  const [proofMethod, setProofMethod] = useState("BANK_TRANSFER");
+  const [proofAmount, setProofAmount] = useState("");
+  const [proofTransactionCode, setProofTransactionCode] = useState("");
+  const [proofNote, setProofNote] = useState("");
+  const [proofFile, setProofFile] = useState(null);
+  const [proofError, setProofError] = useState(null);
+
+  const resolvePaymentType = useCallback((contractData) => {
+    if (isTerminationPayment) return "PENALTY";
+    if (isExtensionPayment) return "EXTENSION";
+    return contractData?.depositAmount ? "DEPOSIT" : "MONTHLY";
+  }, [isTerminationPayment, isExtensionPayment]);
 
   useEffect(() => {
     const loadContract = async () => {
@@ -69,6 +82,15 @@ const ContractPaymentSelection = () => {
           setExtensionInfo(ext);
         }
 
+        const paymentType = resolvePaymentType(contractData);
+        const payments = await paymentService.getPaymentsByContract(Number(id));
+        const existingManual = payments.find((p) =>
+          p.paymentType === paymentType
+          && (p.paymentMethod === "CASH" || p.paymentMethod === "BANK_TRANSFER")
+          && (p.status === "PENDING_CONFIRMATION" || p.status === "REUPLOAD_REQUESTED")
+        );
+        setManualPayment(existingManual || null);
+
         setLoading(false);
       } catch (err) {
         console.error("Error loading contract:", err);
@@ -78,7 +100,7 @@ const ContractPaymentSelection = () => {
     };
 
     loadContract();
-  }, [id, navigate, isTerminationPayment, isExtensionPayment, extensionId]);
+  }, [id, navigate, isTerminationPayment, isExtensionPayment, extensionId, resolvePaymentType]);
 
   const handleOnlinePayment = () => {
     const query = isTerminationPayment
@@ -90,30 +112,57 @@ const ContractPaymentSelection = () => {
   };
 
   const handleCashPayment = () => {
-    setShowConfirmModal(true);
+    setProofError(null);
+    setProofMethod(manualPayment?.paymentMethod || "BANK_TRANSFER");
+    setProofAmount(manualPayment?.amount ? String(manualPayment.amount) : String(paymentAmount || ""));
+    setProofTransactionCode(manualPayment?.transactionCode || "");
+    setProofNote(manualPayment?.proofNote || "");
+    setProofFile(null);
+    setShowProofModal(true);
   };
 
-  const confirmCashPayment = async () => {
+  const parseAmountInput = (value) => {
+    if (!value) return 0;
+    const digits = String(value).replace(/[^\d]/g, "");
+    return digits ? Number(digits) : 0;
+  };
+
+  const formatAmountInput = (value) => {
+    const numeric = parseAmountInput(value);
+    return numeric ? numeric.toLocaleString("vi-VN") : "";
+  };
+
+  const handleSubmitPaymentProof = async () => {
+    const amountValue = parseAmountInput(proofAmount);
+    if (!proofMethod) { setProofError("Vui lòng chọn phương thức thanh toán."); return; }
+    if (!amountValue) { setProofError("Số tiền không hợp lệ."); return; }
+    if (!proofTransactionCode.trim()) { setProofError("Vui lòng nhập mã giao dịch."); return; }
+    if (!proofFile) { setProofError("Vui lòng tải lên chứng từ thanh toán."); return; }
+
     try {
-      setConfirmingCash(true);
-      setShowConfirmModal(false);
+      setSubmittingProof(true);
+      setProofError(null);
+
+      const uploadResult = await paymentService.uploadPaymentProof(proofFile);
+      const paymentType = resolvePaymentType(contract);
 
       await paymentService.createCashPayment({
         contractId: parseInt(id, 10),
-        amount: isTerminationPayment
-          ? (contract.earlyTerminationFee || 0)
-          : isExtensionPayment
-            ? ((extensionInfo?.proposedMonthlyPayment || 0) * (extensionInfo?.durationMonths || 0))
-            : (contract.depositAmount || contract.monthlyPayment),
-        paymentType: isTerminationPayment ? "PENALTY" : isExtensionPayment ? "EXTENSION" : (contract.depositAmount ? "DEPOSIT" : "MONTHLY")
+        amount: amountValue,
+        paymentType,
+        paymentMethod: proofMethod,
+        transactionCode: proofTransactionCode.trim(),
+        proofUrl: uploadResult?.url,
+        proofNote: proofNote?.trim() || null
       });
 
       setCashPaymentSuccess(true);
+      setShowProofModal(false);
     } catch (err) {
-      console.error("Error confirming cash payment:", err);
-      setError(err.response?.data?.message || "Không thể xác nhận thanh toán");
+      console.error("Error submitting payment proof:", err);
+      setProofError(err.response?.data?.message || "Không thể gửi xác nhận thanh toán");
     } finally {
-      setConfirmingCash(false);
+      setSubmittingProof(false);
     }
   };
 
@@ -199,11 +248,11 @@ const ContractPaymentSelection = () => {
             </svg>
           </div>
           <h2 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#14532d", margin: "0 0 0.6rem" }}>
-            Đã ghi nhận thanh toán!
+            Đã gửi xác nhận thanh toán!
           </h2>
           <p style={{ color: "#166534", fontSize: "0.92rem", lineHeight: 1.7, margin: "0 0 1.8rem" }}>
-            Yêu cầu xác nhận đã được gửi đến chủ kho.<br/>
-            Bạn sẽ nhận thông báo sau khi chủ kho xác nhận.
+            Chứng từ thanh toán đã được gửi đến chủ kho để xác minh.<br/>
+            Bạn sẽ nhận thông báo sau khi chủ kho xử lý.
           </p>
           <button
             onClick={() => navigate(`/contracts/${id}`)}
@@ -222,8 +271,8 @@ const ContractPaymentSelection = () => {
         </div>
       )}
 
-      {/* ── Cash Confirm Modal ── */}
-      {showConfirmModal && (
+      {/* ── Payment Proof Modal ── */}
+      {showProofModal && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 9999,
           backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
@@ -231,57 +280,134 @@ const ContractPaymentSelection = () => {
           animation: "fadeUp 0.2s ease",
         }}>
           <div style={{
-            background: "#fff", borderRadius: 20, padding: "2rem 2rem 1.5rem",
-            maxWidth: 440, width: "90%", textAlign: "center",
+            background: "#fff", borderRadius: 20, padding: "2rem 2rem 1.6rem",
+            maxWidth: 520, width: "92%",
             boxShadow: "0 24px 60px rgba(0,0,0,0.2)",
           }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: "50%",
-              background: "linear-gradient(135deg, #f59e0b, #d97706)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 1.2rem",
-              boxShadow: "0 6px 20px rgba(245,158,11,0.35)",
-            }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-            </div>
-            <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#0f172a", margin: "0 0 0.6rem" }}>
-              Xác nhận thanh toán tiền mặt
+            <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#0f172a", margin: "0 0 0.3rem" }}>
+              Gửi xác nhận thanh toán
             </h3>
-            <p style={{ color: "#64748b", fontSize: "0.9rem", lineHeight: 1.6, margin: "0 0 1.5rem" }}>
-              Bạn đã thanh toán <strong style={{ color: "#0f172a" }}>{formatCurrency(paymentAmount)}</strong> tiền mặt tại kho?
-              Chủ kho sẽ được thông báo để xác nhận.
+            <p style={{ color: "#64748b", fontSize: "0.9rem", lineHeight: 1.6, margin: "0 0 1.4rem" }}>
+              Vui lòng nhập thông tin và tải lên chứng từ để chủ kho xác minh.
             </p>
-            <div style={{ display: "flex", gap: 12 }}>
+
+            {manualPayment?.status === "REUPLOAD_REQUESTED" && (
+              <div style={{
+                background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 12,
+                padding: "10px 12px", fontSize: "0.85rem", color: "#92400e",
+                marginBottom: 14,
+              }}>
+                Chủ kho yêu cầu tải lại chứng từ. Vui lòng cập nhật thông tin và gửi lại.
+              </div>
+            )}
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
+                Payment Method
+                <select
+                  value={proofMethod}
+                  onChange={(e) => setProofMethod(e.target.value)}
+                  style={{
+                    marginTop: 6, width: "100%", padding: "10px 12px",
+                    borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff",
+                    fontSize: "0.9rem", outline: "none",
+                  }}
+                >
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="CASH">Cash</option>
+                </select>
+              </label>
+
+              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
+                Amount
+                <input
+                  type="text"
+                  value={formatAmountInput(proofAmount)}
+                  onChange={(e) => setProofAmount(e.target.value)}
+                  placeholder="250.000"
+                  style={{
+                    marginTop: 6, width: "100%", padding: "10px 12px",
+                    borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff",
+                    fontSize: "0.9rem", outline: "none",
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
+                Transaction Code
+                <input
+                  type="text"
+                  value={proofTransactionCode}
+                  onChange={(e) => setProofTransactionCode(e.target.value)}
+                  placeholder="ABC123"
+                  style={{
+                    marginTop: 6, width: "100%", padding: "10px 12px",
+                    borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff",
+                    fontSize: "0.9rem", outline: "none",
+                  }}
+                />
+              </label>
+
+              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
+                Upload Proof
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                  style={{ marginTop: 6, width: "100%" }}
+                />
+              </label>
+
+              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
+                Note
+                <textarea
+                  value={proofNote}
+                  onChange={(e) => setProofNote(e.target.value)}
+                  placeholder="Tôi đã chuyển khoản lúc 8h sáng"
+                  style={{
+                    marginTop: 6, width: "100%", padding: "10px 12px",
+                    borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff",
+                    fontSize: "0.9rem", outline: "none", minHeight: 90, resize: "vertical",
+                  }}
+                />
+              </label>
+            </div>
+
+            {proofError && (
+              <div style={{
+                marginTop: 12, padding: "10px 12px",
+                background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10,
+                color: "#991b1b", fontSize: "0.85rem",
+              }}>
+                {proofError}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
               <button
-                onClick={() => setShowConfirmModal(false)}
+                onClick={() => setShowProofModal(false)}
                 style={{
                   flex: 1, padding: "11px 20px", borderRadius: 12,
                   border: "1.5px solid #e2e8f0", background: "#fff",
                   color: "#475569", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer",
                   transition: "all 0.15s",
                 }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "#94a3b8"; e.currentTarget.style.background = "#f8fafc"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "#fff"; }}
               >
                 Hủy
               </button>
               <button
-                onClick={confirmCashPayment}
-                disabled={confirmingCash}
+                onClick={handleSubmitPaymentProof}
+                disabled={submittingProof}
                 style={{
                   flex: 1, padding: "11px 20px", borderRadius: 12, border: "none",
-                  background: confirmingCash ? "#94a3b8" : "linear-gradient(135deg, #22c55e, #16a34a)",
+                  background: submittingProof ? "#94a3b8" : "linear-gradient(135deg, #0ea5e9, #2563eb)",
                   color: "#fff", fontWeight: 700, fontSize: "0.9rem",
-                  cursor: confirmingCash ? "not-allowed" : "pointer",
-                  boxShadow: "0 4px 16px rgba(34,197,94,0.3)",
+                  cursor: submittingProof ? "not-allowed" : "pointer",
+                  boxShadow: "0 4px 16px rgba(37,99,235,0.28)",
                   transition: "all 0.15s",
                 }}
               >
-                {confirmingCash ? "Đang xử lý..." : "Xác nhận"}
+                {submittingProof ? "Đang gửi..." : "Gửi xác nhận thanh toán"}
               </button>
             </div>
           </div>
@@ -426,15 +552,15 @@ const ContractPaymentSelection = () => {
             {/* Cash Payment */}
             <button
               onClick={handleCashPayment}
-              disabled={confirmingCash}
-              onMouseEnter={() => !confirmingCash && setHoveredMethod("cash")}
+              disabled={submittingProof}
+              onMouseEnter={() => !submittingProof && setHoveredMethod("cash")}
               onMouseLeave={() => setHoveredMethod(null)}
               style={{
                 padding: "1.4rem 1.6rem", borderRadius: 16,
                 border: hoveredMethod === "cash" ? "2px solid #22c55e" : "2px solid #e2e8f0",
                 background: hoveredMethod === "cash" ? "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)" : "#fff",
-                cursor: confirmingCash ? "not-allowed" : "pointer",
-                opacity: confirmingCash ? 0.6 : 1,
+                cursor: submittingProof ? "not-allowed" : "pointer",
+                opacity: submittingProof ? 0.6 : 1,
                 textAlign: "left",
                 display: "flex", alignItems: "center", gap: "1.2rem",
                 transition: "all 0.25s cubic-bezier(.4,0,.2,1)",
@@ -462,10 +588,10 @@ const ContractPaymentSelection = () => {
                   fontSize: "1.05rem", fontWeight: 700, color: "#0f172a",
                   marginBottom: 4,
                 }}>
-                  {confirmingCash ? "Đang xác nhận..." : "Thanh toán trực tiếp"}
+                  {submittingProof ? "Đang gửi..." : "Gửi xác nhận thanh toán"}
                 </div>
                 <div style={{ fontSize: "0.85rem", color: "#64748b", lineHeight: 1.5 }}>
-                  Đã thanh toán tiền mặt tại kho
+                  Gửi chứng từ để chủ kho xác minh thanh toán
                 </div>
                 <div style={{
                   marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap",

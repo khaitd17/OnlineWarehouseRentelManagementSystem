@@ -654,6 +654,12 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.PaymentMethod).HasMaxLength(20).HasDefaultValue("BANK_TRANSFER").HasColumnName("payment_method");
             entity.Property(e => e.SepayTransactionId).HasColumnName("sepay_transaction_id");
             entity.Property(e => e.SepayReferenceCode).HasMaxLength(100).HasColumnName("sepay_reference_code");
+            entity.Property(e => e.TransactionCode).HasMaxLength(100).HasColumnName("transaction_code");
+            entity.Property(e => e.ProofUrl).HasMaxLength(500).HasColumnName("proof_url");
+            entity.Property(e => e.ProofNote).HasMaxLength(1000).HasColumnName("proof_note");
+            entity.Property(e => e.ProofSubmittedAt).HasColumnName("proof_submitted_at");
+            entity.Property(e => e.ProofRequestReason).HasMaxLength(500).HasColumnName("proof_request_reason");
+            entity.Property(e => e.ProofRequestedAt).HasColumnName("proof_requested_at");
             entity.Property(e => e.PaidAt).HasColumnName("paid_at");
             entity.Property(e => e.ExpiredAt).HasColumnName("expired_at");
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");

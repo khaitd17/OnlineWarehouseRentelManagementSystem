@@ -64,6 +64,20 @@ const paymentService = {
   },
 
   /**
+   * Upload payment proof (image/pdf)
+   * @param {File} file
+   * @returns {Promise} { url }
+   */
+  uploadPaymentProof: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await axiosClient.post("/upload/payment-proof", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
+
+  /**
    * Lấy danh sách thanh toán tiền mặt chờ xác nhận (cho chủ kho)
    * @returns {Promise} danh sách pending cash payments
    */
@@ -92,6 +106,19 @@ const paymentService = {
     const response = await axiosClient.post(`/payments/${paymentId}/confirm`, {
       isApproved,
       rejectionReason
+    });
+    return response.data;
+  },
+
+  /**
+   * Request renter to re-upload payment proof
+   * @param {number} paymentId
+   * @param {string|null} reason
+   * @returns {Promise}
+   */
+  requestPaymentReupload: async (paymentId, reason = null) => {
+    const response = await axiosClient.post(`/payments/${paymentId}/request-reupload`, {
+      reason
     });
     return response.data;
   },

@@ -9,6 +9,7 @@ using WMS.Application.Features.Payments.GetPaymentStatus;
 using WMS.Application.Features.Payments.GetPaymentsByContract;
 using WMS.Application.Features.Payments.ProcessSepayWebhook;
 using WMS.Application.Features.Payments.RetryPayment;
+using WMS.Application.Features.Payments.RequestPaymentReupload;
 using WMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -88,7 +89,10 @@ public class PaymentsController : ControllerBase
     [HttpPost("cash")]
     public async Task<IActionResult> CreateCashPayment([FromBody] CreatePaymentCommand command)
     {
-        command.PaymentMethod = "CASH";
+        if (string.IsNullOrWhiteSpace(command.PaymentMethod))
+        {
+            command.PaymentMethod = "CASH";
+        }
         command.Status = "PENDING_CONFIRMATION"; // Chờ owner xác nhận
         var result = await _mediator.Send(command);
         return Ok(result);
@@ -107,6 +111,27 @@ public class PaymentsController : ControllerBase
             OwnerId = GetCurrentUserId(),
             IsApproved = request.IsApproved,
             RejectionReason = request.RejectionReason
+        };
+
+        var result = await _mediator.Send(command);
+        if (!result.Success)
+            return BadRequest(new { message = result.Message });
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Chủ kho yêu cầu khách thuê tải lại chứng từ thanh toán
+    /// </summary>
+    [Authorize]
+    [HttpPost("{paymentId}/request-reupload")]
+    public async Task<IActionResult> RequestPaymentReupload(int paymentId, [FromBody] RequestPaymentReuploadRequest request)
+    {
+        var command = new RequestPaymentReuploadCommand
+        {
+            PaymentId = paymentId,
+            OwnerId = GetCurrentUserId(),
+            Reason = request.Reason
         };
 
         var result = await _mediator.Send(command);
@@ -142,7 +167,7 @@ public class PaymentsController : ControllerBase
         var pendingPayments = await _db.RentalPayments
             .Include(p => p.Contract)
             .Where(p => p.Status == "PENDING_CONFIRMATION"
-                        && p.PaymentMethod == "CASH"
+                        && (p.PaymentMethod == "CASH" || p.PaymentMethod == "BANK_TRANSFER")
                         && p.Contract != null
                         && warehouseIds.Contains(p.Contract.WarehouseId))
             .OrderByDescending(p => p.CreatedAt)
@@ -152,8 +177,15 @@ public class PaymentsController : ControllerBase
                 p.PaymentCode,
                 p.Amount,
                 p.PaymentType,
+                p.PaymentMethod,
                 p.Status,
                 p.CreatedAt,
+                p.TransactionCode,
+                p.ProofUrl,
+                p.ProofNote,
+                p.ProofSubmittedAt,
+                p.ProofRequestedAt,
+                p.ProofRequestReason,
                 Contract = new
                 {
                     p.Contract!.ContractId,
@@ -186,12 +218,12 @@ public class PaymentsController : ControllerBase
         if (!warehouseIds.Any())
             return Ok(new List<object>());
 
-        var statuses = new[] { "PENDING_CONFIRMATION", "COMPLETED" };
+        var statuses = new[] { "PENDING_CONFIRMATION", "COMPLETED", "REUPLOAD_REQUESTED", "CANCELLED" };
 
         var payments = await _db.RentalPayments
             .AsNoTracking()
             .Include(p => p.Contract)
-            .Where(p => p.PaymentMethod == "CASH"
+            .Where(p => (p.PaymentMethod == "CASH" || p.PaymentMethod == "BANK_TRANSFER")
                         && p.Contract != null
                         && statuses.Contains(p.Status)
                         && warehouseIds.Contains(p.Contract.WarehouseId))
@@ -206,6 +238,13 @@ public class PaymentsController : ControllerBase
                 p.CreatedAt,
                 p.UpdatedAt,
                 p.PaidAt,
+                p.PaymentMethod,
+                p.TransactionCode,
+                p.ProofUrl,
+                p.ProofNote,
+                p.ProofSubmittedAt,
+                p.ProofRequestedAt,
+                p.ProofRequestReason,
                 Contract = new
                 {
                     p.Contract!.ContractId,
@@ -447,4 +486,9 @@ public class ConfirmCashPaymentRequest
 {
     public bool IsApproved { get; set; }
     public string? RejectionReason { get; set; }
+}
+
+public class RequestPaymentReuploadRequest
+{
+    public string? Reason { get; set; }
 }

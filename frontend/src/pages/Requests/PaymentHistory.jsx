@@ -14,7 +14,8 @@ const fmtCurrency = (amount) =>
 const STATUS_CONFIG = {
   COMPLETED:            { label: 'Đã thanh toán', color: 'bg-emerald-100 text-emerald-700' },
   PENDING:              { label: 'Chờ thanh toán', color: 'bg-amber-100 text-amber-700' },
-  PENDING_CONFIRMATION: { label: 'Chờ xác nhận', color: 'bg-amber-100 text-amber-700' },
+  PENDING_CONFIRMATION: { label: 'Chờ xác minh', color: 'bg-amber-100 text-amber-700' },
+  REUPLOAD_REQUESTED:   { label: 'Yêu cầu tải lại', color: 'bg-red-100 text-red-700' },
   FAILED:               { label: 'Thất bại', color: 'bg-red-100 text-red-700' },
   EXPIRED:              { label: 'Hết hạn', color: 'bg-red-100 text-red-700' },
   CANCELLED:            { label: 'Đã hủy', color: 'bg-slate-100 text-slate-600' },
@@ -85,7 +86,8 @@ const PaymentHistory = () => {
                 <option value="">Tất cả trạng thái</option>
                  <option value="COMPLETED">Đã thanh toán</option>
                  <option value="PENDING">Chờ thanh toán</option>
-                 <option value="PENDING_CONFIRMATION">Chờ xác nhận tiền mặt</option>
+                 <option value="PENDING_CONFIRMATION">Chờ xác minh</option>
+                 <option value="REUPLOAD_REQUESTED">Yêu cầu tải lại</option>
                  <option value="FAILED">Thất bại</option>
                  <option value="EXPIRED">Hết hạn</option>
                  <option value="CANCELLED">Đã hủy</option>

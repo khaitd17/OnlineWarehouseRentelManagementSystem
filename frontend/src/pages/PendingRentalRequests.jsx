@@ -389,7 +389,6 @@ const PendingRentalRequests = () => {
     try {
       setActionLoading(true);
       await rentalService.sendContractDraft(createdContractId);
-      alert("Đã gửi bản nháp hợp đồng đến người thuê!");
       closeModal();
       fetchRequests(); // Reload list after sending
     } catch (err) {
@@ -853,7 +852,7 @@ const PendingRentalRequests = () => {
               transition: "all 0.15s",
             }}
           >
-            {actionLoading ? "Đang tạo..." : (<><Icon name="draw" size={16} color="#fff" />Tiếp tục — Ký hợp đồng</>)}
+            {actionLoading ? "Đang gửi..." : (<><Icon name="draw" size={16} color="#fff" />Gửi bản nháp hợp đồng</>)}
           </button>
         </div>
       </>

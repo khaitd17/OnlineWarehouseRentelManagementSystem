@@ -1,25 +1,35 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import paymentService from "../services/paymentService";
+import axiosClient from "../services/axiosClient";
 
 const formatCurrency = (amount) => {
   if (amount == null) return "—";
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
 };
 
-const formatDate = (dateStr) => {
+const formatTimeOnly = (dateStr) => {
   if (!dateStr) return "—";
   const raw = dateStr.endsWith("Z") ? dateStr : dateStr + "Z";
-  return new Date(raw).toLocaleString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
+  return new Date(raw).toLocaleTimeString("vi-VN", {
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
     hour12: false,
     timeZone: "Asia/Ho_Chi_Minh",
   });
+};
+
+const formatMethod = (method) => {
+  if (method === "BANK_TRANSFER") return "Bank Transfer";
+  if (method === "CASH") return "Cash";
+  return method || "—";
+};
+
+const apiBase = axiosClient.defaults.baseURL?.replace(/\/api\/?$/, "") || "";
+const buildFileUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  return `${apiBase}${url}`;
 };
 
 const PendingCashPayments = () => {
@@ -31,6 +41,9 @@ const PendingCashPayments = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectPaymentId, setRejectPaymentId] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [showReuploadModal, setShowReuploadModal] = useState(false);
+  const [reuploadPaymentId, setReuploadPaymentId] = useState(null);
+  const [reuploadReason, setReuploadReason] = useState("");
   const [activeTab, setActiveTab] = useState("pending");
   const [searchKeyword, setSearchKeyword] = useState("");
 
@@ -87,6 +100,26 @@ const PendingCashPayments = () => {
     }
   };
 
+  const handleRequestReuploadClick = (paymentId) => {
+    setReuploadPaymentId(paymentId);
+    setReuploadReason("");
+    setShowReuploadModal(true);
+  };
+
+  const handleReuploadConfirm = async () => {
+    try {
+      setProcessingId(reuploadPaymentId);
+      await paymentService.requestPaymentReupload(reuploadPaymentId, reuploadReason.trim() || null);
+      alert("Đã yêu cầu tải lại chứng từ");
+      setShowReuploadModal(false);
+      loadPayments();
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể yêu cầu tải lại chứng từ");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   const normalizedKeyword = searchKeyword.trim().toLowerCase();
   const matchPayment = (payment) => {
     if (!normalizedKeyword) return true;
@@ -97,8 +130,8 @@ const PendingCashPayments = () => {
     return searchable.includes(normalizedKeyword);
   };
 
-  const pendingPayments = payments.filter((p) => p.status === "PENDING_CONFIRMATION");
-  const confirmedPayments = payments.filter((p) => p.status === "COMPLETED");
+  const pendingPayments = payments.filter((p) => ["PENDING_CONFIRMATION", "REUPLOAD_REQUESTED"].includes(p.status));
+  const confirmedPayments = payments.filter((p) => ["COMPLETED", "CANCELLED"].includes(p.status));
   const filteredPending = pendingPayments.filter(matchPayment);
   const filteredConfirmed = confirmedPayments.filter(matchPayment);
 
@@ -116,8 +149,28 @@ const PendingCashPayments = () => {
     );
   }
 
-  const renderCard = (payment, isPending) => {
+  const renderCard = (payment) => {
     const isProcessing = processingId === payment.paymentId;
+    const isVerificationPending = payment.status === "PENDING_CONFIRMATION";
+    const isReuploadRequested = payment.status === "REUPLOAD_REQUESTED";
+    const isRejected = payment.status === "CANCELLED";
+    const statusLabel = isVerificationPending
+      ? "Chờ xác minh"
+      : isReuploadRequested
+        ? "Yêu cầu tải lại"
+        : isRejected
+          ? "Đã từ chối"
+          : "Đã xác nhận";
+    const statusStyle = isVerificationPending
+      ? { background: "linear-gradient(135deg, #fef3c7, #fde68a)", color: "#92400e" }
+      : isReuploadRequested
+        ? { background: "linear-gradient(135deg, #fee2e2, #fecaca)", color: "#991b1b" }
+        : isRejected
+          ? { background: "linear-gradient(135deg, #fee2e2, #fecaca)", color: "#991b1b" }
+          : { background: "linear-gradient(135deg, #dcfce7, #bbf7d0)", color: "#166534" };
+    const proofTime = payment.proofSubmittedAt || payment.createdAt;
+    const proofUrl = buildFileUrl(payment.proofUrl);
+    const isImageProof = proofUrl && /\.(png|jpg|jpeg)$/i.test(proofUrl);
     return (
       <div
         key={payment.paymentId}
@@ -136,13 +189,11 @@ const PendingCashPayments = () => {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{
               padding: "4px 12px", borderRadius: 20,
-              background: isPending
-                ? "linear-gradient(135deg, #fef3c7, #fde68a)"
-                : "linear-gradient(135deg, #dcfce7, #bbf7d0)",
-              color: isPending ? "#92400e" : "#166534",
+              background: statusStyle.background,
+              color: statusStyle.color,
               fontSize: "0.8rem", fontWeight: 700,
             }}>
-              {isPending ? "Chờ xác nhận" : "Đã xác nhận"}
+              {statusLabel}
             </span>
             <span style={{ color: "#94a3b8", fontSize: "0.85rem", fontWeight: 600 }}>
               {payment.paymentCode}
@@ -185,14 +236,55 @@ const PendingCashPayments = () => {
               {payment.contract?.warehouse?.name || "—"}
             </div>
           </div>
-          <div>
-            <div style={{ fontSize: "0.75rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>
-              {isPending ? "Yêu cầu lúc" : "Xác nhận lúc"}
+            <div>
+              <div style={{ fontSize: "0.75rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>
+                Time
+              </div>
+              <div style={{ fontSize: "0.9rem", color: "#0f172a", fontWeight: 600 }}>
+                {formatTimeOnly(proofTime)}
+              </div>
             </div>
-            <div style={{ fontSize: "0.9rem", color: "#0f172a", fontWeight: 600 }}>
-              {formatDate(payment.updatedAt || payment.paidAt || payment.createdAt)}
+        </div>
+
+        <div style={{ marginBottom: "1rem" }}>
+          <div style={{ fontSize: "0.82rem", fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>
+            Payment Proof Submitted
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 20px" }}>
+            <div style={{ fontSize: "0.85rem", color: "#475569" }}>
+              Amount: <strong style={{ color: "#0f172a" }}>{formatCurrency(payment.amount)}</strong>
+            </div>
+            <div style={{ fontSize: "0.85rem", color: "#475569" }}>
+              Transaction Code: <strong style={{ color: "#0f172a" }}>{payment.transactionCode || "—"}</strong>
+            </div>
+            <div style={{ fontSize: "0.85rem", color: "#475569" }}>
+              Proof Image:{" "}
+              {proofUrl ? (
+                <a href={proofUrl} target="_blank" rel="noreferrer" style={{ color: "#0ea5e9", fontWeight: 700 }}>
+                  attached
+                </a>
+              ) : (
+                <span style={{ color: "#94a3b8" }}>—</span>
+              )}
+            </div>
+            <div style={{ fontSize: "0.85rem", color: "#475569" }}>
+              Method: <strong style={{ color: "#0f172a" }}>{formatMethod(payment.paymentMethod)}</strong>
             </div>
           </div>
+          {isImageProof && (
+            <div style={{ marginTop: 10 }}>
+              <img
+                src={proofUrl}
+                alt="Payment proof"
+                style={{ width: "100%", maxWidth: 320, borderRadius: 10, border: "1px solid #e2e8f0" }}
+              />
+            </div>
+          )}
+          {payment.proofNote && (
+            <div style={{ marginTop: 10, fontSize: "0.85rem", color: "#475569" }}>
+              Note: <span style={{ color: "#0f172a", fontWeight: 600 }}>{payment.proofNote}</span>
+            </div>
+          )}
         </div>
 
         {/* Separator */}
@@ -200,7 +292,7 @@ const PendingCashPayments = () => {
 
         {/* Actions */}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
-          {isPending && (
+          {isVerificationPending && (
             <>
               <button
                 onClick={() => handleApprove(payment.paymentId)}
@@ -216,7 +308,7 @@ const PendingCashPayments = () => {
                 onMouseEnter={e => { if (!isProcessing) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(34,197,94,0.35)"; }}}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 10px rgba(34,197,94,0.25)"; }}
               >
-                {isProcessing ? "Đang xử lý..." : "Xác nhận đã nhận tiền"}
+                {isProcessing ? "Đang xử lý..." : "Approve Payment"}
               </button>
               <button
                 onClick={() => handleRejectClick(payment.paymentId)}
@@ -232,7 +324,23 @@ const PendingCashPayments = () => {
                 onMouseEnter={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.borderColor = "#f87171"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#fca5a5"; }}
               >
-                Từ chối
+                Reject Payment
+              </button>
+              <button
+                onClick={() => handleRequestReuploadClick(payment.paymentId)}
+                disabled={isProcessing}
+                style={{
+                  padding: "9px 20px", borderRadius: 10,
+                  border: "1.5px solid #fde68a", background: "#fff",
+                  color: "#92400e", fontWeight: 700, fontSize: "0.85rem",
+                  cursor: isProcessing ? "not-allowed" : "pointer",
+                  opacity: isProcessing ? 0.5 : 1,
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#fffbeb"; e.currentTarget.style.borderColor = "#fcd34d"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#fde68a"; }}
+              >
+                Request Re-upload
               </button>
             </>
           )}
@@ -279,10 +387,10 @@ const PendingCashPayments = () => {
           fontSize: "1.65rem", fontWeight: 800, color: "#fff", margin: "0 0 6px",
           letterSpacing: "-0.02em", position: "relative",
         }}>
-          Xác nhận thanh toán
+          Payment Verification
         </h1>
         <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.9rem", margin: 0, position: "relative" }}>
-          Quản lý và xác nhận các giao dịch tiền mặt từ khách thuê
+          Xác minh chứng từ thanh toán từ khách thuê
         </p>
 
         {/* Stats */}
@@ -295,7 +403,7 @@ const PendingCashPayments = () => {
             border: "1px solid rgba(255,255,255,0.1)",
           }}>
             <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Chờ xác nhận
+              Chờ xác minh
             </div>
             <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#fbbf24" }}>
               {pendingPayments.length}
@@ -307,7 +415,7 @@ const PendingCashPayments = () => {
             border: "1px solid rgba(255,255,255,0.1)",
           }}>
             <div style={{ fontSize: "0.72rem", color: "rgba(255,255,255,0.5)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-              Đã xác nhận
+              Đã xử lý
             </div>
             <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "#4ade80" }}>
               {confirmedPayments.length}
@@ -344,10 +452,10 @@ const PendingCashPayments = () => {
             </svg>
           </div>
           <div style={{ color: "#475569", fontSize: "1.05rem", fontWeight: 600 }}>
-            Không có thanh toán nào cần xác nhận
+            Không có thanh toán cần xác minh
           </div>
           <div style={{ color: "#94a3b8", fontSize: "0.85rem", marginTop: 4 }}>
-            Tất cả giao dịch tiền mặt đã được xử lý
+            Tất cả giao dịch đã được xử lý
           </div>
         </div>
       ) : (
@@ -358,8 +466,8 @@ const PendingCashPayments = () => {
             background: "#f1f5f9", borderRadius: 14, padding: 4,
           }}>
             {[
-              { key: "pending", label: `Chờ xác nhận (${pendingPayments.length})` },
-              { key: "confirmed", label: `Đã xác nhận (${confirmedPayments.length})` },
+              { key: "pending", label: `Chờ xác minh (${pendingPayments.length})` },
+              { key: "confirmed", label: `Đã xử lý (${confirmedPayments.length})` },
             ].map(tab => (
               <button
                 key={tab.key}
@@ -402,18 +510,18 @@ const PendingCashPayments = () => {
             {activeTab === "pending" ? (
               filteredPending.length === 0 ? (
                 <div style={{ color: "#64748b", fontSize: "0.92rem", padding: "2rem 0", textAlign: "center" }}>
-                  {normalizedKeyword ? "Không tìm thấy thanh toán phù hợp." : "Không có thanh toán chờ xác nhận."}
+                  {normalizedKeyword ? "Không tìm thấy thanh toán phù hợp." : "Không có thanh toán chờ xác minh."}
                 </div>
               ) : (
-                filteredPending.map((p) => renderCard(p, true))
+                filteredPending.map((p) => renderCard(p))
               )
             ) : (
               filteredConfirmed.length === 0 ? (
                 <div style={{ color: "#64748b", fontSize: "0.92rem", padding: "2rem 0", textAlign: "center" }}>
-                  {normalizedKeyword ? "Không tìm thấy thanh toán phù hợp." : "Chưa có thanh toán nào đã xác nhận."}
+                  {normalizedKeyword ? "Không tìm thấy thanh toán phù hợp." : "Chưa có thanh toán nào đã xử lý."}
                 </div>
               ) : (
-                filteredConfirmed.map((p) => renderCard(p, false))
+                filteredConfirmed.map((p) => renderCard(p))
               )
             )}
           </div>
@@ -495,6 +603,87 @@ const PendingCashPayments = () => {
                 }}
               >
                 {processingId ? "Đang xử lý..." : "Xác nhận từ chối"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reupload Modal ── */}
+      {showReuploadModal && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          animation: "fadeUp 0.2s ease",
+        }}>
+          <div style={{
+            background: "#fff", borderRadius: 20, padding: "2rem 2rem 1.5rem",
+            maxWidth: 460, width: "90%",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.2)",
+          }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: "50%",
+              background: "linear-gradient(135deg, #f59e0b, #d97706)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 1rem",
+              boxShadow: "0 6px 20px rgba(245,158,11,0.3)",
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+                <polyline points="22 4 21 12 13 11"/>
+              </svg>
+            </div>
+
+            <h2 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#0f172a", margin: "0 0 0.4rem", textAlign: "center" }}>
+              Yêu cầu tải lại chứng từ
+            </h2>
+            <p style={{ color: "#64748b", fontSize: "0.88rem", textAlign: "center", margin: "0 0 1.2rem", lineHeight: 1.5 }}>
+              Bạn có thể ghi chú lý do để khách thuê cập nhật chứng từ đúng hơn.
+            </p>
+
+            <textarea
+              value={reuploadReason}
+              onChange={(e) => setReuploadReason(e.target.value)}
+              placeholder="Ví dụ: Ảnh bị mờ, mã giao dịch chưa rõ..."
+              style={{
+                width: "100%", padding: "12px 14px", borderRadius: 12,
+                border: "1.5px solid #e2e8f0", fontSize: "0.9rem",
+                minHeight: 90, resize: "vertical", marginBottom: "1.2rem",
+                outline: "none", boxSizing: "border-box",
+                transition: "border-color 0.2s",
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = "#f59e0b"}
+              onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+            />
+
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={() => setShowReuploadModal(false)}
+                style={{
+                  flex: 1, padding: "11px 20px", borderRadius: 12,
+                  border: "1.5px solid #e2e8f0", background: "#fff",
+                  color: "#475569", fontWeight: 700, fontSize: "0.9rem",
+                  cursor: "pointer", transition: "all 0.15s",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#94a3b8"; e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.background = "#fff"; }}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleReuploadConfirm}
+                disabled={!!processingId}
+                style={{
+                  flex: 1, padding: "11px 20px", borderRadius: 12, border: "none",
+                  background: processingId ? "#94a3b8" : "linear-gradient(135deg, #f59e0b, #d97706)",
+                  color: "#fff", fontWeight: 700, fontSize: "0.9rem",
+                  cursor: processingId ? "not-allowed" : "pointer",
+                  boxShadow: "0 4px 16px rgba(245,158,11,0.3)",
+                  transition: "all 0.15s",
+                }}
+              >
+                {processingId ? "Đang xử lý..." : "Xác nhận"}
               </button>
             </div>
           </div>

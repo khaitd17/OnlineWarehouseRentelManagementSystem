@@ -57,6 +57,44 @@ public class UploadController : ControllerBase
         }
     }
 
+    [HttpPost("payment-proof")]
+    public async Task<IActionResult> UploadPaymentProof(IFormFile file)
+    {
+        try
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest(new { message = "No file uploaded" });
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".pdf" };
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!allowedExtensions.Contains(extension))
+                return BadRequest(new { message = "Only image files (JPG, PNG) and PDF are allowed" });
+
+            if (file.Length > 5 * 1024 * 1024)
+                return BadRequest(new { message = "File size must not exceed 5MB" });
+
+            var uploadsFolder = Path.Combine(_environment.ContentRootPath, "uploads", "payment-proofs");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var uniqueFileName = $"{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            var fileUrl = $"/uploads/payment-proofs/{uniqueFileName}";
+            return Ok(new { message = "File uploaded successfully", url = fileUrl });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading payment proof file");
+            return StatusCode(500, new { message = "An error occurred while uploading the file", error = ex.Message });
+        }
+    }
+
     // ── POST /api/Upload/inventory-documents ──────────────────────────────────
     /// <summary>Upload chứng từ nhập/xuất kho (invoice, packing list, v.v.)</summary>
     [HttpPost("inventory-documents")]

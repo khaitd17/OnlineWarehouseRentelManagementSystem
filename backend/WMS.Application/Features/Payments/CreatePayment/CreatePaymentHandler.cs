@@ -70,9 +70,25 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             _ => defaultMonthlyAmount
         };
 
+        var isManualConfirmation = request.Status == PaymentStatus.PendingConfirmation
+                                   && (request.PaymentMethod == "CASH" || request.PaymentMethod == "BANK_TRANSFER");
+
+        if (isManualConfirmation)
+        {
+            if (string.IsNullOrWhiteSpace(request.ProofUrl))
+                throw new InvalidOperationException("Vui lòng tải lên chứng từ thanh toán.");
+            if (string.IsNullOrWhiteSpace(request.TransactionCode))
+                throw new InvalidOperationException("Vui lòng nhập mã giao dịch.");
+        }
+
         var amount = requestedAmount.HasValue && requestedAmount.Value > 0
             ? requestedAmount.Value
             : calculatedAmount;
+
+        if (isManualConfirmation)
+        {
+            amount = calculatedAmount;
+        }
 
         if (amount <= 0)
             throw new InvalidOperationException("Payment amount must be greater than 0. Please check contract pricing information.");
@@ -85,16 +101,24 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             request.ContractId,
             request.PaymentType);
 
-        if (isCashConfirmationRequest)
+        if (isCashConfirmationRequest || isManualConfirmation)
         {
             var existingCashConfirmation = (await _paymentRepo.GetByContractIdAsync(request.ContractId))
                 .FirstOrDefault(p =>
                     p.PaymentType == request.PaymentType
-                    && p.PaymentMethod == "CASH"
-                    && p.Status == "PENDING_CONFIRMATION");
+                    && (p.PaymentMethod == "CASH" || p.PaymentMethod == "BANK_TRANSFER")
+                    && (p.Status == "PENDING_CONFIRMATION" || p.Status == PaymentStatus.ReuploadRequested));
 
             if (existingCashConfirmation != null)
             {
+                if (isManualConfirmation)
+                {
+                    ApplyPaymentProof(existingCashConfirmation, request);
+                    existingCashConfirmation.Status = PaymentStatus.PendingConfirmation;
+                    await _paymentRepo.UpdateAsync(existingCashConfirmation);
+                    await SendCashPaymentNotificationToOwner(contract, existingCashConfirmation);
+                }
+
                 return new CreatePaymentResult
                 {
                     PaymentId = existingCashConfirmation.PaymentId,
@@ -155,6 +179,11 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             payment.Status = request.Status;
         }
 
+        if (isManualConfirmation)
+        {
+            ApplyPaymentProof(payment, request);
+        }
+
         // Persist payment and immediately finalize its code in one round-trip
         var paymentId = await _paymentRepo.AddAsync(payment);
 
@@ -163,7 +192,7 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
         await _paymentRepo.UpdatePaymentCodeAsync(paymentId, payment.PaymentCode);
 
         // If cash payment, send notification to warehouse owner
-        if (request.PaymentMethod == "CASH" && request.Status == "PENDING_CONFIRMATION")
+        if (isManualConfirmation)
         {
             await SendCashPaymentNotificationToOwner(contract, payment);
         }
@@ -198,5 +227,13 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
 
         await _notificationRepo.AddAsync(notification);
         await _notificationSender.SendToUserAsync(warehouse.OwnerId, notification);
+    }
+
+    private static void ApplyPaymentProof(RentalPayment payment, CreatePaymentCommand request)
+    {
+        payment.UpdatePaymentProof(
+            request.TransactionCode?.Trim(),
+            request.ProofUrl?.Trim(),
+            request.ProofNote?.Trim());
     }
 }
