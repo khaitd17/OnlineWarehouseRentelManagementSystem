@@ -15,6 +15,7 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
     private readonly INotificationSender _notificationSender;
     private readonly IUserRepository _userRepository;
     private readonly IPdfService _pdfService;
+    private readonly IEmailService _emailService;
 
     public ApproveRentalRequestHandler(
         IRentalRequestRepository rentalRequestRepository,
@@ -23,7 +24,8 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
         INotificationRepository notificationRepository,
         INotificationSender notificationSender,
         IUserRepository userRepository,
-        IPdfService pdfService)
+        IPdfService pdfService,
+        IEmailService emailService)
     {
         _rentalRequestRepository = rentalRequestRepository;
         _contractRepository = contractRepository;
@@ -32,6 +34,7 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
         _notificationSender = notificationSender;
         _userRepository = userRepository;
         _pdfService = pdfService;
+        _emailService = emailService;
     }
 
     public async Task<int> Handle(ApproveRentalRequestCommand request, CancellationToken cancellationToken)
@@ -144,6 +147,36 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
 
             var contractId = await _contractRepository.AddAsync(contract);
             Console.WriteLine($"[DEBUG] Contract saved to DB - ContractId: {contractId}");
+
+            var renter = await _userRepository.GetByIdAsync(rentalRequest.RenterId, cancellationToken);
+            if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
+            {
+                var subject = $"Yêu cầu thuê kho đã được chấp nhận - {warehouse.Name}";
+                var contractLink = $"http://localhost:3000/contracts/{contractId}?tab=negotiation";
+                var htmlContent = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+    <h2 style='color: #16a34a; text-align: center;'>Yêu cầu thuê kho đã được chấp nhận</h2>
+    <p>Xin chào <strong>{renter.FullName}</strong>,</p>
+    <p>Chủ kho đã chấp nhận yêu cầu thuê kho <strong>{warehouse.Name}</strong> của bạn. Bản nháp hợp đồng đã được tạo.</p>
+    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 16px 0;'>
+        <h3 style='margin-top: 0; color: #374151;'>Thông tin hợp đồng:</h3>
+        <ul style='color: #4b5563; line-height: 1.6;'>
+            <li><strong>Mã hợp đồng:</strong> {contract.ContractNumber}</li>
+            <li><strong>Kho:</strong> {warehouse.Name}</li>
+            <li><strong>Giá thuê/tháng:</strong> {contract.MonthlyPayment:N0} VNĐ</li>
+            <li><strong>Tiền đặt cọc:</strong> {contract.DepositAmount:N0} VNĐ</li>
+            <li><strong>Thời hạn:</strong> {request.DurationMonths} tháng</li>
+        </ul>
+    </div>
+    <div style='margin-top: 24px; text-align: center;'>
+        <a href='{contractLink}' style='background-color: #16a34a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Xem hợp đồng</a>
+    </div>
+    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
+    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
+</div>";
+
+                await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
+            }
 
             // Note: AvailableArea is NOT deducted here — it will be deducted when the
             // contract becomes ACTIVE (after signing + payment confirmation).

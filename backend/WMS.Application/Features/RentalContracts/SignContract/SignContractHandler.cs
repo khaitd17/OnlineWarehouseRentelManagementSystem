@@ -17,6 +17,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
     private readonly IUserRepository _userRepo;
     private readonly IRentalRequestRepository _rentalRequestRepo;
     private readonly IEquipmentRepository _equipmentRepo;
+    private readonly IEmailService _emailService;
 
     public SignContractHandler(
         IRentalContractRepository contractRepo,
@@ -27,7 +28,8 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         IWarehouseRepository warehouseRepo,
         IUserRepository userRepo,
         IRentalRequestRepository rentalRequestRepo,
-        IEquipmentRepository equipmentRepo)
+        IEquipmentRepository equipmentRepo,
+        IEmailService emailService)
     {
         _contractRepo = contractRepo;
         _logRepo = logRepo;
@@ -38,6 +40,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         _userRepo = userRepo;
         _rentalRequestRepo = rentalRequestRepo;
         _equipmentRepo = equipmentRepo;
+        _emailService = emailService;
     }
 
     public async Task<SignContractResult> Handle(SignContractCommand request, CancellationToken cancellationToken)
@@ -184,6 +187,43 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
             };
             await _notificationRepo.AddAsync(ownerNotification);
             await _notificationSender.SendToUserAsync(warehouse.OwnerId, ownerNotification);
+        }
+
+        var contractLink = $"http://localhost:3000/contracts/{contract.ContractId}";
+        if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
+        {
+            var subject = $"Hợp đồng đã được ký - {contract.ContractNumber}";
+            var htmlContent = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+    <h2 style='color: #16a34a; text-align: center;'>Hợp đồng đã được ký</h2>
+    <p>Xin chào <strong>{renter.FullName}</strong>,</p>
+    <p>Hợp đồng <strong>{contract.ContractNumber}</strong> đã được ký thành công. Vui lòng thanh toán để kích hoạt hợp đồng.</p>
+    <div style='margin-top: 24px; text-align: center;'>
+        <a href='{contractLink}' style='background-color: #16a34a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Xem hợp đồng</a>
+    </div>
+    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
+    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
+</div>";
+
+            await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
+        }
+
+        if (owner != null && !string.IsNullOrWhiteSpace(owner.Email))
+        {
+            var subject = $"Hợp đồng đã được ký - {contract.ContractNumber}";
+            var htmlContent = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+    <h2 style='color: #16a34a; text-align: center;'>Hợp đồng đã được ký</h2>
+    <p>Xin chào <strong>{owner.FullName}</strong>,</p>
+    <p>Người thuê đã ký hợp đồng <strong>{contract.ContractNumber}</strong>. Hợp đồng đang chờ thanh toán để kích hoạt.</p>
+    <div style='margin-top: 24px; text-align: center;'>
+        <a href='{contractLink}' style='background-color: #16a34a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Xem hợp đồng</a>
+    </div>
+    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
+    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
+</div>";
+
+            await _emailService.SendInfo(owner.Email, owner.FullName, subject, htmlContent);
         }
 
         return new SignContractResult

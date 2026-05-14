@@ -14,6 +14,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
     private readonly INotificationRepository _notificationRepository;
     private readonly INotificationSender _notificationSender;
     private readonly IEquipmentRepository _equipmentRepository;
+    private readonly IEmailService _emailService;
 
     public CreateRentalRequestHandler(
         IRentalRequestRepository rentalRequestRepository,
@@ -21,7 +22,8 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         IUserRepository userRepository,
         INotificationRepository notificationRepository,
         INotificationSender notificationSender,
-        IEquipmentRepository equipmentRepository)
+        IEquipmentRepository equipmentRepository,
+        IEmailService emailService)
     {
         _rentalRequestRepository = rentalRequestRepository;
         _warehouseRepository = warehouseRepository;
@@ -29,6 +31,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         _notificationRepository = notificationRepository;
         _notificationSender = notificationSender;
         _equipmentRepository = equipmentRepository;
+        _emailService = emailService;
     }
 
     public async Task<int> Handle(CreateRentalRequestCommand request, CancellationToken cancellationToken)
@@ -137,6 +140,37 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         };
         await _notificationRepository.AddAsync(notification);
         await _notificationSender.SendToUserAsync(warehouse.OwnerId, notification);
+
+        var owner = await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken);
+        if (owner != null && !string.IsNullOrWhiteSpace(owner.Email))
+        {
+            var subject = $"Yêu cầu thuê kho mới - {warehouse.Name}";
+            var requestLink = $"http://localhost:3000/rental-request/{requestId}";
+            var htmlContent = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+    <h2 style='color: #2563eb; text-align: center;'>Yêu cầu thuê kho mới</h2>
+    <p>Xin chào <strong>{owner.FullName}</strong>,</p>
+    <p>Bạn vừa nhận được một yêu cầu thuê kho mới từ <strong>{renterName}</strong>.</p>
+    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 16px 0;'>
+        <h3 style='margin-top: 0; color: #374151;'>Thông tin yêu cầu:</h3>
+        <ul style='color: #4b5563; line-height: 1.6;'>
+            <li><strong>Mã yêu cầu:</strong> #{requestId}</li>
+            <li><strong>Kho:</strong> {warehouse.Name}</li>
+            <li><strong>Diện tích:</strong> {request.RequestedArea} m²</li>
+            <li><strong>Thời hạn:</strong> {request.DurationMonths} tháng</li>
+            <li><strong>Ngày bắt đầu:</strong> {request.StartDate:dd/MM/yyyy}</li>
+            {(string.IsNullOrWhiteSpace(request.Notes) ? "" : $"<li><strong>Ghi chú:</strong> {request.Notes}</li>")}
+        </ul>
+    </div>
+    <div style='margin-top: 24px; text-align: center;'>
+        <a href='{requestLink}' style='background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Xem chi tiết yêu cầu</a>
+    </div>
+    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
+    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
+</div>";
+
+            await _emailService.SendInfo(owner.Email, owner.FullName, subject, htmlContent);
+        }
 
         return requestId;
     }
