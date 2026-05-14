@@ -207,7 +207,6 @@ namespace WMS.Infrastructure.Persistence
             {
                 ("INBOUND",       "Nhập kho",          "Tiếp nhận hàng hoá vào kho",             false, false),
                 ("OUTBOUND",      "Xuất kho",          "Xuất hàng hoá ra khỏi kho",              false, false),
-                ("AUDIT",         "Kiểm kê định kỳ",   "Đếm và đối chiếu tồn kho",              false, false),
                 ("EQUIP_MAINT",   "Bảo trì thiết bị",  "Bảo dưỡng và sửa chữa thiết bị kho",    false,  true),
                 ("GENERAL_CLEAN", "Vệ sinh kho",       "Vệ sinh toàn bộ hoặc khu vực kho",        true,  true),
                 ("ZONE_INSPECT",  "Kiểm tra khu vực",  "Tuần tra và kiểm tra tình trạng zone",    true,  true),
@@ -229,12 +228,10 @@ namespace WMS.Infrastructure.Persistence
 
             var ttInbound  = context.TaskTypes.First(t => t.Code == "INBOUND");
             var ttOutbound = context.TaskTypes.First(t => t.Code == "OUTBOUND");
-            var ttAudit    = context.TaskTypes.First(t => t.Code == "AUDIT");
             var ttEquip    = context.TaskTypes.First(t => t.Code == "EQUIP_MAINT");
 
             if (ttInbound.SkillId  == null) { ttInbound.SkillId  = skChecker?.Id; }
             if (ttOutbound.SkillId == null) { ttOutbound.SkillId = skChecker?.Id; }
-            if (ttAudit.SkillId    == null) { ttAudit.SkillId    = skInvOp?.Id; }
             if (ttEquip.SkillId    == null) { ttEquip.SkillId    = skWwWorker?.Id; }
             context.SaveChanges();
 
