@@ -34,8 +34,8 @@ public class UpdateInventoryRequestHandler
         var req = await _repo.GetByIdAsync(cmd.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Request {cmd.Id} not found.");
 
-        if (req.Status != "PENDING")
-            throw new InvalidOperationException("Only PENDING requests can be edited.");
+        if (req.Status != "PENDING" && req.Status != "CONFIRMED")
+            throw new InvalidOperationException("Chỉ có thể chỉnh sửa yêu cầu ở trạng thái Chờ tiếp nhận hoặc Chờ xử lý tại kho.");
         if (req.RenterId != cmd.RequestorId)
             throw new UnauthorizedAccessException("You do not own this request.");
 

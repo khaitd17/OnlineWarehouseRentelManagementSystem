@@ -28,6 +28,12 @@ const renterAssetService = {
    */
   getWarehouseInventory: (warehouseId) =>
     axiosClient.get(`/renter-assets/warehouse-inventory?warehouseId=${warehouseId}`),
+
+  /**
+   * Lấy thông tin sức chứa (đã dùng / còn trống) tại 1 kho.
+   */
+  getCapacity: (warehouseId) =>
+    axiosClient.get(`/renter-assets/capacity?warehouseId=${warehouseId}`),
 };
 
 export default renterAssetService;

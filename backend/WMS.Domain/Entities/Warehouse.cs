@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -46,7 +46,7 @@ public partial class Warehouse
     public double AvailableArea { get; set; }
 
 
-    /// <summary>Thể tích còn trống (m³) – dùng cho AI gợi ý kho theo đồ vật.</summary>
+    /// <summary>diện tích còn trống (m²) – dùng cho AI gợi ý kho theo đồ vật.</summary>
     public double? AvailableVolume { get; set; }
 
     [Column("PricePerM2", TypeName = "decimal(18,2)")]

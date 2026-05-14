@@ -42,7 +42,6 @@ import RoleBasedRoute from "./RoleBasedRoute";
 import ConfirmMovement from "../pages/Requests/ConfirmMovement";
 // OutboundRequestsList removed (unused)
 import InboundRequestsManagement from "../pages/Requests/InboundRequestsManagement";
-import CreateOutboundRequest from "../pages/Requests/CreateOutboundRequest";
 import StaffDashboard from "../pages/Requests/StaffDashboard";
 import RenterDashboard from "../pages/Requests/RenterDashboard";
 import CreateInboundRequest from "../pages/Requests/CreateInboundRequest";
@@ -54,6 +53,7 @@ import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
 // StaffInventoryRequests (old) removed — replaced by StaffInventoryRequestsNew
 import StaffInventoryRequestsNew from "../pages/Requests/StaffInventoryRequestsNew";
 import ManagerInventoryRequests from "../pages/Requests/ManagerInventoryRequests";
+import PendingCapacityApprovals from "../pages/Requests/PendingCapacityApprovals";
 import PaymentHistory from "../pages/Requests/PaymentHistory";
 import CreateInventoryRequest from "../pages/Requests/CreateInventoryRequest";
 import RenterInventoryPage from "../pages/RenterInventoryPage";
@@ -216,6 +216,7 @@ function AppRoutes() {
         <Route element={<RoleBasedRoute allowedRoles={['MANAGER', 'OPERATOR']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/staff-inventory-requests" element={<ManagerInventoryRequests />} />
+            <Route path="/pending-capacity" element={<PendingCapacityApprovals />} />
           </Route>
         </Route>
 
@@ -274,7 +275,6 @@ function AppRoutes() {
             <Route path="/create-inventory" element={<CreateInventoryRequest />} />
             {/* Keep old routes for backward compatibility */}
             <Route path="/create-inbound" element={<CreateInboundRequest />} />
-            <Route path="/create-outbound" element={<CreateOutboundRequest />} />
             <Route path="/payment-history" element={<PaymentHistory />} />
           </Route>
         </Route>

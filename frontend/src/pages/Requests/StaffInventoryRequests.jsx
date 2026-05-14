@@ -8,8 +8,8 @@ const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN', { day:'2-digit'
 
 /* ── Status config ──────────────────────────────────────────── */
 const STATUS_MAP = {
-  PENDING:   { label: 'Chờ duyệt',   bg:'#fef3c7', color:'#d97706', border:'#fde68a', dot:'#f59e0b' },
-  CONFIRMED: { label: 'Đã duyệt',    bg:'#dcfce7', color:'#166534', border:'#bbf7d0', dot:'#22c55e' },
+  PENDING:   { label: 'Chờ tiếp nhận',   bg:'#fef3c7', color:'#d97706', border:'#fde68a', dot:'#f59e0b' },
+  CONFIRMED: { label: 'Chờ xử lý tại kho',    bg:'#dcfce7', color:'#166534', border:'#bbf7d0', dot:'#22c55e' },
   ASSIGNED:  { label: 'Đã giao',     bg:'#ede9fe', color:'#6d28d9', border:'#c4b5fd', dot:'#8b5cf6' },
   COMPLETED: { label: 'Hoàn thành',  bg:'#f0fdf4', color:'#15803d', border:'#86efac', dot:'#16a34a' },
   REJECTED:  { label: 'Từ chối',     bg:'#fee2e2', color:'#dc2626', border:'#fecaca', dot:'#ef4444' },
@@ -304,8 +304,8 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
   const fetchPendingCounts = useCallback(async()=>{
     try {
       const [inRes, outRes] = await Promise.all([
-        inventoryService.getInventoryRequests({ type:'INBOUND',  status:'PENDING', page:1, pageSize:1 }),
-        inventoryService.getInventoryRequests({ type:'OUTBOUND', status:'PENDING', page:1, pageSize:1 }),
+        inventoryService.getInventoryRequests({ type:'INBOUND',  status:'CONFIRMED', page:1, pageSize:1 }),
+        inventoryService.getInventoryRequests({ type:'OUTBOUND', status:'CONFIRMED', page:1, pageSize:1 }),
       ]);
       setPendingCounts({
         INBOUND:  inRes.data?.totalCount  ?? 0,
@@ -339,10 +339,10 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
     setActionLoading(true);
     try {
       await axiosClient.post(`/InventoryRequests/${id}/approve`, { note });
-      showToast(`Đã duyệt yêu cầu #${id} — nhân viên kho có thể xử lý ngay!`);
+      showToast(`Đã tiếp nhận yêu cầu #${id} — nhân viên kho có thể xử lý ngay!`);
       setApproveReq(null); fetchData(); fetchPendingCounts();
       window.dispatchEvent(new Event('inventoryRequestUpdated'));
-    } catch(err){ showToast(err?.response?.data?.message||'Duyệt thất bại.', true); }
+    } catch(err){ showToast(err?.response?.data?.message||'Tiếp nhận thất bại.', true); }
     finally{ setActionLoading(false); }
   };
 
@@ -402,9 +402,9 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
 
       {/* Header */}
       <div style={{ marginBottom:28 }}>
-        <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>Yêu cầu nhập / xuất kho</h1>
+        <h1 style={{ fontSize:'1.7rem', fontWeight:900, color:'#0f172a', margin:'0 0 4px' }}>Quản lý yêu cầu nhập / xuất kho</h1>
         <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>
-          Duyệt các yêu cầu từ người thuê. Sau khi duyệt, toàn bộ nhân viên kho có thể xử lý và xác nhận hoàn thành.
+          Giám sát và phân công nhân viên xử lý các yêu cầu nhập/xuất kho. Yêu cầu hợp lệ được hệ thống tự động tiếp nhận.
         </p>
       </div>
 
@@ -420,8 +420,8 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
         {[
           { label:'Tổng yêu cầu',   val:counts.total,     color:'#0ea5e9', emoji:'📋' },
-          { label:'Chờ duyệt',       val:counts.pending,   color:'#f59e0b', emoji:'⏳' },
-          { label:'Đã duyệt',        val:counts.confirmed, color:'#22c55e', emoji:'✅' },
+          { label:'Chờ tiếp nhận',       val:counts.pending,   color:'#f59e0b', emoji:'⏳' },
+          { label:'Chờ xử lý tại kho',        val:counts.confirmed, color:'#22c55e', emoji:'✅' },
           { label:'Hoàn thành',      val:counts.completed, color:'#16a34a', emoji:'🏁' },
         ].map(({label,val,color,emoji})=>(
           <div key={label} style={{ ...card, padding:'18px 22px', display:'flex', alignItems:'center', gap:14 }}>
@@ -551,13 +551,13 @@ const ManagerInventoryRequests = ({ defaultTab = 'INBOUND' }) => {
                           onMouseLeave={e=>{e.currentTarget.style.background='#f8fafc';e.currentTarget.style.borderColor='#e2e8f0';}}>
                           👁
                         </button>
-                        {/* Duyệt — chỉ PENDING */}
+                        {/* Duyệt thủ công — chỉ hiện khi PENDING (fallback hiếm khi xảy ra) */}
                         {req.status==='PENDING' && (
-                          <button onClick={()=>setApproveReq(req)} title="Duyệt yêu cầu"
+                          <button onClick={()=>handleApprove(req.invReqId, '')} title="Tiếp nhận yêu cầu"
                             style={{ padding:'5px 12px', border:'1.5px solid #bbf7d0', background:'#dcfce7', borderRadius:8, cursor:'pointer', color:'#166534', fontSize:'0.78rem', fontWeight:700, display:'flex', alignItems:'center', gap:4, transition:'all 0.15s' }}
                             onMouseEnter={e=>{e.currentTarget.style.background='#bbf7d0';}}
                             onMouseLeave={e=>{e.currentTarget.style.background='#dcfce7';}}>
-                            ✓ Duyệt
+                            ✓ Tiếp nhận
                           </button>
                         )}
                         {/* Giao việc — chỉ CONFIRMED */}

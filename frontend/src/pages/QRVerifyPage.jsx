@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 
 // Lấy hostname hiện tại (ví dụ: localhost hoặc 192.168.x.x) để API chạy được trên điện thoại nội bộ
@@ -178,9 +178,9 @@ export default function QRVerifyPage() {
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', fontSize: '0.78rem', color: '#64748b' }}>
-                    {item.estimatedVolume != null && <span>Thể tích ước tính: <strong>{item.estimatedVolume} m³</strong></span>}
+                    {item.estimatedVolume != null && <span>diện tích ước tính: <strong>{item.estimatedVolume} m²</strong></span>}
                     {item.verifiedQuantity != null && <span>SL thực tế: <strong style={{ color: item.verifiedQuantity !== item.quantity ? '#ef4444' : '#16a34a' }}>{item.verifiedQuantity}</strong></span>}
-                    {item.verifiedVolume != null && <span>Thể tích thực tế: <strong>{item.verifiedVolume} m³</strong></span>}
+                    {item.verifiedVolume != null && <span>diện tích thực tế: <strong>{item.verifiedVolume} m²</strong></span>}
                     {item.weight != null && <span>Khối lượng: <strong>{item.weight} kg</strong></span>}
                   </div>
                   {item.description && <div style={{ marginTop: 6, fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic' }}>{item.description}</div>}
@@ -197,14 +197,14 @@ export default function QRVerifyPage() {
               </div>
               {d.totalEstimatedVolume != null && (
                 <div>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>Thể tích ước tính</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a' }}>{d.totalEstimatedVolume} m³</div>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>diện tích ước tính</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a' }}>{d.totalEstimatedVolume} m²</div>
                 </div>
               )}
               {d.totalVerifiedVolume != null && (
                 <div>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>Thể tích thực tế</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a' }}>{d.totalVerifiedVolume} m³</div>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>diện tích thực tế</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a' }}>{d.totalVerifiedVolume} m²</div>
                 </div>
               )}
             </div>
@@ -215,7 +215,7 @@ export default function QRVerifyPage() {
         {d.volumeWarning && (
           <div style={{ background: '#fef3c7', borderRadius: 14, padding: '14px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10, border: '1px solid #fcd34d' }}>
             <span className="material-symbols-outlined" style={{ color: '#d97706', fontSize: 22 }}>warning</span>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#92400e' }}>Cảnh báo: Thể tích hàng hóa có thể vượt ngưỡng kho</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#92400e' }}>Cảnh báo: diện tích hàng hóa có thể vượt ngưỡng kho</span>
           </div>
         )}
 
@@ -229,3 +229,4 @@ export default function QRVerifyPage() {
     </div>
   );
 }
+

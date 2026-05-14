@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
@@ -69,7 +69,7 @@ public class CreateWarehouseHandler : IRequestHandler<CreateWarehouseCommand, in
             if (request.PricePerM2.Value < 0)
                 throw new ArgumentException("Giá thuê không được âm.");
             if (request.PricePerM2.Value > 100_000_000_000)
-                throw new ArgumentException("Giá thuê không được vượt quá 100 tỷ đồng/m³/tháng.");
+                throw new ArgumentException("Giá thuê không được vượt quá 100 tỷ đồng/m²/tháng.");
         }
 
         // Mô tả

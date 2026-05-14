@@ -223,6 +223,12 @@ function buildMenu(systemRole, warehouses) {
       badgeKey: "pendingRequestCount",
     });
     items.push({
+      icon: "verified",
+      label: "Duyệt sức chứa",
+      path: "/pending-capacity",
+      badgeKey: "pendingCapacityCount",
+    });
+    items.push({
       icon: "inventory",
       label: "Quản lí tồn kho",
       path: "/staff-inventory",

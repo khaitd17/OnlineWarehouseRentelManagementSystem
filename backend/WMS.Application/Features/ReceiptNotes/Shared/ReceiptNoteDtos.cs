@@ -13,6 +13,8 @@ public record ReceiptItemDto
     public int Discrepancy => ReceivedQuantity - ExpectedQuantity;
     public string Unit { get; init; } = "";
     public decimal? VerifiedVolume { get; init; }
+    public decimal? MeasuredLength { get; init; }
+    public decimal? MeasuredWidth { get; init; }
     public decimal? VerifiedWeight { get; init; }
     public string? Note { get; init; }
 }
@@ -30,6 +32,7 @@ public record ReceiptNoteDto
     public string? RenterSignatureBase64 { get; init; }
     public string Status { get; init; } = "";
     public string? Notes { get; init; }
+    public decimal? CapacityOverflow { get; init; }
     public DateTime? CreatedAt { get; init; }
     public bool HasDiscrepancy { get; init; }
     public List<ReceiptItemDto> Items { get; init; } = new();
@@ -50,6 +53,7 @@ public static class ReceiptNoteMapper
         RenterSignatureBase64 = n.RenterSignatureBase64,
         Status            = n.Status,
         Notes             = n.Notes,
+        CapacityOverflow  = n.CapacityOverflow,
         CreatedAt         = n.CreatedAt,
         HasDiscrepancy    = n.ReceiptItems.Any(i => i.ReceivedQuantity != i.ExpectedQuantity),
         Items             = n.ReceiptItems.Select(i => new ReceiptItemDto
@@ -62,6 +66,8 @@ public static class ReceiptNoteMapper
             ReceivedQuantity = i.ReceivedQuantity,
             Unit             = i.Unit,
             VerifiedVolume   = i.VerifiedVolume,
+            MeasuredLength    = i.MeasuredLength,
+            MeasuredWidth     = i.MeasuredWidth,
             VerifiedWeight   = i.VerifiedWeight,
             Note             = i.Note,
         }).ToList(),

@@ -20,6 +20,24 @@ const receiptNoteService = {
    */
   confirm: (receiptNoteId, payload = {}) =>
     axiosClient.post(`/ReceiptNotes/${receiptNoteId}/confirm`, payload),
+
+  /**
+   * Manager phê duyệt phiếu vượt sức chứa
+   */
+  approveCapacity: (receiptNoteId) =>
+    axiosClient.post(`/ReceiptNotes/${receiptNoteId}/approve-capacity`),
+
+  /**
+   * Manager từ chối phiếu vượt sức chứa
+   */
+  rejectCapacity: (receiptNoteId, reason) =>
+    axiosClient.post(`/ReceiptNotes/${receiptNoteId}/reject-capacity`, { reason }),
+
+  /**
+   * Lấy danh sách phiếu chờ duyệt sức chứa tại 1 kho
+   */
+  getPendingCapacity: (warehouseId) =>
+    axiosClient.get(`/ReceiptNotes/pending-capacity?warehouseId=${warehouseId}`),
 };
 
 export default receiptNoteService;

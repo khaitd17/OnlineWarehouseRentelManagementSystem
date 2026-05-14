@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 
@@ -44,12 +44,12 @@ public class CreateRentalAreaHandler : IRequestHandler<CreateRentalAreaCommand, 
 
         var totalAllocated = await _rentalAreaRepository.GetTotalAllocatedAreaAsync(request.WarehouseId, cancellationToken);
 
-        // TotalArea stores the total volume capacity (m³ = W × L × H).
-        // zone.Size is also in m³, so compare directly.
+        // TotalArea stores the total volume capacity (m² = W × L × H).
+        // zone.Size is also in m², so compare directly.
         if (totalAllocated + request.Size > warehouse.TotalArea + 0.01)
         {
             var remaining = Math.Round(warehouse.TotalArea - totalAllocated, 2);
-            throw new Exception($"Không thể tạo khu vực. Tổng thể tích vượt quá sức chứa kho ({warehouse.TotalArea} m³). Còn trống: {remaining} m³");
+            throw new Exception($"Không thể tạo khu vực. Tổng diện tích vượt quá sức chứa kho ({warehouse.TotalArea} m²). Còn trống: {remaining} m²");
         }
 
         // Validate overlap
@@ -88,3 +88,4 @@ public class CreateRentalAreaHandler : IRequestHandler<CreateRentalAreaCommand, 
         return await _rentalAreaRepository.CreateAsync(rentalArea, cancellationToken);
     }
 }
+

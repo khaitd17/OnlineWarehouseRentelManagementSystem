@@ -3,13 +3,13 @@ import inventoryService from '../../services/inventoryService';
 
 /* ── Status config ────────────────────────────────────────────── */
 const STATUS_MAP = {
-  PENDING:   { label: 'Đang chờ', cls: 'bg-amber-100 text-amber-700 border border-amber-200' },
-  CONFIRMED: { label: 'Đã duyệt', cls: 'bg-emerald-100 text-emerald-700 border border-emerald-200' },
+  PENDING:   { label: 'Chờ tiếp nhận', cls: 'bg-amber-100 text-amber-700 border border-amber-200' },
+  CONFIRMED: { label: 'Chờ xử lý tại kho', cls: 'bg-emerald-100 text-emerald-700 border border-emerald-200' },
   REJECTED:  { label: 'Từ chối',  cls: 'bg-rose-100 text-rose-700 border border-rose-200' },
 };
 
-const STATUS_FILTERS = ['Tất cả', 'PENDING', 'CONFIRMED', 'REJECTED'];
-const STATUS_LABELS  = { 'Tất cả': 'Tất cả', PENDING: 'Đang chờ', CONFIRMED: 'Đã duyệt', REJECTED: 'Từ chối' };
+const STATUS_FILTERS = ['Tất cả', 'CONFIRMED', 'COMPLETED', 'REJECTED'];
+const STATUS_LABELS  = { 'Tất cả': 'Tất cả', CONFIRMED: 'Chờ xử lý', COMPLETED: 'Hoàn thành', REJECTED: 'Từ chối' };
 
 const StatusBadge = ({ status }) => {
   const s = STATUS_MAP[status] || { label: status, cls: 'bg-slate-100 text-slate-600' };

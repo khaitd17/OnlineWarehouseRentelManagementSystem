@@ -18,8 +18,8 @@ const C = {
 };
 
 const STATUS_META = {
-  PENDING:   { label: 'Chờ duyệt',  color: C.pending },
-  CONFIRMED: { label: 'Đã duyệt',   color: C.confirmed },
+  PENDING:   { label: 'Chờ tiếp nhận',  color: C.pending },
+  CONFIRMED: { label: 'Chờ xử lý tại kho',   color: C.confirmed },
   ASSIGNED:  { label: 'Đã giao',    color: C.assigned },
   COMPLETED: { label: 'Hoàn thành', color: C.completed },
   REJECTED:  { label: 'Từ chối',    color: C.rejected },
@@ -304,8 +304,8 @@ const StaffDashboard = () => {
       // ── KPI ──
       const today = new Date().toDateString();
       setKpi({
-        inboundPending:  inItems.filter(r  => r.status === 'PENDING').length,
-        outboundPending: outItems.filter(r => r.status === 'PENDING').length,
+        inboundPending:  inItems.filter(r  => r.status === 'PENDING' || r.status === 'CONFIRMED').length,
+        outboundPending: outItems.filter(r => r.status === 'PENDING' || r.status === 'CONFIRMED').length,
         inProgress:      all.filter(r => ['CONFIRMED', 'ASSIGNED'].includes(r.status)).length,
         completedToday:  all.filter(r => r.status === 'COMPLETED' &&
                           new Date(r.confirmedAt || r.updatedAt || r.createdAt).toDateString() === today).length,
@@ -397,8 +397,8 @@ const StaffDashboard = () => {
 
       {/* ── KPI Row ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14 }}>
-        <KpiCard icon="login"          label="Nhập kho chờ duyệt"  value={kpi.inboundPending}  sub="Yêu cầu PENDING" color={C.inbound}   bg="#d1fae518" />
-        <KpiCard icon="logout"         label="Xuất kho chờ duyệt"  value={kpi.outboundPending} sub="Yêu cầu PENDING" color={C.outbound}  bg="#fef3c718" />
+        <KpiCard icon="login"          label="Nhập kho chờ xử lý"  value={kpi.inboundPending}  sub="Yêu cầu chờ xử lý" color={C.inbound}   bg="#d1fae518" />
+        <KpiCard icon="logout"         label="Xuất kho chờ xử lý"  value={kpi.outboundPending} sub="Yêu cầu chờ xử lý" color={C.outbound}  bg="#fef3c718" />
         <KpiCard icon="pending_actions" label="Đang xử lý"          value={kpi.inProgress}      sub="CONFIRMED + ASSIGNED" color={C.confirmed} bg="#dbeafe18" />
         <KpiCard icon="task_alt"        label="Hoàn thành hôm nay"  value={kpi.completedToday}  sub="Trong ngày" color={C.completed} bg="#dcfce718" />
       </div>

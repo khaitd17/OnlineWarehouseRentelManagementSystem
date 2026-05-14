@@ -1759,6 +1759,14 @@ namespace WMS.Infrastructure.Migrations
                         .HasColumnType("decimal(10, 3)")
                         .HasColumnName("verified_volume");
 
+                    b.Property<decimal?>("MeasuredLength")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("measured_length");
+
+                    b.Property<decimal?>("MeasuredWidth")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("measured_width");
+
                     b.Property<decimal?>("VerifiedWeight")
                         .HasColumnType("decimal(10, 3)")
                         .HasColumnName("verified_weight");
@@ -2425,6 +2433,14 @@ namespace WMS.Infrastructure.Migrations
                     b.Property<decimal?>("VolumePerUnit")
                         .HasColumnType("decimal(10, 2)")
                         .HasColumnName("VolumePerUnit");
+
+                    b.Property<decimal?>("LengthPerUnit")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("length_per_unit");
+
+                    b.Property<decimal?>("WidthPerUnit")
+                        .HasColumnType("decimal(10, 3)")
+                        .HasColumnName("width_per_unit");
 
                     b.Property<decimal?>("WeightPerUnit")
                         .HasColumnType("decimal(10, 2)")

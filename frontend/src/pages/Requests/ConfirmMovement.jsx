@@ -6,7 +6,7 @@ const OUTBOUND_COLOR = '#f59e0b';
 const fmtDate  = d => d ? new Date(d).toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' }) : '—';
 
 const STATUS_BADGE = {
-  CONFIRMED: { label: 'Đã duyệt — chờ xử lý', bg:'#dcfce7', color:'#166534', dot:'#22c55e' },
+  CONFIRMED: { label: 'Chờ xử lý tại kho', bg:'#dcfce7', color:'#166534', dot:'#22c55e' },
   ASSIGNED:  { label: 'Đã giao cho bạn',       bg:'#ede9fe', color:'#6d28d9', dot:'#8b5cf6' },
 };
 

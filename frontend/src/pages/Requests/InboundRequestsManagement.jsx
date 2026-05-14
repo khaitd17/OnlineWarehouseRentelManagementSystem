@@ -3,8 +3,8 @@ import inventoryService from '../../services/inventoryService';
 
 /* ── Status config ────────────────────────────────────────────── */
 const STATUS_MAP = {
-  PENDING:   { label: 'Đang chờ', bg: 'bg-amber-100 text-amber-700 border border-amber-200' },
-  CONFIRMED: { label: 'Đã duyệt', bg: 'bg-emerald-100 text-emerald-700 border border-emerald-200' },
+  PENDING:   { label: 'Chờ tiếp nhận', bg: 'bg-amber-100 text-amber-700 border border-amber-200' },
+  CONFIRMED: { label: 'Chờ xử lý tại kho', bg: 'bg-emerald-100 text-emerald-700 border border-emerald-200' },
   REJECTED:  { label: 'Từ chối',  bg: 'bg-rose-100 text-rose-700 border border-rose-200' },
 };
 
@@ -100,8 +100,8 @@ const InboundRequestsManagement = () => {
                 className="block w-full pl-3 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#00b2d6]/30 focus:border-[#00b2d6] text-sm appearance-none outline-none cursor-pointer"
               >
                 <option>Tất cả trạng thái</option>
-                <option value="PENDING">Đang chờ</option>
-                <option value="CONFIRMED">Đã duyệt</option>
+                <option value="PENDING">Chờ tiếp nhận</option>
+                <option value="CONFIRMED">Chờ xử lý tại kho</option>
                 <option value="REJECTED">Từ chối</option>
               </select>
               <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>

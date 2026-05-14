@@ -1,4 +1,4 @@
-namespace WMS.Domain.Entities;
+﻿namespace WMS.Domain.Entities;
 
 /// <summary>
 /// Catalogue tài sản của người thuê.
@@ -21,8 +21,14 @@ public partial class RenterAsset
     /// <summary>Khối lượng / đơn vị (kg) — tuỳ chọn</summary>
     public decimal? WeightPerUnit { get; set; }
 
-    /// <summary>Thể tích / đơn vị (m³) — tuỳ chọn, dùng khi tính ước lượng m³ cho yêu cầu nhập kho.</summary>
+    /// <summary>diện tích / đơn vị (m²) — tuỳ chọn, dùng khi tính ước lượng m² cho yêu cầu nhập kho.</summary>
     public decimal? VolumePerUnit { get; set; }
+
+    /// <summary>Chiều dài / đơn vị (m) do thủ kho đo gần nhất.</summary>
+    public decimal? LengthPerUnit { get; set; }
+
+    /// <summary>Chiều rộng / đơn vị (m) do thủ kho đo gần nhất.</summary>
+    public decimal? WidthPerUnit { get; set; }
 
     public string? Description { get; set; }
 
@@ -37,3 +43,4 @@ public partial class RenterAsset
     /// <summary>Tồn kho hiện tại của asset này tại các kho</summary>
     public virtual ICollection<RenterInventory> Inventories { get; set; } = new List<RenterInventory>();
 }
+

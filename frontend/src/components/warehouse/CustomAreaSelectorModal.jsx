@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CustomAreaSelectorModal
  *
  * Hiển thị bản đồ khu vực kho và cho phép người thuê:
@@ -10,7 +10,7 @@
  *  onClose        {fn}
  *  warehouseData  {object}  — full WH object (width, length, ...)
  *  areas          {array}   — RentalArea list from API
- *  requestedM3    {number}  — thể tích người thuê cần
+ *  requestedM3    {number}  — diện tích người thuê cần
  *  onConfirm      {fn({ posX, posY, width, length, baseAreaId })}
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -51,12 +51,12 @@ export default function CustomAreaSelectorModal({
   const whW = parseFloat(warehouseData?.width  ?? warehouseData?.Width  ?? 0) || 20;
   const whL = parseFloat(warehouseData?.length ?? warehouseData?.Length ?? 0) || 30;
   const totalArea = parseFloat(warehouseData?.totalArea ?? warehouseData?.TotalArea ?? 0);
-  // chiều cao kho = TotalArea(m³) / (Width × Length(m²)); fallback 4m
+  // chiều cao kho = TotalArea(m²) / (Width × Length(m²)); fallback 4m
   const whHeight = (whW > 0 && whL > 0 && totalArea > 0)
     ? totalArea / (whW * whL)
     : 4;
 
-  /* helper: zone footprint m² → m³ */
+  /* helper: zone footprint m² → m² */
   const toM3 = (w, l) => parseFloat((w * l * whHeight).toFixed(1));
 
   /* floor area (m²) needed to match requestedM3 exactly — works in both owner & renter mode */
@@ -613,14 +613,14 @@ export default function CustomAreaSelectorModal({
               {isOwnerMode ? 'Chỉ định vị trí cho khách thuê' : 'Tự sắp xếp vị trí thuê'}
             </h3>
             <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
-              {isOwnerMode ? 'Khách yêu cầu' : 'Bạn cần thuê'} <strong style={{ color: '#0ea5e9' }}>{requestedM3} m³</strong>.
+              {isOwnerMode ? 'Khách yêu cầu' : 'Bạn cần thuê'} <strong style={{ color: '#0ea5e9' }}>{requestedM3} m²</strong>.
               {totalSelectedM3 > 0 ? (
                 <>
                   {' '}Vùng đang chọn:{' '}
                   <strong style={{ color: totalSelectedM3 >= requestedM3 * 0.9 ? '#10b981' : '#f59e0b' }}>
                     {(selectedZones.length > 0 || autoSelectedAreaIds.length > 0)
-                      ? `Tổng ${totalSelectedM3.toFixed(1)} m³`
-                      : `${activeZone.w}m × ${activeZone.l}m = ${activeM3} m³`}
+                      ? `Tổng ${totalSelectedM3.toFixed(1)} m²`
+                      : `${activeZone.w}m × ${activeZone.l}m = ${activeM3} m²`}
                   </strong>
                 </>
               ) : ' Chọn hoặc vẽ vùng trên bản đồ.'}
@@ -667,15 +667,15 @@ export default function CustomAreaSelectorModal({
               boxShadow: '0 2px 10px rgba(139,92,246,0.35)', transition: 'all 0.15s',
             }}
           >
-            Tự động đặt {requestedM3}m³
+            Tự động đặt {requestedM3}m²
           </button>
         </div>
         {/* Unzoned area info bar */}
         {unzonedM2 > 0 && (
           <div style={{ padding: '0 1.8rem', marginTop: 6 }}>
             <div style={{ fontSize: '0.75rem', color: '#8b5cf6', background: '#f5f3ff', padding: '5px 12px', borderRadius: 8, fontWeight: 600, border: '1px solid #e9d5ff' }}>
-              Diện tích chưa chia ô: {unzonedM2} m² ({unzonedM3} m³)
-              {(selectedZones.length > 0 || autoSelectedAreaIds.length > 0) && <span style={{ marginLeft: 8, color: '#059669', fontWeight: 700 }}>| Tổng: {totalSelectedM3.toFixed(1)} m³ ({autoSelectedAreaIds.length + (customZone ? 1 : 0) + selectedZones.length} vùng)</span>}
+              Diện tích chưa chia ô: {unzonedM2} m² ({unzonedM3} m²)
+              {(selectedZones.length > 0 || autoSelectedAreaIds.length > 0) && <span style={{ marginLeft: 8, color: '#059669', fontWeight: 700 }}>| Tổng: {totalSelectedM3.toFixed(1)} m² ({autoSelectedAreaIds.length + (customZone ? 1 : 0) + selectedZones.length} vùng)</span>}
             </div>
           </div>
         )}
@@ -792,7 +792,7 @@ export default function CustomAreaSelectorModal({
                     whiteSpace: 'nowrap', pointerEvents: 'none',
                   }}>
                     {editZone.w}m×{editZone.l}m<br />
-                    {toM3(editZone.w, editZone.l)} m³
+                    {toM3(editZone.w, editZone.l)} m²
                   </span>
                 </div>
               )}
@@ -846,7 +846,7 @@ export default function CustomAreaSelectorModal({
                         }} />
                         <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max-content', fontSize: '0.65rem', fontWeight: 800, color: '#92400e', whiteSpace: 'nowrap', pointerEvents: 'none', textAlign: 'center', lineHeight: 1.4, background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, backdropFilter: 'blur(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
                           {customZone.w}m×{customZone.l}m<br />
-                          <span style={{ color: '#166534' }}>Tổng: {totalM3} m³</span>
+                          <span style={{ color: '#166534' }}>Tổng: {totalM3} m²</span>
                         </div>
                       </div>
                       {/* Extension label */}
@@ -871,13 +871,13 @@ export default function CustomAreaSelectorModal({
                         cursor: 'se-resize', zIndex: 11 
                       }} />
                       <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max-content', fontSize: '0.68rem', fontWeight: 800, color: '#92400e', whiteSpace: 'nowrap', pointerEvents: 'none', textAlign: 'center', background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, backdropFilter: 'blur(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                        {customZone.w}m×{customZone.l}m<br />{toM3(customZone.w, customZone.l)} m³
+                        {customZone.w}m×{customZone.l}m<br />{toM3(customZone.w, customZone.l)} m²
                       </div>
                     </div>
                     {e && (
                       <div style={{ position: 'absolute', left: e.x, top: e.y, width: e.w, height: e.l, border: '2.5px solid #f59e0b', background: 'rgba(253,230,138,0.6)', borderRadius: 6, boxSizing: 'border-box', zIndex: 10, pointerEvents: 'none' }}>
                         <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 'max-content', fontSize: '0.63rem', fontWeight: 800, color: '#92400e', whiteSpace: 'nowrap', pointerEvents: 'none', textAlign: 'center', background: 'rgba(255,255,255,0.95)', padding: '2px 6px', borderRadius: 4, backdropFilter: 'blur(4px)', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(245,158,11,0.3)' }}>
-                          +{zoneExtension.w}m×{zoneExtension.l}m<br />+{toM3(zoneExtension.w, zoneExtension.l)} m³
+                          +{zoneExtension.w}m×{zoneExtension.l}m<br />+{toM3(zoneExtension.w, zoneExtension.l)} m²
                         </div>
                       </div>
                     )}
@@ -904,7 +904,7 @@ export default function CustomAreaSelectorModal({
                     background: 'rgba(255,255,255,0.95)', padding: '3px 7px',
                     borderRadius: 5, border: '1px solid rgba(245,158,11,0.3)',
                   }}>
-                    {z.w}m×{z.l}m<br />{toM3(z.w, z.l)} m³
+                    {z.w}m×{z.l}m<br />{toM3(z.w, z.l)} m²
                   </div>
                 </div>
               ))}
@@ -952,7 +952,7 @@ export default function CustomAreaSelectorModal({
                     const zoneCount = autoSelectedAreaIds.length + (activeZone ? 1 : 0) + selectedZones.length;
                     return (
                       <>
-                        <Row label="Thể tích" value={<span style={{ color: isMet ? '#16a34a' : '#d97706', fontWeight: 700 }}>{totalM3.toFixed(1)} m³</span>} />
+                        <Row label="diện tích" value={<span style={{ color: isMet ? '#16a34a' : '#d97706', fontWeight: 700 }}>{totalM3.toFixed(1)} m²</span>} />
                         {zoneCount > 1 && (
                           <Row label="Số vùng" value={`${zoneCount} vùng`} />
                         )}
@@ -966,8 +966,8 @@ export default function CustomAreaSelectorModal({
                           fontSize: '0.78rem', fontWeight: 700,
                         }}>
                           {isMet
-                            ? `Đủ thể tích: ${totalM3.toFixed(1)} m³ / ${requestedM3} m³`
-                            : `Thể tích chọn: ${totalM3.toFixed(1)} m³ / yêu cầu ${requestedM3} m³`}
+                            ? `Đủ diện tích: ${totalM3.toFixed(1)} m² / ${requestedM3} m²`
+                            : `diện tích chọn: ${totalM3.toFixed(1)} m² / yêu cầu ${requestedM3} m²`}
                         </div>
                       </>
                     );
@@ -996,7 +996,7 @@ export default function CustomAreaSelectorModal({
                           setCustomZone(candidateW); clearExtension(); return;
                         }
 
-                        // Strategy 3: keep primary zone as-is, find extension piece for remaining m³
+                        // Strategy 3: keep primary zone as-is, find extension piece for remaining m²
                         const remainingM2 = ceilM2(neededM2 - primaryM2);
                         if (remainingM2 <= 0) return;
                         const STEP = 0.5;
@@ -1031,7 +1031,7 @@ export default function CustomAreaSelectorModal({
                       onMouseEnter={e => e.currentTarget.style.opacity='0.85'}
                       onMouseLeave={e => e.currentTarget.style.opacity='1'}
                     >
-                      Tự động căn chỉnh đạt {requestedM3} m³
+                      Tự động căn chỉnh đạt {requestedM3} m²
                     </button>
                   )}
                   {/* Show combined volume when extension is active */}
@@ -1041,7 +1041,7 @@ export default function CustomAreaSelectorModal({
                       background: '#ecfdf5', border: '1.5px solid #86efac',
                       fontSize: '0.75rem', color: '#166534', fontWeight: 700,
                     }}>
-                      ✓ Tổng thể tích (L-shape): {parseFloat(((customZone.w * customZone.l + zoneExtension.w * zoneExtension.l) * whHeight).toFixed(1))} m³
+                      ✓ Tổng diện tích (L-shape): {parseFloat(((customZone.w * customZone.l + zoneExtension.w * zoneExtension.l) * whHeight).toFixed(1))} m²
                     </div>
                   )}
 
@@ -1100,7 +1100,7 @@ export default function CustomAreaSelectorModal({
                 transition: 'all 0.2s',
               }}
             >
-              {(selectedZones.length > 0 || autoSelectedAreaIds.length > 0) ? `Xác nhận vị trí (${totalSelectedM3.toFixed(1)} m³)` : 'Xác nhận vị trí'}
+              {(selectedZones.length > 0 || autoSelectedAreaIds.length > 0) ? `Xác nhận vị trí (${totalSelectedM3.toFixed(1)} m²)` : 'Xác nhận vị trí'}
             </button>
 
             <button
@@ -1128,3 +1128,4 @@ const Row = ({ label, value }) => (
     <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>{value}</span>
   </div>
 );
+

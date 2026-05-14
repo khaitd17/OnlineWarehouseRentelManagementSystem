@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -760,7 +760,7 @@ public class RentalContractsController : ControllerBase
     /// <summary>
     /// Owner phân / đổi khu cho hợp đồng.
     /// Nếu body.RentalAreaId có giá trị → gán thẳng khu đó.
-    /// Nếu không → auto best-fit (zone nhỏ nhất đủ thể tích, còn trống).
+    /// Nếu không → auto best-fit (zone nhỏ nhất đủ diện tích, còn trống).
     /// Cho phép gọi nhiều lần để đổi khu.
     /// </summary>
     [HttpPost("{id}/assign-area")]
@@ -819,7 +819,7 @@ public class RentalContractsController : ControllerBase
                     .FirstOrDefault();
 
                 if (candidate == null)
-                    return BadRequest(new { message = $"Không có ô khu trống nào đủ {needed} m³. Vui lòng thêm ô khu mới hoặc giãn ra sau." });
+                    return BadRequest(new { message = $"Không có ô khu trống nào đủ {needed} m². Vui lòng thêm ô khu mới hoặc giãn ra sau." });
             }
 
             // Gán / Đổi khu cho request
@@ -830,7 +830,7 @@ public class RentalContractsController : ControllerBase
             var action = currentAreaId == null ? "Đã phân" : "Đã đổi sang";
             return Ok(new
             {
-                message = $"{action} '{candidate.Name}' ({candidate.Size} m³) cho hợp đồng này.",
+                message = $"{action} '{candidate.Name}' ({candidate.Size} m²) cho hợp đồng này.",
                 rentalAreaId = candidate.Id,
                 name = candidate.Name,
                 size = candidate.Size
@@ -886,7 +886,7 @@ public class RentalContractsController : ControllerBase
     {
         const double KgPerM3 = 500.0;
 
-        // Lấy diện tích hợp đồng (m³)
+        // Lấy diện tích hợp đồng (m²)
         double contractedArea = await _contractRepo.GetContractedAreaAsync(renterId, warehouseId, ct);
 
         // Lấy tên & email renter
@@ -895,7 +895,7 @@ public class RentalContractsController : ControllerBase
             .Select(u => new { u.FullName, u.Email })
             .FirstOrDefaultAsync(ct);
 
-        // Tính tổng thể tích đang lưu kho (m³) từ các phiếu đã duyệt (CONFIRMED/ASSIGNED/COMPLETED)
+        // Tính tổng diện tích đang lưu kho (m²) từ các phiếu đã duyệt (CONFIRMED/ASSIGNED/COMPLETED)
         var inboundStatuses = new[] { "CONFIRMED", "ASSIGNED", "COMPLETED" };
 
         var confirmedInboundVolume = await _db.InventoryRequests
@@ -983,3 +983,4 @@ public class AssignAreaRequest
     /// <summary>Nếu có giá trị → gán khu cụ thể này. Nếu null → auto best-fit.</summary>
     public int? RentalAreaId { get; set; }
 }
+
