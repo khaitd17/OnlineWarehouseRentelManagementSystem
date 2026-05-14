@@ -57,6 +57,7 @@ public class RentalContract
     public RentalRequest? RentalRequest { get; set; }
     public Warehouse? Warehouse { get; set; }
     public User? Renter { get; set; }
+    public PaymentTerm? PaymentTerm { get; set; }
 
     // Factory method
     public static RentalContract CreateFromRequest(
@@ -65,7 +66,9 @@ public class RentalContract
         decimal? depositAmount = null,
         string? terms = null,
         DateTime? startDateOverride = null,
-        int? durationMonthsOverride = null)
+        int? durationMonthsOverride = null,
+        int monthsPerTerm = 1,
+        int allowedOverdueDays = 7)
     {
         if (request.Status != "APPROVED")
             throw new InvalidOperationException("Can only create contract from approved request");
@@ -91,7 +94,12 @@ public class RentalContract
             DepositAmount = depositAmount,
             Status = "DRAFT",
             Terms = terms,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            PaymentTerm = new PaymentTerm
+            {
+                MonthsPerTerm = monthsPerTerm,
+                AllowedOverdueDays = allowedOverdueDays
+            }
         };
     }
 
@@ -133,17 +141,17 @@ public class RentalContract
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void ApproveForSigning()
+    public void ApproveForSigning(int expiryHours = 48)
     {
         if (Status != "NEGOTIATING" && Status != "REVISION_REQUESTED")
             throw new InvalidOperationException($"Cannot approve for signing with status {Status}");
 
-        Status = "APPROVED_FOR_SIGNING";
-        OwnerSignatureExpiry = DateTime.UtcNow.AddHours(48);
+        Status = RentalContractStatus.PendingPayment;
+        PaymentExpiry = DateTime.UtcNow.AddHours(expiryHours);
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateNegotiatedTerms(decimal monthlyPayment, decimal? depositAmount, DateTime startDate, int durationMonths, string? terms)
+    public void UpdateNegotiatedTerms(decimal monthlyPayment, decimal? depositAmount, DateTime startDate, int durationMonths, string? terms, int monthsPerTerm = 1, int allowedOverdueDays = 7)
     {
         if (durationMonths < 1)
             throw new ArgumentException("Duration must be at least 1 month");
@@ -158,6 +166,14 @@ public class RentalContract
         DepositAmount = depositAmount;
         TotalValue = monthlyPayment * durationMonths;
         Terms = terms;
+        
+        if (PaymentTerm == null)
+        {
+            PaymentTerm = new PaymentTerm { ContractId = ContractId };
+        }
+        PaymentTerm.MonthsPerTerm = monthsPerTerm;
+        PaymentTerm.AllowedOverdueDays = allowedOverdueDays;
+        
         UpdatedAt = DateTime.UtcNow;
     }
 

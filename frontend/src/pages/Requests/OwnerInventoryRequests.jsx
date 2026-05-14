@@ -649,6 +649,11 @@ const OwnerInventoryRequests = () => {
                   <td style={{ padding: '16px 20px' }}>
                     <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#0f172a' }}>{req.renterName}</p>
                     <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{req.renterEmail}</p>
+                    {req.hasUnpaidBills && (
+                      <p style={{ margin:'4px 0 0', fontSize:'0.72rem', color:'#ef4444', fontWeight:700, display:'flex', alignItems:'center', gap:4 }}>
+                        <span style={{width:6, height:6, borderRadius:'50%', background:'#ef4444'}}></span> Nợ cước
+                      </p>
+                    )}
                   </td>
                   <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                     <div style={{

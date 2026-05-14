@@ -216,6 +216,39 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "owner_contract_templates",
+                columns: table => new
+                {
+                    template_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    owner_id = table.Column<int>(type: "int", nullable: false),
+                    template_name = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    use_basic_info_section = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    use_payment_section = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    use_violation_section = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    use_termination_section = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    use_signature_section = table.Column<bool>(type: "bit", nullable: false, defaultValue: true),
+                    basic_info_content = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    payment_content = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    violation_content = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    termination_content = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    signature_content = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    additional_terms_content = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    is_default = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_owner_contract_templates", x => x.template_id);
+                    table.ForeignKey(
+                        name: "FK_owner_contract_templates_owner",
+                        column: x => x.owner_id,
+                        principalTable: "users",
+                        principalColumn: "user_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "password_reset_tokens",
                 columns: table => new
                 {
@@ -247,7 +280,7 @@ namespace WMS.Infrastructure.Migrations
                     asset_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "cái"),
                     weight_per_unit = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
-                    volume_per_unit = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
+                    VolumePerUnit = table.Column<decimal>(type: "decimal(10,2)", nullable: true),
                     description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
                 },
@@ -300,7 +333,10 @@ namespace WMS.Infrastructure.Migrations
                     total_area = table.Column<double>(type: "float", nullable: false),
                     Width = table.Column<double>(type: "float", nullable: true),
                     Length = table.Column<double>(type: "float", nullable: true),
+                    Height = table.Column<double>(type: "float", nullable: true),
+                    BoundaryPoints = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     MainDoorDirection = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    GatePosition = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     available_area = table.Column<double>(type: "float", nullable: false),
                     available_volume = table.Column<double>(type: "float", nullable: true),
                     PricePerM2 = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
@@ -376,7 +412,8 @@ namespace WMS.Infrastructure.Migrations
                     renter_id = table.Column<int>(type: "int", nullable: false),
                     warehouse_id = table.Column<int>(type: "int", nullable: false),
                     type = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true, defaultValue: "PENDING"),
+                    status = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true, defaultValue: "PENDING"),
+                    request_code = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true),
                     confirmed_by = table.Column<int>(type: "int", nullable: true),
                     confirmed_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     assigned_staff_id = table.Column<int>(type: "int", nullable: true),
@@ -389,7 +426,8 @@ namespace WMS.Infrastructure.Migrations
                     renter_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     manager_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     staff_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    document_urls = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    document_urls = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    volume_warning = table.Column<bool>(type: "bit", nullable: false, defaultValue: false)
                 },
                 constraints: table =>
                 {
@@ -532,6 +570,41 @@ namespace WMS.Infrastructure.Migrations
                         column: x => x.warehouse_id,
                         principalTable: "warehouses",
                         principalColumn: "warehouse_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "warehouse_grid_locations",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    warehouse_id = table.Column<int>(type: "int", nullable: false),
+                    coordinates = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    asset_id = table.Column<int>(type: "int", nullable: true),
+                    item_name = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
+                    renter_id = table.Column<int>(type: "int", nullable: true),
+                    quantity = table.Column<int>(type: "int", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_warehouse_grid_locations", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_warehouse_grid_locations_asset",
+                        column: x => x.asset_id,
+                        principalTable: "renter_assets",
+                        principalColumn: "asset_id");
+                    table.ForeignKey(
+                        name: "FK_warehouse_grid_locations_renter",
+                        column: x => x.renter_id,
+                        principalTable: "users",
+                        principalColumn: "user_id");
+                    table.ForeignKey(
+                        name: "FK_warehouse_grid_locations_wh",
+                        column: x => x.warehouse_id,
+                        principalTable: "warehouses",
+                        principalColumn: "warehouse_id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -690,40 +763,35 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "inventory_transactions",
+                name: "receipt_notes",
                 columns: table => new
                 {
-                    transaction_id = table.Column<int>(type: "int", nullable: false)
+                    receipt_note_id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     inv_req_id = table.Column<int>(type: "int", nullable: false),
-                    type = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    warehouse_id = table.Column<int>(type: "int", nullable: false),
-                    item_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    quantity = table.Column<int>(type: "int", nullable: false),
-                    unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "cái"),
-                    performed_by = table.Column<int>(type: "int", nullable: false),
+                    receipt_code = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
+                    received_by_staff_id = table.Column<int>(type: "int", nullable: false),
+                    received_at = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    staff_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    renter_signature_base64 = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    status = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false, defaultValue: "DRAFT"),
                     notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: true, defaultValueSql: "(getdate())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_inventory_transactions", x => x.transaction_id);
+                    table.PrimaryKey("PK_receipt_notes", x => x.receipt_note_id);
                     table.ForeignKey(
-                        name: "FK_inv_transactions_performer",
-                        column: x => x.performed_by,
-                        principalTable: "users",
-                        principalColumn: "user_id");
-                    table.ForeignKey(
-                        name: "FK_inv_transactions_request",
+                        name: "FK_receipt_notes_request",
                         column: x => x.inv_req_id,
                         principalTable: "inventory_requests",
                         principalColumn: "inv_req_id");
                     table.ForeignKey(
-                        name: "FK_inv_transactions_warehouse",
-                        column: x => x.warehouse_id,
-                        principalTable: "warehouses",
-                        principalColumn: "warehouse_id",
-                        onDelete: ReferentialAction.Cascade);
+                        name: "FK_receipt_notes_staff",
+                        column: x => x.received_by_staff_id,
+                        principalTable: "users",
+                        principalColumn: "user_id");
                 });
 
             migrationBuilder.CreateTable(
@@ -786,11 +854,18 @@ namespace WMS.Infrastructure.Migrations
                     rejection_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     contract_image_url = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     is_custom_area = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
+                    is_owner_assigned = table.Column<bool>(type: "bit", nullable: false, defaultValue: false),
                     proposed_position_x = table.Column<double>(type: "float", nullable: true),
                     proposed_position_y = table.Column<double>(type: "float", nullable: true),
                     proposed_width = table.Column<double>(type: "float", nullable: true),
                     proposed_length = table.Column<double>(type: "float", nullable: true),
                     base_rental_area_id = table.Column<int>(type: "int", nullable: true),
+                    has_extension_zone = table.Column<bool>(type: "bit", nullable: false),
+                    extension_position_x = table.Column<double>(type: "float", nullable: true),
+                    extension_position_y = table.Column<double>(type: "float", nullable: true),
+                    extension_width = table.Column<double>(type: "float", nullable: true),
+                    extension_length = table.Column<double>(type: "float", nullable: true),
+                    additional_zones_json = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     cancellation_reason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     cancelled_at = table.Column<DateTime>(type: "datetime2", nullable: true),
                     cancelled_by = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true)
@@ -892,6 +967,87 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "inventory_transactions",
+                columns: table => new
+                {
+                    transaction_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    inv_req_id = table.Column<int>(type: "int", nullable: false),
+                    type = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    warehouse_id = table.Column<int>(type: "int", nullable: false),
+                    item_name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    quantity = table.Column<int>(type: "int", nullable: false),
+                    unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "cái"),
+                    performed_by = table.Column<int>(type: "int", nullable: false),
+                    notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
+                    receipt_note_id = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_inventory_transactions", x => x.transaction_id);
+                    table.ForeignKey(
+                        name: "FK_inv_transactions_performer",
+                        column: x => x.performed_by,
+                        principalTable: "users",
+                        principalColumn: "user_id");
+                    table.ForeignKey(
+                        name: "FK_inv_transactions_receipt_note",
+                        column: x => x.receipt_note_id,
+                        principalTable: "receipt_notes",
+                        principalColumn: "receipt_note_id");
+                    table.ForeignKey(
+                        name: "FK_inv_transactions_request",
+                        column: x => x.inv_req_id,
+                        principalTable: "inventory_requests",
+                        principalColumn: "inv_req_id");
+                    table.ForeignKey(
+                        name: "FK_inv_transactions_warehouse",
+                        column: x => x.warehouse_id,
+                        principalTable: "warehouses",
+                        principalColumn: "warehouse_id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "receipt_items",
+                columns: table => new
+                {
+                    receipt_item_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    receipt_note_id = table.Column<int>(type: "int", nullable: false),
+                    inventory_item_id = table.Column<int>(type: "int", nullable: true),
+                    asset_id = table.Column<int>(type: "int", nullable: true),
+                    item_name = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
+                    expected_quantity = table.Column<int>(type: "int", nullable: false),
+                    received_quantity = table.Column<int>(type: "int", nullable: false),
+                    unit = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false, defaultValue: "cái"),
+                    verified_volume = table.Column<decimal>(type: "decimal(10,3)", nullable: true),
+                    verified_weight = table.Column<decimal>(type: "decimal(10,3)", nullable: true),
+                    note = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_receipt_items", x => x.receipt_item_id);
+                    table.ForeignKey(
+                        name: "FK_receipt_items_asset",
+                        column: x => x.asset_id,
+                        principalTable: "renter_assets",
+                        principalColumn: "asset_id");
+                    table.ForeignKey(
+                        name: "FK_receipt_items_inv_item",
+                        column: x => x.inventory_item_id,
+                        principalTable: "inventory_items",
+                        principalColumn: "item_id");
+                    table.ForeignKey(
+                        name: "FK_receipt_items_note",
+                        column: x => x.receipt_note_id,
+                        principalTable: "receipt_notes",
+                        principalColumn: "receipt_note_id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "equipment_incidents",
                 columns: table => new
                 {
@@ -970,7 +1126,7 @@ namespace WMS.Infrastructure.Migrations
                     contract_number = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     start_date = table.Column<DateOnly>(type: "date", nullable: false),
                     end_date = table.Column<DateOnly>(type: "date", nullable: false),
-                    status = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true, defaultValue: "PENDING_OWNER_SIGNATURE"),
+                    status = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: true, defaultValue: "DRAFT"),
                     total_value = table.Column<decimal>(type: "decimal(15,2)", nullable: false),
                     deposit_amount = table.Column<decimal>(type: "decimal(15,2)", nullable: true),
                     monthly_payment = table.Column<decimal>(type: "decimal(15,2)", nullable: false),
@@ -1243,6 +1399,68 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "contract_revision_threads",
+                columns: table => new
+                {
+                    thread_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    contract_id = table.Column<int>(type: "int", nullable: false),
+                    section = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    status = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false, defaultValue: "OPEN"),
+                    created_by = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())"),
+                    updated_at = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    resolved_by = table.Column<int>(type: "int", nullable: true),
+                    resolved_at = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_contract_revision_threads", x => x.thread_id);
+                    table.ForeignKey(
+                        name: "FK_contract_revision_threads_contract",
+                        column: x => x.contract_id,
+                        principalTable: "contracts",
+                        principalColumn: "contract_id");
+                    table.ForeignKey(
+                        name: "FK_contract_revision_threads_resolved_by",
+                        column: x => x.resolved_by,
+                        principalTable: "users",
+                        principalColumn: "user_id");
+                    table.ForeignKey(
+                        name: "FK_contract_revision_threads_user",
+                        column: x => x.created_by,
+                        principalTable: "users",
+                        principalColumn: "user_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "contract_versions",
+                columns: table => new
+                {
+                    version_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    contract_id = table.Column<int>(type: "int", nullable: false),
+                    version_number = table.Column<int>(type: "int", nullable: false),
+                    snapshot_json = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    created_by = table.Column<int>(type: "int", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_contract_versions", x => x.version_id);
+                    table.ForeignKey(
+                        name: "FK_contract_versions_contract",
+                        column: x => x.contract_id,
+                        principalTable: "contracts",
+                        principalColumn: "contract_id");
+                    table.ForeignKey(
+                        name: "FK_contract_versions_user",
+                        column: x => x.created_by,
+                        principalTable: "users",
+                        principalColumn: "user_id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "equipment_histories",
                 columns: table => new
                 {
@@ -1402,6 +1620,27 @@ namespace WMS.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PaymentTerms",
+                columns: table => new
+                {
+                    TermId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ContractId = table.Column<int>(type: "int", nullable: false),
+                    MonthsPerTerm = table.Column<int>(type: "int", nullable: false),
+                    AllowedOverdueDays = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PaymentTerms", x => x.TermId);
+                    table.ForeignKey(
+                        name: "FK_PaymentTerms_rental_contracts_ContractId",
+                        column: x => x.ContractId,
+                        principalTable: "rental_contracts",
+                        principalColumn: "contract_id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "warehouse_returns",
                 columns: table => new
                 {
@@ -1432,6 +1671,32 @@ namespace WMS.Infrastructure.Migrations
                     table.ForeignKey(
                         name: "FK_warehouse_returns_users_inspector_id",
                         column: x => x.inspector_id,
+                        principalTable: "users",
+                        principalColumn: "user_id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "contract_revision_comments",
+                columns: table => new
+                {
+                    comment_id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    thread_id = table.Column<int>(type: "int", nullable: false),
+                    user_id = table.Column<int>(type: "int", nullable: false),
+                    message = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    created_at = table.Column<DateTime>(type: "datetime2", nullable: false, defaultValueSql: "(getdate())")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_contract_revision_comments", x => x.comment_id);
+                    table.ForeignKey(
+                        name: "FK_contract_revision_comments_thread",
+                        column: x => x.thread_id,
+                        principalTable: "contract_revision_threads",
+                        principalColumn: "thread_id");
+                    table.ForeignKey(
+                        name: "FK_contract_revision_comments_user",
+                        column: x => x.user_id,
                         principalTable: "users",
                         principalColumn: "user_id");
                 });
@@ -1569,6 +1834,31 @@ namespace WMS.Infrastructure.Migrations
                 column: "contract_id");
 
             migrationBuilder.CreateIndex(
+                name: "idx_contract_revision_comments_thread",
+                table: "contract_revision_comments",
+                column: "thread_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_contract_revision_comments_user_id",
+                table: "contract_revision_comments",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_contract_revision_threads_contract",
+                table: "contract_revision_threads",
+                column: "contract_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_contract_revision_threads_created_by",
+                table: "contract_revision_threads",
+                column: "created_by");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_contract_revision_threads_resolved_by",
+                table: "contract_revision_threads",
+                column: "resolved_by");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_cv_contract",
                 table: "contract_verifications",
                 column: "contract_id");
@@ -1577,6 +1867,21 @@ namespace WMS.Infrastructure.Migrations
                 name: "idx_cv_user",
                 table: "contract_verifications",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_contract_versions_contract",
+                table: "contract_versions",
+                column: "contract_id");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_contract_versions_contract_version",
+                table: "contract_versions",
+                columns: new[] { "contract_id", "version_number" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_contract_versions_created_by",
+                table: "contract_versions",
+                column: "created_by");
 
             migrationBuilder.CreateIndex(
                 name: "idx_contracts_dates",
@@ -1730,6 +2035,13 @@ namespace WMS.Infrastructure.Migrations
                 column: "confirmed_by");
 
             migrationBuilder.CreateIndex(
+                name: "UQ_inventory_requests_code",
+                table: "inventory_requests",
+                column: "request_code",
+                unique: true,
+                filter: "[request_code] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_inv_transactions_created",
                 table: "inventory_transactions",
                 column: "created_at");
@@ -1755,6 +2067,11 @@ namespace WMS.Infrastructure.Migrations
                 column: "performed_by");
 
             migrationBuilder.CreateIndex(
+                name: "IX_inventory_transactions_receipt_note_id",
+                table: "inventory_transactions",
+                column: "receipt_note_id");
+
+            migrationBuilder.CreateIndex(
                 name: "idx_notifications_created_at",
                 table: "notifications",
                 column: "created_at");
@@ -1768,6 +2085,16 @@ namespace WMS.Infrastructure.Migrations
                 name: "idx_notifications_user",
                 table: "notifications",
                 column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_owner_contract_templates_default",
+                table: "owner_contract_templates",
+                columns: new[] { "owner_id", "is_default" });
+
+            migrationBuilder.CreateIndex(
+                name: "idx_owner_contract_templates_owner",
+                table: "owner_contract_templates",
+                column: "owner_id");
 
             migrationBuilder.CreateIndex(
                 name: "idx_prt_token",
@@ -1801,6 +2128,12 @@ namespace WMS.Infrastructure.Migrations
                 column: "status");
 
             migrationBuilder.CreateIndex(
+                name: "IX_PaymentTerms_ContractId",
+                table: "PaymentTerms",
+                column: "ContractId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "idx_ratings_created_at",
                 table: "ratings",
                 column: "created_at");
@@ -1824,6 +2157,37 @@ namespace WMS.Infrastructure.Migrations
                 name: "IX_ratings_contract_id",
                 table: "ratings",
                 column: "contract_id");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_receipt_items_note",
+                table: "receipt_items",
+                column: "receipt_note_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_receipt_items_asset_id",
+                table: "receipt_items",
+                column: "asset_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_receipt_items_inventory_item_id",
+                table: "receipt_items",
+                column: "inventory_item_id");
+
+            migrationBuilder.CreateIndex(
+                name: "idx_receipt_notes_request",
+                table: "receipt_notes",
+                column: "inv_req_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_receipt_notes_received_by_staff_id",
+                table: "receipt_notes",
+                column: "received_by_staff_id");
+
+            migrationBuilder.CreateIndex(
+                name: "UQ_receipt_notes_code",
+                table: "receipt_notes",
+                column: "receipt_code",
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_refunds_contract_id",
@@ -2021,6 +2385,21 @@ namespace WMS.Infrastructure.Migrations
                 column: "warehouse_id");
 
             migrationBuilder.CreateIndex(
+                name: "idx_warehouse_grid_locations_pos",
+                table: "warehouse_grid_locations",
+                column: "warehouse_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_warehouse_grid_locations_asset_id",
+                table: "warehouse_grid_locations",
+                column: "asset_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_warehouse_grid_locations_renter_id",
+                table: "warehouse_grid_locations",
+                column: "renter_id");
+
+            migrationBuilder.CreateIndex(
                 name: "UQ_warehouse_inventory_item",
                 table: "warehouse_inventory",
                 columns: new[] { "warehouse_id", "item_name" },
@@ -2132,7 +2511,13 @@ namespace WMS.Infrastructure.Migrations
                 name: "contract_logs");
 
             migrationBuilder.DropTable(
+                name: "contract_revision_comments");
+
+            migrationBuilder.DropTable(
                 name: "contract_verifications");
+
+            migrationBuilder.DropTable(
+                name: "contract_versions");
 
             migrationBuilder.DropTable(
                 name: "equipment_histories");
@@ -2147,13 +2532,13 @@ namespace WMS.Infrastructure.Migrations
                 name: "equipment_maintenance_records");
 
             migrationBuilder.DropTable(
-                name: "inventory_items");
-
-            migrationBuilder.DropTable(
                 name: "inventory_transactions");
 
             migrationBuilder.DropTable(
                 name: "notifications");
+
+            migrationBuilder.DropTable(
+                name: "owner_contract_templates");
 
             migrationBuilder.DropTable(
                 name: "password_reset_tokens");
@@ -2162,7 +2547,13 @@ namespace WMS.Infrastructure.Migrations
                 name: "payments");
 
             migrationBuilder.DropTable(
+                name: "PaymentTerms");
+
+            migrationBuilder.DropTable(
                 name: "ratings");
+
+            migrationBuilder.DropTable(
+                name: "receipt_items");
 
             migrationBuilder.DropTable(
                 name: "refunds");
@@ -2189,6 +2580,9 @@ namespace WMS.Infrastructure.Migrations
                 name: "warehouse_documents");
 
             migrationBuilder.DropTable(
+                name: "warehouse_grid_locations");
+
+            migrationBuilder.DropTable(
                 name: "warehouse_inventory");
 
             migrationBuilder.DropTable(
@@ -2204,16 +2598,19 @@ namespace WMS.Infrastructure.Migrations
                 name: "audit_sessions");
 
             migrationBuilder.DropTable(
+                name: "contract_revision_threads");
+
+            migrationBuilder.DropTable(
                 name: "equipment_incidents");
 
             migrationBuilder.DropTable(
-                name: "inventory_requests");
+                name: "inventory_items");
+
+            migrationBuilder.DropTable(
+                name: "receipt_notes");
 
             migrationBuilder.DropTable(
                 name: "rental_payments");
-
-            migrationBuilder.DropTable(
-                name: "renter_assets");
 
             migrationBuilder.DropTable(
                 name: "warehouse_returns");
@@ -2229,6 +2626,12 @@ namespace WMS.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "equipments");
+
+            migrationBuilder.DropTable(
+                name: "renter_assets");
+
+            migrationBuilder.DropTable(
+                name: "inventory_requests");
 
             migrationBuilder.DropTable(
                 name: "contracts");

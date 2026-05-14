@@ -22,8 +22,13 @@ public class GetInventoryRequestsHandler
     : IRequestHandler<GetInventoryRequestsQuery, PagedResult<InventoryRequestDto>>
 {
     private readonly IInventoryRequestRepository _repo;
+    private readonly IRentalPaymentRepository _paymentRepo;
 
-    public GetInventoryRequestsHandler(IInventoryRequestRepository repo) => _repo = repo;
+    public GetInventoryRequestsHandler(IInventoryRequestRepository repo, IRentalPaymentRepository paymentRepo)
+    {
+        _repo = repo;
+        _paymentRepo = paymentRepo;
+    }
 
     public async Task<PagedResult<InventoryRequestDto>> Handle(
         GetInventoryRequestsQuery q, CancellationToken cancellationToken)
@@ -55,9 +60,16 @@ public class GetInventoryRequestsHandler
                 q.Page, q.PageSize, cancellationToken),
         };
 
+        var dtos = items.Select(InventoryRequestMapper.ToDto).ToList();
+        
+        foreach (var dto in dtos)
+        {
+            dto.HasUnpaidBills = await _paymentRepo.HasUnpaidBillsAsync(dto.RenterId, dto.WarehouseId);
+        }
+
         return new PagedResult<InventoryRequestDto>
         {
-            Items      = items.Select(InventoryRequestMapper.ToDto).ToList(),
+            Items      = dtos,
             TotalCount = total,
             Page       = q.Page,
             PageSize   = q.PageSize,

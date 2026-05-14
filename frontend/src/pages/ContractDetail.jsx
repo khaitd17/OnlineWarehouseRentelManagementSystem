@@ -158,7 +158,9 @@ const ContractDetail = () => {
     depositAmount: "",
     startDate: "",
     durationMonths: "",
-    terms: ""
+    terms: "",
+    monthsPerTerm: 1,
+    allowedOverdueDays: 7
   });
   const [resolveAcceptedThreads, setResolveAcceptedThreads] = useState(true);
   const revisionSectionLabels = revisionSectionOptions.reduce((acc, item) => {
@@ -336,7 +338,9 @@ const ContractDetail = () => {
           durationMonths: data?.startDate && data?.endDate
             ? Math.max(1, Math.round((new Date(data.endDate) - new Date(data.startDate)) / (1000 * 60 * 60 * 24 * 30)))
             : "",
-          terms: data?.terms ?? ""
+          terms: data?.terms ?? "",
+          monthsPerTerm: data?.monthsPerTerm ?? 1,
+          allowedOverdueDays: data?.allowedOverdueDays ?? 7
         });
         // If PENDING_PAYMENT, check if a payment is already submitted
         if (data?.status === "PENDING_PAYMENT" || data?.status === "SIGNED") {
@@ -587,6 +591,8 @@ const ContractDetail = () => {
         startDate: changeForm.startDate,
         durationMonths: Number(changeForm.durationMonths),
         terms: changeForm.terms,
+        monthsPerTerm: Number(changeForm.monthsPerTerm),
+        allowedOverdueDays: Number(changeForm.allowedOverdueDays),
         resolveThreadIds
       });
       reloadContract();
@@ -821,6 +827,9 @@ const ContractDetail = () => {
           {contract.depositAmount != null && (
             <InfoRow label="Tiền đặt cọc" value={formatCurrency(contract.depositAmount)} />
           )}
+          <div style={{ gridColumn: "1 / -1", height: 1, backgroundColor: "#f1f5f9", margin: "8px 0" }} />
+          <InfoRow label="Kỳ hạn thanh toán" value={`${contract.monthsPerTerm || 1} tháng / kỳ`} />
+          <InfoRow label="Thời gian cho phép trễ hạn" value={`${contract.allowedOverdueDays || 7} ngày`} />
         </Section>
       </div>
 
@@ -1247,6 +1256,26 @@ const ContractDetail = () => {
                   placeholder="Thời hạn (tháng)"
                   style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
                 />
+                <select
+                  value={changeForm.monthsPerTerm}
+                  onChange={(e) => setChangeForm(prev => ({ ...prev, monthsPerTerm: e.target.value }))}
+                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
+                >
+                  <option value="1">1 tháng / kỳ</option>
+                  <option value="3">3 tháng / kỳ</option>
+                  <option value="6">6 tháng / kỳ</option>
+                  <option value="12">1 năm / kỳ</option>
+                </select>
+                <select
+                  value={changeForm.allowedOverdueDays}
+                  onChange={(e) => setChangeForm(prev => ({ ...prev, allowedOverdueDays: e.target.value }))}
+                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
+                >
+                  <option value="0">Không trễ hạn</option>
+                  <option value="3">Trễ 3 ngày</option>
+                  <option value="5">Trễ 5 ngày</option>
+                  <option value="7">Trễ 7 ngày</option>
+                </select>
               </div>
               <textarea
                 value={changeForm.terms}

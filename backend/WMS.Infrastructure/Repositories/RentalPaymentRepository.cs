@@ -91,4 +91,15 @@ public class RentalPaymentRepository : IRentalPaymentRepository
     {
         await _db.SaveChangesAsync();
     }
+
+    public async Task<bool> HasUnpaidBillsAsync(int renterId, int warehouseId)
+    {
+        return await _db.RentalPayments
+            .Include(p => p.Contract)
+            .AnyAsync(p => p.Contract != null 
+                           && p.Contract.RenterId == renterId 
+                           && p.Contract.WarehouseId == warehouseId 
+                           && p.Contract.Status == "ACTIVE"
+                           && (p.Status == PaymentStatus.Pending || p.Status == PaymentStatus.Expired));
+    }
 }

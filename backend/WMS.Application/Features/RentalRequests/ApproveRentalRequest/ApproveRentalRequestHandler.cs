@@ -81,22 +81,9 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
                 throw new NotEnoughAreaException("Warehouse no longer has enough available area");
 
             // ── Module 3: Zone Assignment Validation ────────────────────────────
-            // Ensure a valid zone exists before creating a contract.
-            // A zone is considered valid if ANY of the following is true:
-            //   1. Owner is assigning a new custom zone right now (AssignedWidth + AssignedLength).
-            //   2. Renter already proposed a custom zone (ProposedWidth + ProposedLength).
-            //   3. Renter selected a full existing RentalArea (RentalAreaId is set).
-            bool ownerAssigningZone  = request.AssignedWidth.HasValue && request.AssignedLength.HasValue;
-            bool renterProposedZone  = rentalRequest.ProposedWidth.HasValue && rentalRequest.ProposedLength.HasValue;
-            bool renterSelectedArea  = rentalRequest.RentalAreaId.HasValue;
-
-            if (!ownerAssigningZone && !renterProposedZone && !renterSelectedArea)
-            {
-                throw new ArgumentException(
-                    "Vị trí khu vực thuê chưa được xác định. " +
-                    "Vui lòng chỉ định vị trí cho người thuê trên sơ đồ kho trước khi duyệt hợp đồng.");
-            }
+            // Bypassed for new simplified architecture - no longer require zone selection to approve contract
             // ───────────────────────────────────────────────────────────────────
+
 
             // Approve request
             Console.WriteLine($"[DEBUG] Approving request...");
@@ -140,7 +127,9 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
                 request.DepositAmount,
                 request.Terms,
                 request.StartDate,
-                request.DurationMonths
+                request.DurationMonths,
+                request.MonthsPerTerm,
+                request.AllowedOverdueDays
             );
 
             Console.WriteLine($"[DEBUG] Contract created in memory - Status: {contract.Status}");

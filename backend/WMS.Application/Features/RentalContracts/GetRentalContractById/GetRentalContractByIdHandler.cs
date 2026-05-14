@@ -28,7 +28,7 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
         GetRentalContractByIdQuery request,
         CancellationToken cancellationToken)
     {
-        var contract = await _contractRepo.GetByIdAsync(request.ContractId);
+        var contract = await _contractRepo.GetByIdWithDetailsAsync(request.ContractId);
         if (contract == null) return null;
 
         var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, cancellationToken);
@@ -100,7 +100,11 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
             RenterApprovedTermination = contract.RenterApprovedTermination,
             OwnerApprovedTermination = contract.OwnerApprovedTermination,
             TerminationReason = contract.TerminationReason,
-            EarlyTerminationFee = contract.EarlyTerminationFee
+            EarlyTerminationFee = contract.EarlyTerminationFee,
+            
+            // Payment Term mapping
+            MonthsPerTerm = contract.PaymentTerm?.MonthsPerTerm ?? 1,
+            AllowedOverdueDays = contract.PaymentTerm?.AllowedOverdueDays ?? 7
         };
     }
 }

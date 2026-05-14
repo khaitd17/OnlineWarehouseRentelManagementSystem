@@ -17,7 +17,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
     private readonly IUserRepository _userRepo;
     private readonly IRentalRequestRepository _rentalRequestRepo;
     private readonly IEquipmentRepository _equipmentRepo;
-    private readonly IEmailService _emailService;
+    private readonly IRentalPaymentRepository _paymentRepo;
 
     public SignContractHandler(
         IRentalContractRepository contractRepo,
@@ -29,7 +29,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         IUserRepository userRepo,
         IRentalRequestRepository rentalRequestRepo,
         IEquipmentRepository equipmentRepo,
-        IEmailService emailService)
+        IRentalPaymentRepository paymentRepo)
     {
         _contractRepo = contractRepo;
         _logRepo = logRepo;
@@ -40,7 +40,7 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         _userRepo = userRepo;
         _rentalRequestRepo = rentalRequestRepo;
         _equipmentRepo = equipmentRepo;
-        _emailService = emailService;
+        _paymentRepo = paymentRepo;
     }
 
     public async Task<SignContractResult> Handle(SignContractCommand request, CancellationToken cancellationToken)
@@ -83,9 +83,39 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
 
         // Update contract domain
         contract.SetContractFileUrl(signedFileUrl);
-        contract.Sign(signedFileUrl, request.SignatureBase64);  // SIGNED
-        contract.MarkPendingPayment(5.0/60.0);  // SIGNED → PENDING_PAYMENT (5 minutes expiry for testing)
+        contract.Sign(signedFileUrl, request.SignatureBase64);  // Status -> ACTIVE
+        contract.ForceActivate(); // Ensures it bypasses PENDING_PAYMENT if any previous logic set it
         await _contractRepo.UpdateAsync(contract);
+
+        // Generate the first bill based on PaymentTerm (pro-rated if needed)
+        // Fetch full contract to get PaymentTerm
+        var fullContractInfo = await _contractRepo.GetByIdWithDetailsAsync(contract.ContractId);
+        
+        int monthsPerTerm = fullContractInfo?.PaymentTerm?.MonthsPerTerm ?? 1;
+        int overdueDays = fullContractInfo?.PaymentTerm?.AllowedOverdueDays ?? 7;
+
+        var totalDays = (contract.EndDate - contract.StartDate).Days;
+        var firstTermEndDate = contract.StartDate.AddMonths(monthsPerTerm);
+        if (firstTermEndDate > contract.EndDate)
+            firstTermEndDate = contract.EndDate;
+            
+        var termDays = (firstTermEndDate - contract.StartDate).Days;
+        var proratedAmount = (contract.MonthlyPayment / 30) * termDays;
+        
+        // If contract starts within 5 days or in the past, create bill now
+        if ((contract.StartDate - DateTime.UtcNow).TotalDays <= 5)
+        {
+            var payment = RentalPayment.Create(
+                contractId: contract.ContractId,
+                amount: Math.Round(proratedAmount, 2),
+                paymentType: "MONTHLY",
+                expiryHours: overdueDays * 24
+            );
+            await _paymentRepo.AddAsync(payment);
+            await _paymentRepo.SaveChangesAsync();
+            payment.SetPaymentCode();
+            await _paymentRepo.UpdatePaymentCodeAsync(payment.PaymentId, payment.PaymentCode);
+        }
 
         // Update Equipments to IN_USE
         var fullContract = await _contractRepo.GetWithEquipmentsByIdAsync(contract.ContractId);
@@ -187,43 +217,6 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
             };
             await _notificationRepo.AddAsync(ownerNotification);
             await _notificationSender.SendToUserAsync(warehouse.OwnerId, ownerNotification);
-        }
-
-        var contractLink = $"http://localhost:3000/contracts/{contract.ContractId}";
-        if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
-        {
-            var subject = $"Hợp đồng đã được ký - {contract.ContractNumber}";
-            var htmlContent = $@"
-<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
-    <h2 style='color: #16a34a; text-align: center;'>Hợp đồng đã được ký</h2>
-    <p>Xin chào <strong>{renter.FullName}</strong>,</p>
-    <p>Hợp đồng <strong>{contract.ContractNumber}</strong> đã được ký thành công. Vui lòng thanh toán để kích hoạt hợp đồng.</p>
-    <div style='margin-top: 24px; text-align: center;'>
-        <a href='{contractLink}' style='background-color: #16a34a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Xem hợp đồng</a>
-    </div>
-    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
-    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
-</div>";
-
-            await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
-        }
-
-        if (owner != null && !string.IsNullOrWhiteSpace(owner.Email))
-        {
-            var subject = $"Hợp đồng đã được ký - {contract.ContractNumber}";
-            var htmlContent = $@"
-<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
-    <h2 style='color: #16a34a; text-align: center;'>Hợp đồng đã được ký</h2>
-    <p>Xin chào <strong>{owner.FullName}</strong>,</p>
-    <p>Người thuê đã ký hợp đồng <strong>{contract.ContractNumber}</strong>. Hợp đồng đang chờ thanh toán để kích hoạt.</p>
-    <div style='margin-top: 24px; text-align: center;'>
-        <a href='{contractLink}' style='background-color: #16a34a; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Xem hợp đồng</a>
-    </div>
-    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
-    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
-</div>";
-
-            await _emailService.SendInfo(owner.Email, owner.FullName, subject, htmlContent);
         }
 
         return new SignContractResult

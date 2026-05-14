@@ -51,7 +51,9 @@ public class ApplyContractChangesHandler : IRequestHandler<ApplyContractChangesC
             request.DepositAmount,
             request.StartDate,
             request.DurationMonths,
-            request.Terms);
+            request.Terms,
+            request.MonthsPerTerm,
+            request.AllowedOverdueDays);
 
         contract.MarkNegotiating();
         await _contractRepo.UpdateAsync(contract);
