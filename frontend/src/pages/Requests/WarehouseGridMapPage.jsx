@@ -11,6 +11,8 @@ export default function WarehouseGridMapPage() {
     const [gridLocations, setGridLocations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [renterFilter, setRenterFilter] = useState('');
+    const [itemSearch, setItemSearch] = useState('');
+    const [showSearchDropdown, setShowSearchDropdown] = useState(false);
     
     const editMode = true;
     const [inventoryStatus, setInventoryStatus] = useState([]);
@@ -109,7 +111,7 @@ export default function WarehouseGridMapPage() {
         }
     };
 
-    const handleAssignmentMapClick = (x, y) => {
+    const handleAssignmentMapClick = (x, y, cellItems) => {
         setPendingAssignments(prev => {
             const existingIndex = prev.findIndex(p => p.x === x && p.y === y);
             if (existingIndex >= 0) {
@@ -211,11 +213,30 @@ export default function WarehouseGridMapPage() {
     const rentersFromInventory = inventoryStatus.filter(s => s?.renterName).map(s => s.renterName);
     const allRenters = Array.from(new Set([...rentersFromGrid, ...rentersFromInventory]));
 
-    const filteredGridLocations = renterFilter 
-        ? gridLocations.filter(g => g.renterName === renterFilter)
-        : gridLocations;
+    const itemsFromGrid = gridLocations.filter(g => g?.itemName).map(g => g.itemName);
+    const itemsFromInventory = inventoryStatus.filter(s => s?.itemName).map(s => s.itemName);
+    const allItemNames = Array.from(new Set([...itemsFromGrid, ...itemsFromInventory])).filter(Boolean);
 
-    const unassignedItems = inventoryStatus.filter(s => s.unassignedQuantity > 0);
+    // LOG DATA FOR DEBUGGING
+    console.log('=== DEBUG: HÀNG HÓA ===');
+    console.log('gridLocations (Hàng đang nằm trên lưới):', gridLocations);
+    console.log('inventoryStatus (Trạng thái tổng hợp tồn kho):', inventoryStatus);
+    console.log('allItemNames (Danh sách tên hàng hiển thị ở dropdown):', allItemNames);
+
+    const filteredSearchOptions = allItemNames.filter(name => 
+        name.toLowerCase().includes(itemSearch.toLowerCase())
+    );
+
+    const filteredGridLocations = gridLocations.filter(g => {
+        const matchRenter = renterFilter ? g.renterName === renterFilter : true;
+        const matchItem = itemSearch ? g.itemName?.toLowerCase().includes(itemSearch.toLowerCase()) : true;
+        return matchRenter && matchItem;
+    });
+
+    const unassignedItems = inventoryStatus.filter(s => {
+        const matchSearch = itemSearch ? s.itemName?.toLowerCase().includes(itemSearch.toLowerCase()) : true;
+        return s.unassignedQuantity > 0 && matchSearch;
+    });
     const excessWarnings = inventoryStatus.filter(s => s.excessQuantity > 0);
 
     return (
@@ -249,19 +270,72 @@ export default function WarehouseGridMapPage() {
                     </div>
                 )}
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Lọc theo khách thuê:</span>
-                    <select 
-                        value={renterFilter} 
-                        onChange={e => setRenterFilter(e.target.value)}
-                        style={{ padding: '8px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none' }}
-                        disabled={!warehouse}
-                    >
-                        <option value="">Tất cả</option>
-                        {allRenters.map(r => (
-                            <option key={r} value={r}>{r}</option>
-                        ))}
-                    </select>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Tra cứu hàng hóa:</span>
+                        <input 
+                            type="text" 
+                            placeholder="Nhập tên hàng..." 
+                            value={itemSearch} 
+                            onChange={e => {
+                                setItemSearch(e.target.value);
+                                setShowSearchDropdown(true);
+                            }}
+                            onFocus={() => setShowSearchDropdown(true)}
+                            onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
+                            style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none', width: '220px', transition: 'border-color 0.2s' }}
+                            onFocusCapture={e => e.target.style.borderColor = '#3b82f6'}
+                            onBlurCapture={e => e.target.style.borderColor = '#cbd5e1'}
+                            disabled={!warehouse}
+                        />
+                        {showSearchDropdown && filteredSearchOptions.length > 0 && (
+                            <div style={{
+                                position: 'absolute', top: '100%', left: 130, right: 0, marginTop: 4, 
+                                background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', 
+                                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 50, 
+                                maxHeight: 200, overflowY: 'auto'
+                            }}>
+                                {filteredSearchOptions.map(name => (
+                                    <div 
+                                        key={name}
+                                        onClick={() => {
+                                            setItemSearch(name);
+                                            setShowSearchDropdown(false);
+                                        }}
+                                        style={{ padding: '8px 12px', fontSize: '0.875rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                                        onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                                        onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                                    >
+                                        {name}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {showSearchDropdown && filteredSearchOptions.length === 0 && itemSearch && (
+                            <div style={{
+                                position: 'absolute', top: '100%', left: 130, right: 0, marginTop: 4, 
+                                background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', 
+                                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 50, padding: '10px 12px',
+                                fontSize: '0.85rem', color: '#64748b', textAlign: 'center', fontStyle: 'italic'
+                            }}>
+                                Không tìm thấy
+                            </div>
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Lọc theo khách:</span>
+                        <select 
+                            value={renterFilter} 
+                            onChange={e => setRenterFilter(e.target.value)}
+                            style={{ padding: '8px', borderRadius: 8, border: '1px solid #cbd5e1', outline: 'none' }}
+                            disabled={!warehouse}
+                        >
+                            <option value="">Tất cả</option>
+                            {allRenters.map(r => (
+                                <option key={r} value={r}>{r}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -355,11 +429,12 @@ export default function WarehouseGridMapPage() {
                                     boundaryPoints={warehouse.boundaryPoints}
                                     gatePosition={warehouse.gatePosition}
                                     totalArea={warehouse.totalArea}
-                                    gridLocations={filteredGridLocations.filter(g => !selectedItem?.renterName || g.renterName === selectedItem.renterName)}
+                                    gridLocations={filteredGridLocations}
                                     onCellClick={handleAssignmentMapClick}
                                     selectedItem={selectedItem}
                                     outboundWarnings={excessWarnings}
                                     pendingAssignments={distributedAssignments}
+                                    isAssigning={true}
                                 />
                             </div>
                             

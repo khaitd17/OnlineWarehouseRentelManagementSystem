@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Rnd } from "react-rnd";
 import api from "../../services/axiosClient";
 import { parseBoundary, buildMaskPath, buildPolygonPoints, getGridDimensions, CELL_SIZE } from "../../utils/polygonUtils";
@@ -27,7 +27,6 @@ function buildAutoZones(warehouse, zoneW, zoneL, zoneH, existingCount) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
-  const [scale, setScale] = useState(10);
   const [areas, setAreas] = useState([]);
   const [warehouse, setWarehouse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -80,16 +79,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
 
   useEffect(() => { if (warehouseId) fetchData(); }, [warehouseId]);
 
-  // Auto-scale
-  useEffect(() => {
-    if (!warehouse) return;
-    const maxDim = Math.max(
-      (warehouse.width  ?? warehouse.Width)  || 50,
-      (warehouse.length ?? warehouse.Length) || 50,
-    );
-    const ideal = Math.floor(480 / maxDim);
-    setScale(Math.max(10, Math.min(40, ideal)));
-  }, [warehouse]);
+
 
   // ── Validation ─────────────────────────────────────────────────────────
   const isIntersecting = (x1,y1,w1,l1,x2,y2,w2,l2) => {
@@ -98,8 +88,8 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
   };
   const checkOverlap = (excludeId,x,y,w,l) =>
     areas.some(a => a.id!==excludeId && isIntersecting(x,y,w,l,a.positionX||0,a.positionY||0,a.width||10,a.length||10));
-  // TotalArea = total volume capacity in m³ (= W × L × H)
-  // zone.size is also in m³ → compare directly
+  // TotalArea = total volume capacity in m² (= W × L × H)
+  // zone.size is also in m² → compare directly
   const checkVolumeCapacity = (excludeId, newSize) => {
     const cur = areas.reduce((s,a) => s + (a.id===excludeId ? 0 : (a.size||0)), 0);
     return (cur + newSize) <= (warehouse?.totalArea || 999999);
@@ -155,7 +145,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
     const parsedSize=parseFloat(formData.size);
     const w=parseFloat(formData.width)||10, l=parseFloat(formData.length)||10;
     const x=parseFloat(formData.positionX)||0, y=parseFloat(formData.positionY)||0;
-    if(!checkVolumeCapacity(editingId,parsedSize)){setFormError(`Lỗi sức chứa: Tổng thể tích các khu vượt quá sức chứa kho (${warehouse?.totalArea} m³).`);return;}
+    if(!checkVolumeCapacity(editingId,parsedSize)){setFormError(`Lỗi sức chứa: Tổng diện tích các khu vượt quá sức chứa kho (${warehouse?.totalArea} m²).`);return;}
     if(checkOverlap(editingId,x,y,w,l)){setFormError('Lỗi vị trí: Khu vực này bị đè lên một khu vực khác đã có.');return;}
     const whW=warehouse?.width||50, whL=warehouse?.length||50;
     if(x+w>whW||y+l>whL){setFormError(`Lỗi kích thước: Tọa độ tràn ra ngoài kho (${whW}m × ${whL}m).`);return;}
@@ -202,7 +192,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
     const newSize=Number((newW*newL*derivedH).toFixed(2));
     const newX=Math.round((position.x/scale)*10)/10, newY=Math.round((position.y/scale)*10)/10;
     if(checkOverlap(id,newX,newY,newW,newL)){alert('Kích thước không hợp lệ! Bị chạm vào một khu vực khác.');setAreas([...areas]);return;}
-    if(!checkVolumeCapacity(id,newSize)){alert('Kích thước không hợp lệ! Tổng thể tích vượt quá sức chứa kho.');setAreas([...areas]);return;}
+    if(!checkVolumeCapacity(id,newSize)){alert('Kích thước không hợp lệ! Tổng diện tích vượt quá sức chứa kho.');setAreas([...areas]);return;}
     const upd={...area,width:newW,length:newL,size:newSize,positionX:newX,positionY:newY};
     setAreas(prev=>prev.map(a=>(a.id===id?upd:a)));
     try{ await api.put(`/RentalAreas/${id}`,upd); } catch(e){ console.error('Auto-save failed',e); }
@@ -218,7 +208,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
       alert('Kho chưa có thông tin chiều rộng/dài. Vui lòng lưu thông tin kho với đầy đủ Chiều rộng và Chiều dài trước.');
       return;
     }
-    // Derive height from TotalArea (m³) / floor area (m²) since no Height column in DB
+    // Derive height from TotalArea (m²) / floor area (m²) since no Height column in DB
     const derivedH = (wh.totalArea && w && l) ? Math.round((wh.totalArea / (w * l)) * 10) / 10 : 5;
     const defaultZoneW = Math.min(w, parseFloat((w / 2).toFixed(1)));
     const defaultZoneL = Math.min(l, parseFloat((l / 3).toFixed(1)));
@@ -271,35 +261,36 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
   // ── Render ──────────────────────────────────────────────────────────────
   if(loading) return <p style={{color:'#64748b'}}>Đang tải sơ đồ 2D...</p>;
 
-  // Try legacy width/length first, fall back to boundary polygon or totalArea square root
-  let whW = parseFloat(warehouse?.width ?? warehouse?.Width ?? 0) || 0;
-  let whL = parseFloat(warehouse?.length ?? warehouse?.Length ?? 0) || 0;
-
   // ── Boundary polygon (from BoundaryPoints JSON) ──────────────────────────
   const boundary = parseBoundary(warehouse?.boundaryPoints);
-  const cellPx = scale * CELL_SIZE;
 
-  // If no legacy width/length, derive from boundary polygon or totalArea
-  if (!whW || !whL) {
-    if (boundary && boundary.length >= 3) {
-      const { cols, rows } = getGridDimensions(boundary);
-      whW = cols * CELL_SIZE;  // each grid cell = 0.5m
-      whL = rows * CELL_SIZE;
-    }
-    
-    // If STILL no usable dimensions (e.g. boundary was legacy px/py format with no gx)
+  let whW = 0;
+  let whL = 0;
+
+  if (boundary && boundary.length >= 3) {
+    const { cols, rows } = getGridDimensions(boundary);
+    whW = cols * CELL_SIZE;  // each grid cell = 0.5m
+    whL = rows * CELL_SIZE;
+  } else {
+    whW = parseFloat(warehouse?.width ?? warehouse?.Width ?? 0) || 0;
+    whL = parseFloat(warehouse?.length ?? warehouse?.Length ?? 0) || 0;
     if (!whW || !whL) {
-      // Last resort: assume square from totalArea
       const area = parseFloat(warehouse?.totalArea ?? 0);
       if (area > 0) {
         whW = Math.ceil(Math.sqrt(area));
         whL = Math.ceil(area / whW);
       }
     }
-  }
+  }    
+
+  // Cố định kích thước khung để vừa vặn trong cột bên phải
+  const scaleW = Math.floor(200 / (whW || 50));
+  const scaleH = Math.floor(260 / (whL || 50));
+  const scale = Math.max(2, Math.min(scaleW, scaleH));
 
   const whH = (warehouse?.height ?? warehouse?.Height) ? parseFloat(warehouse?.height ?? warehouse?.Height) : 0;
   const cw=whW*scale, ch=whL*scale;
+  const cellPx = scale * CELL_SIZE;
 
   // Guard: still no usable dimensions
   if (!whW || !whL) {
@@ -338,9 +329,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
             <div>
               <h2 style={{fontSize:'1.4rem',fontWeight:700,margin:0,color:'#0f172a'}}>Bản đồ Khu vực</h2>
               <div style={{display:'flex',alignItems:'center',gap:'12px',marginTop:'12px',flexWrap:'wrap'}}>
-                <span style={{fontSize:'0.9rem',fontWeight:600,color:'#475569'}}>Thu phóng (Zoom):</span>
-                <input type="range" min="10" max="80" step="5" value={scale} onChange={e=>setScale(Number(e.target.value))} style={{cursor:'pointer',accentColor:'#0ea5e9'}}/>
-                <span style={{fontSize:'0.85rem',color:'#64748b',fontWeight:600}}>Tỷ lệ: 1m = {scale}px</span>
+                <span style={{fontSize:'0.85rem',color:'#64748b',fontWeight:600}}>Tỷ lệ hiển thị: 1m = {scale}px</span>
                 <span style={{fontSize:'0.78rem',color:'#94a3b8',fontStyle:'italic',marginLeft:8}}>📐 Mỗi ô lưới = 0.5m × 0.5m</span>
               </div>
             </div>
@@ -368,7 +357,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
       )}
 
       {/* ── Canvas ── */}
-      <div style={{overflowX:'auto',display:'flex',justifyContent:'center',paddingTop:'20px',paddingBottom:'50px'}}>
+      <div style={{overflowX:'hidden',display:'flex',justifyContent:'center',paddingTop:'20px',paddingBottom:'50px'}}>
         <div style={{display:'inline-flex',flexDirection:'column',alignItems:'center'}}>
           <div style={{fontSize:'0.82rem',fontWeight:700,color:'#475569',marginBottom:6,marginLeft:'54px',letterSpacing:'0.02em'}}>
             Ngang (W): {whW} m
@@ -407,11 +396,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
               )}
 
               <div style={{position:'absolute',top:0,left:0,width:`${cw}px`,height:`${ch}px`,overflow:'hidden'}}>
-                {areas.length===0 && !viewOnly && (
-                  <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,textAlign:'center',pointerEvents:'none'}}>
-                    <div style={{fontSize:'0.85rem',fontWeight:700,color:'#94a3b8'}}>Chưa có khu vực cho thuê</div>
-                  </div>
-                )}
+
                 {areas.map(a=>{
                   const w=(a.width||10)*scale;
                   const l=(a.length||10)*scale;
@@ -458,7 +443,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
                         {isLocked&&<span className="material-symbols-outlined" style={{fontSize:14,verticalAlign:'middle',marginRight:4}}>lock</span>}
                         {a.name}
                       </div>
-                      <div style={{fontSize:'0.75rem',color:'#1e293b',pointerEvents:'none',fontWeight:700}}>{a.size} m³</div>
+                      <div style={{fontSize:'0.75rem',color:'#1e293b',pointerEvents:'none',fontWeight:700}}>{a.size} m²</div>
                       <div style={{fontSize:'0.7rem',color:'#475569',pointerEvents:'none',fontWeight:600,marginTop:'2px',textAlign:'center'}}>{a.width}m × {a.length}m</div>
                     </Rnd>
                   );
@@ -526,7 +511,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
                     {outOfBounds && !isLocked && <span style={{marginLeft:6,fontSize:'0.75rem',background:'#ffe4e6',color:'#be123c',borderRadius:'4px',padding:'1px 6px',fontWeight:600}}>Ngoài biên</span>}
                   </div>
                   <div style={{fontSize:'0.8rem',color:'#64748b',marginTop:4}}>
-                    Thể tích: <strong>{a.size} m³</strong>
+                    diện tích: <strong>{a.size} m²</strong>
                   </div>
                   <div style={{fontSize:'0.8rem',color:'#94a3b8'}}>
                     Kích thước: {a.width}m × {a.length}m
@@ -592,10 +577,10 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
                     </div>
                   </div>
 
-                  {/* Thể tích badge */}
+                  {/* diện tích badge */}
                   <div style={{background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:'10px',padding:'10px 14px',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
-                    <span style={{fontWeight:700,color:'#0369a1',fontSize:'0.85rem'}}>Thể tích:</span>
-                    <span style={{fontWeight:800,color:'#0f172a',fontSize:'1.1rem'}}>{formData.size} m³</span>
+                    <span style={{fontWeight:700,color:'#0369a1',fontSize:'0.85rem'}}>diện tích:</span>
+                    <span style={{fontWeight:800,color:'#0f172a',fontSize:'1.1rem'}}>{formData.size} m²</span>
                     <span style={{fontSize:'0.74rem',color:'#64748b'}}>=&nbsp;{formData.width}&nbsp;×&nbsp;{formData.length}&nbsp;×&nbsp;{formData.height}</span>
                   </div>
 
@@ -827,7 +812,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
               <div>
                 <h3 style={{margin:0,fontSize:'1.4rem',color:'#0f172a'}}>Tạo sơ đồ tự động</h3>
                 <p style={{margin:'4px 0 0',fontSize:'0.85rem',color:'#64748b'}}>
-                  Kho: {whW}m × {whL}m × {whH}m = <strong>{whW*whL*whH} m³</strong>
+                  Kho: {whW}m × {whL}m × {whH}m = <strong>{whW*whL*whH} m²</strong>
                 </p>
               </div>
               <span className="material-symbols-outlined" style={{cursor:'pointer',color:'#94a3b8',fontSize:'24px'}} onClick={()=>setShowAutoModal(false)}>close</span>
@@ -860,7 +845,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
                 {autoPreview.length > 0 && (
                   <div style={{fontSize:'0.82rem',color:'#166534',fontWeight:600}}>
                     Mỗi ô: {autoConfig.zoneW}m × {autoConfig.zoneL}m × {autoConfig.zoneH}m =&nbsp;
-                    <strong>{(parseFloat(autoConfig.zoneW)||0)*(parseFloat(autoConfig.zoneL)||0)*(parseFloat(autoConfig.zoneH)||0)} m³</strong>
+                    <strong>{(parseFloat(autoConfig.zoneW)||0)*(parseFloat(autoConfig.zoneL)||0)*(parseFloat(autoConfig.zoneH)||0)} m²</strong>
                   </div>
                 )}
               </div>
@@ -906,3 +891,4 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
 };
 
 export default RentalAreaManagement;
+

@@ -1,4 +1,4 @@
-namespace WMS.Domain.Entities;
+﻿namespace WMS.Domain.Entities;
 
 /// <summary>
 /// Chi tiết hàng hóa trong một phiếu nhập/xuất kho (ReceiptNote).
@@ -28,8 +28,14 @@ public partial class ReceiptItem
 
     public string Unit { get; set; } = "cái";
 
-    /// <summary>Thể tích thực tế Staff đo (m³). Tùy chọn.</summary>
+    /// <summary>diện tích thực tế Staff đo (m²). Tùy chọn.</summary>
     public decimal? VerifiedVolume { get; set; }
+
+    /// <summary>Chiều dài thực tế Staff đo cho 1 đơn vị hàng (m). Tùy chọn.</summary>
+    public decimal? MeasuredLength { get; set; }
+
+    /// <summary>Chiều rộng thực tế Staff đo cho 1 đơn vị hàng (m). Tùy chọn.</summary>
+    public decimal? MeasuredWidth { get; set; }
 
     /// <summary>Khối lượng thực tế Staff cân (kg). Tùy chọn.</summary>
     public decimal? VerifiedWeight { get; set; }
@@ -42,3 +48,4 @@ public partial class ReceiptItem
     public virtual InventoryItem? InventoryItem { get; set; }
     public virtual RenterAsset? Asset { get; set; }
 }
+

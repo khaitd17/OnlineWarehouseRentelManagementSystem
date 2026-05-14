@@ -8,9 +8,5 @@ public enum UnitTaskTypeCode
 
     OUTBOUND_APPROVE,
     OUTBOUND_PICK,
-    OUTBOUND_DISPATCH,
-
-    AUDIT_OPEN,
-    AUDIT_COUNT,
-    AUDIT_CLOSE
+    OUTBOUND_DISPATCH
 }

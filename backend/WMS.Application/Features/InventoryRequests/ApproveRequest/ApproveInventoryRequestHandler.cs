@@ -39,9 +39,9 @@ public class ApproveInventoryRequestHandler
         var req = await _repo.GetByIdAsync(cmd.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"Request {cmd.Id} not found.");
 
-        if (req.Status != "PENDING")
+        if (req.Status != "PENDING" && req.Status != "CONFIRMED")
             throw new InvalidOperationException(
-                $"Chỉ có thể duyệt yêu cầu đang ở trạng thái PENDING. Trạng thái hiện tại: '{req.Status}'.");
+                $"Chỉ có thể tiếp nhận yêu cầu đang ở trạng thái Chờ tiếp nhận hoặc Đã tiếp nhận. Trạng thái hiện tại: '{req.Status}'.");
 
         req.Status      = "CONFIRMED";
         req.ConfirmedBy = cmd.ManagerId;

@@ -30,7 +30,7 @@ public class RejectInventoryRequestHandler
 
         if (req.Status != "PENDING" && req.Status != "CONFIRMED")
             throw new InvalidOperationException(
-                $"Chỉ có thể từ chối yêu cầu ở trạng thái PENDING hoặc CONFIRMED. Trạng thái hiện tại: '{req.Status}'.");
+                $"Chỉ có thể từ chối yêu cầu ở trạng thái Chờ tiếp nhận hoặc Chờ xử lý tại kho. Trạng thái hiện tại: '{req.Status}'.");
 
         req.Status    = "REJECTED";
         var rolePrefix = cmd.Role == "OWNER" ? "Chủ kho" : "Nhân viên";

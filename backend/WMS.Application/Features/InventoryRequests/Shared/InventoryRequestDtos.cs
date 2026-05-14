@@ -1,4 +1,4 @@
-using WMS.Domain.Entities;
+﻿using WMS.Domain.Entities;
 
 namespace WMS.Application.Features.InventoryRequests.Shared;
 
@@ -9,15 +9,18 @@ public record InventoryItemDto
     public int Quantity { get; init; }
     public string Unit { get; init; } = "";
     public decimal? Weight { get; init; }
-    /// <summary>Thể tích ước tính (m³) do Renter điền.</summary>
+    /// <summary>diện tích ước tính (m²) do Renter điền.</summary>
     public decimal? EstimatedVolume { get; init; }
-    /// <summary>Thể tích thực tế Staff xác nhận (m³).</summary>
+    /// <summary>diện tích thực tế Staff xác nhận (m²).</summary>
     public decimal? VerifiedVolume { get; init; }
     /// <summary>Khối lượng thực tế Staff cân (kg).</summary>
     public decimal? VerifiedWeight { get; init; }
     public string? Description { get; init; }
     public int? AssetId { get; init; }
     public string? AssetName { get; init; }
+    public decimal? LengthPerUnit { get; init; }
+    public decimal? WidthPerUnit { get; init; }
+    public decimal? VolumePerUnit { get; init; }
     /// <summary>Số lượng thực tế Staff kiểm đếm. NULL = chưa xác minh.</summary>
     public int? VerifiedQuantity { get; init; }
     /// <summary>Ghi chú xác minh của Staff.</summary>
@@ -56,11 +59,11 @@ public record InventoryRequestDto
     public string? StaffSignatureBase64 { get; init; }
     public DateTime? UpdatedAt { get; init; }
     public int TotalItems { get; init; }
-    /// <summary>Tổng thể tích ước tính theo Renter (m³).</summary>
+    /// <summary>Tổng diện tích ước tính theo Renter (m²).</summary>
     public decimal? TotalEstimatedVolume { get; init; }
-    /// <summary>Tổng thể tích thực tế Staff xác nhận (m³).</summary>
+    /// <summary>Tổng diện tích thực tế Staff xác nhận (m²).</summary>
     public decimal? TotalVerifiedVolume { get; init; }
-    /// <summary>Cờ cảnh báo thể tích vượt ngưỡng kho.</summary>
+    /// <summary>Cờ cảnh báo diện tích vượt ngưỡng kho.</summary>
     public bool VolumeWarning { get; init; }
     /// <summary>Số phiếu nhập/xuất đã tạo cho yêu cầu này.</summary>
     public int ReceiptNoteCount { get; init; }
@@ -120,6 +123,9 @@ public static class InventoryRequestMapper
             Description     = i.Description,
             AssetId         = i.AssetId,
             AssetName       = i.Asset?.AssetName,
+            LengthPerUnit   = i.Asset?.LengthPerUnit,
+            WidthPerUnit    = i.Asset?.WidthPerUnit,
+            VolumePerUnit   = i.Asset?.VolumePerUnit,
             VerifiedQuantity = i.VerifiedQuantity,
             VerifyNote      = i.VerifyNote,
             EstimatedVolume = i.EstimatedVolume,
@@ -132,3 +138,4 @@ public static class InventoryRequestMapper
             : null,
     };
 }
+

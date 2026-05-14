@@ -17,6 +17,8 @@ public record CreateReceiptItemInput
     public int ReceivedQuantity { get; init; }
     public string Unit { get; init; } = "cái";
     public decimal? VerifiedVolume { get; init; }
+    public decimal? MeasuredLength { get; init; }
+    public decimal? MeasuredWidth { get; init; }
     public decimal? VerifiedWeight { get; init; }
     public string? Note { get; init; }
 }
@@ -28,6 +30,7 @@ public record CreateReceiptNoteCommand : IRequest<ReceiptNoteDto>
     public int StaffId { get; init; }
     public string? Notes { get; init; }
     public string? StaffSignatureBase64 { get; init; }
+    public bool AcceptOverCapacity { get; init; } = false;
     public List<CreateReceiptItemInput> Items { get; init; } = new();
 }
 
@@ -40,19 +43,22 @@ public class CreateReceiptNoteHandler
     private readonly IWarehouseInventoryRepository _invRepo;
     private readonly IInventoryTransactionRepository _txRepo;
     private readonly IRenterAssetRepository _assetRepo;
+    private readonly IRentalContractRepository _contractRepo;
 
     public CreateReceiptNoteHandler(
         IReceiptNoteRepository receiptRepo,
         IInventoryRequestRepository requestRepo,
         IWarehouseInventoryRepository invRepo,
         IInventoryTransactionRepository txRepo,
-        IRenterAssetRepository assetRepo)
+        IRenterAssetRepository assetRepo,
+        IRentalContractRepository contractRepo)
     {
         _receiptRepo = receiptRepo;
         _requestRepo = requestRepo;
         _invRepo     = invRepo;
         _txRepo      = txRepo;
         _assetRepo   = assetRepo;
+        _contractRepo= contractRepo;
     }
 
     public async Task<ReceiptNoteDto> Handle(
@@ -75,10 +81,20 @@ public class CreateReceiptNoteHandler
 
         // 4. Build ReceiptItems
         var receiptItems = new List<ReceiptItem>();
+        decimal totalVerifiedVolume = 0;
+        
         foreach (var input in cmd.Items)
         {
             if (input.ReceivedQuantity < 0)
                 throw new ArgumentException($"Số lượng thực nhận không được âm: '{input.ItemName}'.");
+
+            if (input.ReceivedQuantity > 0 && (!input.VerifiedVolume.HasValue || input.VerifiedVolume.Value <= 0))
+                throw new ArgumentException($"Vui lòng nhập diện tích (m²) > 0 cho mặt hàng thực nhận: '{input.ItemName}'.");
+
+            if (input.ReceivedQuantity > 0 && input.VerifiedVolume.HasValue)
+            {
+                totalVerifiedVolume += input.VerifiedVolume.Value;
+            }
 
             receiptItems.Add(new ReceiptItem
             {
@@ -89,12 +105,77 @@ public class CreateReceiptNoteHandler
                 ReceivedQuantity = input.ReceivedQuantity,
                 Unit             = input.Unit,
                 VerifiedVolume   = input.VerifiedVolume,
+                MeasuredLength    = input.MeasuredLength,
+                MeasuredWidth     = input.MeasuredWidth,
                 VerifiedWeight   = input.VerifiedWeight,
                 Note             = string.IsNullOrWhiteSpace(input.Note) ? null : input.Note.Trim(),
             });
         }
 
+        // ── 4b. Capacity Guard — 3 vùng kiểm soát ──────────────────────────
+        // Ngưỡng cố định 2 m² (không dùng phần trăm)
+        const decimal OVERFLOW_TOLERANCE = 2.0m;
+        decimal capacityOverflow = 0;
+        string receiptStatus = "VERIFIED"; // mặc định: Staff đã kiểm đếm xong
+        string? capacityNote = null;
+
+        if (req.Type == "INBOUND")
+        {
+            var contractedArea = await _contractRepo.GetContractedAreaAsync(
+                req.RenterId, req.WarehouseId, ct);
+
+            if (contractedArea > 0)
+            {
+                var usedArea = await _assetRepo.GetUsedAreaAsync(
+                    req.RenterId, req.WarehouseId, ct);
+                var remainingArea = (decimal)contractedArea - usedArea;
+                var overflow = totalVerifiedVolume - remainingArea;
+
+                if (overflow > 0)
+                {
+                    capacityOverflow = overflow;
+
+                    if (overflow > OVERFLOW_TOLERANCE)
+                    {
+                        // VÙNG ĐỎ — Vượt nghiêm trọng (> 2 m²) → HARD BLOCK
+                        // Phiếu vẫn được tạo nhưng trạng thái = PENDING_CAPACITY_APPROVAL
+                        // Tồn kho KHÔNG được cập nhật cho đến khi Manager duyệt
+                        receiptStatus = "PENDING_CAPACITY_APPROVAL";
+                        capacityNote = $"[VƯỢT SỨC CHỨA NGHIÊM TRỌNG] " +
+                            $"Vượt {overflow:N2} m² so với hợp đồng. " +
+                            $"Đã dùng: {usedArea:N2}/{contractedArea:N2} m². " +
+                            $"Phiếu này: {totalVerifiedVolume:N2} m². " +
+                            $"Chờ Manager phê duyệt.";
+                    }
+                    else if (cmd.AcceptOverCapacity)
+                    {
+                        // VÙNG VÀNG — Vượt nhẹ (<= 2 m²), Thủ kho đã xác nhận
+                        receiptStatus = "VERIFIED";
+                        capacityNote = $"[Vượt nhẹ {overflow:N2} m²] " +
+                            $"Thủ kho đã xác nhận chấp nhận.";
+                    }
+                    else
+                    {
+                        // VÙNG VÀNG — Chưa xác nhận
+                        throw new InvalidOperationException(
+                            $"Diện tích thực nhận vượt {overflow:N2} m² so với " +
+                            $"diện tích còn trống ({remainingArea:N2} m²). " +
+                            $"Đã dùng: {usedArea:N2}/{contractedArea:N2} m². " +
+                            $"Vui lòng xác nhận chấp nhận vượt sức chứa.");
+                    }
+                }
+            }
+        }
+
         // 5. Tạo ReceiptNote
+        var combinedNotes = cmd.Notes;
+        if (!string.IsNullOrEmpty(capacityNote))
+        {
+            combinedNotes = string.IsNullOrEmpty(combinedNotes)
+                ? capacityNote
+                : $"{combinedNotes}\n{capacityNote}";
+        }
+
         var note = new ReceiptNote
         {
             InvReqId            = cmd.InvReqId,
@@ -102,15 +183,20 @@ public class CreateReceiptNoteHandler
             ReceivedByStaffId   = cmd.StaffId,
             ReceivedAt          = DateTime.Now,
             StaffSignatureBase64 = cmd.StaffSignatureBase64,
-            Status              = "VERIFIED",   // Staff đã kiểm đếm xong → chờ Renter xác nhận
-            Notes               = cmd.Notes,
+            Status              = receiptStatus,
+            Notes               = combinedNotes,
+            CapacityOverflow    = capacityOverflow > 0 ? capacityOverflow : null,
             ReceiptItems        = receiptItems,
         };
 
         var created = await _receiptRepo.CreateAsync(note, ct);
 
-        // 6. Cập nhật inventory ngay khi phiếu tạo (Staff đã kiểm đếm)
-        //    → Tồn kho cộng/trừ theo ReceivedQuantity
+        // 6. Cập nhật inventory — BỎ QUA nếu phiếu đang chờ Manager duyệt
+        //    Khi status = PENDING_CAPACITY_APPROVAL, tồn kho KHÔNG được cập nhật
+        //    cho đến khi Manager phê duyệt phiếu này.
+        if (receiptStatus != "PENDING_CAPACITY_APPROVAL")
+        {
+        // Tồn kho cộng/trừ theo ReceivedQuantity
         foreach (var item in receiptItems)
         {
             if (item.ReceivedQuantity <= 0) continue;
@@ -152,6 +238,43 @@ public class CreateReceiptNoteHandler
             await _assetRepo.AdjustRenterInventoryAsync(
                 resolvedAssetId, req.WarehouseId, delta, ct);
 
+            // Update cached measurement data of Asset if provided.
+            if (item.ReceivedQuantity > 0 &&
+                (item.VerifiedVolume.HasValue || item.MeasuredLength.HasValue || item.MeasuredWidth.HasValue))
+            {
+                var asset = await _assetRepo.GetByIdAsync(resolvedAssetId, ct);
+                if (asset != null)
+                {
+                    var changed = false;
+                    if (item.VerifiedVolume.HasValue)
+                    {
+                        decimal calcVolumePerUnit = item.VerifiedVolume.Value / item.ReceivedQuantity;
+                        if (asset.VolumePerUnit == null || asset.VolumePerUnit != calcVolumePerUnit)
+                        {
+                            asset.VolumePerUnit = calcVolumePerUnit;
+                            changed = true;
+                        }
+                    }
+
+                    if (item.MeasuredLength.HasValue && item.MeasuredLength.Value > 0 &&
+                        (asset.LengthPerUnit == null || asset.LengthPerUnit != item.MeasuredLength.Value))
+                    {
+                        asset.LengthPerUnit = item.MeasuredLength.Value;
+                        changed = true;
+                    }
+
+                    if (item.MeasuredWidth.HasValue && item.MeasuredWidth.Value > 0 &&
+                        (asset.WidthPerUnit == null || asset.WidthPerUnit != item.MeasuredWidth.Value))
+                    {
+                        asset.WidthPerUnit = item.MeasuredWidth.Value;
+                        changed = true;
+                    }
+
+                    if (changed)
+                        await _assetRepo.UpdateAsync(asset, ct);
+                }
+            }
+
             // Transaction record — gắn ReceiptNoteId
             await _txRepo.CreateAsync(new InventoryTransaction
             {
@@ -166,7 +289,7 @@ public class CreateReceiptNoteHandler
                 Notes         = item.Note,
             }, ct);
         }
-
+        } // end if (receiptStatus != "PENDING_CAPACITY_APPROVAL")
         // 7. Cập nhật trạng thái yêu cầu → RECEIVING (nếu chưa)
         if (req.Status != "RECEIVING")
         {

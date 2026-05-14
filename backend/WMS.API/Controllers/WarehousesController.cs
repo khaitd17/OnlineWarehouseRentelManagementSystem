@@ -185,6 +185,13 @@ public class WarehouseController : ControllerBase
 
         await repo.UpdateAsync(warehouse, HttpContext.RequestAborted);
 
+        if (req.ClearGrid)
+        {
+            var gridRepo = HttpContext.RequestServices.GetRequiredService<WMS.Domain.Interfaces.IWarehouseGridLocationRepository>();
+            await gridRepo.ClearGridLocationsAsync(id, HttpContext.RequestAborted);
+            Console.WriteLine($"[PatchBoundary] Warehouse {id}: Cleared grid locations.");
+        }
+
         Console.WriteLine($"[PatchBoundary] Warehouse {id}: saved {warehouse.BoundaryPoints?.Length ?? 0} chars");
         return Ok(new { message = "Đã lưu sơ đồ kho." });
     }
@@ -364,4 +371,5 @@ public class UpdateBoundaryRequest
 {
     public string? BoundaryPoints { get; set; }
     public string? GatePosition { get; set; }
+    public bool ClearGrid { get; set; } = false;
 }

@@ -1,5 +1,6 @@
 using Moq;
 using WMS.Application.Features.InventoryRequests.CreateRequest;
+using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 
@@ -53,10 +54,12 @@ public class CreateInventoryRequestHandlerTests
         var assetRepo    = new Mock<IRenterAssetRepository>();
         var taskRepo     = new Mock<ITaskRepository>();
         var contractRepo = new Mock<IRentalContractRepository>();
+        var emailService = new Mock<IEmailService>();
 
         var handler = new CreateInventoryRequestHandler(
             repo.Object, invRepo.Object, warehouseRepo.Object,
-            assetRepo.Object, taskRepo.Object, contractRepo.Object);
+            assetRepo.Object, taskRepo.Object, contractRepo.Object,
+            emailService.Object);
 
         return (handler, repo, invRepo, warehouseRepo, assetRepo, taskRepo, contractRepo);
     }
@@ -67,7 +70,7 @@ public class CreateInventoryRequestHandlerTests
         InvReqId    = id,
         Type        = type,
         WarehouseId = warehouseId,
-        Status      = "PENDING",
+        Status      = "CONFIRMED",  // Auto-approved
         CreatedAt   = DateTime.UtcNow,
         InventoryItems = new List<InventoryItem>(),
     };
@@ -117,7 +120,7 @@ public class CreateInventoryRequestHandlerTests
 
         // Assert
         Assert.NotNull(result);                         // Returns InventoryRequestDto (not null)
-        Assert.Equal("PENDING", result.Status);         // Status = "PENDING"
+        Assert.Equal("CONFIRMED", result.Status);         // Status = "CONFIRMED" (auto-approved)
         taskMock.Verify(x => x.CreateWorkflowTaskAsync(
             "INBOUND", 10, 1,
             It.IsAny<DateTime>(), It.IsAny<CancellationToken>()), Times.Once);  // WorkflowTask created
@@ -158,7 +161,7 @@ public class CreateInventoryRequestHandlerTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal("PENDING", result.Status);
+        Assert.Equal("CONFIRMED", result.Status);
     }
 
     // ── UTC003 — Normal: INBOUND, no notes (null) → success ──────────────────
@@ -196,7 +199,7 @@ public class CreateInventoryRequestHandlerTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal("PENDING", result.Status);
+        Assert.Equal("CONFIRMED", result.Status);
     }
 
     // ── UTC004 — Abnormal: INBOUND, empty ItemName "" → ArgumentException ─────
@@ -345,7 +348,7 @@ public class CreateInventoryRequestHandlerTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal("PENDING", result.Status);
+        Assert.Equal("CONFIRMED", result.Status);
     }
 
     // ── UTC008 — Abnormal: OUTBOUND, stock insufficient → InvalidOperationException

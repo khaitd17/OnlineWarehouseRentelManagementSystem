@@ -6,8 +6,8 @@ import RequestQRCode from "../../components/RequestQRCode";
 
 /* ── Status config ────────────────────────────────────────────── */
 const STATUS_MAP = {
-  PENDING:   { label: "Đang chờ", bg: "#fef3c7", color: "#92400e", dot: "#f59e0b" },
-  CONFIRMED: { label: "Đã duyệt", bg: "#d1fae5", color: "#065f46", dot: "#10b981" },
+  PENDING:   { label: "Chờ tiếp nhận", bg: "#fef3c7", color: "#92400e", dot: "#f59e0b" },
+  CONFIRMED: { label: "Chờ xử lý tại kho", bg: "#d1fae5", color: "#065f46", dot: "#10b981" },
   RECEIVING: { label: "Đang nhận", bg: "#dbeafe", color: "#1e40af", dot: "#3b82f6" },
   COMPLETED: { label: "Hoàn thành", bg: "#f0fdf4", color: "#15803d", dot: "#16a34a" },
   REJECTED:  { label: "Từ chối",  bg: "#fee2e2", color: "#991b1b", dot: "#ef4444" },
@@ -40,8 +40,8 @@ const Confirm = ({ msg, label, danger, onOk, onCancel }) => (
   </div>
 );
 
-const STATUSES = ["Tất cả", "PENDING", "CONFIRMED", "REJECTED"];
-const STATUS_LABELS = { "Tất cả": "Tất cả", PENDING: "Đang chờ", CONFIRMED: "Đã duyệt", REJECTED: "Từ chối" };
+const STATUSES = ["Tất cả", "CONFIRMED", "COMPLETED", "REJECTED"];
+const STATUS_LABELS = { "Tất cả": "Tất cả", CONFIRMED: "Chờ xử lý", COMPLETED: "Hoàn thành", REJECTED: "Từ chối" };
 const th = { padding: "11px 14px", textAlign: "left", fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", userSelect: "none", whiteSpace: "nowrap" };
 const td = { padding: "13px 14px", fontSize: "0.875rem", color: "#374151", borderBottom: "1px solid #f8fafc" };
 
@@ -242,7 +242,7 @@ export default function RenterInboundList() {
                             {row.receiptNoteCount} phiếu
                           </button>
                         )}
-                        {row.status === "PENDING" && (
+                        {(row.status === "PENDING" || row.status === "CONFIRMED") && (
                           <button title="Hủy / Xóa" onClick={() => setConf({ id: row.invReqId })} style={{ padding: "5px", border: "none", background: "#fff7ed", borderRadius: "7px", cursor: "pointer", color: "#ea580c", display: "flex" }}>
                             <span className="material-symbols-outlined" style={{ fontSize: "17px" }}>delete</span>
                           </button>

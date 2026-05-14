@@ -1,5 +1,6 @@
 using MediatR;
 using WMS.Application.Features.InventoryRequests.Shared;
+using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
 
@@ -12,7 +13,7 @@ public record CreateInventoryItemInput
     public int Quantity { get; init; }
     public string Unit { get; init; } = "cái";
     public decimal? Weight { get; init; }
-    /// <summary>Thể tích ước tính (m³) do Renter điền tự hoặc do AI gợi ý.</summary>
+    /// <summary>diện tích ước tính (m²) do Renter điền tự hoặc do AI gợi ý.</summary>
     public decimal? EstimatedVolume { get; init; }
     public string? Description { get; init; }
     /// <summary>FK về catalogue renter_assets (nếu chọn từ catalogue)</summary>
@@ -43,6 +44,7 @@ public class CreateInventoryRequestHandler
     private readonly IRenterAssetRepository _assetRepo;
     private readonly ITaskRepository _taskRepo;
     private readonly IRentalContractRepository _contractRepo;
+    private readonly IEmailService _emailService;
 
     public CreateInventoryRequestHandler(
         IInventoryRequestRepository repo,
@@ -50,7 +52,8 @@ public class CreateInventoryRequestHandler
         IWarehouseRepository warehouseRepo,
         IRenterAssetRepository assetRepo,
         ITaskRepository taskRepo,
-        IRentalContractRepository contractRepo)
+        IRentalContractRepository contractRepo,
+        IEmailService emailService)
     {
         _repo          = repo;
         _invRepo       = invRepo;
@@ -58,6 +61,7 @@ public class CreateInventoryRequestHandler
         _assetRepo     = assetRepo;
         _taskRepo      = taskRepo;
         _contractRepo  = contractRepo;
+        _emailService  = emailService;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -116,7 +120,7 @@ public class CreateInventoryRequestHandler
                             $"Vui lòng chia thành nhiều lô nhỏ hơn hoặc liên hệ quản lý kho.");
                 }
 
-                // ── Tầng 2: Soft check — Thể tích (cảnh báo, không chặn) ──
+                // ── Tầng 2: Soft check — diện tích (cảnh báo, không chặn) ──
                 decimal totalEstimatedVol = cmd.Items.Sum(i => i.EstimatedVolume ?? 0);
                 if (totalEstimatedVol > 0 && warehouse.AvailableVolume.HasValue && warehouse.AvailableVolume.Value > 0)
                 {
@@ -192,6 +196,24 @@ public class CreateInventoryRequestHandler
         var todayStart = DateTime.Today;
         var requestCode = $"{prefix}-{dateStr}-{DateTime.Now.Ticks % 10000:D4}";
 
+        // ── Phân luồng Smart Routing ──
+        // Hệ thống tự động duyệt nếu đã qua validation và Renter CÓ sử dụng AI (diện tích > 0)
+        // và AI đánh giá diện tích không vượt quá hợp đồng.
+        bool canAutoApprove = false;
+        if (cmd.Type.ToUpper() == "INBOUND")
+        {
+            decimal totalEstimatedVol = cmd.Items.Sum(i => i.EstimatedVolume ?? 0);
+            canAutoApprove = totalEstimatedVol > 0 && !volumeWarning;
+        }
+        else
+        {
+            // OUTBOUND luôn có dữ liệu tồn kho chuẩn xác -> có thể auto-approve
+            canAutoApprove = true;
+        }
+
+        var status = canAutoApprove ? "CONFIRMED" : "PENDING";
+        var confirmedAt = canAutoApprove ? (DateTime?)DateTime.Now : null;
+
         var request = new InventoryRequest
         {
             RenterId    = cmd.RenterId,
@@ -202,11 +224,11 @@ public class CreateInventoryRequestHandler
             DocumentUrls = cmd.DocumentUrls != null && cmd.DocumentUrls.Count > 0
                 ? System.Text.Json.JsonSerializer.Serialize(cmd.DocumentUrls)
                 : null,
-            Status         = "PENDING",
+            Status         = status,
+            ConfirmedAt    = confirmedAt,
             InventoryItems = inventoryItems,
             ScheduledDate  = cmd.ScheduledDate,
             VolumeWarning  = volumeWarning,
-            // Chữ ký renter không bắt buộc khi tạo yêu cầu — sẽ ký trên phiếu nhập kho
             RenterSignatureBase64 = cmd.RenterSignatureBase64,
         };
 
@@ -222,6 +244,110 @@ public class CreateInventoryRequestHandler
             cancellationToken);
 
         var full = await _repo.GetByIdAsync(created.InvReqId, cancellationToken);
+
+        if (canAutoApprove)
+        {
+            // Đóng UnitTask bước duyệt (vì đã auto-approve)
+            var approveCode = cmd.Type.ToUpper() == "OUTBOUND" ? "OUTBOUND_APPROVE" : "INBOUND_APPROVE";
+            try { await _taskRepo.CompleteUnitTaskAsync(cmd.Type.ToUpper(), created.InvReqId, approveCode, 0, cancellationToken); }
+            catch { /* Task không tìm thấy — không chặn nghiệp vụ */ }
+
+            // Gửi email xác nhận Auto-Approve cho người thuê
+            try { await SendAutoApproveEmail(full!, warehouse); } catch { /* Không chặn luồng chính */ }
+        }
+        else
+        {
+            // Gửi email thông báo Pending
+            try { await SendPendingEmail(full!, warehouse); } catch { /* Không chặn luồng chính */ }
+        }
+
         return InventoryRequestMapper.ToDto(full!);
     }
+
+    /// <summary>Gửi email xác nhận tự động cho Renter khi hệ thống auto-approve.</summary>
+    private async Task SendAutoApproveEmail(InventoryRequest req, Warehouse warehouse)
+    {
+        if (req.Renter == null || string.IsNullOrEmpty(req.Renter.Email)) return;
+
+        var reqTypeStr = req.Type == "INBOUND" ? "nhập kho" : "xuất kho";
+        var actionStr = req.Type == "INBOUND"
+            ? "vận chuyển hàng hóa tới kho để lưu kho"
+            : "sắp xếp xe đến kho để lấy hàng";
+        var requestCodeStr = req.RequestCode ?? $"#{req.InvReqId}";
+        var confirmedAtStr = req.ConfirmedAt?.ToString("dd/MM/yyyy HH:mm") ?? DateTime.Now.ToString("dd/MM/yyyy HH:mm");
+
+        var subject = req.Type == "INBOUND"
+            ? $"✅ Yêu cầu nhập kho {requestCodeStr} đã được tự động duyệt"
+            : $"✅ Yêu cầu xuất kho {requestCodeStr} đã được tự động duyệt";
+
+        var htmlContent = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+    <h2 style='color: #16a34a; text-align: center;'>Yêu cầu {reqTypeStr} đã được tiếp nhận!</h2>
+    <p>Xin chào <strong>{req.Renter.FullName}</strong>,</p>
+    <p>Hệ thống đã tự động tiếp nhận yêu cầu {reqTypeStr} mã <strong>{requestCodeStr}</strong> của bạn tại kho <strong>{warehouse.Name}</strong>.</p>
+    
+    <div style='background-color: #f0fdf4; padding: 12px 16px; border-radius: 6px; margin: 16px 0; border: 1px solid #bbf7d0;'>
+        <p style='margin: 0; color: #166534; font-weight: 600; font-size: 14px;'>
+            Yêu cầu của bạn đã hợp lệ và đang chờ nhân viên kho xử lý. Không cần chờ duyệt thêm.
+        </p>
+    </div>
+
+    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 20px 0;'>
+        <h3 style='margin-top: 0; color: #374151;'>Thông tin chi tiết:</h3>
+        <ul style='color: #4b5563; line-height: 1.6;'>
+            <li><strong>Mã yêu cầu:</strong> {requestCodeStr}</li>
+            <li><strong>Kho xử lý:</strong> {warehouse.Name}</li>
+            <li><strong>Thời gian tiếp nhận:</strong> {confirmedAtStr}</li>
+        </ul>
+    </div>
+
+    <p style='color: #1f2937; font-weight: bold;'>Bước tiếp theo:</p>
+    <p>Bạn có thể tiến hành <strong>{actionStr}</strong> theo thời gian đã dự kiến. Đội ngũ nhân viên kho đã sẵn sàng hỗ trợ bạn.</p>
+
+    <div style='margin-top: 30px; text-align: center;'>
+        <a href='http://localhost:3000/renter-inventory-history' style='background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Xem chi tiết yêu cầu</a>
+    </div>
+    
+    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
+    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
+</div>";
+
+        await _emailService.SendInfo(req.Renter.Email, req.Renter.FullName, subject, htmlContent);
+    }
+
+    /// <summary>Gửi email thông báo Pending khi cần duyệt thủ công.</summary>
+    private async Task SendPendingEmail(InventoryRequest req, Warehouse warehouse)
+    {
+        if (req.Renter == null || string.IsNullOrEmpty(req.Renter.Email)) return;
+
+        var reqTypeStr = req.Type == "INBOUND" ? "nhập kho" : "xuất kho";
+        var requestCodeStr = req.RequestCode ?? $"#{req.InvReqId}";
+
+        var subject = $"⏳ Yêu cầu {reqTypeStr} {requestCodeStr} đang chờ xét duyệt";
+
+        var htmlContent = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+    <h2 style='color: #d97706; text-align: center;'>Yêu cầu {reqTypeStr} đang chờ duyệt</h2>
+    <p>Xin chào <strong>{req.Renter.FullName}</strong>,</p>
+    <p>Yêu cầu {reqTypeStr} mã <strong>{requestCodeStr}</strong> của bạn tại kho <strong>{warehouse.Name}</strong> đã được gửi lên hệ thống và đang trong trạng thái <strong>Chờ tiếp nhận</strong>.</p>
+    
+    <div style='background-color: #fffbeb; padding: 12px 16px; border-radius: 6px; margin: 16px 0; border: 1px solid #fde68a;'>
+        <p style='margin: 0; color: #92400e; font-weight: 600; font-size: 14px;'>
+            Do yêu cầu được tạo thủ công (chưa được AI tính diện tích), Quản lý kho sẽ cần xem xét để đảm bảo đủ không gian lưu trữ trước khi duyệt.
+        </p>
+    </div>
+
+    <p>Hệ thống sẽ gửi thông báo cho bạn ngay sau khi yêu cầu được phê duyệt. Xin vui lòng chờ đợi.</p>
+
+    <div style='margin-top: 30px; text-align: center;'>
+        <a href='http://localhost:3000/renter-inventory-history' style='background-color: #4f46e5; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Xem trạng thái yêu cầu</a>
+    </div>
+    
+    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
+    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS.</p>
+</div>";
+
+        await _emailService.SendInfo(req.Renter.Email, req.Renter.FullName, subject, htmlContent);
+    }
 }
+

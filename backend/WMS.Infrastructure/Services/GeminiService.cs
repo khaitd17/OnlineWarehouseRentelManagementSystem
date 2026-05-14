@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -59,41 +59,41 @@ public class GeminiService : IGeminiService
 
         parts.Add(new
         {
-            text = "Bạn là chuyên gia nhận dạng đồ vật trong ảnh nhà ở Việt Nam để ước tính thể tích lưu kho.\n" +
+            text = "Bạn là chuyên gia nhận dạng đồ vật trong ảnh nhà ở Việt Nam để ước tính diện tích lưu kho.\n" +
                    multiImageInstr + "\n" +
                    "== QUY TẮC NHẬN DIỆN ==\n" +
                    "1. Nhận dạng TẤT CẢ đồ vật nhìn thấy, kể cả nhỏ (đèn, gối, chăn, laptop, loa...).\n" +
                    "2. Đếm từng cái riêng (4 ghế → quantity=4, KHÔNG gộp 'bộ ghế').\n" +
-                   "3. Bỏ qua: ổ điện gắn tường, rèm cửa, tranh nhỏ, cây nhỏ trong chậu <0.02m³.\n" +
+                   "3. Bỏ qua: ổ điện gắn tường, rèm cửa, tranh nhỏ, cây nhỏ trong chậu <0.02m².\n" +
                    "4. Dùng kích thước khi tháo rời/đóng thùng để vận chuyển.\n" +
                    "5. Tên đồ vật phải cụ thể (Sofa 3 chỗ, Tivi 55 inch, Tủ quần áo 2 cánh).\n\n" +
                    "== BẢNG KÍCH THƯỚC (Rộng×Dài×Cao mét) ==\n" +
                    "PHÒNG NGỦ:\n" +
-                   "Giường đơn: 1.0×2.0×0.45=0.90m³ | Giường đôi: 1.6×2.0×0.45=1.44m³ | Giường king: 1.8×2.0×0.45=1.62m³\n" +
-                   "Tủ quần áo 1 cánh: 0.8×0.55×2.0=0.88m³ | 2 cánh: 1.2×0.55×2.0=1.32m³ | 3 cánh: 1.8×0.55×2.0=1.98m³\n" +
-                   "Tủ đầu giường: 0.45×0.4×0.55=0.10m³ | Bàn trang điểm+gương: 1.0×0.45×1.5=0.68m³\n" +
-                   "Gối ngủ: 0.65×0.45×0.15=0.044m³ | Chăn/mền cuộn: 0.5×0.5×0.4=0.10m³\n\n" +
+                   "Giường đơn: 1.0×2.0×0.45=0.90m² | Giường đôi: 1.6×2.0×0.45=1.44m² | Giường king: 1.8×2.0×0.45=1.62m²\n" +
+                   "Tủ quần áo 1 cánh: 0.8×0.55×2.0=0.88m² | 2 cánh: 1.2×0.55×2.0=1.32m² | 3 cánh: 1.8×0.55×2.0=1.98m²\n" +
+                   "Tủ đầu giường: 0.45×0.4×0.55=0.10m² | Bàn trang điểm+gương: 1.0×0.45×1.5=0.68m²\n" +
+                   "Gối ngủ: 0.65×0.45×0.15=0.044m² | Chăn/mền cuộn: 0.5×0.5×0.4=0.10m²\n\n" +
                    "PHÒNG KHÁCH:\n" +
-                   "Sofa 1 chỗ: 0.85×0.9×0.85=0.65m³ | Sofa 2 chỗ: 1.5×0.9×0.85=1.15m³ | Sofa 3 chỗ: 2.1×0.9×0.85=1.61m³\n" +
-                   "Sofa góc L: 2.8×1.8×0.85=2.50m³ | Bàn trà: 1.1×0.6×0.45=0.30m³ | Kệ tivi: 1.5×0.45×0.55=0.37m³\n" +
-                   "Tivi 32\": 0.75×0.06×0.46=0.021m³ | 43\": 0.97×0.06×0.57=0.033m³ | 55\": 1.25×0.07×0.72=0.063m³ | 65\": 1.45×0.08×0.85=0.099m³\n" +
-                   "Máy lạnh treo tường: 0.9×0.25×0.3=0.068m³ | Quạt đứng: 0.5×0.5×1.3=0.33m³\n\n" +
+                   "Sofa 1 chỗ: 0.85×0.9×0.85=0.65m² | Sofa 2 chỗ: 1.5×0.9×0.85=1.15m² | Sofa 3 chỗ: 2.1×0.9×0.85=1.61m²\n" +
+                   "Sofa góc L: 2.8×1.8×0.85=2.50m² | Bàn trà: 1.1×0.6×0.45=0.30m² | Kệ tivi: 1.5×0.45×0.55=0.37m²\n" +
+                   "Tivi 32\": 0.75×0.06×0.46=0.021m² | 43\": 0.97×0.06×0.57=0.033m² | 55\": 1.25×0.07×0.72=0.063m² | 65\": 1.45×0.08×0.85=0.099m²\n" +
+                   "Máy lạnh treo tường: 0.9×0.25×0.3=0.068m² | Quạt đứng: 0.5×0.5×1.3=0.33m²\n\n" +
                    "PHÒNG BẾP:\n" +
-                   "Tủ lạnh mini: 0.5×0.55×0.85=0.23m³ | Tủ lạnh thường: 0.6×0.65×1.5=0.59m³ | Lớn>300L: 0.7×0.7×1.8=0.88m³ | 2 cánh: 0.9×0.7×1.85=1.16m³\n" +
-                   "Máy giặt cửa trước: 0.6×0.6×0.85=0.31m³ | Cửa trên: 0.55×0.55×0.95=0.29m³\n" +
-                   "Lò vi sóng: 0.5×0.38×0.3=0.057m³ | Nồi cơm điện: 0.35×0.35×0.3=0.037m³ | Máy rửa bát: 0.6×0.6×0.85=0.31m³\n\n" +
+                   "Tủ lạnh mini: 0.5×0.55×0.85=0.23m² | Tủ lạnh thường: 0.6×0.65×1.5=0.59m² | Lớn>300L: 0.7×0.7×1.8=0.88m² | 2 cánh: 0.9×0.7×1.85=1.16m²\n" +
+                   "Máy giặt cửa trước: 0.6×0.6×0.85=0.31m² | Cửa trên: 0.55×0.55×0.95=0.29m²\n" +
+                   "Lò vi sóng: 0.5×0.38×0.3=0.057m² | Nồi cơm điện: 0.35×0.35×0.3=0.037m² | Máy rửa bát: 0.6×0.6×0.85=0.31m²\n\n" +
                    "VĂN PHÒNG:\n" +
-                   "Bàn làm việc nhỏ: 1.0×0.6×0.75=0.45m³ | Lớn: 1.4×0.7×0.75=0.74m³\n" +
-                   "Ghế văn phòng bánh xe: 0.65×0.65×1.2=0.51m³ | Ghế gỗ: 0.45×0.45×0.90=0.18m³ | Ghế ăn: 0.45×0.5×0.9=0.20m³\n" +
-                   "Kệ sách ngắn: 0.8×0.3×1.0=0.24m³ | Cao: 0.9×0.3×1.8=0.49m³ | Tủ hồ sơ: 0.47×0.6×1.35=0.38m³\n" +
-                   "Màn hình 24\": 0.56×0.18×0.40=0.040m³ | Laptop: 0.38×0.28×0.03=0.003m³ | Máy in A4: 0.48×0.37×0.26=0.046m³\n\n" +
+                   "Bàn làm việc nhỏ: 1.0×0.6×0.75=0.45m² | Lớn: 1.4×0.7×0.75=0.74m²\n" +
+                   "Ghế văn phòng bánh xe: 0.65×0.65×1.2=0.51m² | Ghế gỗ: 0.45×0.45×0.90=0.18m² | Ghế ăn: 0.45×0.5×0.9=0.20m²\n" +
+                   "Kệ sách ngắn: 0.8×0.3×1.0=0.24m² | Cao: 0.9×0.3×1.8=0.49m² | Tủ hồ sơ: 0.47×0.6×1.35=0.38m²\n" +
+                   "Màn hình 24\": 0.56×0.18×0.40=0.040m² | Laptop: 0.38×0.28×0.03=0.003m² | Máy in A4: 0.48×0.37×0.26=0.046m²\n\n" +
                    "ĐỒ VẬT KHÁC:\n" +
-                   "Xe máy: 2.0×0.75×1.15=1.73m³ | Xe đạp: 1.8×0.65×1.1=1.29m³ | Xe đẩy em bé: 1.05×0.6×1.1=0.69m³\n" +
-                   "Cây nước nóng lạnh: 0.3×0.3×1.2=0.11m³ | Tủ giày: 0.7×0.35×1.0=0.25m³\n" +
-                   "Thùng carton nhỏ: 0.3×0.3×0.3=0.027m³ | Vừa: 0.5×0.4×0.4=0.080m³ | Lớn: 0.6×0.5×0.5=0.150m³\n" +
-                   "Loa đứng: 0.25×0.25×1.1=0.069m³ | Đàn guitar: 0.4×0.15×1.0=0.060m³ | Piano điện: 1.4×0.4×0.85=0.48m³\n" +
-                   "Máy hút bụi: 0.35×0.35×1.1=0.135m³ | Bàn ăn 4 người: 1.2×0.8×0.75=0.72m³ | 6 người: 1.8×0.9×0.75=1.22m³\n" +
-                   "Đèn bàn: 0.2×0.2×0.45=0.018m³ | Đèn sàn: 0.3×0.3×1.7=0.15m³\n\n" +
+                   "Xe máy: 2.0×0.75×1.15=1.73m² | Xe đạp: 1.8×0.65×1.1=1.29m² | Xe đẩy em bé: 1.05×0.6×1.1=0.69m²\n" +
+                   "Cây nước nóng lạnh: 0.3×0.3×1.2=0.11m² | Tủ giày: 0.7×0.35×1.0=0.25m²\n" +
+                   "Thùng carton nhỏ: 0.3×0.3×0.3=0.027m² | Vừa: 0.5×0.4×0.4=0.080m² | Lớn: 0.6×0.5×0.5=0.150m²\n" +
+                   "Loa đứng: 0.25×0.25×1.1=0.069m² | Đàn guitar: 0.4×0.15×1.0=0.060m² | Piano điện: 1.4×0.4×0.85=0.48m²\n" +
+                   "Máy hút bụi: 0.35×0.35×1.1=0.135m² | Bàn ăn 4 người: 1.2×0.8×0.75=0.72m² | 6 người: 1.8×0.9×0.75=1.22m²\n" +
+                   "Đèn bàn: 0.2×0.2×0.45=0.018m² | Đèn sàn: 0.3×0.3×1.7=0.15m²\n\n" +
                    "== OUTPUT (chỉ JSON, KHÔNG text/markdown khác) ==\n" +
                    "{\n" +
                    "  \"items\": [\n" +
@@ -359,3 +359,4 @@ public class GeminiService : IGeminiService
         return "{ \"items\": [], \"totalEstimatedVolumeM3\": 0, \"suggestedWarehouseType\": \"Kho thường\", \"specialNotes\": \"AI không thể phân tích đầy đủ — ảnh có quá nhiều đồ vật.\", \"confidence\": 0.3 }";
     }
 }
+

@@ -34,6 +34,12 @@ public class RenterAssetRepository : IRenterAssetRepository
         return asset;
     }
 
+    public async Task UpdateAsync(RenterAsset asset, CancellationToken ct)
+    {
+        _db.RenterAssets.Update(asset);
+        await _db.SaveChangesAsync(ct);
+    }
+
     /// <summary>API cũ: lấy tồn kho của 1 renter tại 1 warehouse</summary>
     public async Task<List<RenterInventory>> GetInventoryByWarehouseAsync(
         int renterId, int warehouseId, CancellationToken ct)
@@ -91,6 +97,9 @@ public class RenterAssetRepository : IRenterAssetRepository
                 AssetName     = ri.Asset.AssetName,
                 Unit          = ri.Asset.Unit,
                 WeightPerUnit = ri.Asset.WeightPerUnit,
+                VolumePerUnit = ri.Asset.VolumePerUnit,
+                LengthPerUnit = ri.Asset.LengthPerUnit,
+                WidthPerUnit  = ri.Asset.WidthPerUnit,
                 Description   = ri.Asset.Description,
                 WarehouseId   = ri.WarehouseId,
                 WarehouseName = ri.Warehouse.Name,
@@ -115,6 +124,9 @@ public class RenterAssetRepository : IRenterAssetRepository
                 AssetName     = ri.Asset.AssetName,
                 Unit          = ri.Asset.Unit,
                 WeightPerUnit = ri.Asset.WeightPerUnit,
+                VolumePerUnit = ri.Asset.VolumePerUnit,
+                LengthPerUnit = ri.Asset.LengthPerUnit,
+                WidthPerUnit  = ri.Asset.WidthPerUnit,
                 Description   = ri.Asset.Description,
                 RenterId      = ri.Asset.RenterId,
                 RenterName    = ri.Asset.Renter.FullName,
@@ -161,5 +173,14 @@ public class RenterAssetRepository : IRenterAssetRepository
             _db.RenterInventories.RemoveRange(rows);
             await _db.SaveChangesAsync(ct);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task<decimal> GetUsedAreaAsync(int renterId, int warehouseId, CancellationToken ct)
+    {
+        return await _db.RenterInventories
+            .Include(ri => ri.Asset)
+            .Where(ri => ri.Asset.RenterId == renterId && ri.WarehouseId == warehouseId)
+            .SumAsync(ri => ri.Quantity * (ri.Asset.VolumePerUnit ?? 0m), ct);
     }
 }

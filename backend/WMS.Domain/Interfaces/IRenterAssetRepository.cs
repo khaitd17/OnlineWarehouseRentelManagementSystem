@@ -7,6 +7,7 @@ public interface IRenterAssetRepository
     Task<List<RenterAsset>> GetByRenterAsync(int renterId, CancellationToken ct);
     Task<RenterAsset?> GetByIdAsync(int assetId, CancellationToken ct);
     Task<RenterAsset> CreateAsync(RenterAsset asset, CancellationToken ct);
+    Task UpdateAsync(RenterAsset asset, CancellationToken ct);
 
     /// <summary>
     /// Lấy tồn kho của renter tại 1 warehouse cụ thể (API cũ).
@@ -49,6 +50,12 @@ public interface IRenterAssetRepository
     /// trong hợp đồng mới hoặc khi renter không còn thuê kho đó.
     /// </summary>
     Task ClearRenterInventoryAsync(int renterId, int warehouseId, CancellationToken ct);
+
+    /// <summary>
+    /// Tính tổng diện tích (m²) mà renter đang chiếm dụng tại 1 kho cụ thể.
+    /// = SUM(quantity * volumePerUnit) từ renter_inventory JOIN renter_assets.
+    /// </summary>
+    Task<decimal> GetUsedAreaAsync(int renterId, int warehouseId, CancellationToken ct);
 }
 
 public record RenterInventoryRowDto
@@ -58,6 +65,9 @@ public record RenterInventoryRowDto
     public string AssetName     { get; init; } = "";
     public string Unit          { get; init; } = "";
     public decimal? WeightPerUnit { get; init; }
+    public decimal? VolumePerUnit { get; init; }
+    public decimal? LengthPerUnit { get; init; }
+    public decimal? WidthPerUnit { get; init; }
     public string? Description  { get; init; }
     public int WarehouseId      { get; init; }
     public string WarehouseName { get; init; } = "";
@@ -72,6 +82,9 @@ public record WarehouseInventoryRowDto
     public string AssetName     { get; init; } = "";
     public string Unit          { get; init; } = "";
     public decimal? WeightPerUnit { get; init; }
+    public decimal? VolumePerUnit { get; init; }
+    public decimal? LengthPerUnit { get; init; }
+    public decimal? WidthPerUnit { get; init; }
     public string? Description  { get; init; }
     public int RenterId         { get; init; }
     public string RenterName    { get; init; } = "";

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
@@ -139,7 +139,7 @@ public class SepayService : ISepayService
                         if (wh != null)
                         {
                             wh.AvailableArea -= rentalRequest.RequestedArea;
-                            _logger.LogInformation("Deducted {Area}m³ from warehouse {WhId} via webhook. New available: {Available}m³",
+                            _logger.LogInformation("Deducted {Area}m² from warehouse {WhId} via webhook. New available: {Available}m²",
                                 rentalRequest.RequestedArea, wh.WarehouseId, wh.AvailableArea);
                         }
                     }
@@ -545,3 +545,4 @@ public class SepayService : ISepayService
     }
 
 }
+

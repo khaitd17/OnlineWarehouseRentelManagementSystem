@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace WMS.Domain.Entities;
@@ -20,7 +20,7 @@ public class AiAnalysisSession
     /// <summary>Raw JSON response từ Gemini API.</summary>
     public string? ResultJson { get; set; }
 
-    /// <summary>Tổng thể tích ước tính cần thiết (m³).</summary>
+    /// <summary>Tổng diện tích ước tính cần thiết (m²).</summary>
     public double? EstimatedVolumeM3 { get; set; }
 
     /// <summary>Loại kho gợi ý (vd: "Kho thường", "Kho lạnh / mát").</summary>
@@ -34,3 +34,4 @@ public class AiAnalysisSession
 
     public virtual User User { get; set; } = null!;
 }
+

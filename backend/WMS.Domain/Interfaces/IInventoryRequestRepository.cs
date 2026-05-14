@@ -34,5 +34,10 @@ public interface IInventoryRequestRepository
     Task<InventoryRequest> CreateAsync(InventoryRequest request, CancellationToken cancellationToken);
     Task UpdateAsync(InventoryRequest request, CancellationToken cancellationToken);
     Task DeleteAsync(int id, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Lấy danh sách phiếu nhập đang chờ duyệt sức chứa tại 1 kho.
+    /// </summary>
+    Task<List<object>> GetPendingCapacityNotesAsync(int warehouseId, CancellationToken cancellationToken);
 }
 

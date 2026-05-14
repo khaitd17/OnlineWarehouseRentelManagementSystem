@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import inventoryService from '../../services/inventoryService';
 import { getMyWarehouses } from '../../services/warehouseService';
 import axiosClient from '../../services/axiosClient';
@@ -8,8 +8,8 @@ import { ReceiptPreviewModal } from '../../components/InventoryReceiptPDF';
    Helpers
 ────────────────────────────────────────────────────────────── */
 const STATUS_MAP = {
-  PENDING:   { label: 'Đang chờ',  bg: '#fef3c7', color: '#d97706', border: '#fde68a' },
-  CONFIRMED: { label: 'Đã duyệt',  bg: '#d1fae5', color: '#059669', border: '#a7f3d0' },
+  PENDING:   { label: 'Chờ tiếp nhận',  bg: '#fef3c7', color: '#d97706', border: '#fde68a' },
+  CONFIRMED: { label: 'Chờ xử lý tại kho',  bg: '#d1fae5', color: '#059669', border: '#a7f3d0' },
   REJECTED:  { label: 'Từ chối',   bg: '#fee2e2', color: '#dc2626', border: '#fecaca' },
 };
 
@@ -132,9 +132,9 @@ const TrackingTimeline = ({ req }) => {
     },
     {
       title: isConfirmed
-        ? `Đã duyệt bởi ${req.confirmedByName || 'Quản lý'}`
-        : (isRejected ? 'Đã từ chối' : 'Chờ Quản lý xét duyệt'),
-      subtitle: isConfirmed ? `Quản lý phụ trách` : undefined,
+        ? `Hệ thống tự động duyệt`
+        : (isRejected ? 'Đã từ chối' : 'Chờ tiếp nhận'),
+      subtitle: isConfirmed ? `Tự động xác nhận hợp lệ` : undefined,
       meta: isConfirmed ? formatDateTime(req.confirmedAt) : null,
       isDone: isConfirmed,
       isActive: !isConfirmed && status === 'PENDING',
@@ -303,11 +303,11 @@ const DetailModal = ({ req, onClose }) => {
               {req.type === 'INBOUND' && req.totalEstimatedVolume > 0 && (
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <span style={{ fontSize:'0.75rem', color:'#4f46e5', fontWeight:700, background:'#eef2ff', border:'1px solid #c7d2fe', borderRadius:6, padding:'3px 10px' }}>
-                    Ước tính: {req.totalEstimatedVolume?.toFixed(2)} m³
+                    Ước tính: {req.totalEstimatedVolume?.toFixed(2)} m²
                   </span>
                   {req.totalVerifiedVolume > 0 && (
                     <span style={{ fontSize:'0.75rem', color:'#059669', fontWeight:700, background:'#d1fae5', border:'1px solid #a7f3d0', borderRadius:6, padding:'3px 10px' }}>
-                      Thực tế: {req.totalVerifiedVolume?.toFixed(2)} m³
+                      Thực tế: {req.totalVerifiedVolume?.toFixed(2)} m²
                     </span>
                   )}
                 </div>
@@ -328,7 +328,7 @@ const DetailModal = ({ req, onClose }) => {
                       <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
                         {item.verifiedVolume && (
                           <span style={{ fontSize:'0.7rem', fontWeight:700, color:'#059669', background:'#d1fae5', border:'1px solid #a7f3d0', borderRadius:5, padding:'1px 7px' }}>
-                            Thực tế: {item.verifiedVolume} m³
+                            Thực tế: {item.verifiedVolume} m²
                           </span>
                         )}
                         {item.verifiedWeight && (
@@ -345,7 +345,7 @@ const DetailModal = ({ req, onClose }) => {
                     </p>
                     {item.estimatedVolume && (
                       <p style={{ margin: 0, fontSize: '0.72rem', color: '#6366f1', fontWeight:600 }}>
-                        Tổng thể tích: {item.estimatedVolume} m³
+                        Tổng diện tích: {item.estimatedVolume} m²
                       </p>
                     )}
                     {item.weight && <p style={{ margin: 0, fontSize: '0.72rem', color: '#9ca3af' }}>{item.weight} kg</p>}
@@ -496,13 +496,13 @@ const OwnerInventoryRequests = () => {
         </div>
         <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', borderTop: '4px solid #d97706', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chờ duyệt</p>
+            <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Chờ xử lý</p>
             <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{pending}</p>
           </div>
         </div>
         <div className="stat-card-hover" style={{ flex: 1, minWidth: 240, background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', borderTop: '4px solid #059669', padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã xác nhận</p>
+            <p style={{ margin: '0 0 4px', fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã tiếp nhận</p>
             <p style={{ margin: 0, fontSize: '2rem', fontWeight: 800, color: '#0f172a', lineHeight: 1 }}>{confirmed}</p>
           </div>
         </div>
@@ -568,9 +568,9 @@ const OwnerInventoryRequests = () => {
                 onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; }}
               >
                 <option value="">Tất cả trạng thái</option>
-                <option value="PENDING">Chờ duyệt (PENDING)</option>
-                <option value="CONFIRMED">Đã duyệt (CONFIRMED)</option>
-                <option value="REJECTED">Bị từ chối (REJECTED)</option>
+                <option value="PENDING">Chờ tiếp nhận</option>
+                <option value="CONFIRMED">Chờ xử lý tại kho</option>
+                <option value="REJECTED">Từ chối</option>
               </select>
             </div>
           </div>
@@ -743,3 +743,4 @@ const OwnerInventoryRequests = () => {
 };
 
 export default OwnerInventoryRequests;
+

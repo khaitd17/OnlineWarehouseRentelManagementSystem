@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using Microsoft.Extensions.Logging;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
@@ -349,7 +349,7 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
             await _warehouseRepo.UpdateAsync(warehouse, CancellationToken.None);
 
             _logger.LogInformation(
-                "Deducted {Area}m³ from warehouse {WarehouseId}. New available: {Available}m³",
+                "Deducted {Area}m² from warehouse {WarehouseId}. New available: {Available}m²",
                 rentalRequest.RequestedArea, warehouse.WarehouseId, warehouse.AvailableArea);
         }
         catch (Exception ex)
@@ -358,3 +358,4 @@ public class ConfirmCashPaymentHandler : IRequestHandler<ConfirmCashPaymentComma
         }
     }
 }
+

@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using WMS.Domain.Exceptions;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
@@ -133,7 +133,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         {
             UserId = warehouse.OwnerId,
             Title = "Yêu cầu thuê kho mới",
-            Message = $"{renterName} đã gửi yêu cầu thuê kho {warehouse.Name}. Thể tích: {request.RequestedArea}m³, Thời hạn: {request.DurationMonths} tháng.",
+            Message = $"{renterName} đã gửi yêu cầu thuê kho {warehouse.Name}. diện tích: {request.RequestedArea}m², Thời hạn: {request.DurationMonths} tháng.",
             Type = "RENTAL_REQUEST_RECEIVED",
             ReferenceId = requestId,
             ReferenceType = "RENTAL_REQUEST"
@@ -175,3 +175,4 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         return requestId;
     }
 }
+

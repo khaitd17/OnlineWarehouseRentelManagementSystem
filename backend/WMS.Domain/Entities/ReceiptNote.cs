@@ -37,6 +37,11 @@ public partial class ReceiptNote
 
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// Diện tích vượt quá hợp đồng (m²). null = không vượt.
+    /// </summary>
+    public decimal? CapacityOverflow { get; set; }
+
     public DateTime? CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 

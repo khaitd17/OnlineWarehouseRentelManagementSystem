@@ -13,8 +13,8 @@ const fmtBytes = n => n < 1024 ? `${n}B` : n < 1048576 ? `${(n/1024).toFixed(1)}
 const fileIcon = name => { const e = name.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(e)) return '🖼️'; if(e==='pdf') return '📄'; if(['xls','xlsx'].includes(e)) return '📊'; return '📎'; };
 const newRow = () => ({ id: Date.now()+Math.random(), assetId: null, itemName: '', unit: 'cái', qty: 1, note: '', isNew: false, availableQty: null, search: '', showDrop: false, estimatedVolume: '', weightPerUnit: null });
 const inp = (extra={}) => ({ padding:'9px 12px', borderRadius:8, border:'1.5px solid #e2e8f0', fontSize:'0.87rem', outline:'none', fontFamily:'Inter,sans-serif', transition:'border-color 0.2s', boxSizing:'border-box', width:'100%', ...extra });
-const UNITS = ['cái','chiếc','thùng','hộp','kg','tấn','lít','mét','m³','m³','cuộn','bao','pallet','chai','gói','bẹ'];
-const KG_PER_M3_WARN = 300; // Ngưỡng cảnh báo tải trọng (kg/m³)
+const UNITS = ['cái','chiếc','thùng','hộp','kg','tấn','lít','mét','m²','m²','cuộn','bao','pallet','chai','gói','bẹ'];
+const KG_PER_M3_WARN = 300; // Ngưỡng cảnh báo tải trọng (kg/m²)
 
 function UnitCombobox({ value, onChange, accent }) {
   const [show, setShow] = useState(false);
@@ -134,7 +134,7 @@ function AiPhotoModal({ onClose, onImport }) {
         <div style={{ padding:'22px 28px 16px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'linear-gradient(135deg,#eef2ff,#fff)', borderRadius:'20px 20px 0 0' }}>
           <div>
             <p style={{ margin:'0 0 2px', fontSize:'1.05rem', fontWeight:800, color:'#312e81' }}>Phân tích hàng hóa bằng AI</p>
-            <p style={{ margin:0, fontSize:'0.8rem', color:'#64748b' }}>Chụp ảnh hàng → AI tự nhận dạng tên, số lượng và thể tích ước tính</p>
+            <p style={{ margin:0, fontSize:'0.8rem', color:'#64748b' }}>Chụp ảnh hàng → AI tự nhận dạng tên, số lượng và diện tích ước tính</p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             {quota && (
@@ -198,7 +198,7 @@ function AiPhotoModal({ onClose, onImport }) {
           {result && (
             <>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-                <p style={{ margin:0, fontWeight:800, fontSize:'0.9rem', color:'#0f172a' }}>Kết quả phân tích — {result.items?.length || 0} mặt hàng · Tổng ~{result.totalVolumeM3} m³</p>
+                <p style={{ margin:0, fontWeight:800, fontSize:'0.9rem', color:'#0f172a' }}>Kết quả phân tích — {result.items?.length || 0} mặt hàng · Tổng ~{result.totalVolumeM3} m²</p>
                 <button onClick={() => { setResult(null); setFiles([]); setError(null); }}
                   style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:'0.78rem', fontWeight:600, color:'#475569' }}>
                   Phân tích lại
@@ -208,7 +208,7 @@ function AiPhotoModal({ onClose, onImport }) {
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.83rem' }}>
                   <thead>
                     <tr style={{ background:'#f8fafc' }}>
-                      {['Tên hàng hóa','Số lượng','Thể tích/cái (m³)','Tổng thể tích (m³)'].map(h => (
+                      {['Tên hàng hóa','Số lượng','diện tích/cái (m²)','Tổng diện tích (m²)'].map(h => (
                         <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontWeight:700, color:'#64748b', fontSize:'0.7rem', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #f1f5f9' }}>{h}</th>
                       ))}
                     </tr>
@@ -259,7 +259,7 @@ function AiPhotoModal({ onClose, onImport }) {
 /* ── Searchable row (INBOUND only) ─────────────────────────────────────── */
 function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, onEnter, canRemove, contractedArea }) {
   const ref = useRef(null);
-  const KG_PER_M3 = 500; // tải trọng sàn kho tiêu chuẩn kg/m³
+  const KG_PER_M3 = 500; // tải trọng sàn kho tiêu chuẩn kg/m²
   const filtered = (item.search ? list.filter(a=>(a.assetName||'').toLowerCase().includes(item.search.toLowerCase())) : list).slice(0,20);
 
   // OUTBOUND: vượt tồn kho (hard block)
@@ -348,10 +348,7 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
           </div>
         )}
       </td>
-      <td style={{ padding:'6px 8px', width:120 }}>
-        <input type="number" min={0} step={0.001} value={item.estimatedVolume||''} onChange={e=>onUpdate({ estimatedVolume:e.target.value })}
-          placeholder="m³" style={{ ...inp(), fontSize:'0.82rem', color:'#4f46e5', fontWeight:600 }}/>
-      </td>
+
       <td style={{ padding:'6px 8px', minWidth:160 }}>
         <input value={item.note||''} onChange={e=>onUpdate({ note:e.target.value })}
           placeholder="VD: Dễ vỡ, bảo quản lạnh..."
@@ -571,6 +568,8 @@ export default function CreateInventoryRequest() {
   const [draftSaved, setDraftSaved] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [capacityInfo, setCapacityInfo] = useState(null);
+  const [loadingCapacity, setLoadingCapacity] = useState(false);
   const DRAFT_KEY = 'inv_req_draft';
 
   // Import AI-analyzed rows into the items table
@@ -643,11 +642,21 @@ export default function CreateInventoryRequest() {
       .finally(()=>setLoadingWH(false));
   },[]);
 
+  // Load capacity info when warehouse and type change
+  useEffect(()=>{
+    if(type!=='INBOUND' || !warehouseId) { setCapacityInfo(null); return; }
+    setLoadingCapacity(true);
+    renterAssetService.getCapacity(warehouseId)
+      .then(res=>setCapacityInfo(res.data))
+      .catch(()=>setCapacityInfo(null))
+      .finally(()=>setLoadingCapacity(false));
+  },[type, warehouseId]);
+
   const selectedWHData = warehouses.find(w=>w.warehouseId===warehouseId);
   const contractedVolume = selectedWHData?.requestedArea ?? 0;
   const contractedArea   = contractedVolume; // alias for weight check in ItemRow
 
-  // Tổng thể tích ước tính từ các items đang điền (mỗi dòng = perUnit * qty)
+  // Tổng diện tích ước tính từ các items đang điền (mỗi dòng = perUnit * qty)
   const totalEstimatedVol = items.reduce((sum, i) => sum + ((Number(i.estimatedVolume)||0) * (Number(i.qty)||1)), 0);
   const volumeUsagePercent = contractedVolume > 0 ? (totalEstimatedVol / contractedVolume) * 100 : 0;
   const isVolumeOverContract = totalEstimatedVol > contractedVolume && contractedVolume > 0;
@@ -830,14 +839,32 @@ export default function CreateInventoryRequest() {
                     <div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1e293b' }}>{wh.name}</div>
                     {wh.contractNumber&&<div style={{ fontSize:'0.77rem', color:'#64748b', marginTop:2 }}>HĐ: {wh.contractNumber}</div>}
                     {warehouseId===wh.warehouseId && type==='INBOUND' && (
-                      <div style={{ marginTop:6, display:'flex', gap:6, flexWrap:'wrap' }}>
-                        {wh.requestedArea > 0 ? (
-                          <>
-                            <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8' }}>
-                              Sức chứa: {wh.requestedArea.toLocaleString('vi-VN')} m³
-                            </span>
-
-                          </>
+                      <div style={{ marginTop:8 }}>
+                        {loadingCapacity ? (
+                          <span style={{ fontSize:'0.72rem', color:'#94a3b8' }}>Đang tải sức chứa...</span>
+                        ) : capacityInfo ? (
+                          <div>
+                            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+                              <span style={{ fontSize:'0.72rem', fontWeight:700, color:'#475569' }}>
+                                Sức chứa: {Number(capacityInfo.usedArea).toFixed(1)}/{Number(capacityInfo.contractedArea).toFixed(1)} m²
+                              </span>
+                              <span style={{ fontSize:'0.7rem', fontWeight:700, color: capacityInfo.usagePercent >= 100 ? '#dc2626' : capacityInfo.usagePercent >= 80 ? '#d97706' : '#16a34a', background: capacityInfo.usagePercent >= 100 ? '#fef2f2' : capacityInfo.usagePercent >= 80 ? '#fffbeb' : '#f0fdf4', border: `1px solid ${capacityInfo.usagePercent >= 100 ? '#fecaca' : capacityInfo.usagePercent >= 80 ? '#fde68a' : '#bbf7d0'}`, padding:'1px 8px', borderRadius:12 }}>
+                                {capacityInfo.usagePercent >= 100 ? 'ĐÃ ĐẦY' : `Còn trống: ${Number(capacityInfo.remainingArea).toFixed(1)} m²`}
+                              </span>
+                            </div>
+                            <div style={{ height:6, borderRadius:3, background:'#f1f5f9', overflow:'hidden' }}>
+                              <div style={{ height:'100%', borderRadius:3, width:`${Math.min(100, capacityInfo.usagePercent)}%`, background: capacityInfo.usagePercent >= 100 ? '#dc2626' : capacityInfo.usagePercent >= 80 ? '#d97706' : '#16a34a', transition:'width 0.3s' }} />
+                            </div>
+                            {capacityInfo.usagePercent >= 100 && (
+                              <p style={{ margin:'6px 0 0', fontSize:'0.72rem', fontWeight:600, color:'#dc2626' }}>
+                                Kho đã hết diện tích! Yêu cầu nhập kho có thể bị từ chối bởi thủ kho.
+                              </p>
+                            )}
+                          </div>
+                        ) : wh.requestedArea > 0 ? (
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 9px', borderRadius:20, fontSize:'0.7rem', fontWeight:700, background:'#eff6ff', border:'1px solid #bfdbfe', color:'#1d4ed8' }}>
+                            Sức chứa: {wh.requestedArea.toLocaleString('vi-VN')} m²
+                          </span>
                         ) : (
                           <span style={{ fontSize:'0.7rem', color:'#94a3b8' }}>Đang tải thông tin hợp đồng...</span>
                         )}
@@ -928,19 +955,28 @@ export default function CreateInventoryRequest() {
                           Phân tích AI
                         </button>
                       </div>
-                      {/* Volume summary bar */}
+                      {/* Volume summary bar & Smart Routing Hint */}
                       {contractedVolume > 0 && (
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          <div style={{ width:160, height:7, borderRadius:4, background:'#e2e8f0', overflow:'hidden' }}>
-                            <div style={{ height:'100%', borderRadius:4, transition:'width 0.4s', width:`${Math.min(100,volumeUsagePercent)}%`, background: isVolumeOverContract ? '#ef4444' : volumeUsagePercent > 80 ? '#f59e0b' : '#22c55e' }} />
-                          </div>
-                          <span style={{ fontSize:'0.78rem', fontWeight:700, color: isVolumeOverContract ? '#dc2626' : volumeUsagePercent > 80 ? '#d97706' : '#15803d' }}>
-                            {totalEstimatedVol.toFixed(2)} / {contractedVolume} m³
-                          </span>
-                          {isVolumeOverContract && (
-                            <span style={{ fontSize:'0.74rem', fontWeight:700, color:'#dc2626', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:6, padding:'2px 8px' }}>
-                              Vượt sức chứa — Manager có thể từ chối
-                            </span>
+                          {totalEstimatedVol > 0 ? (
+                            <>
+                              <div style={{ width:160, height:7, borderRadius:4, background:'#e2e8f0', overflow:'hidden' }}>
+                                <div style={{ height:'100%', borderRadius:4, transition:'width 0.4s', width:`${Math.min(100,volumeUsagePercent)}%`, background: isVolumeOverContract ? '#ef4444' : volumeUsagePercent > 80 ? '#f59e0b' : '#22c55e' }} />
+                              </div>
+                              <span style={{ fontSize:'0.78rem', fontWeight:700, color: isVolumeOverContract ? '#dc2626' : volumeUsagePercent > 80 ? '#d97706' : '#15803d' }}>
+                                AI ước tính: {totalEstimatedVol.toFixed(2)} / {contractedVolume} m²
+                              </span>
+                              {isVolumeOverContract && (
+                                <span style={{ fontSize:'0.74rem', fontWeight:700, color:'#dc2626', background:'#fef2f2', border:'1px solid #fecaca', borderRadius:6, padding:'2px 8px' }}>
+                                  Vượt sức chứa — Cần Quản lý duyệt
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <div style={{ fontSize:'0.75rem', color:'#64748b', background:'#f8fafc', padding:'5px 12px', borderRadius:8, border:'1px solid #e2e8f0', display:'flex', alignItems:'center', gap:6 }}>
+                              <span style={{ fontWeight:700, color:'#4f46e5' }}>💡 Mẹo:</span> 
+                              Dùng AI phân tích để được <strong style={{ color:'#16a34a' }}>Hệ thống tự động duyệt ngay!</strong>
+                            </div>
                           )}
                         </div>
                       )}
@@ -950,7 +986,7 @@ export default function CreateInventoryRequest() {
                     <table style={{ width:'100%', borderCollapse:'collapse' }}>
                       <thead>
                         <tr style={{ background:'#f8fafc' }}>
-                          {['#', 'Hàng hóa / Tài sản', 'Đơn vị', 'Số lượng', 'Thể tích/đơn vị (m³)', 'Ghi chú', ''].map((h,i)=>(
+                          {['#', 'Hàng hóa / Tài sản', 'Đơn vị', 'Số lượng', 'Ghi chú', ''].map((h,i)=>(
                             <th key={i} style={{ padding:'10px 14px', fontSize:'0.7rem', fontWeight:700, color:'#94a3b8', textAlign:'left', letterSpacing:'0.05em', whiteSpace:'nowrap' }}>{h}</th>
                           ))}
                         </tr>
@@ -983,37 +1019,49 @@ export default function CreateInventoryRequest() {
           </div>
 
           {/* Docs + Notes card */}
-          <div style={{ ...card, padding:24 }}>
-            <div style={{ display:'flex', alignItems:'flex-end', gap:16, marginBottom:22, paddingBottom:18, borderBottom:'1px solid #f1f5f9' }}>
-              <div style={{ flex:'0 0 auto' }}>
-                <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 8px' }}>
-                  {type==='INBOUND'?'Ngày dự kiến nhập kho':'Ngày dự kiến xuất kho'}
-                </p>
-                <input type="date" value={scheduledDate} min={new Date().toISOString().split('T')[0]}
-                  onChange={e=>setScheduledDate(e.target.value)}
-                  style={{ ...inp(), width:200, cursor:'pointer', colorScheme:'light', borderColor: scheduledDate ? accent : '#e2e8f0', background: scheduledDate ? `${accent}08` : '#fff' }}
-                  onFocus={e=>e.target.style.borderColor=accent}
-                  onBlur={e=>e.target.style.borderColor=scheduledDate?accent:'#e2e8f0'}/>
-              </div>
-              {scheduledDate && (
-                <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 14px', borderRadius:10, background:`${accent}10`, border:`1px solid ${accent}25` }}>
-                  <span style={{ fontSize:'0.83rem', fontWeight:600, color:accent }}>
-                    {new Date(scheduledDate).toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' })}
-                  </span>
+          <div style={{ ...card, padding:32 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:40 }}>
+              
+              {/* Left Column */}
+              <div style={{ display:'flex', flexDirection:'column', gap:32 }}>
+                {/* Date Picker */}
+                <div>
+                  <p style={{ fontSize:'0.82rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 10px' }}>
+                    {type==='INBOUND'?'Ngày dự kiến nhập kho':'Ngày dự kiến xuất kho'} <span style={{ textTransform:'none', fontWeight:400, color:'#94a3b8' }}>(tuỳ chọn)</span>
+                  </p>
+                  <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+                    <input type="date" value={scheduledDate} min={new Date().toISOString().split('T')[0]}
+                      onChange={e=>setScheduledDate(e.target.value)}
+                      style={{ ...inp(), width:180, cursor:'pointer', colorScheme:'light', borderColor: scheduledDate ? accent : '#e2e8f0', background: scheduledDate ? `${accent}08` : '#fff', fontWeight: scheduledDate ? 700 : 500 }}
+                      onFocus={e=>e.target.style.borderColor=accent}
+                      onBlur={e=>e.target.style.borderColor=scheduledDate?accent:'#e2e8f0'}/>
+                    
+                    {scheduledDate ? (
+                      <span style={{ fontSize:'0.85rem', fontWeight:700, color:accent, background:`${accent}15`, padding:'6px 14px', borderRadius:8 }}>
+                        {new Date(scheduledDate).toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' })}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize:'0.82rem', color:'#94a3b8', fontStyle:'italic' }}>Để trống nếu chưa xác định</span>
+                    )}
+                  </div>
                 </div>
-              )}
-              {!scheduledDate && <span style={{ fontSize:'0.8rem', color:'#94a3b8', fontStyle:'italic' }}>Tùy chọn — để trống nếu chưa xác định</span>}
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:28 }}>
-              <DocUpload docFiles={docFiles} setDocFiles={setDocFiles} uploadedUrls={uploadedUrls} accent={accent} />
-              <div>
-                <p style={{ fontSize:'0.78rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>Ghi chú yêu cầu</p>
-                <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={6}
-                  placeholder={type==='INBOUND'?'Hướng dẫn nhập kho, số xe giao hàng, điều kiện bảo quản...':'Hướng dẫn xuất kho, đơn vị nhận hàng, mức độ khẩn cấp...'}
-                  style={{ ...inp(), minHeight:130, resize:'vertical' }}
-                  onFocus={e=>e.target.style.borderColor=accent}
-                  onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
+
+                {/* Document Upload */}
+                <DocUpload docFiles={docFiles} setDocFiles={setDocFiles} uploadedUrls={uploadedUrls} accent={accent} />
               </div>
+
+              {/* Right Column */}
+              <div style={{ display:'flex', flexDirection:'column' }}>
+                <p style={{ fontSize:'0.82rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em', margin:'0 0 10px' }}>
+                  Ghi chú yêu cầu <span style={{ textTransform:'none', fontWeight:400, color:'#94a3b8' }}>(tuỳ chọn)</span>
+                </p>
+                <textarea value={notes} onChange={e=>setNotes(e.target.value)}
+                  placeholder={type==='INBOUND'?'Ví dụ:\n- Số xe giao hàng: 29H-12345\n- Khung giờ giao: 14h - 16h\n- Lưu ý: Hàng dễ vỡ, xin nhẹ tay...':'Ví dụ:\n- Số xe nhận hàng: 30F-98765\n- Đơn vị nhận: Công ty ABC\n- Mức độ khẩn cấp: Cao...'}
+                  style={{ ...inp(), flex:1, resize:'none', background:'#f8fafc', lineHeight: 1.6, minHeight: 220 }}
+                  onFocus={e=>{e.target.style.borderColor=accent; e.target.style.background='#fff';}}
+                  onBlur={e=>{e.target.style.borderColor='#e2e8f0'; e.target.style.background='#f8fafc';}}/>
+              </div>
+
             </div>
           </div>
 
@@ -1085,3 +1133,4 @@ export default function CreateInventoryRequest() {
     </div>
   );
 }
+

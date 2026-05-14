@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import renterAssetService from '../services/renterAssetService';
 import rentalService from '../services/rentalService';
 import ItemLocationModal from '../components/warehouse/ItemLocationModal';
@@ -25,6 +26,7 @@ const QtyBadge = ({ qty }) => {
 
 /* ── Main ────────────────────────────────────────────────────── */
 const RenterInventoryPage = () => {
+  const navigate = useNavigate();
   const [rows,       setRows]       = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState('');
@@ -76,6 +78,7 @@ const RenterInventoryPage = () => {
   const totalTypes = filtered.length;
   const totalQty   = filtered.reduce((s, r) => s + (r.quantity ?? 0), 0);
   const outOfStock = filtered.filter(r => r.quantity === 0).length;
+  const totalUsedArea = filtered.reduce((s, r) => s + ((r.quantity ?? 0) * (r.volumePerUnit ?? 0)), 0);
 
   /* Unique warehouse set in current rows */
   const activeWhSet = new Set(filtered.map(r => r.warehouseId));
@@ -102,10 +105,11 @@ const RenterInventoryPage = () => {
       </div>
 
       {/* ── Stat Cards ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:24 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
         {[
           { icon:'inventory_2', label:'Loại hàng hóa',   val:totalTypes,                color:'#0ea5e9' },
           { icon:'tag', label:'Tổng số lượng',    val:totalQty.toLocaleString('vi-VN'), color:'#22c55e' },
+          { icon:'space_dashboard', label:'Sức chứa đã dùng (m²)', val:totalUsedArea.toLocaleString('vi-VN', {maximumFractionDigits:2}), color:'#8b5cf6' },
           { icon:'warning', label:'Hết hàng',          val:outOfStock,               color:'#ef4444' },
         ].map(({icon,label,val,color})=>(
           <div key={label} style={{ ...card, padding:'18px 22px', display:'flex', alignItems:'center', gap:14 }}>
@@ -189,7 +193,7 @@ const RenterInventoryPage = () => {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#f8fafc' }}>
-                  {[['Hàng hóa', 'auto'], ['Đơn vị', '100px'], ['Kho lưu trữ', '180px'], ['Số lượng', '140px', 'center'], ['Cập nhật', '140px'], ['', '60px']].map(([h, w, align])=>(
+                  {[['Hàng hóa', 'auto'], ['Đơn vị', '100px'], ['Kho lưu trữ', '150px'], ['Số lượng', '120px', 'center'], ['Diện tích (m²)', '120px', 'right'], ['Cập nhật', '110px'], ['', '100px']].map(([h, w, align])=>(
                     <th key={h} style={{ padding:'11px 16px', textAlign:align||'left', fontSize:'0.68rem', fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', textTransform:'uppercase', width:w }}>
                       {h}
                     </th>
@@ -202,17 +206,21 @@ const RenterInventoryPage = () => {
                     style={{ borderBottom:'1px solid #f1f5f9', background: row.quantity === 0 ? '#fff7f7' : 'transparent', transition:'background 0.15s' }}>
                     {/* Hàng hóa */}
                     <td style={{ padding:'13px 16px' }}>
-                      <div style={{ fontWeight:700, color:'#0f172a', fontSize:'0.9rem' }}>{row.assetName}</div>
-                      {row.description && <div style={{ fontSize:'0.75rem', color:'#94a3b8', marginTop:2 }}>{row.description}</div>}
+                      <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                        <div style={{ width:38, height:38, borderRadius:8, background:'#f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8', flexShrink:0 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize:'1.2rem' }}>category</span>
+                        </div>
+                        <div>
+                          <div style={{ fontWeight:700, color:'#0f172a', fontSize:'0.9rem' }}>{row.assetName}</div>
+                          {row.description && <div style={{ fontSize:'0.75rem', color:'#94a3b8', marginTop:2 }}>{row.description}</div>}
+                        </div>
+                      </div>
                     </td>
                     {/* Đơn vị */}
                     <td style={{ padding:'13px 16px' }}>
                       <span style={{ background:'#f1f5f9', borderRadius:6, padding:'3px 10px', fontSize:'0.78rem', fontWeight:600, color:'#475569' }}>
                         {row.unit || '—'}
                       </span>
-                      {row.weightPerUnit && (
-                        <div style={{ fontSize:'0.7rem', color:'#94a3b8', marginTop:3 }}>{row.weightPerUnit} kg/đv</div>
-                      )}
                     </td>
                     {/* Kho */}
                     <td style={{ padding:'13px 16px' }}>
@@ -224,21 +232,38 @@ const RenterInventoryPage = () => {
                     <td style={{ padding:'13px 16px', textAlign:'center' }}>
                       <QtyBadge qty={row.quantity ?? 0} />
                     </td>
+                    {/* Diện tích (m²) */}
+                    <td style={{ padding:'13px 16px', textAlign:'right' }}>
+                      <div style={{ fontSize:'0.85rem', color:'#0f172a', fontWeight:600 }}>
+                        {row.volumePerUnit ? ((row.quantity ?? 0) * row.volumePerUnit).toLocaleString('vi-VN', {maximumFractionDigits:2}) + ' m²' : '—'}
+                      </div>
+                    </td>
                     {/* Cập nhật */}
                     <td style={{ padding:'13px 16px', fontSize:'0.78rem', color:'#94a3b8' }}>
                       {fmtDT(row.updatedAt)}
                     </td>
                     {/* Action */}
                     <td style={{ padding:'13px 16px', textAlign:'right' }}>
-                      <button 
-                        onClick={() => setLocationItem(row)}
-                        title="Tra cứu vị trí trên sơ đồ"
-                        style={{ border:'none', background:'none', cursor:'pointer', color:'#0ea5e9', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:6, borderRadius:'50%', transition:'background 0.2s' }}
-                        onMouseEnter={e => e.currentTarget.style.background='#e0f2fe'}
-                        onMouseLeave={e => e.currentTarget.style.background='none'}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize:'1.2rem' }}>location_on</span>
-                      </button>
+                      <div style={{ display:'flex', justifyContent:'flex-end', gap:4 }}>
+                        <button 
+                          onClick={() => setLocationItem(row)}
+                          title="Tra cứu vị trí trên sơ đồ"
+                          style={{ border:'none', background:'none', cursor:'pointer', color:'#0ea5e9', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:6, borderRadius:'50%', transition:'background 0.2s' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#e0f2fe'}
+                          onMouseLeave={e => e.currentTarget.style.background='none'}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize:'1.2rem' }}>location_on</span>
+                        </button>
+                        <button 
+                          onClick={() => navigate('/create-inventory?tab=outbound')}
+                          title="Tạo yêu cầu xuất kho"
+                          style={{ border:'none', background:'none', cursor:'pointer', color:'#f59e0b', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:6, borderRadius:'50%', transition:'background 0.2s' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#fef3c7'}
+                          onMouseLeave={e => e.currentTarget.style.background='none'}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize:'1.2rem' }}>output</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

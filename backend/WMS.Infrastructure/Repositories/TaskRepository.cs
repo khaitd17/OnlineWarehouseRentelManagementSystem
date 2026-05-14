@@ -121,7 +121,6 @@ public class TaskRepository : ITaskRepository
         {
             "INBOUND"  => "INBOUND",
             "OUTBOUND" => "OUTBOUND",
-            "AUDIT"    => "AUDIT",
             _          => throw new ArgumentException($"Unknown refType: {refType}")
         };
 
@@ -148,19 +147,6 @@ public class TaskRepository : ITaskRepository
                     ? string.Join(", ", itemLines.Take(5)) + (itemLines.Count > 5 ? $" (+{itemLines.Count - 5} mặt hàng)" : "")
                     : "Chưa có hàng hóa";
                 autoNote = $"[{renterName}] {itemSummary}";
-            }
-        }
-        else if (typeCode == "AUDIT")
-        {
-            var audit = await _db.AuditSessions
-                .Include(a => a.CreatedByNavigation)
-                .FirstOrDefaultAsync(a => a.AuditId == refId, ct);
-
-            if (audit != null)
-            {
-                var creatorName = audit.CreatedByNavigation?.FullName ?? "Không rõ";
-                var auditNote   = !string.IsNullOrWhiteSpace(audit.Notes) ? audit.Notes : "Kiểm kê kho";
-                autoNote = $"[{creatorName}] {auditNote}";
             }
         }
 
@@ -245,12 +231,6 @@ public class TaskRepository : ITaskRepository
                 (nameof(UnitTaskTypeCode.OUTBOUND_APPROVE), "Duyệt đơn xuất kho",             1),
                 (nameof(UnitTaskTypeCode.OUTBOUND_PICK),    "Lấy hàng từ vị trí (Picking)",   2),
                 // (nameof(UnitTaskTypeCode.OUTBOUND_DISPATCH), "Xác nhận xuất kho", 3),
-            ],
-            "AUDIT" =>
-            [
-                (nameof(UnitTaskTypeCode.AUDIT_OPEN),  "Mở phiên kiểm kê",      1),
-                (nameof(UnitTaskTypeCode.AUDIT_COUNT), "Nhập kết quả kiểm đếm", 2),
-                (nameof(UnitTaskTypeCode.AUDIT_CLOSE), "Đóng phiên kiểm kê",    3),
             ],
             _ => []
         };

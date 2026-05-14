@@ -136,4 +136,17 @@ public class WarehouseGridLocationRepository : IWarehouseGridLocationRepository
             await _db.SaveChangesAsync(ct);
         }
     }
+
+    public async Task ClearGridLocationsAsync(int warehouseId, CancellationToken ct)
+    {
+        var locations = await _db.WarehouseGridLocations
+            .Where(g => g.WarehouseId == warehouseId)
+            .ToListAsync(ct);
+            
+        if (locations.Any())
+        {
+            _db.WarehouseGridLocations.RemoveRange(locations);
+            await _db.SaveChangesAsync(ct);
+        }
+    }
 }
