@@ -138,7 +138,7 @@ public class CreateWarehouseHandlerTests
         var result = validator.Validate(cmd);
 
         Assert.False(result.IsValid); // Simulates Return F in spreadsheet
-        Assert.Contains(result.Errors, e => e.PropertyName == "TotalArea" && e.ErrorMessage.Contains("greater than 0")); // Simulates Log Message
+        Assert.Contains(result.Errors, e => e.PropertyName == "TotalArea" && e.ErrorMessage.Contains("Diện tích sàn phải lớn hơn 0")); // Simulates Log Message
     }
 
     // ── UTC004 — Boundary: TotalArea = -100 → Validator rejects ─────────
@@ -158,7 +158,7 @@ public class CreateWarehouseHandlerTests
         var result = validator.Validate(cmd);
 
         Assert.False(result.IsValid); 
-        Assert.Contains(result.Errors, e => e.PropertyName == "TotalArea" && e.ErrorMessage.Contains("greater than 0"));
+        Assert.Contains(result.Errors, e => e.PropertyName == "TotalArea" && e.ErrorMessage.Contains("Diện tích sàn phải lớn hơn 0"));
     }
 
     // ── UTC005 — Boundary: TotalArea = 0 (exact boundary per validator rule) ──

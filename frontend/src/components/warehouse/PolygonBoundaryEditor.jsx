@@ -25,10 +25,13 @@ const btn = (primary) => ({
  * @param {Function}    [onCancel]  () => void
  * @param {boolean}     inline      render không dùng fixed overlay
  */
-export default function PolygonBoundaryEditor({ totalArea, initialJson, initialGateJson, onSave, onCancel, inline = false }) {
+export default function PolygonBoundaryEditor({ hasInventory, totalArea, initialJson, initialGateJson, onSave, onCancel, inline = false }) {
   const [points, setPoints]           = useState([]);
   const [editorMode, setEditorMode]   = useState('draw'); // 'draw' or 'gate'
   const [gatePos, setGatePos]         = useState(null);
+  const [pan, setPan]                 = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning]     = useState(false);
+  const [panStart, setPanStart]       = useState(null);
   const [draggingIdx, setDraggingIdx] = useState(null);
   const [hoverIdx, setHoverIdx]       = useState(null);
   const [error, setError]             = useState('');
@@ -79,14 +82,11 @@ export default function PolygonBoundaryEditor({ totalArea, initialJson, initialG
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
     const pt = svg.createSVGPoint();
-    pt.x = e.touches ? e.touches[0].clientX : e.clientX;
-    pt.y = e.touches ? e.touches[0].clientY : e.clientY;
+    pt.x = e.clientX || (e.touches && e.touches[0].clientX) || 0;
+    pt.y = e.clientY || (e.touches && e.touches[0].clientY) || 0;
     const s = pt.matrixTransform(svg.getScreenCTM().inverse());
-    return {
-      x: Math.max(0, Math.min(CANVAS_SIZE, s.x)),
-      y: Math.max(0, Math.min(CANVAS_SIZE, s.y)),
-    };
-  }, []);
+    return { x: s.x - pan.x, y: s.y - pan.y };
+  }, [pan]);
 
   // ── Click thêm điểm / chọn cổng ────────────────────────────────────────
   const getClosestPointOnSegment = (p, a, b) => {
@@ -133,11 +133,39 @@ export default function PolygonBoundaryEditor({ totalArea, initialJson, initialG
     setError('');
   }, [draggingIdx, getSVGCoords, editorMode, points]);
 
-  // ── Kéo thả điểm ──────────────────────────────────────────────────────
+  // ── Kéo thả điểm và lưới ────────────────────────────────────────────────
   const handleVertexMouseDown = useCallback((e, idx) => {
     e.stopPropagation();
     setDraggingIdx(idx);
   }, []);
+
+  const handleSvgMouseDown = useCallback((e) => {
+    if (draggingIdx !== null) return;
+    setPanStart({ x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y });
+    setIsPanning(true);
+  }, [draggingIdx, pan]);
+
+  useEffect(() => {
+    if (!isPanning) return;
+    const onMove = (e) => {
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        wasDraggingRef.current = true;
+      }
+      setPan({ x: panStart.panX + dx, y: panStart.panY + dy });
+    };
+    const onUp = () => {
+      setIsPanning(false);
+      setTimeout(() => { wasDraggingRef.current = false; }, 50);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [isPanning, panStart]);
 
   useEffect(() => {
     if (draggingIdx === null) return;
@@ -150,7 +178,7 @@ export default function PolygonBoundaryEditor({ totalArea, initialJson, initialG
       pt.y = e.touches ? e.touches[0].clientY : e.clientY;
       const s = pt.matrixTransform(svg.getScreenCTM().inverse());
       setPoints(prev => prev.map((p, i) => i === draggingIdx
-        ? { x: Math.max(0, Math.min(CANVAS_SIZE, s.x)), y: Math.max(0, Math.min(CANVAS_SIZE, s.y)) }
+        ? { x: s.x - pan.x, y: s.y - pan.y }
         : p));
     };
     const onUp = () => {
@@ -167,7 +195,7 @@ export default function PolygonBoundaryEditor({ totalArea, initialJson, initialG
       window.removeEventListener('touchmove', onMove);
       window.removeEventListener('touchend', onUp);
     };
-  }, [draggingIdx]);
+  }, [draggingIdx, pan]);
 
   // ── Lưu — chuyển sang phần trăm rồi gọi onSave ────────────────────────
   const handleSave = async () => {
@@ -181,7 +209,6 @@ export default function PolygonBoundaryEditor({ totalArea, initialJson, initialG
       return;
     }
 
-    // Chuẩn hóa tọa độ vẽ tay thành tọa độ lưới (0.5m/ô)
     const gridPoints = normalizeToGrid(points, parseFloat(totalArea));
     if (!gridPoints) {
       setError('Diện tích hình vẽ không hợp lệ (quá nhỏ hoặc tự cắt). Hãy kiểm tra lại.');
@@ -255,8 +282,11 @@ export default function PolygonBoundaryEditor({ totalArea, initialJson, initialG
         <button style={btn(false)} onClick={() => setPoints(p => p.slice(0, -1))} disabled={points.length === 0}>
           Quay lại
         </button>
-        <button style={btn(false)} onClick={() => { setPoints([]); setError(''); }} disabled={points.length === 0}>
+        <button style={btn(false)} onClick={() => { setPoints([]); setGatePos(null); setError(''); setPan({x:0, y:0}); }} disabled={points.length === 0 && (pan.x === 0 && pan.y === 0)}>
           Đặt lại
+        </button>
+        <button style={btn(false)} onClick={() => setPan({x:0, y:0})}>
+          Căn giữa
         </button>
         <span style={{ marginLeft: 'auto', fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
           {points.length} điểm{totalArea ? ` | Diện tích: ${totalArea} m²` : ''}
@@ -264,65 +294,67 @@ export default function PolygonBoundaryEditor({ totalArea, initialJson, initialG
       </div>
 
       {/* Canvas vẽ */}
-      <div style={{ border: '2px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', background: '#f8fafc', cursor: 'crosshair', lineHeight: 0 }}>
+      <div style={{ border: '2px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', background: '#f8fafc', cursor: isPanning ? 'grabbing' : 'crosshair', lineHeight: 0 }}>
         <svg
           ref={svgRef}
           width={CANVAS_SIZE}
           height={CANVAS_SIZE}
           style={{ display: 'block', width: '100%', aspectRatio: '1' }}
           viewBox={`0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}`}
+          onMouseDown={handleSvgMouseDown}
           onClick={handleCanvasClick}
         >
           <defs>
-            <pattern id="dotGridPBE" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+            <pattern id="dotGridPBE" x={pan.x} y={pan.y} width="20" height="20" patternUnits="userSpaceOnUse">
               <circle cx="10" cy="10" r="1" fill="#cbd5e1" />
             </pattern>
           </defs>
           <rect width={CANVAS_SIZE} height={CANVAS_SIZE} fill="url(#dotGridPBE)" />
+          <g transform={`translate(${pan.x}, ${pan.y})`}>
+            {/* Vùng tô */}
+            {points.length >= 3 && (
+              <polygon points={pixelPolyPoints} fill="rgba(0,149,199,0.10)" stroke="none" />
+            )}
 
-          {/* Vùng tô */}
-          {points.length >= 3 && (
-            <polygon points={pixelPolyPoints} fill="rgba(0,149,199,0.10)" stroke="none" />
-          )}
+            {/* Cạnh */}
+            {points.length >= 2 && points.map((p, i) => {
+              const next = points[(i + 1) % points.length];
+              const isClosing = i === points.length - 1;
+              return (
+                <line key={i} x1={p.x} y1={p.y} x2={next.x} y2={next.y}
+                  stroke={isClosing && points.length < 3 ? '#94a3b8' : '#0095c7'}
+                  strokeWidth={2}
+                  strokeDasharray={isClosing && points.length < 3 ? '6 4' : 'none'}
+                />
+              );
+            })}
 
-          {/* Cạnh */}
-          {points.length >= 2 && points.map((p, i) => {
-            const next = points[(i + 1) % points.length];
-            const isClosing = i === points.length - 1;
-            return (
-              <line key={i} x1={p.x} y1={p.y} x2={next.x} y2={next.y}
-                stroke={isClosing && points.length < 3 ? '#94a3b8' : '#0095c7'}
-                strokeWidth={2}
-                strokeDasharray={isClosing && points.length < 3 ? '6 4' : 'none'}
-              />
-            );
-          })}
+            {/* Cổng */}
+            {gatePos && (
+              <g transform={`translate(${gatePos.x}, ${gatePos.y}) rotate(${gatePos.angle})`} style={{ pointerEvents: 'none' }}>
+                <rect x="-15" y="-6" width="30" height="12" fill="#f59e0b" stroke="#fff" strokeWidth="2" rx="4" />
+                <text x="0" y="3" fontSize="9" fill="#fff" fontWeight="800" textAnchor="middle">CỔNG</text>
+              </g>
+            )}
 
-          {/* Cổng */}
-          {gatePos && (
-            <g transform={`translate(${gatePos.x}, ${gatePos.y}) rotate(${gatePos.angle})`} style={{ pointerEvents: 'none' }}>
-              <rect x="-15" y="-6" width="30" height="12" fill="#f59e0b" stroke="#fff" strokeWidth="2" rx="4" />
-              <text x="0" y="3" fontSize="9" fill="#fff" fontWeight="800" textAnchor="middle">CỔNG</text>
-            </g>
-          )}
-
-          {/* Điểm đỉnh */}
-          {points.map((p, i) => (
-            <g key={i}
-              onMouseDown={(e) => handleVertexMouseDown(e, i)}
-              onClick={(e) => e.stopPropagation()}
-              onMouseEnter={() => setHoverIdx(i)}
-              onMouseLeave={() => setHoverIdx(null)}
-              style={{ cursor: 'grab' }}>
-              <circle cx={p.x} cy={p.y} r={HANDLE_R + 5} fill="transparent" />
-              <circle cx={p.x} cy={p.y} r={HANDLE_R}
-                fill={i === 0 ? '#16a34a' : (hoverIdx === i ? '#f59e0b' : '#0095c7')}
-                stroke="#fff" strokeWidth={2} />
-              <text x={p.x + 10} y={p.y - 7} fontSize="11" fill="#475569" fontWeight="700">
-                {i === 0 ? 'Bat dau' : i + 1}
-              </text>
-            </g>
-          ))}
+            {/* Điểm đỉnh */}
+            {points.map((p, i) => (
+              <g key={i}
+                onMouseDown={(e) => handleVertexMouseDown(e, i)}
+                onClick={(e) => e.stopPropagation()}
+                onMouseEnter={() => setHoverIdx(i)}
+                onMouseLeave={() => setHoverIdx(null)}
+                style={{ cursor: 'grab' }}>
+                <circle cx={p.x} cy={p.y} r={HANDLE_R + 5} fill="transparent" />
+                <circle cx={p.x} cy={p.y} r={HANDLE_R}
+                  fill={i === 0 ? '#16a34a' : (hoverIdx === i ? '#f59e0b' : '#0095c7')}
+                  stroke="#fff" strokeWidth={2} />
+                <text x={p.x + 10} y={p.y - 7} fontSize="11" fill="#475569" fontWeight="700">
+                  {i === 0 ? 'Bắt đầu' : i + 1}
+                </text>
+              </g>
+            ))}
+          </g>
         </svg>
       </div>
 
@@ -336,17 +368,23 @@ export default function PolygonBoundaryEditor({ totalArea, initialJson, initialG
         </div>
       )}
 
+      {hasInventory && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '10px 14px', color: '#dc2626', fontSize: '0.88rem', fontWeight: 600, marginTop: 8 }}>
+          <strong>Cảnh báo:</strong> Kho đã có hàng. Nếu lưu lại sơ đồ, bạn cần sắp xếp lại hàng hóa, và toàn bộ hàng hóa hiện tại sẽ được đẩy ra danh sách chờ xếp hàng.
+        </div>
+      )}
+
       {/* Nút hành động */}
       <div style={{ display: 'flex', justifyContent: onCancel ? 'space-between' : 'flex-end', gap: 8, paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
         {onCancel && (
-          <button style={btn(false)} onClick={onCancel} disabled={saving}>Huy</button>
+          <button style={btn(false)} onClick={onCancel} disabled={saving}>Hủy</button>
         )}
         <button
           style={{ ...btn(true), opacity: (points.length < 3 || saving) ? 0.55 : 1 }}
           onClick={handleSave}
           disabled={points.length < 3 || saving}
         >
-          {saving ? 'Dang luu...' : 'Luu so do kho'}
+          {saving ? 'Đang lưu...' : 'Lưu sơ đồ kho'}
         </button>
       </div>
     </div>

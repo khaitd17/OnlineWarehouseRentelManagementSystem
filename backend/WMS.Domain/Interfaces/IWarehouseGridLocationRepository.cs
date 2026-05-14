@@ -13,4 +13,5 @@ public interface IWarehouseGridLocationRepository
     Task AssignGridLocationsAsync(int warehouseId, List<WarehouseGridLocation> assignments, CancellationToken ct);
     Task RemoveGridLocationByIdAsync(int warehouseId, int id, int quantityToRemove, CancellationToken ct);
     Task<List<GridInventoryStatusModel>> GetGridInventoryStatusAsync(int warehouseId, CancellationToken ct);
+    Task ClearGridLocationsAsync(int warehouseId, CancellationToken ct);
 }

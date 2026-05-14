@@ -75,6 +75,8 @@ const EditWarehouse = () => {
   const [showBoundaryEditor, setShowBoundaryEditor] = useState(false);
   const [boundaryJson, setBoundaryJson] = useState(null); // current saved JSON
   const [gateJson, setGateJson] = useState(null);
+  const [hasInventory, setHasInventory] = useState(false);
+  const [refreshMap, setRefreshMap] = useState(0);
 
   const DOC_TYPE_LABELS = {
     BUSINESS_LICENSE: "Giấy phép kinh doanh",
@@ -341,7 +343,7 @@ const EditWarehouse = () => {
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "2rem", alignItems: "start" }}>
           
           {/* Left Column: Main Form */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2rem", minWidth: 0 }}>
             <form
               onSubmit={handleSubmit}
               style={{
@@ -787,7 +789,15 @@ const EditWarehouse = () => {
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     type="button"
-                    onClick={() => setShowBoundaryEditor(true)}
+                    onClick={async () => {
+                      try {
+                        const invRes = await api.get(`/warehouses/${id}/grid-locations`);
+                        setHasInventory(invRes.data && invRes.data.length > 0);
+                      } catch {
+                        setHasInventory(false);
+                      }
+                      setShowBoundaryEditor(true);
+                    }}
                     style={{
                       padding: "9px 18px", borderRadius: "10px", fontWeight: 700,
                       fontSize: "0.88rem", cursor: "pointer", border: "none",
@@ -825,7 +835,7 @@ const EditWarehouse = () => {
           </div>
 
           {/* Right Column: Map, Media & Areas */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "2rem", minWidth: 0 }}>
             
 
             {/* Map Preview */}
@@ -947,7 +957,7 @@ const EditWarehouse = () => {
                 <span className="material-symbols-outlined" style={{ color: "#00b2d6" }}>grid_view</span>
                 Quản lý khu vực & diện tích
               </h3>
-              <RentalAreaManagement warehouseId={id} />
+              <RentalAreaManagement key={refreshMap} warehouseId={id} />
             </div>
 
           </div>
@@ -957,13 +967,18 @@ const EditWarehouse = () => {
       {/* ── Polygon Boundary Editor Modal ── */}
       {showBoundaryEditor && (
         <PolygonBoundaryEditor
+          hasInventory={hasInventory}
           totalArea={parseFloat(formData.totalArea) || 0}
           initialJson={boundaryJson}
           initialGateJson={gateJson}
           onSave={async (jsonString, gateString) => {
             try {
               try {
-                await api.patch(`/Warehouse/${id}/boundary`, { boundaryPoints: jsonString, gatePosition: gateString });
+                await api.patch(`/Warehouse/${id}/boundary`, { 
+                  boundaryPoints: jsonString, 
+                  gatePosition: gateString,
+                  clearGrid: hasInventory
+                });
               } catch {
                 // Fallback PUT với safe defaults
                 const res = await api.get(`/Warehouse/${id}`);
@@ -992,9 +1007,10 @@ const EditWarehouse = () => {
               setBoundaryJson(jsonString);
               setGateJson(gateString);
               setShowBoundaryEditor(false);
-              alert('Da luu so do kho thanh cong!');
+              setRefreshMap(prev => prev + 1);
+              alert('Đã lưu sơ đồ kho thành công!');
             } catch (err) {
-              alert('Loi khi luu so do: ' + (err.response?.data?.message || err.message));
+              alert('Lỗi khi lưu sơ đồ: ' + (err.response?.data?.message || err.message));
             }
           }}
           onCancel={() => setShowBoundaryEditor(false)}

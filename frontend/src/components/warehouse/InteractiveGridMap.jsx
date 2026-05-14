@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 
 const DISPLAY = 500;
 
@@ -29,6 +29,8 @@ export default function InteractiveGridMap({
     pendingAssignments = [], // array of {x, y, quantity}
     hideAxis = false
 }) {
+    const [zoom, setZoom] = useState(1);
+
     const poly = useMemo(() => {
         if (!boundaryPoints) return null;
         try {
@@ -83,7 +85,7 @@ export default function InteractiveGridMap({
             if (!loc.coordinates || !Array.isArray(loc.coordinates)) return;
             loc.coordinates.forEach((coord, idx) => {
                 const key = `${coord.x},${coord.y}`;
-                if (!map[key]) map[key] = { items: [], totalQuantity: 0, hasWarning: false, isPrimary: false };
+                if (!map[key]) map[key] = { items: [], totalQuantity: 0, hasWarning: false, isPrimary: false, hasSameRenter: false, hasSameProduct: false };
                 map[key].items.push(loc);
                 
                 // Only sum the quantity on the first cell of the coordinates array
@@ -99,10 +101,20 @@ export default function InteractiveGridMap({
                 )) {
                     map[key].hasWarning = true;
                 }
+
+                // Check selected item (assigning mode)
+                if (selectedItem) {
+                    if (loc.renterName === selectedItem.renterName) {
+                        map[key].hasSameRenter = true;
+                        if ((loc.assetId && loc.assetId === selectedItem.assetId) || (!loc.assetId && loc.itemName === selectedItem.itemName)) {
+                            map[key].hasSameProduct = true;
+                        }
+                    }
+                }
             });
         });
         return map;
-    }, [gridLocations, outboundWarnings, isGrid]);
+    }, [gridLocations, outboundWarnings, isGrid, selectedItem]);
 
     if (!poly) {
         return (
@@ -122,16 +134,39 @@ export default function InteractiveGridMap({
 
     const { minX, minY, spanX, spanY } = extents;
 
-    const pad = 20;
-    const scaleX = (DISPLAY - pad * 2) / spanX;
-    const scaleY = (DISPLAY - pad * 2) / spanY;
-    const scale = Math.min(scaleX, scaleY);
-    const cw = Math.round(spanX * scale + pad * 2);
-    const ch = Math.round(spanY * scale + pad * 2);
+    const pad = 24;
+    const baseScaleX = (DISPLAY - pad * 2) / spanX;
+    const baseScaleY = (DISPLAY - pad * 2) / spanY;
+    const baseScale = Math.min(baseScaleX, baseScaleY);
+    
+    // Calculate optimal tick interval (aim for ~10 ticks max)
+    const rawInterval = Math.max(spanX, spanY) / 10;
+    let defaultInterval = 1;
+    if (rawInterval > 0) {
+        const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
+        const residual = rawInterval / magnitude;
+        let niceResidual;
+        if (residual <= 1) niceResidual = 1;
+        else if (residual <= 2) niceResidual = 2;
+        else if (residual <= 5) niceResidual = 5;
+        else niceResidual = 10;
+        defaultInterval = Math.max(1, niceResidual * magnitude);
+    }
+    
+    const currentScale = baseScale * zoom;
+    
+    // Adaptive tick interval when zoomed in
+    let tickInterval = defaultInterval;
+    if (currentScale >= 40) tickInterval = 1;
+    else if (currentScale >= 20) tickInterval = Math.min(2, defaultInterval);
+    else if (currentScale >= 10) tickInterval = Math.min(5, defaultInterval);
+
+    const cw = Math.round(spanX * currentScale + pad * 2);
+    const ch = Math.round(spanY * currentScale + pad * 2);
 
     const toSVG = (gx, gy) => ({
-        x: (gx - minX) * scale + pad,
-        y: (gy - minY) * scale + pad,
+        x: (gx - minX) * currentScale + pad,
+        y: (gy - minY) * currentScale + pad,
     });
 
     const svgPoints = poly.map(p => { const s = toSVG(p.gx, p.gy); return `${s.x},${s.y}`; }).join(' ');
@@ -143,14 +178,21 @@ export default function InteractiveGridMap({
 
     return (
         <div style={{ position: 'relative' }}>
-            <div style={{ overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
-                <svg width={cw} height={ch} style={{ display: 'block', border: '2px solid #e2e8f0', borderRadius: '12px', background: '#fff' }}>
+            {/* Zoom Controls */}
+            <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 6, background: '#fff', padding: 6, borderRadius: 8, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)', border: '1px solid #e2e8f0' }}>
+                <button onClick={() => setZoom(z => Math.min(z + 0.5, 6))} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: 18 }} title="Phóng to">+</button>
+                <button onClick={() => setZoom(1)} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontSize: 16, color: '#64748b' }} title="Mặc định">↺</button>
+                <button onClick={() => setZoom(z => Math.max(z - 0.5, 0.5))} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', color: '#334155', fontSize: 18 }} title="Thu nhỏ">-</button>
+            </div>
+            
+            <div style={{ overflow: 'auto', maxHeight: 600, width: '100%' }}>
+                <svg width={cw} height={ch} style={{ display: 'block', border: '2px solid #e2e8f0', borderRadius: '12px', background: '#fff', margin: '0 auto' }}>
                     <rect width={cw} height={ch} fill="#f8fafc" />
                     
                     {/* Vẽ lưới */}
                     <defs>
-                        <pattern id="floorGridWFPV" x={pad} y={pad} width={scale} height={scale} patternUnits="userSpaceOnUse">
-                            <rect width={scale} height={scale} fill="none" stroke="#f1f5f9" strokeWidth="1" />
+                        <pattern id="floorGridWFPV" x={pad} y={pad} width={currentScale} height={currentScale} patternUnits="userSpaceOnUse">
+                            <rect width={currentScale} height={currentScale} fill="none" stroke="#f1f5f9" strokeWidth="1" />
                         </pattern>
                     </defs>
                     <rect width={cw} height={ch} fill="url(#floorGridWFPV)" />
@@ -159,10 +201,10 @@ export default function InteractiveGridMap({
                     {/* Trục X ngang phía trên */}
                     {!hideAxis && Array.from({ length: spanX }).map((_, i) => {
                         const x = minX + i;
-                        if (x % 5 !== 0 && i !== 0 && i !== spanX - 1) return null;
+                        if (x % tickInterval !== 0 && i !== 0 && i !== spanX - 1) return null;
                         const s = toSVG(x, minY);
                         return (
-                            <text key={`ax-${x}`} x={s.x + scale/2} y={pad - 6} fontSize={10} fill="#64748b" textAnchor="middle" fontWeight={600}>
+                            <text key={`ax-${x}`} x={s.x + currentScale/2} y={pad - 6} fontSize={10} fill="#64748b" textAnchor="middle" fontWeight={600}>
                                 {x}
                             </text>
                         );
@@ -170,10 +212,10 @@ export default function InteractiveGridMap({
                     {/* Trục Y dọc bên trái */}
                     {!hideAxis && Array.from({ length: spanY }).map((_, i) => {
                         const y = minY + i;
-                        if (y % 5 !== 0 && i !== 0 && i !== spanY - 1) return null;
+                        if (y % tickInterval !== 0 && i !== 0 && i !== spanY - 1) return null;
                         const s = toSVG(minX, y);
                         return (
-                            <text key={`ay-${y}`} x={pad - 6} y={s.y + scale/2} fontSize={10} fill="#64748b" textAnchor="end" alignmentBaseline="middle" fontWeight={600}>
+                            <text key={`ay-${y}`} x={pad - 6} y={s.y + currentScale/2} fontSize={10} fill="#64748b" textAnchor="end" alignmentBaseline="middle" fontWeight={600}>
                                 {y}
                             </text>
                         );
@@ -205,8 +247,14 @@ export default function InteractiveGridMap({
                             if (data.hasWarning) {
                                 fill = "rgba(239,68,68,0.3)"; // Red warning
                                 stroke = "#ef4444";
+                            } else if (isAssigning && data.hasSameProduct) {
+                                fill = "rgba(248,113,113,0.4)"; // Đỏ nhạt (Same Product)
+                                stroke = "#f87171";
+                            } else if (isAssigning && data.hasSameRenter) {
+                                fill = "rgba(250,204,21,0.3)"; // Vàng nhạt (Same Renter)
+                                stroke = "#facc15";
                             } else {
-                                fill = "rgba(16,185,129,0.3)"; // Green occupied
+                                fill = "rgba(16,185,129,0.3)"; // Green occupied (Other renters)
                                 stroke = "#10b981";
                             }
                         }
@@ -217,7 +265,7 @@ export default function InteractiveGridMap({
                                style={{ cursor: onCellClick ? 'pointer' : 'default' }}>
                                 <rect 
                                     x={s.x} y={s.y} 
-                                    width={scale} height={scale} 
+                                    width={currentScale} height={currentScale} 
                                     fill={fill} stroke={stroke} strokeWidth={isPending ? 2.5 : 1.5}
                                     style={{ transition: 'all 0.2s' }}
                                     onMouseEnter={e => {
@@ -237,18 +285,6 @@ export default function InteractiveGridMap({
                                 
 
 
-                                {/* Số lượng (Hàng đã có hoặc Đang chờ phân bổ) */}
-                                {((data && data.isPrimary && data.totalQuantity > 0) || (isPending && pendingData === pendingAssignments[0])) && (
-                                    <text 
-                                        x={s.x + scale/2} y={s.y + scale/2 + 4} 
-                                        fontSize={Math.max(10, Math.min(16, scale * 0.4))} 
-                                        fill={isPending ? "#1e3a8a" : "#fff"} 
-                                        textAnchor="middle" fontWeight="bold" 
-                                        style={{ pointerEvents: 'none' }}
-                                    >
-                                        {isPending ? `+${pendingData.quantity}` : data.totalQuantity}
-                                    </text>
-                                )}
                             </g>
                         );
                     })}
@@ -301,8 +337,22 @@ export default function InteractiveGridMap({
                             <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>{label}</span>
                         </div>
                     ))
+                ) : isAssigning ? (
+                    // Legend for Assigning Modal
+                    [
+                        ['transparent', '1px dashed #3b82f6', 'Ô trống'],
+                        ['rgba(59,130,246,0.3)', '1px solid #3b82f6', 'Đang chọn gán'],
+                        ['rgba(16,185,129,0.3)', '1px solid #10b981', 'Hàng của khách khác'],
+                        ['rgba(250,204,21,0.3)', '1px solid #facc15', 'Hàng khác của khách này'],
+                        ['rgba(248,113,113,0.4)', '1px solid #f87171', 'Chính sản phẩm này'],
+                    ].map(([bg, border, label]) => (
+                        <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 14, height: 14, background: bg, border, borderRadius: 3 }} />
+                            <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>{label}</span>
+                        </div>
+                    ))
                 ) : (
-                    // Legend for Owners/Staff
+                    // Legend for Main Map (Owners/Staff)
                     [
                         ['transparent', '1px dashed #3b82f6', 'Ô trống'],
                         ['rgba(59,130,246,0.3)', '1px solid #3b82f6', 'Đang chọn gán'],

@@ -69,13 +69,6 @@ public class CreateAuditSessionHandler : IRequestHandler<CreateAuditSessionComma
         _db.AuditSessions.Add(session);
         await _db.SaveChangesAsync(cancellationToken);
 
-        await _taskRepo.CreateWorkflowTaskAsync(
-            "AUDIT",
-            session.AuditId,
-            session.WarehouseId,
-            session.CreatedAt,
-            cancellationToken);
-
         var message = "Tạo yêu cầu kiểm kê thành công. Chờ chủ kho duyệt.";
 
         return ApiResponse<int>.SuccessResponse(session.AuditId, message);

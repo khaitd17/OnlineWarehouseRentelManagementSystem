@@ -27,7 +27,6 @@ function buildAutoZones(warehouse, zoneW, zoneL, zoneH, existingCount) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
-  const [scale, setScale] = useState(10);
   const [areas, setAreas] = useState([]);
   const [warehouse, setWarehouse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -80,16 +79,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
 
   useEffect(() => { if (warehouseId) fetchData(); }, [warehouseId]);
 
-  // Auto-scale
-  useEffect(() => {
-    if (!warehouse) return;
-    const maxDim = Math.max(
-      (warehouse.width  ?? warehouse.Width)  || 50,
-      (warehouse.length ?? warehouse.Length) || 50,
-    );
-    const ideal = Math.floor(480 / maxDim);
-    setScale(Math.max(10, Math.min(40, ideal)));
-  }, [warehouse]);
+
 
   // ── Validation ─────────────────────────────────────────────────────────
   const isIntersecting = (x1,y1,w1,l1,x2,y2,w2,l2) => {
@@ -271,35 +261,36 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
   // ── Render ──────────────────────────────────────────────────────────────
   if(loading) return <p style={{color:'#64748b'}}>Đang tải sơ đồ 2D...</p>;
 
-  // Try legacy width/length first, fall back to boundary polygon or totalArea square root
-  let whW = parseFloat(warehouse?.width ?? warehouse?.Width ?? 0) || 0;
-  let whL = parseFloat(warehouse?.length ?? warehouse?.Length ?? 0) || 0;
-
   // ── Boundary polygon (from BoundaryPoints JSON) ──────────────────────────
   const boundary = parseBoundary(warehouse?.boundaryPoints);
-  const cellPx = scale * CELL_SIZE;
 
-  // If no legacy width/length, derive from boundary polygon or totalArea
-  if (!whW || !whL) {
-    if (boundary && boundary.length >= 3) {
-      const { cols, rows } = getGridDimensions(boundary);
-      whW = cols * CELL_SIZE;  // each grid cell = 0.5m
-      whL = rows * CELL_SIZE;
-    }
-    
-    // If STILL no usable dimensions (e.g. boundary was legacy px/py format with no gx)
+  let whW = 0;
+  let whL = 0;
+
+  if (boundary && boundary.length >= 3) {
+    const { cols, rows } = getGridDimensions(boundary);
+    whW = cols * CELL_SIZE;  // each grid cell = 0.5m
+    whL = rows * CELL_SIZE;
+  } else {
+    whW = parseFloat(warehouse?.width ?? warehouse?.Width ?? 0) || 0;
+    whL = parseFloat(warehouse?.length ?? warehouse?.Length ?? 0) || 0;
     if (!whW || !whL) {
-      // Last resort: assume square from totalArea
       const area = parseFloat(warehouse?.totalArea ?? 0);
       if (area > 0) {
         whW = Math.ceil(Math.sqrt(area));
         whL = Math.ceil(area / whW);
       }
     }
-  }
+  }    
+
+  // Cố định kích thước khung để vừa vặn trong cột bên phải
+  const scaleW = Math.floor(200 / (whW || 50));
+  const scaleH = Math.floor(260 / (whL || 50));
+  const scale = Math.max(2, Math.min(scaleW, scaleH));
 
   const whH = (warehouse?.height ?? warehouse?.Height) ? parseFloat(warehouse?.height ?? warehouse?.Height) : 0;
   const cw=whW*scale, ch=whL*scale;
+  const cellPx = scale * CELL_SIZE;
 
   // Guard: still no usable dimensions
   if (!whW || !whL) {
@@ -338,9 +329,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
             <div>
               <h2 style={{fontSize:'1.4rem',fontWeight:700,margin:0,color:'#0f172a'}}>Bản đồ Khu vực</h2>
               <div style={{display:'flex',alignItems:'center',gap:'12px',marginTop:'12px',flexWrap:'wrap'}}>
-                <span style={{fontSize:'0.9rem',fontWeight:600,color:'#475569'}}>Thu phóng (Zoom):</span>
-                <input type="range" min="10" max="80" step="5" value={scale} onChange={e=>setScale(Number(e.target.value))} style={{cursor:'pointer',accentColor:'#0ea5e9'}}/>
-                <span style={{fontSize:'0.85rem',color:'#64748b',fontWeight:600}}>Tỷ lệ: 1m = {scale}px</span>
+                <span style={{fontSize:'0.85rem',color:'#64748b',fontWeight:600}}>Tỷ lệ hiển thị: 1m = {scale}px</span>
                 <span style={{fontSize:'0.78rem',color:'#94a3b8',fontStyle:'italic',marginLeft:8}}>📐 Mỗi ô lưới = 0.5m × 0.5m</span>
               </div>
             </div>
@@ -368,7 +357,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
       )}
 
       {/* ── Canvas ── */}
-      <div style={{overflowX:'auto',display:'flex',justifyContent:'center',paddingTop:'20px',paddingBottom:'50px'}}>
+      <div style={{overflowX:'hidden',display:'flex',justifyContent:'center',paddingTop:'20px',paddingBottom:'50px'}}>
         <div style={{display:'inline-flex',flexDirection:'column',alignItems:'center'}}>
           <div style={{fontSize:'0.82rem',fontWeight:700,color:'#475569',marginBottom:6,marginLeft:'54px',letterSpacing:'0.02em'}}>
             Ngang (W): {whW} m
@@ -407,11 +396,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
               )}
 
               <div style={{position:'absolute',top:0,left:0,width:`${cw}px`,height:`${ch}px`,overflow:'hidden'}}>
-                {areas.length===0 && !viewOnly && (
-                  <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,textAlign:'center',pointerEvents:'none'}}>
-                    <div style={{fontSize:'0.85rem',fontWeight:700,color:'#94a3b8'}}>Chưa có khu vực cho thuê</div>
-                  </div>
-                )}
+
                 {areas.map(a=>{
                   const w=(a.width||10)*scale;
                   const l=(a.length||10)*scale;
