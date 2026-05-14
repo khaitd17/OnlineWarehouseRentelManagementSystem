@@ -19,6 +19,7 @@ public class SignContractHandlerTests
     private readonly Mock<IUserRepository>                 _userRepoMock;
     private readonly Mock<IRentalRequestRepository>        _rentalRequestRepoMock;
     private readonly Mock<IEquipmentRepository>            _equipmentRepoMock;
+    private readonly Mock<IRentalPaymentRepository>        _paymentRepoMock;
     private readonly SignContractHandler                   _handler;
 
     public SignContractHandlerTests()
@@ -32,6 +33,7 @@ public class SignContractHandlerTests
         _userRepoMock           = new Mock<IUserRepository>();
         _rentalRequestRepoMock  = new Mock<IRentalRequestRepository>();
         _equipmentRepoMock      = new Mock<IEquipmentRepository>();
+        _paymentRepoMock        = new Mock<IRentalPaymentRepository>();
 
         _handler = new SignContractHandler(
             _contractRepoMock.Object,
@@ -42,7 +44,8 @@ public class SignContractHandlerTests
             _warehouseRepoMock.Object,
             _userRepoMock.Object,
             _rentalRequestRepoMock.Object,
-            _equipmentRepoMock.Object);
+            _equipmentRepoMock.Object,
+            _paymentRepoMock.Object);
     }
 
     // Helpers – dùng reflection vì RentalContract có private constructor

@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Infrastructure.Persistence;
@@ -95,7 +95,7 @@ public class SubscriptionService : ISubscriptionService
                 
                 if (totalArea + currentCount > package.MaxTotalArea)
                 {
-                    return (false, $"Tổng thể tích vượt quá giới hạn cho phép ({package.MaxTotalArea} m³) của gói {package.Name}.");
+                    return (false, $"Tổng diện tích vượt quá giới hạn cho phép ({package.MaxTotalArea} m²) của gói {package.Name}.");
                 }
                 break;
 
@@ -261,3 +261,4 @@ public class SubscriptionService : ISubscriptionService
         };
     }
 }
+

@@ -159,14 +159,14 @@ export default function AdvancedFilterDrawer({
             onClick={onReset}
             className="h-11 rounded-lg border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
           >
-            Reset
+            Đặt lại
           </button>
           <button
             type="button"
             onClick={onApply}
             className="h-11 rounded-lg bg-cyan-600 px-5 text-sm font-semibold text-white shadow-soft transition hover:bg-cyan-700"
           >
-            Apply Filters
+            Áp dụng bộ lọc
           </button>
         </div>
       </div>

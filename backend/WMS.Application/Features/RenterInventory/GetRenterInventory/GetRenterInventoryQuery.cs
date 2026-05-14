@@ -18,6 +18,9 @@ public class RenterInventoryRowDto
     public string   AssetName     { get; init; } = "";
     public string   Unit          { get; init; } = "";
     public decimal? WeightPerUnit { get; init; }
+    public decimal? VolumePerUnit { get; init; }
+    public decimal? LengthPerUnit { get; init; }
+    public decimal? WidthPerUnit  { get; init; }
     public string?  Description   { get; init; }
     public int      WarehouseId   { get; init; }
     public string   WarehouseName { get; init; } = "";

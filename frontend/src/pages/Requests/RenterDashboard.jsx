@@ -24,8 +24,8 @@ const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
 
 const STATUS_INBOUND = {
-  PENDING:    { label: 'Chờ xử lý',       bg: '#fef3c7', color: '#92400e' },
-  APPROVED:   { label: 'Đã duyệt',        bg: '#d1fae5', color: '#065f46' },
+  PENDING:    { label: 'Chờ tiếp nhận',   bg: '#fef3c7', color: '#92400e' },
+  CONFIRMED:  { label: 'Chờ xử lý tại kho', bg: '#d1fae5', color: '#065f46' },
   IN_TRANSIT: { label: 'Đang vận chuyển', bg: '#fde8b4', color: '#b45309' },
   RECEIVED:   { label: 'Đã nhận hàng',    bg: '#d1fae5', color: '#065f46' },
   REJECTED:   { label: 'Đã từ chối',      bg: '#fee2e2', color: '#991b1b' },
@@ -34,8 +34,8 @@ const STATUS_INBOUND = {
 };
 
 const STATUS_OUTBOUND = {
-  PENDING:    { label: 'Đang chờ',       bg: '#fef3c7', color: '#92400e' },
-  APPROVED:   { label: 'Đã duyệt',       bg: '#dbeafe', color: '#1e40af' },
+  PENDING:    { label: 'Chờ tiếp nhận',   bg: '#fef3c7', color: '#92400e' },
+  CONFIRMED:  { label: 'Chờ xử lý tại kho', bg: '#dbeafe', color: '#1e40af' },
   PROCESSING: { label: 'Đang lấy hàng',  bg: '#dbeafe', color: '#1e40af' },
   SHIPPED:    { label: 'Đã gửi hàng',    bg: '#d1fae5', color: '#065f46' },
   DELIVERED:  { label: 'Đã giao hàng',   bg: '#d1fae5', color: '#065f46' },
@@ -135,6 +135,7 @@ const buildStatusPie = (allRequests) => {
   const labelMap = {
     COMPLETED: 'Hoàn thành', RECEIVED: 'Hoàn thành', DELIVERED: 'Hoàn thành', SHIPPED: 'Hoàn thành',
     PENDING: 'Chờ xử lý',
+    CONFIRMED: 'Chờ xử lý',
     REJECTED: 'Từ chối',
     CANCELLED: 'Đã hủy',
     APPROVED: 'Đã duyệt',
@@ -192,7 +193,7 @@ const RenterDashboard = () => {
     inventoryService.getInventoryRequests({ type: 'INBOUND', pageSize: 50 })
       .then(res => {
         const items = Array.isArray(res.data) ? res.data : (res.data?.items ?? res.data?.data ?? []);
-        const pending = items.filter(r => r.status === 'PENDING').length;
+        const pending = items.filter(r => r.status === 'PENDING' || r.status === 'CONFIRMED').length;
         setStats(s => ({ ...s, pendingInbound: pending }));
         setInbounds(items.slice(0, 5));
         setAllInbounds(items);
@@ -204,7 +205,7 @@ const RenterDashboard = () => {
     inventoryService.getInventoryRequests({ type: 'OUTBOUND', pageSize: 50 })
       .then(res => {
         const items = Array.isArray(res.data) ? res.data : (res.data?.items ?? res.data?.data ?? []);
-        const pending = items.filter(r => r.status === 'PENDING').length;
+        const pending = items.filter(r => r.status === 'PENDING' || r.status === 'CONFIRMED').length;
         setStats(s => ({ ...s, pendingOutbound: pending }));
         setOutbounds(items.slice(0, 5));
         setAllOutbounds(items);

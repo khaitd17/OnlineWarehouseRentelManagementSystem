@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../services/axiosClient';
 import authService from '../../services/authService';
@@ -14,8 +14,8 @@ const fmtDate = d => d ? new Date(d).toLocaleDateString('vi-VN', { day:'2-digit'
 
 /* ── Status config ──────────────────────────────────────────── */
 const STATUS_MAP = {
-  PENDING:   { label: 'Chờ duyệt',  bg:'#fef3c7', color:'#d97706', border:'#fde68a', dot:'#f59e0b' },
-  CONFIRMED: { label: 'Đã duyệt',   bg:'#dcfce7', color:'#166534', border:'#bbf7d0', dot:'#22c55e' },
+  PENDING:   { label: 'Chờ tiếp nhận',  bg:'#fef3c7', color:'#d97706', border:'#fde68a', dot:'#f59e0b' },
+  CONFIRMED: { label: 'Chờ xử lý tại kho',   bg:'#dcfce7', color:'#166534', border:'#bbf7d0', dot:'#22c55e' },
   ASSIGNED:  { label: 'Đã giao',    bg:'#ede9fe', color:'#6d28d9', border:'#c4b5fd', dot:'#8b5cf6' },
   RECEIVING: { label: 'Đang tiếp nhận', bg: '#f3e8ff', color: '#6b21a8', border: '#e9d5ff', dot: '#a855f7' },
   COMPLETED: { label: 'Hoàn thành', bg:'#f0fdf4', color:'#15803d', border:'#86efac', dot:'#16a34a' },
@@ -105,7 +105,7 @@ const DetailModal = ({ req, onClose }) => {
               </span>
               {totalVol > 0 && (
                 <span style={{ fontSize:'0.72rem', fontWeight:700, color:'#4f46e5', background:'#eef2ff', padding:'2px 10px', borderRadius:6, border:'1px solid #c7d2fe' }}>
-                  ~{Number(totalVol.toFixed(2)).toLocaleString('vi-VN')} m³
+                  ~{Number(totalVol.toFixed(2)).toLocaleString('vi-VN')} m²
                 </span>
               )}
             </div>
@@ -117,7 +117,7 @@ const DetailModal = ({ req, onClose }) => {
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
                   <div>
                     <p style={{ margin:0, fontWeight:700, fontSize:'0.88rem', color:'#1e293b' }}>{item.itemName}</p>
-                    {item.estimatedVolume > 0 && <p style={{ margin:'3px 0 0', fontSize:'0.75rem', color:'#64748b' }}>Tổng thể tích: <span style={{fontWeight:600, color:'#4f46e5'}}>{item.estimatedVolume} m³</span></p>}
+                    {item.estimatedVolume > 0 && <p style={{ margin:'3px 0 0', fontSize:'0.75rem', color:'#64748b' }}>Tổng diện tích: <span style={{fontWeight:600, color:'#4f46e5'}}>{item.estimatedVolume} m²</span></p>}
                     {item.description && <p style={{ margin:'3px 0 0', fontSize:'0.75rem', color:'#94a3b8' }}>{item.description}</p>}
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
@@ -144,7 +144,7 @@ const DetailModal = ({ req, onClose }) => {
             <div style={{ marginTop:12, padding:'10px 14px', borderRadius:10, background:'#f8fafc', border:'1px solid #e2e8f0', display:'flex', gap:20, flexWrap:'wrap' }}>
               <div style={{ fontSize:'0.78rem' }}><span style={{ color:'#94a3b8', fontWeight:600 }}>Tổng mặt hàng: </span><span style={{ color:'#1e293b', fontWeight:700 }}>{items.length}</span></div>
               <div style={{ fontSize:'0.78rem' }}><span style={{ color:'#94a3b8', fontWeight:600 }}>Tổng số lượng: </span><span style={{ color:'#1e293b', fontWeight:700 }}>{totalQty.toLocaleString()}</span></div>
-              {totalVol > 0 && <div style={{ fontSize:'0.78rem' }}><span style={{ color:'#94a3b8', fontWeight:600 }}>Tổng thể tích: </span><span style={{ color:'#4f46e5', fontWeight:700 }}>{Number(totalVol.toFixed(2)).toLocaleString('vi-VN')} m³</span></div>}
+              {totalVol > 0 && <div style={{ fontSize:'0.78rem' }}><span style={{ color:'#94a3b8', fontWeight:600 }}>Tổng diện tích: </span><span style={{ color:'#4f46e5', fontWeight:700 }}>{Number(totalVol.toFixed(2)).toLocaleString('vi-VN')} m²</span></div>}
             </div>
           )}
 
@@ -255,7 +255,7 @@ const StaffInventoryRequestsNew = ({ defaultTab = 'INBOUND' }) => {
 
   const STATUS_FILTERS = [
     { key:'',          label:'Tất cả (đã duyệt)' },
-    { key:'CONFIRMED', label:'Đã duyệt',    ...STATUS_MAP.CONFIRMED },
+    { key:'CONFIRMED', label:'Chờ xử lý tại kho',    ...STATUS_MAP.CONFIRMED },
     { key:'ASSIGNED',  label:'Đã giao tôi', ...STATUS_MAP.ASSIGNED  },
     { key:'RECEIVING', label:'Đang tiếp nhận', ...STATUS_MAP.RECEIVING },
     { key:'COMPLETED', label:'Hoàn thành',  ...STATUS_MAP.COMPLETED },
@@ -380,6 +380,11 @@ const StaffInventoryRequestsNew = ({ defaultTab = 'INBOUND' }) => {
                     </td>
                     <td style={{ padding:'13px 14px' }}>
                       <div style={{ fontWeight:600, color:'#1e293b', fontSize:'0.85rem' }}>{firstItem?.itemName||'—'}</div>
+                      {firstItem && (
+                        <div style={{ fontSize:'0.72rem', color:'#64748b', marginTop:2 }}>
+                          SL: <strong style={{ color:'#475569' }}>{Number(firstItem.quantity || 0).toLocaleString('vi-VN')}</strong> {firstItem.unit || ''}
+                        </div>
+                      )}
                       {(req.items||[]).length > 1 && <div style={{ fontSize:'0.72rem', color:'#94a3b8' }}>+{req.items.length-1} mặt hàng khác</div>}
                     </td>
                     <td style={{ padding:'13px 14px' }}><StatusBadge status={req.status}/></td>
@@ -466,7 +471,17 @@ const StaffInventoryRequestsNew = ({ defaultTab = 'INBOUND' }) => {
 
       {/* Modals */}
       <DetailModal req={detailReq} onClose={()=>setDetailReq(null)}/>
-      {createNoteReq && <CreateReceiptNoteModal request={createNoteReq} onClose={()=>setCreateNoteReq(null)} onCreated={()=>{ fetchData(); fetchBadgeCounts(); showToast('Đã tạo phiếu nhập kho thành công!'); }} />}
+      {createNoteReq && (
+        <CreateReceiptNoteModal
+          request={createNoteReq}
+          onClose={()=>setCreateNoteReq(null)}
+          onCreated={()=>{
+            fetchData();
+            fetchBadgeCounts();
+            showToast(`Đã tạo phiếu ${createNoteReq.type === 'OUTBOUND' ? 'xuất kho' : 'nhập kho'} thành công!`);
+          }}
+        />
+      )}
       {viewNotesReq && <ReceiptNotesListModal request={viewNotesReq} userRole="STAFF" onClose={()=>setViewNotesReq(null)} onUpdated={fetchData} />}
 
       {/* QR Modal */}
@@ -491,3 +506,4 @@ const StaffInventoryRequestsNew = ({ defaultTab = 'INBOUND' }) => {
 };
 
 export default StaffInventoryRequestsNew;
+

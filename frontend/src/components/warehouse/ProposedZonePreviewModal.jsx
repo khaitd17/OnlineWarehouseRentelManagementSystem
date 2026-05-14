@@ -1,4 +1,4 @@
-/**
+﻿/**
  * ProposedZonePreviewModal
  *
  * Hiển thị bản đồ kho + vùng đã được chỉ định.
@@ -93,15 +93,15 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
     ] : []),
     { label: 'Chiều cao kho',value: `${whHeight.toFixed(1)} m` },
     (hasExt || isMultiZone)
-      ? { label: 'Thể tích tổng', value: `${totalM3} m³`, highlight: true }
-      : { label: ownerAssigned ? 'Thể tích sắp xếp' : 'Thể tích đề xuất', value: `${primaryM3} m³`, highlight: true },
-    { label: 'Thể tích yêu cầu', value: `${request.requestedArea} m³` },
+      ? { label: 'diện tích tổng', value: `${totalM3} m²`, highlight: true }
+      : { label: ownerAssigned ? 'diện tích sắp xếp' : 'diện tích đề xuất', value: `${primaryM3} m²`, highlight: true },
+    { label: 'diện tích yêu cầu', value: `${request.requestedArea} m²` },
     isMultiZone ? { label: 'Số vùng', value: `${zoneCount} vùng` } : null,
   ].filter(Boolean);
 
   if (hasExt) {
     stats.splice(2, 0,
-      { label: 'Mở rộng', value: `+${ew}m × ${el}m (+${extensionM3} m³)`, sub: true }
+      { label: 'Mở rộng', value: `+${ew}m × ${el}m (+${extensionM3} m²)`, sub: true }
     );
   }
 
@@ -246,7 +246,7 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
                         <div style={{ background: 'rgba(255,255,255,0.95)', padding: '6px 12px', borderRadius: 8, backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
                           <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneColor.text, whiteSpace: 'nowrap', lineHeight: 1.3 }}>{zoneLabel}</span>
                           <span style={{ fontSize: '0.62rem', color: zoneColor.text, opacity: 0.9 }}>{pw}m×{pl}m</span>
-                          <span style={{ fontSize: '0.6rem', color: zoneColor.text, opacity: 0.8 }}>{primaryM3} m³</span>
+                          <span style={{ fontSize: '0.6rem', color: zoneColor.text, opacity: 0.8 }}>{primaryM3} m²</span>
                         </div>
                       </div>
                       {/* Extension label */}
@@ -271,7 +271,7 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
                       <div style={{ background: 'rgba(255,255,255,0.95)', padding: '6px 12px', borderRadius: 8, backdropFilter: 'blur(4px)', display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', border: '1px solid rgba(16,185,129,0.3)' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: 800, color: zoneColor.text, whiteSpace: 'nowrap', lineHeight: 1.3 }}>{zoneLabel}</span>
                         <span style={{ fontSize: '0.62rem', color: zoneColor.text, opacity: 0.9 }}>{pw}m×{pl}m</span>
-                        <span style={{ fontSize: '0.6rem', color: zoneColor.text, opacity: 0.8 }}>{primaryM3} m³</span>
+                        <span style={{ fontSize: '0.6rem', color: zoneColor.text, opacity: 0.8 }}>{primaryM3} m²</span>
                       </div>
                     </div>
                   )}
@@ -310,7 +310,7 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
                 }}>
                   <div style={{ background: 'rgba(255,255,255,0.95)', padding: '4px 8px', borderRadius: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', width: 'max-content', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
                     <span style={{ fontSize: '0.62rem', fontWeight: 800, color: COLORS.proposed.text, whiteSpace: 'nowrap' }}>{z.w}m×{z.l}m</span>
-                    <span style={{ fontSize: '0.58rem', color: COLORS.proposed.text, opacity: 0.8 }}>{(z.w * z.l * whHeight).toFixed(0)} m³</span>
+                    <span style={{ fontSize: '0.58rem', color: COLORS.proposed.text, opacity: 0.8 }}>{(z.w * z.l * whHeight).toFixed(0)} m²</span>
                   </div>
                 </div>
               ))}
@@ -364,8 +364,8 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
                 fontSize: '0.76rem', fontWeight: 700, textAlign: 'center',
               }}>
                 {totalM3 >= request.requestedArea
-                  ? `✓ Đủ thể tích: ${totalM3} m³ / ${request.requestedArea} m³`
-                  : `⚠ Còn thiếu ${(request.requestedArea - totalM3).toFixed(1)} m³`}
+                  ? `✓ Đủ diện tích: ${totalM3} m² / ${request.requestedArea} m²`
+                  : `⚠ Còn thiếu ${(request.requestedArea - totalM3).toFixed(1)} m²`}
               </div>
             </div>
 
@@ -389,3 +389,4 @@ export default function ProposedZonePreviewModal({ open, onClose, request, wareh
     </div>
   );
 }
+

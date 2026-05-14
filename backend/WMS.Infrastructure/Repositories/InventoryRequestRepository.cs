@@ -161,7 +161,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
     public async Task<InventoryRequest> CreateAsync(InventoryRequest request, CancellationToken cancellationToken)
     {
         request.CreatedAt = DateTime.Now;
-        request.Status = "PENDING";
+        // Status được set bởi Handler (CONFIRMED nếu auto-approve)
         _context.InventoryRequests.Add(request);
         await _context.SaveChangesAsync(cancellationToken);
         return request;
@@ -183,11 +183,49 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .FirstOrDefaultAsync(r => r.InvReqId == id, cancellationToken)
             ?? throw new KeyNotFoundException($"InventoryRequest {id} not found.");
 
-        if (req.Status != "PENDING")
-            throw new InvalidOperationException("Only PENDING requests can be deleted.");
+        if (req.Status != "PENDING" && req.Status != "CONFIRMED")
+            throw new InvalidOperationException("Chỉ có thể xóa yêu cầu ở trạng thái Chờ tiếp nhận hoặc Chờ xử lý tại kho.");
 
         _context.InventoryItems.RemoveRange(req.InventoryItems);
         _context.InventoryRequests.Remove(req);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    // ── PENDING CAPACITY APPROVAL ───────────────────────────────────────────
+    public async Task<List<object>> GetPendingCapacityNotesAsync(
+        int warehouseId, CancellationToken cancellationToken)
+    {
+        var notes = await _context.Set<ReceiptNote>()
+            .Include(n => n.InvReq).ThenInclude(r => r.Renter)
+            .Include(n => n.InvReq).ThenInclude(r => r.Warehouse)
+            .Include(n => n.ReceivedByStaff)
+            .Include(n => n.ReceiptItems)
+            .Where(n => n.Status == "PENDING_CAPACITY_APPROVAL"
+                     && n.InvReq.WarehouseId == warehouseId)
+            .OrderByDescending(n => n.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return notes.Select(n => (object)new
+        {
+            n.ReceiptNoteId,
+            n.ReceiptCode,
+            n.Status,
+            n.CapacityOverflow,
+            n.Notes,
+            n.CreatedAt,
+            staffName = n.ReceivedByStaff?.FullName,
+            renterName = n.InvReq?.Renter?.FullName,
+            renterEmail = n.InvReq?.Renter?.Email,
+            warehouseName = n.InvReq?.Warehouse?.Name,
+            invReqId = n.InvReqId,
+            requestCode = n.InvReq?.RequestCode,
+            items = n.ReceiptItems.Select(i => new
+            {
+                i.ItemName,
+                i.ReceivedQuantity,
+                i.Unit,
+                i.VerifiedVolume,
+            }).ToList(),
+        }).ToList();
     }
 }

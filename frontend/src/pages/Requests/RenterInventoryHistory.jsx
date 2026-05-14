@@ -9,8 +9,8 @@ const INBOUND_COLOR = '#10b981';
 const OUTBOUND_COLOR = '#f59e0b';
 
 const STATUS_MAP = {
-  PENDING:   { label: "Đang chờ",  bg: "#fef3c7", color: "#92400e", dot: "#f59e0b", border: "#fde68a" },
-  CONFIRMED: { label: "Đã duyệt",  bg: "#dcfce7", color: "#166534", dot: "#22c55e", border: "#bbf7d0" },
+  PENDING:   { label: "Chờ tiếp nhận",  bg: "#fef3c7", color: "#92400e", dot: "#f59e0b", border: "#fde68a" },
+  CONFIRMED: { label: "Chờ xử lý tại kho",  bg: "#dcfce7", color: "#166534", dot: "#22c55e", border: "#bbf7d0" },
   RECEIVING: { label: "Đang tiếp nhận", bg: "#f3e8ff", color: "#6b21a8", border: "#e9d5ff", dot: "#a855f7" },
   COMPLETED: { label: "Hoàn thành",bg: "#dbeafe", color: "#1e40af", dot: "#3b82f6", border: "#bfdbfe" },
   REJECTED:  { label: "Từ chối",   bg: "#fee2e2", color: "#991b1b", dot: "#ef4444", border: "#fecaca" },
@@ -38,6 +38,26 @@ const Confirm = ({ msg, onOk, onCancel }) => (
   </div>
 );
 
+const RejectReasonModal = ({ req, onClose }) => (
+  <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={onClose}>
+    <div style={{ backgroundColor: "#fff", borderRadius: 16, width: "100%", maxWidth: 400, padding: 28, boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }} onClick={e=>e.stopPropagation()}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <div style={{ width: 44, height: 44, borderRadius: "50%", backgroundColor: "#fee2e2", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>❌</div>
+        <div>
+          <h3 style={{ margin:0, fontSize: "1.1rem", color: "#111827", fontWeight: 800 }}>Lý do từ chối</h3>
+          <p style={{ margin:0, fontSize:'0.8rem', color:'#64748b' }}>Yêu cầu #{req.invReqId}</p>
+        </div>
+      </div>
+      <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', color: '#334155', fontSize: '0.9rem', lineHeight: 1.5, marginBottom: 24 }}>
+        {req.notes || "Không có ghi chú từ quản lý."}
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button onClick={onClose} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#f1f5f9", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", color: "#475569" }}>Đóng</button>
+      </div>
+    </div>
+  </div>
+);
+
 const STATUSES = ["PENDING", "CONFIRMED", "COMPLETED", "REJECTED"];
 const fmtDate = d => d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
@@ -56,6 +76,7 @@ function TabPanel({ type }) {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [viewNotesReq, setViewNotesReq] = useState(null);
   const [qrReq, setQrReq] = useState(null);
+  const [rejectReasonReq, setRejectReasonReq] = useState(null);
   const [successMsg, setSuccessMsg] = useState(
     location.state?.created && location.state?.type === type
       ? (type === "INBOUND" ? "✅ Yêu cầu nhập kho đã được tạo!" : "✅ Yêu cầu xuất kho đã được tạo!")
@@ -208,7 +229,7 @@ function TabPanel({ type }) {
                       {/* Items */}
                       <td style={{ padding: "13px 14px" }}>
                         <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.87rem" }}>{firstItem?.itemName || "—"}</div>
-                        {row.notes && <div style={{ fontSize: "0.73rem", color: "#94a3b8", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📝 {row.notes}</div>}
+                        {row.status !== 'REJECTED' && row.notes && <div style={{ fontSize: "0.73rem", color: "#94a3b8", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>📝 {row.notes}</div>}
                         {firstItem?.description && <div style={{ fontSize: "0.73rem", color: "#94a3b8", marginTop: 1 }}>💬 {firstItem.description}</div>}
                         {hasMultiItems && (
                           <button onClick={() => setExpanded(isExp ? null : row.invReqId)}
@@ -227,37 +248,48 @@ function TabPanel({ type }) {
                       {/* Date */}
                       <td style={{ padding: "13px 14px", color: "#64748b", fontSize: "0.83rem" }}>{fmtDate(row.createdAt)}</td>
                       {/* Actions */}
-                      <td style={{ padding: "13px 14px", textAlign: "center" }}>
-                        <div style={{ display:'flex', gap:6, justifyContent:'center', alignItems:'center' }}>
+                      <td style={{ padding: "13px 14px", textAlign: "right" }}>
+                        <div style={{ display:'flex', gap:6, justifyContent:'flex-end', alignItems:'center' }}>
                           {row.requestCode && (
                             <button onClick={() => setQrReq(row)}
-                              style={{ padding: "4px 10px", border: "1.5px solid #c7d2fe", background: "#eef2ff", borderRadius: 6, cursor: "pointer", color: "#4338ca", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
+                              style={{ padding: "5px 12px", border: "1.5px solid #c7d2fe", background: "#eef2ff", borderRadius: 8, cursor: "pointer", color: "#4f46e5", fontSize: "0.78rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
                               onMouseEnter={e => { e.currentTarget.style.background = "#e0e7ff"; }}
                               onMouseLeave={e => { e.currentTarget.style.background = "#eef2ff"; }}>
                               QR
                             </button>
                           )}
+
+                          {row.status === 'REJECTED' && (
+                            <button onClick={() => setRejectReasonReq(row)}
+                              style={{ padding: "5px 12px", border: "1.5px solid #fecaca", background: "#fef2f2", borderRadius: 8, cursor: "pointer", color: "#dc2626", fontSize: "0.78rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = "#fee2e2"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = "#fef2f2"; }}>
+                              Xem lý do
+                            </button>
+                          )}
+
                           {(row.status === 'RECEIVING' || row.status === 'CONFIRMED') && row.receiptNoteCount > 0 ? (
                             <button onClick={() => setViewNotesReq(row)} 
-                                style={{ padding: "4px 10px", border: "1.5px solid #fcd34d", background: "#fefce8", borderRadius: 6, cursor: "pointer", color: "#92400e", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
-                                onMouseEnter={e => { e.currentTarget.style.background = "#fef08a"; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = "#fefce8"; }}>
+                                style={{ padding: "5px 12px", border: "1.5px solid #fde68a", background: "#fffbeb", borderRadius: 8, cursor: "pointer", color: "#d97706", fontSize: "0.78rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
+                                onMouseEnter={e => { e.currentTarget.style.background = "#fef3c7"; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = "#fffbeb"; }}>
                               Ký xác nhận
                             </button>
                           ) : row.receiptNoteCount > 0 ? (
                             <button
                               onClick={() => setViewNotesReq(row)}
-                              style={{ padding: "4px 10px", border: "1.5px solid #bfdbfe", background: "#eff6ff", borderRadius: 6, cursor: "pointer", color: "#1d4ed8", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
+                              style={{ padding: "5px 12px", border: "1.5px solid #bfdbfe", background: "#eff6ff", borderRadius: 8, cursor: "pointer", color: "#1d4ed8", fontSize: "0.78rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
                               onMouseEnter={e => { e.currentTarget.style.background = "#dbeafe"; }}
                               onMouseLeave={e => { e.currentTarget.style.background = "#eff6ff"; }}>
                               {row.receiptNoteCount} phiếu
                             </button>
                           ) : null}
-                          {row.status === "PENDING" && (
+
+                          {(row.status === "PENDING" || row.status === "CONFIRMED") && (
                             <button title="Hủy yêu cầu" onClick={() => setConf({ id: row.invReqId })}
-                              style={{ padding: "4px 10px", width: "auto", height: "auto", border: "1.5px solid #fecaca", background: "#fef2f2", borderRadius: 6, cursor: "pointer", color: "#dc2626", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.8rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
-                              onMouseEnter={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                              style={{ padding: "5px 12px", border: "1.5px solid #e2e8f0", background: "#f8fafc", borderRadius: 8, cursor: "pointer", color: "#64748b", fontSize: "0.78rem", fontWeight: 700, transition: "all 0.15s", whiteSpace: "nowrap" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = "#f1f5f9"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = "#f8fafc"; }}>
                               Hủy
                             </button>
                           )}
@@ -296,6 +328,7 @@ function TabPanel({ type }) {
       </div>
 
       {conf && <Confirm msg={`Xóa yêu cầu #${conf.id}? Hành động này không thể hoàn tác.`} onOk={() => doDelete(conf.id)} onCancel={() => setConf(null)} />}
+      {rejectReasonReq && <RejectReasonModal req={rejectReasonReq} onClose={() => setRejectReasonReq(null)} />}
       {pdfReq && <ReceiptPreviewModal data={pdfReq} onClose={() => setPdfReq(null)} />}
       
       {viewNotesReq && (

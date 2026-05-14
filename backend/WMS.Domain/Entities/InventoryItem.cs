@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace WMS.Domain.Entities;
@@ -17,10 +17,10 @@ public partial class InventoryItem
 
     public decimal? Weight { get; set; }
 
-    /// <summary>Thể tích ước tính (m³) do Renter điền khi tạo yêu cầu.</summary>
+    /// <summary>diện tích ước tính (m²) do Renter điền khi tạo yêu cầu.</summary>
     public decimal? EstimatedVolume { get; set; }
 
-    /// <summary>Thể tích thực tế Staff đo được khi tiếp nhận (m³).</summary>
+    /// <summary>diện tích thực tế Staff đo được khi tiếp nhận (m²).</summary>
     public decimal? VerifiedVolume { get; set; }
 
     /// <summary>Khối lượng thực tế Staff cân được khi tiếp nhận (kg).</summary>
@@ -48,3 +48,4 @@ public partial class InventoryItem
     /// </summary>
     public string? VerifyNote { get; set; }
 }
+

@@ -1,8 +1,8 @@
--- ============================================================
+﻿-- ============================================================
 -- Migration: Add AI Analysis Feature
 -- Ngày tạo: 2026-04-18
 -- Mô tả:
---   1. Thêm cột available_volume vào bảng warehouses (m³)
+--   1. Thêm cột available_volume vào bảng warehouses (m²)
 --   2. Tạo bảng ai_analysis_sessions để lưu lịch sử phân tích AI
 -- ============================================================
 
@@ -52,3 +52,4 @@ ELSE
     PRINT 'Table ai_analysis_sessions already exists';
 
 PRINT 'Migration completed successfully';
+

@@ -21,6 +21,9 @@ const ReceiptNotesListModal = ({ request, userRole, onClose, onUpdated }) => {
   const [toast, setToast] = useState(null);
   const [pdfData, setPdfData] = useState(null);
   const sigRef = useRef(null);
+  const isOutbound = request?.type === 'OUTBOUND';
+  const receiptTypeLabel = isOutbound ? 'xuất kho' : 'nhập kho';
+  const actualQtyLabel = isOutbound ? 'Thực xuất' : 'Thực nhận';
 
   const fetchNotes = async () => {
     setLoading(true);
@@ -48,7 +51,7 @@ const ReceiptNotesListModal = ({ request, userRole, onClose, onUpdated }) => {
     setActionLoading(true);
     try {
       await receiptNoteService.confirm(noteId, { renterSignatureBase64: sigRef.current.toBase64() });
-      showToast('Đã xác nhận phiếu nhập kho thành công!');
+      showToast(`Đã xác nhận phiếu ${receiptTypeLabel} thành công!`);
       setConfirmingId(null);
       fetchNotes();
       onUpdated?.();
@@ -85,16 +88,16 @@ const ReceiptNotesListModal = ({ request, userRole, onClose, onUpdated }) => {
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:780, maxHeight:'92vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 60px rgba(0,0,0,0.2)', overflow:'hidden' }} onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div style={{ background:'linear-gradient(135deg,#6366f1,#4f46e5)', padding:'20px 28px', flexShrink:0 }}>
+        <div style={{ background:`linear-gradient(135deg,${isOutbound ? '#f59e0b' : '#6366f1'},${isOutbound ? '#d97706' : '#4f46e5'})`, padding:'20px 28px', flexShrink:0 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
             <div>
-              <p style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#fff' }}>Phiếu nhập kho</p>
+              <p style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#fff' }}>Phiếu {receiptTypeLabel}</p>
               <p style={{ margin:'3px 0 0', fontSize:'0.78rem', color:'rgba(255,255,255,0.85)' }}>
                 Yêu cầu #{request.invReqId} · {request.requestCode || ''} · {request.warehouseName}
               </p>
             </div>
             <div style={{ textAlign:'right' }}>
-              <p style={{ margin:0, fontSize:'0.72rem', color:'rgba(255,255,255,0.7)' }}>Tiến độ nhận hàng</p>
+              <p style={{ margin:0, fontSize:'0.72rem', color:'rgba(255,255,255,0.7)' }}>Tiến độ {isOutbound ? 'xuất hàng' : 'nhận hàng'}</p>
               <p style={{ margin:'2px 0 0', fontSize:'1.1rem', fontWeight:900, color:'#fff' }}>
                 {totalReceived}/{totalExpected}
               </p>
@@ -117,7 +120,7 @@ const ReceiptNotesListModal = ({ request, userRole, onClose, onUpdated }) => {
           {/* QR Code section */}
           {request.requestCode && (
             <div style={{ textAlign:'center', marginBottom:20, padding:'16px', background:'#f8fafc', borderRadius:12, border:'1px solid #e2e8f0' }}>
-              <RequestQRCode code={request.requestCode} label="Mã yêu cầu nhập kho" size={140} requestData={request} showActions={false} />
+              <RequestQRCode code={request.requestCode} label={`Mã yêu cầu ${receiptTypeLabel}`} size={140} requestData={request} showActions={false} />
             </div>
           )}
 
@@ -125,8 +128,8 @@ const ReceiptNotesListModal = ({ request, userRole, onClose, onUpdated }) => {
             <div style={{ padding:40, textAlign:'center', color:'#94a3b8' }}>Đang tải phiếu...</div>
           ) : notes.length === 0 ? (
             <div style={{ padding:40, textAlign:'center', color:'#94a3b8' }}>
-              <p style={{ fontWeight:600, color:'#64748b', marginBottom:4 }}>Chưa có phiếu nhập kho nào</p>
-              <p style={{ fontSize:'0.83rem' }}>Nhân viên kho sẽ tạo phiếu khi hàng đến.</p>
+              <p style={{ fontWeight:600, color:'#64748b', marginBottom:4 }}>Chưa có phiếu {receiptTypeLabel} nào</p>
+              <p style={{ fontSize:'0.83rem' }}>Nhân viên kho sẽ tạo phiếu khi {isOutbound ? 'bàn giao hàng xuất' : 'hàng đến'}.</p>
             </div>
           ) : (
             <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
@@ -159,7 +162,7 @@ const ReceiptNotesListModal = ({ request, userRole, onClose, onUpdated }) => {
                     {/* Items */}
                     <div style={{ padding:'12px 18px' }}>
                       <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr 1fr 1fr 2fr', gap:4, marginBottom:6, fontSize:'0.68rem', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-                        <span>Hàng hóa</span><span style={{textAlign:'center'}}>Dự kiến</span><span style={{textAlign:'center'}}>Thực nhận</span><span style={{textAlign:'center'}}>Chênh lệch</span><span>Ghi chú</span>
+                        <span>Hàng hóa</span><span style={{textAlign:'center'}}>Dự kiến</span><span style={{textAlign:'center'}}>{actualQtyLabel}</span><span style={{textAlign:'center'}}>Chênh lệch</span><span>Ghi chú</span>
                       </div>
                       {(note.items || []).map((item, i) => {
                         const d = item.discrepancy || (item.receivedQuantity - item.expectedQuantity);

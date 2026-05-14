@@ -1219,6 +1219,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Unit).HasMaxLength(50).HasDefaultValue("cái").HasColumnName("unit");
             entity.Property(e => e.WeightPerUnit).HasColumnType("decimal(10, 2)").HasColumnName("weight_per_unit").IsRequired(false);
             entity.Property(e => e.VolumePerUnit).HasColumnType("decimal(10, 2)").HasColumnName("VolumePerUnit").IsRequired(false);
+            entity.Property(e => e.LengthPerUnit).HasColumnType("decimal(10, 3)").HasColumnName("length_per_unit").IsRequired(false);
+            entity.Property(e => e.WidthPerUnit).HasColumnType("decimal(10, 3)").HasColumnName("width_per_unit").IsRequired(false);
             entity.Property(e => e.Description).HasColumnName("description").IsRequired(false);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.HasOne(d => d.Renter).WithMany().HasForeignKey(d => d.RenterId)
@@ -1332,8 +1334,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ReceivedAt).HasColumnName("received_at");
             entity.Property(e => e.StaffSignatureBase64).HasColumnName("staff_signature_base64").IsRequired(false);
             entity.Property(e => e.RenterSignatureBase64).HasColumnName("renter_signature_base64").IsRequired(false);
-            entity.Property(e => e.Status).HasMaxLength(20).HasDefaultValue("DRAFT").HasColumnName("status");
+            entity.Property(e => e.Status).HasMaxLength(30).HasDefaultValue("DRAFT").HasColumnName("status");
             entity.Property(e => e.Notes).HasColumnName("notes").IsRequired(false);
+            entity.Property(e => e.CapacityOverflow).HasColumnType("decimal(10, 3)").HasColumnName("capacity_overflow").IsRequired(false);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("(getdate())").HasColumnName("created_at");
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").IsRequired(false);
             entity.HasOne(d => d.InvReq).WithMany(p => p.ReceiptNotes).HasForeignKey(d => d.InvReqId)
@@ -1357,6 +1360,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ReceivedQuantity).HasColumnName("received_quantity");
             entity.Property(e => e.Unit).HasMaxLength(50).HasDefaultValue("cái").HasColumnName("unit");
             entity.Property(e => e.VerifiedVolume).HasColumnType("decimal(10, 3)").HasColumnName("verified_volume").IsRequired(false);
+            entity.Property(e => e.MeasuredLength).HasColumnType("decimal(10, 3)").HasColumnName("measured_length").IsRequired(false);
+            entity.Property(e => e.MeasuredWidth).HasColumnType("decimal(10, 3)").HasColumnName("measured_width").IsRequired(false);
             entity.Property(e => e.VerifiedWeight).HasColumnType("decimal(10, 3)").HasColumnName("verified_weight").IsRequired(false);
             entity.Property(e => e.Note).HasMaxLength(500).HasColumnName("note").IsRequired(false);
             entity.HasOne(d => d.ReceiptNote).WithMany(p => p.ReceiptItems).HasForeignKey(d => d.ReceiptNoteId)

@@ -1,15 +1,35 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import receiptNoteService from '../services/receiptNoteService';
+import renterAssetService from '../services/renterAssetService';
 import SignatureCanvas from './SignatureCanvas';
 
-const ACCENT = '#10b981';
+const INBOUND_ACCENT = '#10b981';
+const OUTBOUND_ACCENT = '#f59e0b';
+const OVERFLOW_TOLERANCE = 2.0; // m² — ngưỡng cố định (khớp backend)
+
+const positiveNumber = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+const measurementValue = (value) => {
+  const n = positiveNumber(value);
+  return n == null ? '' : Number(n.toFixed(3)).toString();
+};
 
 const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
   const [items, setItems] = useState([]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [capacityInfo, setCapacityInfo] = useState(null);
+  const [acceptOverCapacity, setAcceptOverCapacity] = useState(false);
   const sigRef = useRef(null);
+  const isOutbound = request?.type === 'OUTBOUND';
+  const accent = isOutbound ? OUTBOUND_ACCENT : INBOUND_ACCENT;
+  const receiptTypeLabel = isOutbound ? 'xuất kho' : 'nhập kho';
+  const actualQtyLabel = isOutbound ? 'Thực xuất *' : 'Thực nhận *';
+  const itemCheckLabel = isOutbound ? 'Kiểm đếm hàng xuất' : 'Kiểm đếm hàng hóa';
 
   useEffect(() => {
     if (!request) return;
@@ -32,6 +52,20 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
         setItems((request.items || []).map(i => {
           const alreadyReceived = receivedTotals[i.itemId] || 0;
           const remaining = Math.max(0, i.quantity - alreadyReceived);
+          const lengthPerUnit = positiveNumber(i.measuredLength ?? i.lengthPerUnit);
+          const widthPerUnit = positiveNumber(i.measuredWidth ?? i.widthPerUnit);
+          const estimatedVolume = positiveNumber(i.estimatedVolume);
+          const requestedQty = positiveNumber(i.quantity);
+          const volumePerUnit = positiveNumber(i.volumePerUnit)
+            || (estimatedVolume && requestedQty ? estimatedVolume / requestedQty : null);
+          const squareSide = !lengthPerUnit && !widthPerUnit && volumePerUnit
+            ? Math.sqrt(volumePerUnit)
+            : null;
+          const initialLength = lengthPerUnit || squareSide;
+          const initialWidth = widthPerUnit || squareSide;
+          const initialVerifiedVolume = initialLength && initialWidth && remaining > 0
+            ? Number((initialLength * initialWidth * remaining).toFixed(3))
+            : (volumePerUnit && remaining > 0 ? Number((volumePerUnit * remaining).toFixed(3)) : '');
           return {
             inventoryItemId: i.itemId,
             assetId: i.assetId || null,
@@ -39,8 +73,10 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
             expectedQuantity: remaining,
             receivedQuantity: remaining,
             unit: i.unit || 'cái',
-            verifiedVolume: '',
+            verifiedVolume: initialVerifiedVolume,
             verifiedWeight: '',
+            length: measurementValue(initialLength),
+            width: measurementValue(initialWidth),
             note: '',
           };
         }));
@@ -50,7 +86,32 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
     };
 
     fetchExistingData();
+
+    // Fetch capacity info for INBOUND requests
+    if (request.type === 'INBOUND' && request.warehouseId) {
+      renterAssetService.getCapacity(request.warehouseId)
+        .then(res => setCapacityInfo(res.data))
+        .catch(() => setCapacityInfo(null));
+    }
   }, [request]);
+
+  // Calculate total verified volume in real-time
+  const totalVerifiedVolume = useMemo(() => {
+    return items.reduce((sum, it) => {
+      const v = Number(it.verifiedVolume) || 0;
+      return sum + v;
+    }, 0);
+  }, [items]);
+
+  // Determine capacity zone
+  const capacityZone = useMemo(() => {
+    if (!capacityInfo || request?.type !== 'INBOUND') return { zone: 'GREEN', overflow: 0 };
+    const remaining = Number(capacityInfo.remainingArea) || 0;
+    const overflow = totalVerifiedVolume - remaining;
+    if (overflow <= 0) return { zone: 'GREEN', overflow: 0 };
+    if (overflow <= OVERFLOW_TOLERANCE) return { zone: 'YELLOW', overflow };
+    return { zone: 'RED', overflow };
+  }, [capacityInfo, totalVerifiedVolume, request]);
 
   if (!request) return null;
 
@@ -61,7 +122,7 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
   const addExtraItem = () => {
     setItems(prev => [...prev, {
       inventoryItemId: null, assetId: null, itemName: '', expectedQuantity: 0,
-      receivedQuantity: 0, unit: 'cái', verifiedVolume: '', verifiedWeight: '', note: 'Hàng phát sinh',
+      receivedQuantity: 0, unit: 'cái', verifiedVolume: '', verifiedWeight: '', length: '', width: '', note: 'Hàng phát sinh',
     }]);
   };
 
@@ -70,6 +131,20 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
       setError('Vui lòng ký xác nhận.');
       return;
     }
+
+    // Validate Area (verifiedVolume)
+    const hasMissingVolume = items.some(it => Number(it.receivedQuantity) > 0 && (!it.verifiedVolume || Number(it.verifiedVolume) <= 0));
+    if (hasMissingVolume) {
+      setError(`Vui lòng nhập Diện tích (m²) > 0 cho tất cả mặt hàng ${isOutbound ? 'thực xuất' : 'thực nhận'}.`);
+      return;
+    }
+
+    // Yellow zone: must check the checkbox
+    if (capacityZone.zone === 'YELLOW' && !acceptOverCapacity) {
+      setError(`Dien tich vuot ${capacityZone.overflow.toFixed(2)} m². Vui long tick xac nhan chap nhan vuot suc chua.`);
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -77,11 +152,14 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
         invReqId: request.invReqId,
         notes: notes || null,
         staffSignatureBase64: sigRef.current.toBase64(),
+        acceptOverCapacity: acceptOverCapacity,
         items: items.map(it => ({
           ...it,
           receivedQuantity: Number(it.receivedQuantity) || 0,
           expectedQuantity: Number(it.expectedQuantity) || 0,
           verifiedVolume: it.verifiedVolume ? Number(it.verifiedVolume) : null,
+          measuredLength: it.length ? Number(it.length) : null,
+          measuredWidth: it.width ? Number(it.width) : null,
           verifiedWeight: it.verifiedWeight ? Number(it.verifiedWeight) : null,
           note: it.note || null,
         })),
@@ -90,7 +168,15 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
       onCreated?.(res.data);
       onClose();
     } catch (err) {
-      setError(err?.response?.data?.message || 'Tạo phiếu thất bại.');
+      const msg = err?.response?.data?.message || 'Tạo phiếu thất bại.';
+      // If backend returns red zone info, show a more descriptive error
+      if (msg.includes('PENDING_CAPACITY_APPROVAL') || err?.response?.status === 201) {
+        // Receipt was created but pending approval
+        onCreated?.(err?.response?.data);
+        onClose();
+        return;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -98,12 +184,19 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
 
   const hasDisc = items.some(it => Number(it.receivedQuantity) !== Number(it.expectedQuantity));
 
+  // Capacity zone colors & labels
+  const zoneStyles = {
+    GREEN: { bg: '#f0fdf4', border: '#bbf7d0', color: '#16a34a', label: 'Đủ sức chứa' },
+    YELLOW: { bg: '#fffbeb', border: '#fde68a', color: '#d97706', label: 'Vượt nhẹ' },
+    RED: { bg: '#fef2f2', border: '#fecaca', color: '#dc2626', label: 'Vượt nghiêm trọng' },
+  };
+
   return (
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:24 }} onClick={onClose}>
       <div style={{ background:'#fff', borderRadius:20, width:'100%', maxWidth:720, maxHeight:'92vh', display:'flex', flexDirection:'column', boxShadow:'0 24px 60px rgba(0,0,0,0.2)', overflow:'hidden' }} onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div style={{ background:`linear-gradient(135deg,${ACCENT},#059669)`, padding:'20px 28px', flexShrink:0 }}>
-          <p style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#fff' }}>Tạo phiếu nhập kho</p>
+        <div style={{ background:`linear-gradient(135deg,${accent},${isOutbound ? '#d97706' : '#059669'})`, padding:'20px 28px', flexShrink:0 }}>
+          <p style={{ margin:0, fontSize:'1.1rem', fontWeight:800, color:'#fff' }}>Tạo phiếu {receiptTypeLabel}</p>
           <p style={{ margin:'3px 0 0', fontSize:'0.78rem', color:'rgba(255,255,255,0.85)' }}>
             Yêu cầu #{request.invReqId} · {request.requestCode || ''} · {request.warehouseName}
           </p>
@@ -114,8 +207,79 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
             <div style={{ padding:'10px 14px', borderRadius:10, background:'#fee2e2', border:'1px solid #fecaca', marginBottom:14, fontSize:'0.83rem', color:'#991b1b', fontWeight:600 }}>{error}</div>
           )}
 
+          {/* Capacity Guard Bar */}
+          {capacityInfo && request.type === 'INBOUND' && (
+            <div style={{ padding:'12px 16px', borderRadius:12, background:zoneStyles[capacityZone.zone].bg, border:`1.5px solid ${zoneStyles[capacityZone.zone].border}`, marginBottom:16 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
+                <span style={{ fontSize:'0.78rem', fontWeight:700, color:'#475569' }}>
+                  Sức chứa hợp đồng
+                </span>
+                <span style={{ fontSize:'0.72rem', fontWeight:700, color: zoneStyles[capacityZone.zone].color, background:'#fff', padding:'2px 10px', borderRadius:10, border:`1px solid ${zoneStyles[capacityZone.zone].border}` }}>
+                  {zoneStyles[capacityZone.zone].label}
+                </span>
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginBottom:8 }}>
+                <div>
+                  <div style={{ fontSize:'0.67rem', fontWeight:600, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.04em' }}>Đã dùng</div>
+                  <div style={{ fontSize:'0.95rem', fontWeight:800, color:'#475569' }}>{Number(capacityInfo.usedArea).toFixed(1)} m²</div>
+                </div>
+                <div>
+                  <div style={{ fontSize:'0.67rem', fontWeight:600, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.04em' }}>Phiếu này</div>
+                  <div style={{ fontSize:'0.95rem', fontWeight:800, color: capacityZone.zone !== 'GREEN' ? zoneStyles[capacityZone.zone].color : '#475569' }}>{totalVerifiedVolume.toFixed(1)} m²</div>
+                </div>
+                <div>
+                  <div style={{ fontSize:'0.67rem', fontWeight:600, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.04em' }}>Còn trống</div>
+                  <div style={{ fontSize:'0.95rem', fontWeight:800, color:'#16a34a' }}>{Number(capacityInfo.remainingArea).toFixed(1)} m²</div>
+                </div>
+              </div>
+              {/* Progress bar */}
+              <div style={{ height:6, borderRadius:3, background:'#e2e8f0', overflow:'hidden' }}>
+                {(() => {
+                  const contracted = Number(capacityInfo.contractedArea) || 1;
+                  const used = Number(capacityInfo.usedArea) || 0;
+                  const newVol = totalVerifiedVolume;
+                  const usedPct = Math.min((used / contracted) * 100, 100);
+                  const newPct = Math.min((newVol / contracted) * 100, 100 - usedPct);
+                  return (
+                    <>
+                      <div style={{ height:'100%', width:`${usedPct}%`, background:'#94a3b8', float:'left', borderRadius:'3px 0 0 3px' }} />
+                      <div style={{ height:'100%', width:`${Math.max(0, newPct)}%`, background: capacityZone.zone === 'GREEN' ? '#16a34a' : zoneStyles[capacityZone.zone].color, float:'left', borderRadius: usedPct === 0 ? '3px 0 0 3px' : '0' }} />
+                    </>
+                  );
+                })()}
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+                <span style={{ fontSize:'0.65rem', color:'#94a3b8' }}>0 m²</span>
+                <span style={{ fontSize:'0.65rem', color:'#94a3b8' }}>{Number(capacityInfo.contractedArea).toFixed(0)} m²</span>
+              </div>
+
+              {/* Yellow zone: checkbox confirm */}
+              {capacityZone.zone === 'YELLOW' && (
+                <div style={{ marginTop:10, padding:'10px 14px', borderRadius:8, background:'#fff', border:'1px solid #fde68a' }}>
+                  <p style={{ margin:'0 0 8px', fontSize:'0.82rem', fontWeight:600, color:'#d97706' }}>
+                    Diện tích vượt {capacityZone.overflow.toFixed(2)} m² so với diện tích còn trống. Vượt trong phạm vi cho phép ({OVERFLOW_TOLERANCE} m²).
+                  </p>
+                  <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', fontSize:'0.82rem', fontWeight:700, color:'#92400e' }}>
+                    <input type="checkbox" checked={acceptOverCapacity} onChange={e => setAcceptOverCapacity(e.target.checked)}
+                      style={{ width:18, height:18, accentColor:'#d97706', cursor:'pointer' }} />
+                    Tôi xác nhận chấp nhận vượt sức chứa
+                  </label>
+                </div>
+              )}
+
+              {/* Red zone: hard block warning */}
+              {capacityZone.zone === 'RED' && (
+                <div style={{ marginTop:10, padding:'10px 14px', borderRadius:8, background:'#fff', border:'1px solid #fecaca' }}>
+                  <p style={{ margin:0, fontSize:'0.82rem', fontWeight:700, color:'#dc2626' }}>
+                    Vượt {capacityZone.overflow.toFixed(2)} m² (vượt quá ngưỡng cho phép {OVERFLOW_TOLERANCE} m²). Phiếu sẽ được tạo với trạng thái CHỜ DUYỆT — cần Manager phê duyệt trước khi tồn kho được cập nhật.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <p style={{ margin:'0 0 12px', fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
-            Kiểm đếm hàng hóa ({items.length} mặt hàng)
+            {itemCheckLabel} ({items.length} mặt hàng)
           </p>
 
           <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:16 }}>
@@ -150,23 +314,46 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
                     </div>
                   </div>
 
-                  <div style={{ display:'grid', gridTemplateColumns:'80px 100px 1fr 2fr', gap:10, alignItems:'end' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'80px 90px 140px 1fr 2fr', gap:10, alignItems:'end' }}>
                     <div>
                       <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:'#94a3b8', marginBottom:4 }}>Dự kiến</label>
                       <input type="number" value={it.expectedQuantity} readOnly
                         style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:8, border:'1px solid #e2e8f0', fontSize:'0.85rem', background:'#f1f5f9', color:'#64748b', fontFamily:'Inter,sans-serif' }} />
                     </div>
                     <div>
-                      <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:ACCENT, marginBottom:4 }}>Thực nhận *</label>
+                      <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:accent, marginBottom:4 }}>{actualQtyLabel}</label>
                       <input type="number" min="0" value={it.receivedQuantity}
-                        onChange={e => updateItem(idx, 'receivedQuantity', e.target.value)}
+                        onChange={e => {
+                          const v = e.target.value; updateItem(idx, 'receivedQuantity', v);
+                          if (it.length && it.width) updateItem(idx, 'verifiedVolume', parseFloat((Number(it.length) * Number(it.width) * (Number(v) || 0)).toFixed(3)));
+                        }}
                         style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:8, border:`1.5px solid ${disc !== 0 ? discColor : '#e2e8f0'}`, fontSize:'0.9rem', fontWeight:700, outline:'none', fontFamily:'Inter,sans-serif' }} />
                     </div>
+                    
+                    <div style={{ display:'flex', flexDirection:'column' }}>
+                      <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:'#475569', marginBottom:4, whiteSpace:'nowrap' }}>Dài x Rộng (m)</label>
+                      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                        <input type="number" min="0" step="0.01" value={it.length} placeholder="D"
+                          onChange={e => {
+                            const v = e.target.value; updateItem(idx, 'length', v);
+                            if (v && it.width) updateItem(idx, 'verifiedVolume', parseFloat((Number(v) * Number(it.width) * (Number(it.receivedQuantity) || 0)).toFixed(3)));
+                          }}
+                          style={{ width:'100%', padding:'7px 5px', borderRadius:6, border:'1px solid #e2e8f0', fontSize:'0.85rem', outline:'none', textAlign:'center', fontFamily:'Inter,sans-serif' }} />
+                        <span style={{ fontSize:'0.8rem', color:'#94a3b8' }}>x</span>
+                        <input type="number" min="0" step="0.01" value={it.width} placeholder="R"
+                          onChange={e => {
+                            const v = e.target.value; updateItem(idx, 'width', v);
+                            if (it.length && v) updateItem(idx, 'verifiedVolume', parseFloat((Number(it.length) * Number(v) * (Number(it.receivedQuantity) || 0)).toFixed(3)));
+                          }}
+                          style={{ width:'100%', padding:'7px 5px', borderRadius:6, border:'1px solid #e2e8f0', fontSize:'0.85rem', outline:'none', textAlign:'center', fontFamily:'Inter,sans-serif' }} />
+                      </div>
+                    </div>
+
                     <div>
-                      <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:'#4f46e5', marginBottom:4 }}>Thể tích (m³)</label>
-                      <input type="number" min="0" step="0.001" value={it.verifiedVolume}
+                      <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:'#4f46e5', marginBottom:4 }}>diện tích (m²) *</label>
+                      <input type="number" min="0" step="0.001" value={it.verifiedVolume} required
                         onChange={e => updateItem(idx, 'verifiedVolume', e.target.value)}
-                        style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:8, border:'1px solid #c7d2fe', fontSize:'0.85rem', outline:'none', fontFamily:'Inter,sans-serif', color:'#4f46e5', fontWeight:600 }}
+                        style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:8, border:'1.5px solid #c7d2fe', fontSize:'0.85rem', outline:'none', fontFamily:'Inter,sans-serif', color:'#4f46e5', fontWeight:700, background:'#eef2ff' }}
                         onFocus={e=>e.target.style.borderColor='#6366f1'}
                         onBlur={e=>e.target.style.borderColor='#c7d2fe'}
                       />
@@ -184,14 +371,14 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
           </div>
 
           <button onClick={addExtraItem} style={{ width:'100%', padding:'10px', borderRadius:10, border:'1.5px dashed #cbd5e1', background:'#f8fafc', cursor:'pointer', fontSize:'0.83rem', fontWeight:600, color:'#64748b', marginBottom:16 }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = ACCENT}
+            onMouseEnter={e => e.currentTarget.style.borderColor = accent}
             onMouseLeave={e => e.currentTarget.style.borderColor = '#cbd5e1'}>
             + Thêm hàng phát sinh (ngoài danh sách)
           </button>
 
           {hasDisc && (
             <div style={{ padding:'10px 14px', borderRadius:10, background:'#fff7ed', border:'1px solid #fed7aa', marginBottom:16, fontSize:'0.82rem', color:'#c2410c', fontWeight:600 }}>
-              Có chênh lệch giữa số dự kiến và thực nhận. Phiếu sẽ ghi nhận số thực nhận.
+              Có chênh lệch giữa số dự kiến và {isOutbound ? 'thực xuất' : 'thực nhận'}. Phiếu sẽ ghi nhận số {isOutbound ? 'thực xuất' : 'thực nhận'}.
             </div>
           )}
 
@@ -225,10 +412,10 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
             </button>
             <button onClick={handleSubmit} disabled={loading}
               style={{ padding:'10px 24px', borderRadius:10, border:'none',
-                background: loading ? '#e2e8f0' : `linear-gradient(135deg,${ACCENT},#059669)`,
+                background: loading ? '#e2e8f0' : capacityZone.zone === 'RED' ? 'linear-gradient(135deg,#f59e0b,#d97706)' : `linear-gradient(135deg,${accent},${isOutbound ? '#d97706' : '#059669'})`,
                 color: loading ? '#94a3b8' : '#fff', cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight:700, fontSize:'0.875rem', boxShadow: loading ? 'none' : '0 4px 14px rgba(16,185,129,0.4)' }}>
-              {loading ? 'Đang tạo phiếu...' : 'Tạo phiếu nhập kho'}
+                fontWeight:700, fontSize:'0.875rem', boxShadow: loading ? 'none' : capacityZone.zone === 'RED' ? '0 4px 14px rgba(245,158,11,0.4)' : isOutbound ? '0 4px 14px rgba(245,158,11,0.35)' : '0 4px 14px rgba(16,185,129,0.4)' }}>
+              {loading ? 'Đang tạo phiếu...' : capacityZone.zone === 'RED' ? 'Tạo phiếu (chờ duyệt)' : `Tạo phiếu ${receiptTypeLabel}`}
             </button>
           </div>
         </div>

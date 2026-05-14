@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace WMS.Domain.Entities;
@@ -44,7 +44,7 @@ public partial class InventoryRequest
 
     public string? DocumentUrls { get; set; }
 
-    /// <summary>Cờ cảnh báo thể tích vượt ngưỡng (soft warning, không block).</summary>
+    /// <summary>Cờ cảnh báo diện tích vượt ngưỡng (soft warning, không block).</summary>
     public bool VolumeWarning { get; set; } = false;
 
     public virtual User? ConfirmedByNavigation { get; set; }
@@ -59,3 +59,4 @@ public partial class InventoryRequest
 
     public virtual Warehouse Warehouse { get; set; } = null!;
 }
+

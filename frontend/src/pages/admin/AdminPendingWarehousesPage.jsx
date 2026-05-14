@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+﻿import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 // Icons removed
 
@@ -203,7 +203,7 @@ export default function AdminPendingWarehousesPage() {
                       </div>
                     </td>
                     <td>
-                      <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.85rem" }}>{row.totalArea} m³</span>
+                      <span style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.85rem" }}>{row.totalArea} m²</span>
                     </td>
                     <td>
                       <span style={{ fontSize: "0.8rem", fontWeight: 700, color: row.mediaCount > 0 ? "#0284c7" : "#94a3b8" }}>
@@ -323,8 +323,8 @@ export default function AdminPendingWarehousesPage() {
                     {[
                       ["Địa chỉ", wh.address],
                       ["Loại kho", wh.warehouseType || "Khác"],
-                      ["Diện tích tổng", `${wh.totalArea} m³`],
-                      ["Diện tích khả dụng", `${wh.availableArea} m³`],
+                      ["Diện tích tổng", `${wh.totalArea} m²`],
+                      ["Diện tích khả dụng", `${wh.availableArea} m²`],
                       ["Giờ hoạt động", wh.operatingHours || (wh.is24HoursAccess ? "24/7" : "—")],
                       ["Ngày tạo", wh.createdAt ? new Date(wh.createdAt).toLocaleDateString("vi-VN") : "—"],
                     ].map(([label, value]) => (
@@ -334,7 +334,7 @@ export default function AdminPendingWarehousesPage() {
                       </div>
                     ))}
 
-                    {/* Giá thuê/m³ — full-width highlighted */}
+                    {/* Giá thuê/m² — full-width highlighted */}
                     <div style={{
                       gridColumn: "1 / -1",
                       borderRadius: 10, padding: "14px 16px",
@@ -346,11 +346,11 @@ export default function AdminPendingWarehousesPage() {
                     }}>
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em", color: wh.pricePerM2 ? "#065f46" : "#92400e" }}>
-                          Giá thuê / m³ / tháng
+                          Giá thuê / m² / tháng
                         </div>
                         {wh.pricePerM2 ? (
                           <div style={{ fontSize: 20, fontWeight: 900, color: "#065f46" }}>
-                            {new Intl.NumberFormat("vi-VN").format(wh.pricePerM2)}&nbsp;<span style={{ fontSize: 13, fontWeight: 600, color: "#047857" }}>₫/m³</span>
+                            {new Intl.NumberFormat("vi-VN").format(wh.pricePerM2)}&nbsp;<span style={{ fontSize: 13, fontWeight: 600, color: "#047857" }}>₫/m²</span>
                           </div>
                         ) : (
                           <div style={{ fontSize: 13, fontWeight: 600, color: "#92400e" }}>Chưa cập nhật</div>
@@ -566,3 +566,4 @@ export default function AdminPendingWarehousesPage() {
     </div>
   );
 }
+

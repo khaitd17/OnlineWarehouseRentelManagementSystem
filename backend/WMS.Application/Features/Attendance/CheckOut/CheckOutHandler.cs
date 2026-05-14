@@ -18,13 +18,13 @@ public class CheckOutHandler : IRequestHandler<CheckOutCommand, CheckOutResult>
     public async Task<CheckOutResult> Handle(CheckOutCommand request, CancellationToken ct)
     {
         var shift = await _shiftRepo.GetByIdAsync(request.StaffShiftId, ct)
-            ?? throw new KeyNotFoundException("Khong tim thay ca lam viec.");
+            ?? throw new KeyNotFoundException("Không tìm thấy ca làm việc.");
 
         if (shift.Membership.UserId != request.CallerId)
-            throw new UnauthorizedAccessException("Khong co quyen check-out ca nay.");
+            throw new UnauthorizedAccessException("Không có quyền check-out ca này.");
 
         if (shift.ShiftType is "NC" or "OFF")
-            throw new InvalidOperationException("Ca hom nay la ngay nghi, khong the diem danh.");
+            throw new InvalidOperationException("Ca hôm nay là ngày nghỉ, không thể điểm danh.");
 
         // Kiem tra deadline check-out: shiftEnd + overtime + 2h buffer
         var deadline = ComputeCheckOutDeadline(shift);

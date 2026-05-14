@@ -15,12 +15,14 @@ namespace WMS.API.Controllers;
 public class RenterAssetsController : ControllerBase
 {
     private readonly IRenterAssetRepository _repo;
+    private readonly IRentalContractRepository _contractRepo;
     private readonly IMediator _mediator;
 
-    public RenterAssetsController(IRenterAssetRepository repo, IMediator mediator)
+    public RenterAssetsController(IRenterAssetRepository repo, IRentalContractRepository contractRepo, IMediator mediator)
     {
-        _repo     = repo;
-        _mediator = mediator;
+        _repo         = repo;
+        _contractRepo = contractRepo;
+        _mediator     = mediator;
     }
 
     private int GetUserId() =>
@@ -40,6 +42,9 @@ public class RenterAssetsController : ControllerBase
             a.AssetName,
             a.Unit,
             a.WeightPerUnit,
+            a.VolumePerUnit,
+            a.LengthPerUnit,
+            a.WidthPerUnit,
             a.Description,
             a.CreatedAt
         }));
@@ -56,6 +61,9 @@ public class RenterAssetsController : ControllerBase
             AssetName     = input.AssetName.Trim(),
             Unit          = input.Unit ?? "cái",
             WeightPerUnit = input.WeightPerUnit,
+            VolumePerUnit = input.VolumePerUnit,
+            LengthPerUnit = input.LengthPerUnit,
+            WidthPerUnit  = input.WidthPerUnit,
             Description   = input.Description,
         };
         var created = await _repo.CreateAsync(asset, ct);
@@ -65,6 +73,9 @@ public class RenterAssetsController : ControllerBase
             created.AssetName,
             created.Unit,
             created.WeightPerUnit,
+            created.VolumePerUnit,
+            created.LengthPerUnit,
+            created.WidthPerUnit,
             created.Description,
             created.CreatedAt
         });
@@ -84,6 +95,9 @@ public class RenterAssetsController : ControllerBase
             AssetName     = ri.Asset.AssetName,
             Unit          = ri.Asset.Unit,
             WeightPerUnit = ri.Asset.WeightPerUnit,
+            VolumePerUnit = ri.Asset.VolumePerUnit,
+            LengthPerUnit = ri.Asset.LengthPerUnit,
+            WidthPerUnit  = ri.Asset.WidthPerUnit,
             ri.Quantity,
             ri.UpdatedAt
         }));
@@ -122,6 +136,26 @@ public class RenterAssetsController : ControllerBase
 
         return Ok(result.Rows);
     }
+
+    /// <summary>
+    /// Renter xem thông tin sức chứa tại 1 kho (đã dùng / còn trống).
+    /// </summary>
+    [HttpGet("capacity")]
+    public async Task<IActionResult> GetCapacityInfo(
+        [FromQuery] int warehouseId, CancellationToken ct)
+    {
+        var renterId = GetUserId();
+        var contractedArea = await _contractRepo.GetContractedAreaAsync(renterId, warehouseId, ct);
+        var usedArea = await _repo.GetUsedAreaAsync(renterId, warehouseId, ct);
+        var remaining = (decimal)contractedArea - usedArea;
+        return Ok(new
+        {
+            contractedArea,
+            usedArea,
+            remainingArea = remaining > 0 ? remaining : 0,
+            usagePercent = contractedArea > 0 ? Math.Round((double)usedArea / contractedArea * 100, 1) : 0
+        });
+    }
 }
 
 public record CreateAssetInput
@@ -129,5 +163,8 @@ public record CreateAssetInput
     public string AssetName       { get; init; } = "";
     public string? Unit           { get; init; }
     public decimal? WeightPerUnit { get; init; }
+    public decimal? VolumePerUnit { get; init; }
+    public decimal? LengthPerUnit { get; init; }
+    public decimal? WidthPerUnit  { get; init; }
     public string? Description    { get; init; }
 }

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * InventoryReceiptPDF.jsx
  *
  * Renders a printable "Phiếu Nhập Kho" (Warehouse Inbound Receipt) using
@@ -25,7 +25,7 @@
  *     itemName        : string
  *     quantity        : number
  *     unit            : string
- *     estimatedVolume?: number  // m³ per item * qty
+ *     estimatedVolume?: number  // m² per item * qty
  *     note?           : string
  *   }]
  * }
@@ -245,7 +245,7 @@ export function InventoryReceiptDocument({ data }) {
               <Text style={S.headerText}>Số lượng</Text>
             </View>
             <View style={[S.colVol, S.cellCenter]}>
-              <Text style={S.headerText}>Thể tích (m³)</Text>
+              <Text style={S.headerText}>diện tích (m²)</Text>
             </View>
             <View style={[S.colNote, S.cellLeft]}>
               <Text style={S.headerText}>Ghi chú / Tình trạng</Text>
@@ -319,8 +319,8 @@ export function InventoryReceiptDocument({ data }) {
             </View>
             {totalVol > 0 && (
               <View style={[S.summaryRow, S.summaryTotal]}>
-                <Text style={S.summaryLabel}>Ước tính thể tích:</Text>
-                <Text style={S.summaryValue}>{fmtNum(totalVol)} m³</Text>
+                <Text style={S.summaryLabel}>Ước tính diện tích:</Text>
+                <Text style={S.summaryValue}>{fmtNum(totalVol)} m²</Text>
               </View>
             )}
           </View>
@@ -604,3 +604,4 @@ export function ReceiptPreviewModal({ data, onClose }) {
 }
 
 export default InventoryReceiptDocument;
+

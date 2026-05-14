@@ -1,4 +1,4 @@
-using MediatR;
+﻿using MediatR;
 using WMS.Application.Features.InventoryRequests.Shared;
 using WMS.Domain.Interfaces;
 
@@ -13,7 +13,7 @@ public record VerifyItemInput
     /// <summary>Số lượng thực tế Staff kiểm đếm được.</summary>
     public int VerifiedQuantity { get; init; }
 
-    /// <summary>Thể tích thực tế Staff đo (m³). Tùy chọn.</summary>
+    /// <summary>diện tích thực tế Staff đo (m²). Tùy chọn.</summary>
     public decimal? VerifiedVolume { get; init; }
 
     /// <summary>Khối lượng thực tế Staff cân (kg). Tùy chọn.</summary>
@@ -130,3 +130,4 @@ public class VerifyInventoryRequestHandler
         };
     }
 }
+

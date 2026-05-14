@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+﻿import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import aiService from "../services/aiService";
 
@@ -433,7 +433,7 @@ export default function AiItemAnalyzerPage() {
       state: {
         fromAi: true,
         requestedArea: wh.availableArea,
-        aiNotes: result ? `[AI] ${result.items?.map(i => `${i.name} x${i.quantity}`).join(", ")} — Ước tính ${result.totalVolumeM3} m³` : "",
+        aiNotes: result ? `[AI] ${result.items?.map(i => `${i.name} x${i.quantity}`).join(", ")} — Ước tính ${result.totalVolumeM3} m²` : "",
       }
     });
   };
@@ -452,7 +452,7 @@ export default function AiItemAnalyzerPage() {
         <div style={styles.header}>
           <h1 style={styles.title}>Tìm Kho Thông Minh</h1>
           <p style={styles.subtitle}>
-            Chụp ảnh đồ vật → AI nhận dạng & ước tính thể tích → Hệ thống gợi ý kho phù hợp nhất
+            Chụp ảnh đồ vật → AI nhận dạng & ước tính diện tích → Hệ thống gợi ý kho phù hợp nhất
           </p>
         </div>
 
@@ -501,8 +501,8 @@ export default function AiItemAnalyzerPage() {
                 <div style={styles.statLabel}>Loại đồ vật</div>
               </div>
               <div style={styles.statBox}>
-                <div style={styles.statVal}>{result.totalVolumeM3} m³</div>
-                <div style={styles.statLabel}>Thể tích cần thiết</div>
+                <div style={styles.statVal}>{result.totalVolumeM3} m²</div>
+                <div style={styles.statLabel}>diện tích cần thiết</div>
               </div>
               <div style={styles.statBox}>
                 <div style={styles.statVal}>{result.suggestedWarehouses?.length || 0}</div>
@@ -524,8 +524,8 @@ export default function AiItemAnalyzerPage() {
                     <th style={{ ...styles.th, color: "#60a5fa" }}>Rộng (m)</th>
                     <th style={{ ...styles.th, color: "#34d399" }}>Dài (m)</th>
                     <th style={{ ...styles.th, color: "#f59e0b" }}>Cao (m)</th>
-                    <th style={{ ...styles.th, color: "#a78bfa" }}>Thể tích/cái (m³)</th>
-                    <th style={{ ...styles.th, color: "#818cf8" }}>Tổng (m³)</th>
+                    <th style={{ ...styles.th, color: "#a78bfa" }}>diện tích/cái (m²)</th>
+                    <th style={{ ...styles.th, color: "#818cf8" }}>Tổng (m²)</th>
                     <th style={{ ...styles.th, width: 40 }}></th>
                   </tr>
                 </thead>
@@ -577,7 +577,7 @@ export default function AiItemAnalyzerPage() {
                             background: "rgba(15,23,42,0.4)", color: "#fcd34d", outline: "none", fontFamily: "inherit" }}
                         />
                       </td>
-                      {/* Thể tích/cái (auto) */}
+                      {/* diện tích/cái (auto) */}
                       <td style={{ ...styles.td, color: "#c4b5fd", fontWeight: 600 }}>
                         {(item.estimatedVolumeM3 || 0).toFixed(3)}
                       </td>
@@ -606,7 +606,7 @@ export default function AiItemAnalyzerPage() {
                     <td style={styles.td}></td>
                     <td style={styles.td}></td>
                     <td style={styles.td}></td>
-                    <td style={{ ...styles.td, fontWeight: 800, fontSize: 17, color: "#818cf8" }}>{result.totalVolumeM3} m³</td>
+                    <td style={{ ...styles.td, fontWeight: 800, fontSize: 17, color: "#818cf8" }}>{result.totalVolumeM3} m²</td>
                     <td style={styles.td}></td>
                   </tr>
                 </tbody>
@@ -689,11 +689,11 @@ export default function AiItemAnalyzerPage() {
                         <div style={styles.whAddress}>{wh.address}</div>
                         <div style={styles.whTags}>
                           {wh.warehouseType && <span style={styles.tag("purple")}>{wh.warehouseType}</span>}
-                          <span style={styles.tag("none")}>{wh.availableArea} m³</span>
-                          {wh.availableVolume && <span style={styles.tag("green")}>{wh.availableVolume} m³ trống</span>}
+                          <span style={styles.tag("none")}>{wh.availableArea} m²</span>
+                          {wh.availableVolume && <span style={styles.tag("green")}>{wh.availableVolume} m² trống</span>}
                           {wh.is24HoursAccess && <span style={styles.tag("green")}>24/7</span>}
                           {wh.distanceKm !== null && wh.distanceKm !== undefined && <span style={styles.tag("purple")}>Cách bạn {wh.distanceKm} km</span>}
-                          {wh.pricePerM2 && <span style={styles.tag("none")}>{Number(wh.pricePerM2).toLocaleString("vi-VN")} ₫/m³</span>}
+                          {wh.pricePerM2 && <span style={styles.tag("none")}>{Number(wh.pricePerM2).toLocaleString("vi-VN")} ₫/m²</span>}
                         </div>
                         <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
                           <div>
@@ -865,7 +865,7 @@ export default function AiItemAnalyzerPage() {
                   <thead>
                     <tr>
                       <th style={styles.th}>Thời gian</th>
-                      <th style={styles.th}>Thể tích</th>
+                      <th style={styles.th}>diện tích</th>
                       <th style={styles.th}>Loại kho gợi ý</th>
                       <th style={styles.th}>Độ chính xác</th>
                     </tr>
@@ -878,7 +878,7 @@ export default function AiItemAnalyzerPage() {
                           style={{ cursor: "pointer", backgroundColor: expandedSessionId === item.sessionId ? "rgba(99,102,241,0.1)" : "transparent" }}
                         >
                           <td style={styles.td}>{new Date(item.analyzedAt).toLocaleString("vi-VN")}</td>
-                          <td style={{ ...styles.td, color: "#818cf8", fontWeight: 600 }}>{item.estimatedVolumeM3} m³</td>
+                          <td style={{ ...styles.td, color: "#818cf8", fontWeight: 600 }}>{item.estimatedVolumeM3} m²</td>
                           <td style={styles.td}>{item.suggestedType}</td>
                           <td style={styles.td}><ConfidenceBadge value={item.confidence} /></td>
                         </tr>
@@ -893,7 +893,7 @@ export default function AiItemAnalyzerPage() {
                                       <th style={{ textAlign: "left", padding: "4px 8px", color: "#94a3b8" }}>Tên đồ vật</th>
                                       <th style={{ textAlign: "center", padding: "4px 8px", color: "#94a3b8" }}>Số lượng</th>
                                       <th style={{ textAlign: "right", padding: "4px 8px", color: "#94a3b8" }}>Kích thước (m)</th>
-                                      <th style={{ textAlign: "right", padding: "4px 8px", color: "#94a3b8" }}>Thể tích/cái (m³)</th>
+                                      <th style={{ textAlign: "right", padding: "4px 8px", color: "#94a3b8" }}>diện tích/cái (m²)</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -936,3 +936,4 @@ export default function AiItemAnalyzerPage() {
     </div>
   );
 }
+

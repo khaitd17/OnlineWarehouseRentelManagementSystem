@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
@@ -33,13 +33,13 @@ namespace WMS.Infrastructure.Persistence
             {
                 new SubscriptionPackage 
                 { 
-                    Name = "Basic", Price = 2000, Description = "Gói cơ bản: 1 kho, 3 nhân viên, 3 zones, 10.000 m³", 
+                    Name = "Basic", Price = 2000, Description = "Gói cơ bản: 1 kho, 3 nhân viên, 3 zones, 10.000 m²", 
                     DurationMonths = 1, MaxWarehouses = 1, MaxStaffPerWarehouse = 3, MaxZonesPerWarehouse = 3, MaxTotalArea = 10000, 
                     AllowEquipmentManagement = false, IsActive = true, CreatedAt = DateTime.UtcNow 
                 },
                 new SubscriptionPackage 
                 { 
-                    Name = "Premium", Price = 500000, Description = "Gói cao cấp: 8 kho, 20 nhân viên, 10 zones, 50.000 m³, Quản lý thiết bị", 
+                    Name = "Premium", Price = 500000, Description = "Gói cao cấp: 8 kho, 20 nhân viên, 10 zones, 50.000 m², Quản lý thiết bị", 
                     DurationMonths = 1, MaxWarehouses = 8, MaxStaffPerWarehouse = 20, MaxZonesPerWarehouse = 10, MaxTotalArea = 50000, 
                     AllowEquipmentManagement = true, IsActive = true, CreatedAt = DateTime.UtcNow 
                 }
@@ -112,16 +112,16 @@ namespace WMS.Infrastructure.Persistence
             // ── Tài khoản hệ thống chính ──────────────────────────────────────────
             // Tất cả user đều là USER ở system level — phân quyền kho qua warehouse_memberships
             var adminUser   = EnsureUser(context, "admin@owrms.com",     "Nguyễn Minh Quản Trị",  pw, adminRoleId,  "0900000001");
-            var ownerUser   = EnsureUser(context, "owner@owrms.com",     "Trần Văn Bình",          pw, userRoleId,   "0900000002");
+            var ownerUser   = EnsureUser(context, "trandinhkhai09072003@gmail.com", "Trần Đình Khải", pw, userRoleId, "0900000002");
             var renterUser  = EnsureUser(context, "renter@owrms.com",    "Lê Văn Đạt",             pw, userRoleId,   "0900000004");
             var renterUser2 = EnsureUser(context, "renter2@owrms.com",   "Ngô Thị Thu",            pw, userRoleId,   "0900000005");
-            var managerUser = EnsureUser(context, "manager@owrms.com",   "Đỗ Minh Khoa",           pw, userRoleId,   "0900000008");
+            var managerUser = EnsureUser(context, "ndgiap2004@gmail.com", "Đỗ Minh Khoa", pw, userRoleId, "0900000008");
             // Nhân viên kho — system role = USER, warehouse role trong membership
             var checkerUser   = EnsureUser(context, "checker@owrms.com",   "Nguyễn Thị Lan",    pw, userRoleId, "0900000010");
             var inventoryUser = EnsureUser(context, "inventory@owrms.com", "Phạm Văn Tuấn",     pw, userRoleId, "0900000011");
             var workerUser    = EnsureUser(context, "worker@owrms.com",    "Hoàng Thị Mai",     pw, userRoleId, "0900000012");
             var allSkillUser  = EnsureUser(context, "allskill@owrms.com",  "Lý Văn Toàn Năng",  pw, userRoleId, "0900000013");
-            var staffUser  = EnsureUser(context, "staff@owrms.com",  "Nguyễn Văn Phúc",  pw, userRoleId, "0900000006");
+            var staffUser  = EnsureUser(context, "Phanhoangbao59@gmail.com", "Nguyễn Văn Phúc", pw, userRoleId, "0900000006");
             var staffUser2 = EnsureUser(context, "staff2@owrms.com", "Hoàng Văn Dũng",   pw, userRoleId, "0900000007");
             context.SaveChanges();
 
@@ -1240,3 +1240,4 @@ namespace WMS.Infrastructure.Persistence
         }
     }
 }
+
