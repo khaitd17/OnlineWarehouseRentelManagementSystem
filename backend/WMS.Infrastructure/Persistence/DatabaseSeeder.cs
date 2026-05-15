@@ -27,6 +27,45 @@ namespace WMS.Infrastructure.Persistence
             catch { /* Bỏ qua nếu bảng chưa tồn tại */ }
 
             // ══════════════════════════════════════════════════
+            // PATCH: Đảm bảo bảng PaymentTerms và các cột kích thước của renter_assets tồn tại
+            // (một số DB cũ được tạo từ script thiếu các phần này)
+            // ══════════════════════════════════════════════════
+            context.Database.ExecuteSqlRaw(@"
+                IF OBJECT_ID(N'[PaymentTerms]', N'U') IS NULL
+                BEGIN
+                    CREATE TABLE [PaymentTerms] (
+                        [TermId] int NOT NULL IDENTITY,
+                        [ContractId] int NOT NULL,
+                        [MonthsPerTerm] int NOT NULL,
+                        [AllowedOverdueDays] int NOT NULL,
+                        CONSTRAINT [PK_PaymentTerms] PRIMARY KEY ([TermId])
+                    );
+                END;
+
+                IF OBJECT_ID(N'[PaymentTerms]', N'U') IS NOT NULL
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_PaymentTerms_rental_contracts_ContractId')
+                        ALTER TABLE [PaymentTerms] DROP CONSTRAINT [FK_PaymentTerms_rental_contracts_ContractId];
+
+                    IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_PaymentTerms_contracts_ContractId')
+                        ALTER TABLE [PaymentTerms] ADD CONSTRAINT [FK_PaymentTerms_contracts_ContractId]
+                            FOREIGN KEY ([ContractId]) REFERENCES [contracts]([contract_id]) ON DELETE CASCADE;
+
+                    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_PaymentTerms_ContractId' AND object_id = OBJECT_ID('PaymentTerms'))
+                        CREATE UNIQUE INDEX [IX_PaymentTerms_ContractId] ON [PaymentTerms] ([ContractId]);
+                END;
+
+                IF COL_LENGTH(N'renter_assets', N'VolumePerUnit') IS NULL
+                    ALTER TABLE [renter_assets] ADD [VolumePerUnit] decimal(10,2) NULL;
+
+                IF COL_LENGTH(N'renter_assets', N'length_per_unit') IS NULL
+                    ALTER TABLE [renter_assets] ADD [length_per_unit] decimal(10,3) NULL;
+
+                IF COL_LENGTH(N'renter_assets', N'width_per_unit') IS NULL
+                    ALTER TABLE [renter_assets] ADD [width_per_unit] decimal(10,3) NULL;
+            ");
+
+            // ══════════════════════════════════════════════════
             // 0. SUBSCRIPTION PACKAGES
             // ══════════════════════════════════════════════════
             var packages = new[]

@@ -14,19 +14,25 @@ public class SendContractDraftHandler : IRequestHandler<SendContractDraftCommand
     private readonly IContractVersionRepository _versionRepo;
     private readonly INotificationRepository _notificationRepo;
     private readonly INotificationSender _notificationSender;
+    private readonly IUserRepository _userRepository;
+    private readonly IEmailService _emailService;
 
     public SendContractDraftHandler(
         IRentalContractRepository contractRepo,
         IWarehouseRepository warehouseRepo,
         IContractVersionRepository versionRepo,
         INotificationRepository notificationRepo,
-        INotificationSender notificationSender)
+        INotificationSender notificationSender,
+        IUserRepository userRepository,
+        IEmailService emailService)
     {
         _contractRepo = contractRepo;
         _warehouseRepo = warehouseRepo;
         _versionRepo = versionRepo;
         _notificationRepo = notificationRepo;
         _notificationSender = notificationSender;
+        _userRepository = userRepository;
+        _emailService = emailService;
     }
 
     public async Task<SendContractDraftResult> Handle(SendContractDraftCommand request, CancellationToken cancellationToken)
@@ -80,7 +86,49 @@ public class SendContractDraftHandler : IRequestHandler<SendContractDraftCommand
             referenceId: contract.ContractId,
             referenceType: "CONTRACT");
         await _notificationRepo.AddAsync(notification);
-        await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+        try
+        {
+            await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+        }
+        catch
+        {
+            // Keep sending draft successful even if realtime push fails.
+        }
+
+        var renter = await _userRepository.GetByIdAsync(contract.RenterId, cancellationToken);
+        if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
+        {
+            var subject = $"Bản nháp hợp đồng đã được gửi - {warehouse.Name}";
+            var contractLink = $"http://localhost:3000/contracts/{contract.ContractId}?tab=negotiation";
+            var htmlContent = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+    <h2 style='color: #2563eb; text-align: center;'>Bản nháp hợp đồng đã được gửi</h2>
+    <p>Xin chào <strong>{renter.FullName}</strong>,</p>
+    <p>Chủ kho đã gửi bản nháp hợp đồng <strong>{contract.ContractNumber}</strong> cho kho <strong>{warehouse.Name}</strong>.</p>
+    <div style='background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 16px 0;'>
+        <ul style='color: #4b5563; line-height: 1.6;'>
+            <li><strong>Giá thuê/tháng:</strong> {contract.MonthlyPayment:N0} VNĐ</li>
+            <li><strong>Tiền đặt cọc:</strong> {contract.DepositAmount:N0} VNĐ</li>
+            <li><strong>Thời gian bắt đầu:</strong> {contract.StartDate:dd/MM/yyyy}</li>
+            <li><strong>Thời gian kết thúc:</strong> {contract.EndDate:dd/MM/yyyy}</li>
+        </ul>
+    </div>
+    <div style='margin-top: 24px; text-align: center;'>
+        <a href='{contractLink}' style='background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Xem và phản hồi hợp đồng</a>
+    </div>
+    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
+    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
+</div>";
+
+            try
+            {
+                await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
+            }
+            catch
+            {
+                // Keep sending draft successful even if email delivery fails.
+            }
+        }
 
         return new SendContractDraftResult
         {

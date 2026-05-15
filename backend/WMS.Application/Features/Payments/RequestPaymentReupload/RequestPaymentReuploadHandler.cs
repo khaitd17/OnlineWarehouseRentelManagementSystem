@@ -15,6 +15,8 @@ public class RequestPaymentReuploadHandler : IRequestHandler<RequestPaymentReupl
     private readonly INotificationRepository _notificationRepo;
     private readonly INotificationSender _notificationSender;
     private readonly ILogger<RequestPaymentReuploadHandler> _logger;
+    private readonly IUserRepository _userRepository;
+    private readonly IEmailService _emailService;
 
     public RequestPaymentReuploadHandler(
         IRentalPaymentRepository paymentRepo,
@@ -22,6 +24,8 @@ public class RequestPaymentReuploadHandler : IRequestHandler<RequestPaymentReupl
         IWarehouseRepository warehouseRepo,
         INotificationRepository notificationRepo,
         INotificationSender notificationSender,
+        IUserRepository userRepository,
+        IEmailService emailService,
         ILogger<RequestPaymentReuploadHandler> logger)
     {
         _paymentRepo = paymentRepo;
@@ -29,6 +33,8 @@ public class RequestPaymentReuploadHandler : IRequestHandler<RequestPaymentReupl
         _warehouseRepo = warehouseRepo;
         _notificationRepo = notificationRepo;
         _notificationSender = notificationSender;
+        _userRepository = userRepository;
+        _emailService = emailService;
         _logger = logger;
     }
 
@@ -93,6 +99,27 @@ public class RequestPaymentReuploadHandler : IRequestHandler<RequestPaymentReupl
 
         await _notificationRepo.AddAsync(notification);
         await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+
+        var renter = await _userRepository.GetByIdAsync(contract.RenterId, cancellationToken);
+        if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
+        {
+            var subject = $"Yêu cầu tải lại chứng từ thanh toán - {contract.ContractNumber}";
+            var contractLink = $"http://localhost:3000/contracts/{contract.ContractId}/payment";
+            var htmlContent = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
+    <h2 style='color: #f59e0b; text-align: center;'>Yêu cầu tải lại chứng từ thanh toán</h2>
+    <p>Xin chào <strong>{renter.FullName}</strong>,</p>
+    <p>Chủ kho yêu cầu bạn tải lại chứng từ thanh toán cho hợp đồng <strong>{contract.ContractNumber}</strong>.</p>
+    {(string.IsNullOrWhiteSpace(request.Reason) ? "" : $"<div style='background-color: #fffbeb; padding: 15px; border-radius: 6px; margin: 16px 0; border-left: 4px solid #f59e0b;'><p style='margin: 0; color: #92400e;'><strong>Lý do:</strong> {request.Reason.Trim()}</p></div>")}
+    <div style='margin-top: 24px; text-align: center;'>
+        <a href='{contractLink}' style='background-color: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold;'>Gửi lại chứng từ</a>
+    </div>
+    <hr style='border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;' />
+    <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
+</div>";
+
+            await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
+        }
 
         _logger.LogInformation("Owner {OwnerId} requested payment proof reupload for payment {PaymentId}", request.OwnerId, payment.PaymentId);
 

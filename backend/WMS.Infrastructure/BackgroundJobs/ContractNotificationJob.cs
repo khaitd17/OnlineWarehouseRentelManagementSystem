@@ -57,6 +57,7 @@ public class ContractNotificationJob
         var contracts = await _db.RentalContracts
             .Include(c => c.Renter)       // Include renter for email
             .Include(c => c.Warehouse)    // Include warehouse for context
+                .ThenInclude(w => w.Owner)
             .Where(c => c.Status == RentalContractStatus.Active
                         && c.EndDate.Date == expiryDate)
             .ToListAsync();
@@ -122,6 +123,33 @@ public class ContractNotificationJob
 
                     _logger.LogInformation("Sent expiry email for contract {ContractId} to {Email}",
                         contract.ContractId, contract.Renter.Email);
+
+                    if (contract.Warehouse?.Owner != null && !string.IsNullOrEmpty(contract.Warehouse.Owner.Email))
+                    {
+                        var ownerWarehouseName = contract.Warehouse?.Name ?? "kho";
+                        var renterName = contract.Renter?.FullName ?? "khách thuê";
+                        var ownerHtml = $@"
+<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; border-top: 4px solid #f59e0b;'>
+    <h2 style='color: #0f172a; text-align: center;'>⚠️ Hợp đồng sắp hết hạn</h2>
+    <p style='color: #64748b; font-size: 14px;'>Kính chào <strong>{contract.Warehouse.Owner.FullName}</strong>,</p>
+    <p style='color: #64748b; font-size: 14px;'>Hợp đồng thuê kho <strong>{ownerWarehouseName}</strong> của khách thuê <strong>{renterName}</strong> sẽ hết hạn trong <strong>{timeframe}</strong>.</p>
+    <div style='background: #fef3c7; padding: 16px; border-radius: 8px; margin: 16px 0;'>
+        <p style='margin: 0; color: #92400e;'><strong>Mã hợp đồng:</strong> {contract.ContractNumber}</p>
+        <p style='margin: 8px 0 0 0; color: #92400e;'><strong>Ngày hết hạn:</strong> {contract.EndDate:dd/MM/yyyy}</p>
+    </div>
+    <p style='color: #64748b; font-size: 14px;'>Vui lòng theo dõi và xử lý các yêu cầu gia hạn nếu có.</p>
+    <p style='color: #94a3b8; font-size: 12px; margin-top: 24px;'>Trân trọng,<br/>Hệ thống quản lý kho OWRMS</p>
+</div>";
+
+                        await _emailService.SendInfo(
+                            contract.Warehouse.Owner.Email,
+                            contract.Warehouse.Owner.FullName,
+                            $"[OWRMS] Hợp đồng sắp hết hạn trong {timeframe}",
+                            ownerHtml);
+
+                        _logger.LogInformation("Sent expiry email for contract {ContractId} to owner {Email}",
+                            contract.ContractId, contract.Warehouse.Owner.Email);
+                    }
                 }
                 catch (Exception ex)
                 {
