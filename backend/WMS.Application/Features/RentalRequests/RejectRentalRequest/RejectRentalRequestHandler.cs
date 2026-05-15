@@ -66,9 +66,11 @@ public class RejectRentalRequestHandler : IRequestHandler<RejectRentalRequestCom
         var renter = await _userRepository.GetByIdAsync(rentalRequest.RenterId, cancellationToken);
         if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
         {
-            var subject = $"Yêu cầu thuê kho đã bị từ chối - {warehouse.Name}";
-            var requestLink = $"http://localhost:3000/rental-request/{rentalRequest.RequestId}";
-            var htmlContent = $@"
+            try
+            {
+                var subject = $"Yêu cầu thuê kho đã bị từ chối - {warehouse.Name}";
+                var requestLink = $"http://localhost:3000/rental-request/{rentalRequest.RequestId}";
+                var htmlContent = $@"
 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
     <h2 style='color: #dc2626; text-align: center;'>Yêu cầu thuê kho bị từ chối</h2>
     <p>Xin chào <strong>{renter.FullName}</strong>,</p>
@@ -83,7 +85,12 @@ public class RejectRentalRequestHandler : IRequestHandler<RejectRentalRequestCom
     <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
 </div>";
 
-            await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
+                await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
+            }
+            catch
+            {
+                // Không chặn luồng từ chối yêu cầu nếu gửi email thất bại
+            }
         }
 
         return Unit.Value;

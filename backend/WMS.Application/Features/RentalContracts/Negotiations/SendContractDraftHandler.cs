@@ -86,7 +86,14 @@ public class SendContractDraftHandler : IRequestHandler<SendContractDraftCommand
             referenceId: contract.ContractId,
             referenceType: "CONTRACT");
         await _notificationRepo.AddAsync(notification);
-        await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+        try
+        {
+            await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+        }
+        catch
+        {
+            // Keep sending draft successful even if realtime push fails.
+        }
 
         var renter = await _userRepository.GetByIdAsync(contract.RenterId, cancellationToken);
         if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
@@ -113,7 +120,14 @@ public class SendContractDraftHandler : IRequestHandler<SendContractDraftCommand
     <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
 </div>";
 
-            await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
+            try
+            {
+                await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
+            }
+            catch
+            {
+                // Keep sending draft successful even if email delivery fails.
+            }
         }
 
         return new SendContractDraftResult
