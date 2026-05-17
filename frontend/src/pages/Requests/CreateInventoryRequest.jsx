@@ -800,7 +800,7 @@ export default function CreateInventoryRequest() {
 
         {step === 2 && warehouseId && type === 'INBOUND' && (
           <div style={{ marginTop: '16px', marginBottom: '-8px' }}>
-            <RenterSpaceUsageWarning warehouseId={warehouseId} renterId={authService.getUser()?.id} />
+            <RenterSpaceUsageWarning warehouseId={warehouseId} renterId={authService.getCurrentUser()?.id} />
           </div>
         )}
 
