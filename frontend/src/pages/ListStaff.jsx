@@ -66,6 +66,44 @@ function Chip({ label, color = C.sub, bg = "#f1f5f9", onClick, active }) {
   );
 }
 
+/* ─── Confirm Toggle Modal ─────────────────────────────────────────────── */
+function ConfirmToggleModal({ staff, isActive, onConfirm, onClose, busy }) {
+  return (
+    <div onClick={e => e.target === e.currentTarget && onClose()}
+      style={{ position:"fixed", inset:0, background:C.overlay, zIndex:1000,
+        display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:C.surface, borderRadius:14, padding:"24px 28px",
+        width:"100%", maxWidth:400, border:`1px solid ${C.border}`, boxShadow:C.shadowM }}>
+        <div style={{ fontSize:20, marginBottom:10, textAlign:"center" }}>
+          {isActive ? "⚠️" : "✅"}
+        </div>
+        <div style={{ fontWeight:700, fontSize:15, color:C.text, textAlign:"center", marginBottom:6 }}>
+          {isActive ? "Vô hiệu hóa nhân viên?" : "Kích hoạt lại nhân viên?"}
+        </div>
+        <div style={{ fontSize:12, color:C.sub, textAlign:"center", marginBottom:22, lineHeight:1.6 }}>
+          {isActive
+            ? <><strong>{staff.fullName}</strong> sẽ không còn được nhận ca làm việc hay task mới trong kho này.</>
+            : <><strong>{staff.fullName}</strong> sẽ được kích hoạt lại và có thể nhận ca/task trong kho.</>}
+        </div>
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={onClose} disabled={busy}
+            style={{ flex:1, padding:"9px 0", borderRadius:10, border:`1px solid ${C.border}`,
+              background:"transparent", color:C.sub, fontWeight:600, cursor:"pointer", fontSize:13 }}>
+            Hủy
+          </button>
+          <button onClick={onConfirm} disabled={busy}
+            style={{ flex:1, padding:"9px 0", borderRadius:10, border:"none",
+              background: isActive ? C.red : C.green,
+              color:"#fff", fontWeight:700, cursor:busy?"not-allowed":"pointer",
+              fontSize:13, opacity:busy?.7:1 }}>
+            {busy ? "Đang xử lý..." : isActive ? "Vô hiệu hóa" : "Kích hoạt"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Reassign Modal ────────────────────────────────────────────────────── */
 const ROLE_TYPES = [
   { code:"CHECKER",            label:"Checker",            desc:"Nhận hàng & Xuất hàng (Inbound / Outbound)", color:"#4f46e5", bg:"#eff0ff" },
@@ -200,15 +238,16 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
 /* ─── Staff Card ────────────────────────────────────────────────────────── */
 function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onRefresh }) {
   const isActive = staff.membershipIsActive;
-  const [busy, setBusy]           = useState(false);
-  const [showReassign, setReassign] = useState(false);
+  const [busy, setBusy]             = useState(false);
+  const [showReassign, setReassign]  = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleToggle = async () => {
-    if (!window.confirm(isActive ? `Vô hiệu hoá ${staff.fullName}?` : `Kích hoạt lại ${staff.fullName}?`)) return;
     setBusy(true);
     try {
       if (isActive) await staffService.deactivateMembership(staff.membershipId);
       else          await staffService.activateMembership(staff.membershipId);
+      setShowConfirm(false);
       onRefresh();
     } catch(e) { alert(e?.response?.data?.message || "Thao tác thất bại."); }
     finally { setBusy(false); }
@@ -286,7 +325,7 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
             </button>
           )}
           {staff.roleCode !== "OWNER" && !isSelf && (
-            <button onClick={handleToggle} disabled={busy}
+            <button onClick={() => setShowConfirm(true)} disabled={busy}
               style={{ padding:"6px 12px", borderRadius:8, border:"none",
                 background: isActive ? C.redBg : C.greenBg,
                 color: isActive ? C.red : C.green,
@@ -302,6 +341,15 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, onR
           callerMembership={callerMembership} warehouseOptions={warehouseOptions}
           onClose={() => setReassign(false)}
           onSuccess={() => { setReassign(false); onRefresh(); }} />
+      )}
+      {showConfirm && (
+        <ConfirmToggleModal
+          staff={staff}
+          isActive={isActive}
+          busy={busy}
+          onConfirm={handleToggle}
+          onClose={() => setShowConfirm(false)}
+        />
       )}
     </>
   );

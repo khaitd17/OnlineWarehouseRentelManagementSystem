@@ -9,6 +9,7 @@ using WMS.Application.Features.WarehouseGrid.GetPublicGridLocations;
 using WMS.Application.Features.WarehouseGrid.GetGridRenters;
 using WMS.Application.Features.WarehouseGrid.AssignGridLocations;
 using WMS.Application.Features.WarehouseGrid.RemoveGridLocation;
+using WMS.Application.Features.WarehouseGrid.GetRenterSpaceUsage;
 
 namespace WMS.API.Controllers;
 
@@ -74,6 +75,20 @@ public class WarehouseGridController : ControllerBase
         {
             var renters = await _mediator.Send(new GetGridRentersQuery { WarehouseId = warehouseId }, ct);
             return Ok(renters);
+        }
+        catch (System.Exception ex)
+        {
+            return StatusCode(500, new { message = ex.ToString() });
+        }
+    }
+
+    [HttpGet("renters/{renterId}/space-usage")]
+    public async Task<IActionResult> GetRenterSpaceUsage(int warehouseId, int renterId, CancellationToken ct)
+    {
+        try
+        {
+            var usage = await _mediator.Send(new GetRenterSpaceUsageQuery { WarehouseId = warehouseId, RenterId = renterId }, ct);
+            return Ok(usage);
         }
         catch (System.Exception ex)
         {

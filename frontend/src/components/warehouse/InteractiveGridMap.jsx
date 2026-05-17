@@ -96,8 +96,9 @@ export default function InteractiveGridMap({
                 
                 // Check warning
                 if (outboundWarnings.some(w => 
-                    (w.assetId && w.assetId === loc.assetId) || 
-                    (!w.assetId && w.itemName === loc.itemName)
+                    (w.renterName === loc.renterName) &&
+                    ((w.assetId && w.assetId === loc.assetId) || 
+                     (!w.assetId && w.itemName === loc.itemName))
                 )) {
                     map[key].hasWarning = true;
                 }

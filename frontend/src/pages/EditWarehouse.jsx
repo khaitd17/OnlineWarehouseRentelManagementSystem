@@ -124,9 +124,9 @@ const EditWarehouse = () => {
       is24HoursAccess: res.data.is24HoursAccess || (res.data.operatingHours === "24/7"),
       description: res.data.description || "",
       images: res.data.images || [],
-      status: ["APPROVED", "PENDING", "REJECTED", "HIDDEN", "DELETED"].includes(res.data.status?.toUpperCase()) 
-              ? res.data.status 
-              : "PENDING",
+      status: ["APPROVED", "PENDING", "REJECTED", "HIDDEN", "DELETED"].includes(res.data.status?.toUpperCase())
+        ? res.data.status
+        : "PENDING",
       legalStatus: res.data.mainDoorDirection || "",
       totalArea: res.data.totalArea ?? res.data.TotalArea ?? "",
       height: res.data.height ?? res.data.Height ?? "",
@@ -180,24 +180,24 @@ const EditWarehouse = () => {
 
   useEffect(() => {
     if (isMapClickRef.current || !formData.address || formData.address.trim().length < 5) return;
-    
+
     const handler = setTimeout(async () => {
       try {
         let lat, lng;
         if (GOOGLE_MAPS_API_KEY) {
-           const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(formData.address)}&key=${GOOGLE_MAPS_API_KEY}&language=vi`);
-           const data = await res.json();
-           if (data.results && data.results.length > 0) {
-             lat = data.results[0].geometry.location.lat;
-             lng = data.results[0].geometry.location.lng;
-           }
+          const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(formData.address)}&key=${GOOGLE_MAPS_API_KEY}&language=vi`);
+          const data = await res.json();
+          if (data.results && data.results.length > 0) {
+            lat = data.results[0].geometry.location.lat;
+            lng = data.results[0].geometry.location.lng;
+          }
         } else {
-           const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(formData.address)}&format=json&limit=1&accept-language=vi`);
-           const data = await res.json();
-           if (data && data.length > 0) {
-             lat = parseFloat(data[0].lat);
-             lng = parseFloat(data[0].lon);
-           }
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(formData.address)}&format=json&limit=1&accept-language=vi`);
+          const data = await res.json();
+          if (data && data.length > 0) {
+            lat = parseFloat(data[0].lat);
+            lng = parseFloat(data[0].lon);
+          }
         }
         if (lat && lng) setLatLng(lat, lng);
       } catch (e) { console.error("Forward Geocode err", e); }
@@ -282,14 +282,14 @@ const EditWarehouse = () => {
   return (
     <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", padding: "40px 20px", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
-        
+
         {/* Header Section */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-            <button 
-              onClick={() => navigate(-1)} 
-              style={{ 
-                background: "#fff", border: "1px solid #e2e8f0", borderRadius: "14px", width: "48px", height: "48px", 
+            <button
+              onClick={() => navigate(-1)}
+              style={{
+                background: "#fff", border: "1px solid #e2e8f0", borderRadius: "14px", width: "48px", height: "48px",
                 display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b",
                 boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", transition: "all 0.2s"
               }}
@@ -312,36 +312,36 @@ const EditWarehouse = () => {
               <span className="material-symbols-outlined" style={{ color: "#00b2d6", fontSize: "18px" }}>info</span>
               <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#475569" }}>ID: WHS-{id.padStart(4, '0')}</span>
             </div>
-            <div style={{ 
-              padding: "8px 16px", borderRadius: "12px", border: "1px solid", 
-              backgroundColor: 
-                formData.status === 'APPROVED' ? '#f0fdf4' : 
-                formData.status === 'REJECTED' ? '#fef2f2' : 
-                formData.status === 'PENDING' ? '#fffbeb' : '#f8fafc',
-              borderColor: 
-                formData.status === 'APPROVED' ? '#bbf7d0' : 
-                formData.status === 'REJECTED' ? '#fecaca' : 
-                formData.status === 'PENDING' ? '#fde68a' : '#e2e8f0',
-              color: 
-                formData.status === 'APPROVED' ? '#166534' : 
-                formData.status === 'REJECTED' ? '#991b1b' : 
-                formData.status === 'PENDING' ? '#92400e' : '#64748b',
+            <div style={{
+              padding: "8px 16px", borderRadius: "12px", border: "1px solid",
+              backgroundColor:
+                formData.status === 'APPROVED' ? '#f0fdf4' :
+                  formData.status === 'REJECTED' ? '#fef2f2' :
+                    formData.status === 'PENDING' ? '#fffbeb' : '#f8fafc',
+              borderColor:
+                formData.status === 'APPROVED' ? '#bbf7d0' :
+                  formData.status === 'REJECTED' ? '#fecaca' :
+                    formData.status === 'PENDING' ? '#fde68a' : '#e2e8f0',
+              color:
+                formData.status === 'APPROVED' ? '#166534' :
+                  formData.status === 'REJECTED' ? '#991b1b' :
+                    formData.status === 'PENDING' ? '#92400e' : '#64748b',
               display: "flex", alignItems: "center", gap: "8px", fontWeight: 700, fontSize: "0.85rem"
             }}>
               <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                {formData.status === 'APPROVED' ? 'verified' : 
-                 formData.status === 'REJECTED' ? 'cancel' : 
-                 formData.status === 'PENDING' ? 'history' : 'draft'}
+                {formData.status === 'APPROVED' ? 'verified' :
+                  formData.status === 'REJECTED' ? 'cancel' :
+                    formData.status === 'PENDING' ? 'history' : 'draft'}
               </span>
-              {formData.status === 'APPROVED' ? 'Đã duyệt' : 
-               formData.status === 'REJECTED' ? 'Bị từ chối' : 
-               formData.status === 'PENDING' ? 'Đang chờ duyệt' : 'Ẩn / Chưa gửi'}
+              {formData.status === 'APPROVED' ? 'Đã duyệt' :
+                formData.status === 'REJECTED' ? 'Bị từ chối' :
+                  formData.status === 'PENDING' ? 'Đang chờ duyệt' : 'Ẩn / Chưa gửi'}
             </div>
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr", gap: "2rem", alignItems: "start" }}>
-          
+
           {/* Left Column: Main Form */}
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem", minWidth: 0 }}>
             <form
@@ -388,9 +388,9 @@ const EditWarehouse = () => {
                     const isSelected = formData.warehouseType === type.label;
 
                     return (
-                      <div 
+                      <div
                         key={type.label}
-                        onClick={() => handleChange({ target: { name: "warehouseType", value: type.label }})}
+                        onClick={() => handleChange({ target: { name: "warehouseType", value: type.label } })}
                         style={{
                           padding: "12px",
                           borderRadius: "12px",
@@ -404,7 +404,7 @@ const EditWarehouse = () => {
                         }}
                       >
                         <div style={{
-                          width: "18px", height: "18px", borderRadius: "50%", 
+                          width: "18px", height: "18px", borderRadius: "50%",
                           border: isSelected ? "5px solid #00b2d6" : "1px solid #cbd5e1",
                           display: "flex", alignItems: "center", justifyContent: "center"
                         }}>
@@ -423,7 +423,7 @@ const EditWarehouse = () => {
                     placeholder="Nhập loại kho của bạn"
                     onChange={handleChange}
                     required
-                    style={{...inputStyle, marginTop: "10px"}}
+                    style={{ ...inputStyle, marginTop: "10px" }}
                   />
                 )}
               </div>
@@ -502,7 +502,7 @@ const EditWarehouse = () => {
                   </div>
                 )}
               </div>
-              
+
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <div style={groupStyle}>
@@ -529,10 +529,10 @@ const EditWarehouse = () => {
                 cursor: "pointer",
                 transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
               }} onClick={() => handleChange({ target: { name: 'is24HoursAccess', type: 'checkbox', checked: !formData.is24HoursAccess } })}>
-                <div style={{ 
-                  width: "48px", height: "48px", borderRadius: "14px", 
-                  backgroundColor: formData.is24HoursAccess ? "#00b2d6" : "#cbd5e1", 
-                  display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" 
+                <div style={{
+                  width: "48px", height: "48px", borderRadius: "14px",
+                  backgroundColor: formData.is24HoursAccess ? "#00b2d6" : "#cbd5e1",
+                  display: "flex", alignItems: "center", justifyContent: "center", color: "#fff"
                 }}>
                   <span className="material-symbols-outlined" style={{ fontSize: "28px" }}>schedule</span>
                 </div>
@@ -540,16 +540,16 @@ const EditWarehouse = () => {
                   <div style={{ fontWeight: 800, color: "#1e293b", fontSize: "1.05rem" }}>Truy cập 24/7</div>
                   <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Kho tự quản hoạt động không giới hạn thời gian</div>
                 </div>
-                <div style={{ 
-                  width: "50px", height: "26px", borderRadius: "20px", 
+                <div style={{
+                  width: "50px", height: "26px", borderRadius: "20px",
                   backgroundColor: formData.is24HoursAccess ? "#00b2d6" : "#e2e8f0",
                   position: "relative", transition: "all 0.3s"
                 }}>
-                  <div style={{ 
-                    position: "absolute", top: "3px", 
+                  <div style={{
+                    position: "absolute", top: "3px",
                     left: formData.is24HoursAccess ? "27px" : "3px",
-                    width: "20px", height: "20px", backgroundColor: "#fff", 
-                    borderRadius: "50%", transition: "all 0.3s", boxShadow: "0 2px 4px rgba(0,0,0,0.1)" 
+                    width: "20px", height: "20px", backgroundColor: "#fff",
+                    borderRadius: "50%", transition: "all 0.3s", boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
                   }} />
                 </div>
               </div>
@@ -836,12 +836,12 @@ const EditWarehouse = () => {
 
           {/* Right Column: Map, Media & Areas */}
           <div style={{ display: "flex", flexDirection: "column", gap: "2rem", minWidth: 0 }}>
-            
+
 
             {/* Map Preview */}
-            <div style={{ 
-              backgroundColor: "#fff", padding: "1.5rem", borderRadius: "32px", 
-              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9" 
+            <div style={{
+              backgroundColor: "#fff", padding: "1.5rem", borderRadius: "32px",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9"
             }}>
               <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.1rem", fontWeight: 800, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
                 <span className="material-symbols-outlined" style={{ color: "#00b2d6" }}>map</span>
@@ -865,23 +865,23 @@ const EditWarehouse = () => {
             </div>
 
             {/* Media Gallery */}
-            <div style={{ 
-              backgroundColor: "#fff", padding: "2rem", borderRadius: "32px", 
-              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9" 
+            <div style={{
+              backgroundColor: "#fff", padding: "2rem", borderRadius: "32px",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9"
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
                 <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#1e293b", display: "flex", alignItems: "center", gap: "8px" }}>
                   <span className="material-symbols-outlined" style={{ color: "#00b2d6" }}>photo_library</span>
                   Hình ảnh ({formData.images.length})
                 </h3>
-                <label style={{ 
-                    backgroundColor: "#f0f9ff", color: "#00b2d6", padding: "8px 16px", borderRadius: "10px", 
-                    cursor: "pointer", fontWeight: 700, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px",
-                    border: "1px solid #bae6fd", transition: "all 0.2s"
-                }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e0f2fe" } onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f0f9ff" }>
-                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>add_a_photo</span>
-                    {uploadLoading ? "..." : "Thêm ảnh"}
-                    <input type="file" multiple accept="image/*" hidden onChange={handleImageUpload} disabled={uploadLoading} />
+                <label style={{
+                  backgroundColor: "#f0f9ff", color: "#00b2d6", padding: "8px 16px", borderRadius: "10px",
+                  cursor: "pointer", fontWeight: 700, fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "6px",
+                  border: "1px solid #bae6fd", transition: "all 0.2s"
+                }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e0f2fe"} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f0f9ff"}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>add_a_photo</span>
+                  {uploadLoading ? "..." : "Thêm ảnh"}
+                  <input type="file" multiple accept="image/*" hidden onChange={handleImageUpload} disabled={uploadLoading} />
                 </label>
               </div>
 
@@ -893,10 +893,10 @@ const EditWarehouse = () => {
                     <div key={img.imageId} style={{ position: "relative", aspectRatio: "1/1", borderRadius: "16px", overflow: "hidden", border: "1px solid #e2e8f0", boxShadow: "0 4px 10px rgba(0,0,0,0.05)" }}>
                       <img src={imgUrl} alt="Warehouse" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.4), transparent)", opacity: 0, transition: "opacity 0.2s", display: "flex", alignItems: "flex-end", justifyContent: "flex-end", padding: "8px" }} onMouseEnter={(e) => e.currentTarget.style.opacity = 1} onMouseLeave={(e) => e.currentTarget.style.opacity = 0}>
-                        <button 
+                        <button
                           onClick={() => handleDeleteImage(img.imageId)}
-                          style={{ 
-                            background: "#fee2e2", border: "none", borderRadius: "8px", width: "32px", height: "32px", 
+                          style={{
+                            background: "#fee2e2", border: "none", borderRadius: "8px", width: "32px", height: "32px",
                             cursor: "pointer", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center",
                             boxShadow: "0 2px 8px rgba(239, 68, 68, 0.3)"
                           }}
@@ -912,9 +912,9 @@ const EditWarehouse = () => {
                   );
                 })}
               </div>
-              
+
               {formData.images.length === 0 && (() => {
-                 const FALLBACK_IMAGES = [
+                const FALLBACK_IMAGES = [
                   "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&q=80&w=1200",
                   "https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&q=80&w=600",
                   "https://images.unsplash.com/photo-1565891741441-64926e441838?auto=format&fit=crop&q=80&w=600",
@@ -949,8 +949,8 @@ const EditWarehouse = () => {
             </div>
 
             {/* Area Management Section (Moved to right column) */}
-            <div style={{ 
-              backgroundColor: "#fff", padding: "2rem", borderRadius: "32px", 
+            <div style={{
+              backgroundColor: "#fff", padding: "2rem", borderRadius: "32px",
               boxShadow: "0 20px 50px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9"
             }}>
               <h3 style={{ margin: "0 0 1.5rem 0", fontSize: "1.1rem", fontWeight: 800, color: "#1e293b", display: "flex", alignItems: "center", gap: "10px" }}>
@@ -974,8 +974,8 @@ const EditWarehouse = () => {
           onSave={async (jsonString, gateString) => {
             try {
               try {
-                await api.patch(`/Warehouse/${id}/boundary`, { 
-                  boundaryPoints: jsonString, 
+                await api.patch(`/Warehouse/${id}/boundary`, {
+                  boundaryPoints: jsonString,
                   gatePosition: gateString,
                   clearGrid: hasInventory
                 });

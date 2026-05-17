@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import api from "../services/axiosClient";
-import { 
-  createWarehouse, 
-  uploadWarehouseImage, 
-  uploadWarehouseDocument, 
-  submitWarehouse 
+import {
+  createWarehouse,
+  uploadWarehouseImage,
+  uploadWarehouseDocument,
+  submitWarehouse
 } from "../services/warehouseService";
 
 import StepIndicator from "../components/warehouse/StepIndicator";
@@ -21,11 +21,11 @@ const CreateWarehouse = () => {
   const [warehouseId, setWarehouseId] = useState(null);
   const [loadingDraft, setLoadingDraft] = useState(false);
 
-    const [formData, setFormData] = useState({
-      name: "",
-      warehouseType: "Kho chung",
-      customWarehouseType: "",
-      address: "",
+  const [formData, setFormData] = useState({
+    name: "",
+    warehouseType: "Kho chung",
+    customWarehouseType: "",
+    address: "",
     lat: "",
     lng: "",
     totalArea: "",
@@ -36,7 +36,7 @@ const CreateWarehouse = () => {
     closeTime: "18:00",
     description: ""
   });
-  
+
   const [images, setImages] = useState([]); // List of { file, isPrimary, preview }
   const [existingImages, setExistingImages] = useState([]);
   const [documents, setDocuments] = useState(null); // { file, type }
@@ -57,7 +57,7 @@ const CreateWarehouse = () => {
       setLoadingDraft(true);
       const res = await api.get(`/Warehouse/${id}`);
       const data = res.data;
-      
+
       // Map data to form
       const predefinedTypes = ["Kho lạnh / mát", "Kho chung", "Kho tự quản", "Kho xưởng", "Kho ngoại quan"];
       setFormData({
@@ -228,17 +228,17 @@ const CreateWarehouse = () => {
   };
 
   return (
-    <div style={{ 
-      maxWidth: "1000px", 
-      margin: "60px auto", 
+    <div style={{
+      maxWidth: "1000px",
+      margin: "60px auto",
       padding: "0 20px",
-      fontFamily: "'Inter', sans-serif" 
+      fontFamily: "'Inter', sans-serif"
     }}>
       <div style={{ textAlign: "center", marginBottom: "50px" }}>
-        <h1 style={{ 
-          fontSize: "2.5rem", 
-          fontWeight: 900, 
-          color: "#1e293b", 
+        <h1 style={{
+          fontSize: "2.5rem",
+          fontWeight: 900,
+          color: "#1e293b",
           marginBottom: "12px",
           letterSpacing: "-0.5px"
         }}>
@@ -293,8 +293,8 @@ const CreateWarehouse = () => {
 
 
         {step === 5 && (
-          <div style={{ 
-            textAlign: "center", 
+          <div style={{
+            textAlign: "center",
             marginTop: "40px",
             background: "#fff",
             padding: "60px",
@@ -302,16 +302,16 @@ const CreateWarehouse = () => {
             boxShadow: "0 20px 50px rgba(0,0,0,0.05)",
             border: "1px solid #f0fdf4"
           }}>
-            <div style={{ 
-              width: "80px", 
-              height: "80px", 
-              backgroundColor: "#f0fdf4", 
-              color: "#10b981", 
-              borderRadius: "50%", 
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center", 
-              margin: "0 auto 24px" 
+            <div style={{
+              width: "80px",
+              height: "80px",
+              backgroundColor: "#f0fdf4",
+              color: "#10b981",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 24px"
             }}>
               <span className="material-symbols-outlined" style={{ fontSize: "48px" }}>verified</span>
             </div>
