@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import axiosClient from '../../services/axiosClient';
 import authService from '../../services/authService';
 import InteractiveGridMap from '../../components/warehouse/InteractiveGridMap';
+import RenterSpaceUsageWarning from '../../components/warehouse/RenterSpaceUsageWarning';
 
 export default function WarehouseGridMapPage() {
     const [warehouseId, setWarehouseId] = useState(null);
@@ -440,6 +441,8 @@ export default function WarehouseGridMapPage() {
                             
                             {/* Right Side: Assignment Form */}
                             <div style={{ width: 320, padding: 24, overflowY: 'auto', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+                                <RenterSpaceUsageWarning warehouseId={warehouseId} renterId={selectedItem.renterId} />
+                                
                                 <div style={{ padding: 16, background: '#eff6ff', borderRadius: 12, marginBottom: 20, border: '1px solid #bfdbfe' }}>
                                     <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e3a8a', marginBottom: 6 }}>
                                         Mặt hàng: {selectedItem.itemName}

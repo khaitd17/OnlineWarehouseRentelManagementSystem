@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import inventoryService from '../../services/inventoryService';
 import axiosClient from '../../services/axiosClient';
+import RenterSpaceUsageWarning from '../../components/warehouse/RenterSpaceUsageWarning';
 
 const INBOUND_COLOR  = '#0ea5e9';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -201,6 +202,9 @@ const DetailModal = ({ req, onClose }) => {
         </div>
 
         <div style={{ padding:'20px 28px' }}>
+          {req.type === 'INBOUND' && (
+            <RenterSpaceUsageWarning warehouseId={req.warehouseId} renterId={req.renterId} />
+          )}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:20 }}>
             {[['Người thuê', req.renterName||'—'], ['Email', req.renterEmail||'—'],
               ['Ngày tạo', fmtDate(req.createdAt)], ['Trạng thái', req.status||'—']

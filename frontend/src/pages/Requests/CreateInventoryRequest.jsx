@@ -4,6 +4,8 @@ import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
 import renterAssetService from '../../services/renterAssetService';
 import aiService from '../../services/aiService';
+import authService from '../../services/authService';
+import RenterSpaceUsageWarning from '../../components/warehouse/RenterSpaceUsageWarning';
 
 const INBOUND_COLOR = '#0ea5e9';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -795,6 +797,13 @@ export default function CreateInventoryRequest() {
         <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>
           {step===1 ? 'Chọn loại yêu cầu và kho hàng để tiếp tục.' : 'Thêm hàng hóa, chứng từ và ghi chú cho yêu cầu.'}
         </p>
+
+        {step === 2 && warehouseId && type === 'INBOUND' && (
+          <div style={{ marginTop: '16px', marginBottom: '-8px' }}>
+            <RenterSpaceUsageWarning warehouseId={warehouseId} renterId={authService.getUser()?.id} />
+          </div>
+        )}
+
         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:16 }}>
           {[1,2].map(s=>(
             <React.Fragment key={s}>

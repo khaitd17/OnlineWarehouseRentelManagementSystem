@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;

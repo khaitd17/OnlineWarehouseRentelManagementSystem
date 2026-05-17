@@ -7,11 +7,11 @@ import WarehouseFloorPlanView from "../components/warehouse/WarehouseFloorPlanVi
 
 // ─── Status helpers ────────────────────────────────────────────────────────
 const STATUS_BADGE = {
-  APPROVED:  { bg: "#dcfce7", color: "#166534", label: "Đã Phê Duyệt" },
-  PENDING:   { bg: "#fef9c3", color: "#854d0e", label: "Đang Chờ Duyệt" },
-  REJECTED:  { bg: "#fee2e2", color: "#991b1b", label: "Bị Từ Chối" },
-  HIDDEN:    { bg: "#f1f5f9", color: "#475569", label: "Chưa Duyệt" },
-  DELETED:   { bg: "#f9fafb", color: "#9ca3af", label: "Đã Xóa" },
+  APPROVED: { bg: "#dcfce7", color: "#166534", label: "Đã Phê Duyệt" },
+  PENDING: { bg: "#fef9c3", color: "#854d0e", label: "Đang Chờ Duyệt" },
+  REJECTED: { bg: "#fee2e2", color: "#991b1b", label: "Bị Từ Chối" },
+  HIDDEN: { bg: "#f1f5f9", color: "#475569", label: "Chưa Duyệt" },
+  DELETED: { bg: "#f9fafb", color: "#9ca3af", label: "Đã Xóa" },
 };
 
 const getStatusBadge = (status) => {
@@ -28,28 +28,28 @@ const AREA_STATUS_BADGE = (isRented) => isRented
   : <span style={{ padding: "2px 10px", background: "#dcfce7", color: "#166534", borderRadius: "12px", fontSize: "0.78rem", fontWeight: 700 }}>Trống</span>;
 
 const CONTRACT_STATUS = {
-  ACTIVE:              { bg: "#dcfce7", color: "#166534", label: "Hiệu lực" },
-  PENDING:             { bg: "#fef9c3", color: "#854d0e", label: "Chờ ký" },
-  EXPIRED:             { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
-  CANCELLED:           { bg: "#fee2e2", color: "#991b1b", label: "Đã hủy" },
-  CANCELLED_BY_USER:   { bg: "#fee2e2", color: "#dc2626", label: "Người dùng hủy" },
-  CANCELLED_BY_OWNER:  { bg: "#fee2e2", color: "#dc2626", label: "Chủ kho hủy" },
-  CANCELLED_NO_PAYMENT:{ bg: "#f1f5f9", color: "#64748b", label: "Hủy - Không TT" },
-  TERMINATED:          { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
-  COMPLETED:           { bg: "#e0f2fe", color: "#0284c7", label: "Đã hoàn thành" },
-  CLOSED:              { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
-  DRAFT:               { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
-  NEGOTIATING:         { bg: "#dbeafe", color: "#2563eb", label: "Đang đàm phán" },
-  REVISION_REQUESTED:  { bg: "#fef3c7", color: "#d97706", label: "Yêu cầu chỉnh sửa" },
-  APPROVED_FOR_SIGNING:{ bg: "#dcfce7", color: "#16a34a", label: "Sẵn sàng ký" },
-  SIGNED:              { bg: "#dbeafe", color: "#1e40af", label: "Đã ký" },
-  PENDING_PAYMENT:     { bg: "#fef3c7", color: "#d97706", label: "Chờ thanh toán" },
-  PENDING_OWNER_SIGNATURE:  { bg: "#dbeafe", color: "#1e40af", label: "Chờ chủ kho ký" },
+  ACTIVE: { bg: "#dcfce7", color: "#166534", label: "Hiệu lực" },
+  PENDING: { bg: "#fef9c3", color: "#854d0e", label: "Chờ ký" },
+  EXPIRED: { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
+  CANCELLED: { bg: "#fee2e2", color: "#991b1b", label: "Đã hủy" },
+  CANCELLED_BY_USER: { bg: "#fee2e2", color: "#dc2626", label: "Người dùng hủy" },
+  CANCELLED_BY_OWNER: { bg: "#fee2e2", color: "#dc2626", label: "Chủ kho hủy" },
+  CANCELLED_NO_PAYMENT: { bg: "#f1f5f9", color: "#64748b", label: "Hủy - Không TT" },
+  TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
+  COMPLETED: { bg: "#e0f2fe", color: "#0284c7", label: "Đã hoàn thành" },
+  CLOSED: { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
+  DRAFT: { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
+  NEGOTIATING: { bg: "#dbeafe", color: "#2563eb", label: "Đang đàm phán" },
+  REVISION_REQUESTED: { bg: "#fef3c7", color: "#d97706", label: "Yêu cầu chỉnh sửa" },
+  APPROVED_FOR_SIGNING: { bg: "#dcfce7", color: "#16a34a", label: "Sẵn sàng ký" },
+  SIGNED: { bg: "#dbeafe", color: "#1e40af", label: "Đã ký" },
+  PENDING_PAYMENT: { bg: "#fef3c7", color: "#d97706", label: "Chờ thanh toán" },
+  PENDING_OWNER_SIGNATURE: { bg: "#dbeafe", color: "#1e40af", label: "Chờ chủ kho ký" },
   PENDING_RENTER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ người thuê ký" },
-  PENDING_SIGNATURE:   { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
+  PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
   PENDING_TERMINATION: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ chấm dứt" },
-  PENDING_CLOSE:       { bg: "#fef3c7", color: "#f59e0b", label: "Chờ đóng" },
-  OVERDUE:             { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
+  PENDING_CLOSE: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ đóng" },
+  OVERDUE: { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
 };
 
 const getContractBadge = (status) => {
@@ -70,11 +70,11 @@ const getImageUrl = (img) => {
 
 // ─── Tabs ───────────────────────────────────────────────────────────────────
 const TABS = [
-  { id: "map",       icon: "map",              label: "Sơ đồ & Khu vực" },
-  { id: "contracts", icon: "description",      label: "Hợp đồng thuê" },
-  { id: "revenue",   icon: "bar_chart",        label: "Doanh thu" },
-  { id: "info",      icon: "info",             label: "Thông tin kho" },
-  { id: "ratings",   icon: "star",             label: "Đánh giá" },
+  { id: "map", icon: "map", label: "Sơ đồ & Khu vực" },
+  { id: "contracts", icon: "description", label: "Hợp đồng thuê" },
+  { id: "revenue", icon: "bar_chart", label: "Doanh thu" },
+  { id: "info", icon: "info", label: "Thông tin kho" },
+  { id: "ratings", icon: "star", label: "Đánh giá" },
 ];
 
 // ─── Main ──────────────────────────────────────────────────────────────────
@@ -83,9 +83,9 @@ const OwnerWarehouseDetailPage = () => {
   const navigate = useNavigate();
 
   const [warehouse, setWarehouse] = useState(null);
-  const [areas, setAreas]         = useState([]);
+  const [areas, setAreas] = useState([]);
   const [contracts, setContracts] = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("map");
   const [activeImage, setActiveImage] = useState(0);
   const [ratingsData, setRatingsData] = useState(null);
@@ -111,8 +111,8 @@ const OwnerWarehouseDetailPage = () => {
           api.get(`/RentalAreas/warehouse/${id}`),
           api.get(`/rental-contracts/warehouse/${id}`),
         ]);
-        if (whRes.status === "fulfilled")        setWarehouse(whRes.value.data);
-        if (areasRes.status === "fulfilled")     setAreas(areasRes.value.data || []);
+        if (whRes.status === "fulfilled") setWarehouse(whRes.value.data);
+        if (areasRes.status === "fulfilled") setAreas(areasRes.value.data || []);
         if (contractsRes.status === "fulfilled") setContracts(contractsRes.value.data || []);
       } catch (err) {
         console.error(err);
@@ -199,18 +199,18 @@ const OwnerWarehouseDetailPage = () => {
   );
 
   // ── Revenue calculations ─────────────────────────────────────────────────
-  const activeContracts     = contracts.filter(c => c.status?.toUpperCase() === "ACTIVE");
+  const activeContracts = contracts.filter(c => c.status?.toUpperCase() === "ACTIVE");
   const totalMonthlyRevenue = activeContracts.reduce((s, c) => s + (c.monthlyPayment || 0), 0);
-  const totalContractValue  = contracts.reduce((s, c) => s + (c.totalValue || 0), 0);
-  
+  const totalContractValue = contracts.reduce((s, c) => s + (c.totalValue || 0), 0);
+
   // New: Calculate total rented area directly from active contracts
-  const totalRentedArea     = activeContracts.reduce((s, c) => s + (c.requestedArea || 0), 0);
-  
+  const totalRentedArea = activeContracts.reduce((s, c) => s + (c.requestedArea || 0), 0);
+
   // Use either the DB value or a calculated value if the DB hasn't been updated
   const displayAvailableArea = Math.min(warehouse.availableArea, warehouse.totalArea - totalRentedArea);
 
-  const rentedAreaIds       = new Set(activeContracts.map(c => c.rentalAreaId).filter(id => id !== null));
-  const rentedAreas         = areas.filter(a => rentedAreaIds.has(a.id));
+  const rentedAreaIds = new Set(activeContracts.map(c => c.rentalAreaId).filter(id => id !== null));
+  const rentedAreas = areas.filter(a => rentedAreaIds.has(a.id));
 
   return (
     <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
@@ -263,16 +263,16 @@ const OwnerWarehouseDetailPage = () => {
                   <div style={{ marginTop: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                     {getStatusBadge(warehouse.status)}
                     {warehouse.mainDoorDirection && (
-                      <span style={{ 
-                        padding: "4px 14px", 
-                        background: "rgba(255,255,255,0.2)", 
-                        color: "#fff", 
-                        borderRadius: "20px", 
-                        fontSize: "0.82rem", 
+                      <span style={{
+                        padding: "4px 14px",
+                        background: "rgba(255,255,255,0.2)",
+                        color: "#fff",
+                        borderRadius: "20px",
+                        fontSize: "0.82rem",
                         fontWeight: 700,
                         border: "1px solid rgba(255,255,255,0.3)",
-                        display: "flex", 
-                        alignItems: "center", 
+                        display: "flex",
+                        alignItems: "center",
                         gap: 6,
                         backdropFilter: "blur(4px)"
                       }}>
@@ -281,7 +281,7 @@ const OwnerWarehouseDetailPage = () => {
                       </span>
                     )}
                     <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.875rem" }}>
-                      #{`WHS-${String(warehouse.warehouseId || id).padStart(4,"0")}`}
+                      #{`WHS-${String(warehouse.warehouseId || id).padStart(4, "0")}`}
                     </span>
                   </div>
                 </div>
@@ -297,11 +297,11 @@ const OwnerWarehouseDetailPage = () => {
               {/* Quick stats */}
               <div style={{ display: "flex", gap: 16, marginTop: 28, flexWrap: "wrap" }}>
                 {[
-                  { icon: "straighten",  label: "Diện tích sàn",  value: `${warehouse.totalArea} m²`,     color: "#38bdf8" },
-                  { icon: "check_circle", label: "Còn trống",       value: `${warehouse.availableArea} m²`, color: "#4ade80" },
-                  { icon: "grid_view",   label: "Khu vực",         value: `${areas.length} khu`,            color: "#fb923c" },
-                  { icon: "description", label: "Hợp đồng HLực",  value: `${activeContracts.length}`,      color: "#f472b6" },
-                  { icon: "payments",    label: "Doanh thu/tháng", value: `${fmt(totalMonthlyRevenue)} ₫`,  color: "#a78bfa" },
+                  { icon: "straighten", label: "Diện tích sàn", value: `${warehouse.totalArea} m²`, color: "#38bdf8" },
+                  { icon: "check_circle", label: "Còn trống", value: `${warehouse.availableArea} m²`, color: "#4ade80" },
+                  { icon: "grid_view", label: "Khu vực", value: `${areas.length} khu`, color: "#fb923c" },
+                  { icon: "description", label: "Hợp đồng HLực", value: `${activeContracts.length}`, color: "#f472b6" },
+                  { icon: "payments", label: "Doanh thu/tháng", value: `${fmt(totalMonthlyRevenue)} ₫`, color: "#a78bfa" },
                 ].map((s, i) => (
                   <div key={i} style={{ background: "rgba(255,255,255,0.12)", borderRadius: 12, padding: "14px 20px", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.2)", minWidth: 140 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -457,10 +457,10 @@ const OwnerWarehouseDetailPage = () => {
         {activeTab === "revenue" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
             {[
-              { icon: "payments",       label: "Doanh thu tháng này",  value: `${fmt(totalMonthlyRevenue)} ₫`,  desc: `Từ ${activeContracts.length} hợp đồng đang hiệu lực`, color: "#0284c7", bg: "#e0f2fe" },
-              { icon: "account_balance", label: "Tổng giá trị hợp đồng", value: `${fmt(totalContractValue)} ₫`, desc: `${contracts.length} hợp đồng tất cả thời gian`,        color: "#059669", bg: "#d1fae5" },
-              { icon: "trending_up",    label: "Tỷ lệ lấp đầy",         value: `${warehouse.totalArea > 0 ? Math.round((1 - (warehouse.availableArea / warehouse.totalArea)) * 100) : 0}%`, desc: `${warehouse.totalArea - warehouse.availableArea}/${warehouse.totalArea} m²`, color: "#7c3aed", bg: "#ede9fe" },
-              { icon: "receipt_long",  label: "Hợp đồng hiệu lực",    value: activeContracts.length,           desc: `${contracts.filter(c => c.status?.toUpperCase() === "EXPIRED").length} đã hết hạn`, color: "#d97706", bg: "#fef3c7" },
+              { icon: "payments", label: "Doanh thu tháng này", value: `${fmt(totalMonthlyRevenue)} ₫`, desc: `Từ ${activeContracts.length} hợp đồng đang hiệu lực`, color: "#0284c7", bg: "#e0f2fe" },
+              { icon: "account_balance", label: "Tổng giá trị hợp đồng", value: `${fmt(totalContractValue)} ₫`, desc: `${contracts.length} hợp đồng tất cả thời gian`, color: "#059669", bg: "#d1fae5" },
+              { icon: "trending_up", label: "Tỷ lệ lấp đầy", value: `${warehouse.totalArea > 0 ? Math.round((1 - (warehouse.availableArea / warehouse.totalArea)) * 100) : 0}%`, desc: `${warehouse.totalArea - warehouse.availableArea}/${warehouse.totalArea} m²`, color: "#7c3aed", bg: "#ede9fe" },
+              { icon: "receipt_long", label: "Hợp đồng hiệu lực", value: activeContracts.length, desc: `${contracts.filter(c => c.status?.toUpperCase() === "EXPIRED").length} đã hết hạn`, color: "#d97706", bg: "#fef3c7" },
             ].map((card, i) => (
               <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", border: "1px solid #e2e8f0", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
@@ -550,16 +550,16 @@ const OwnerWarehouseDetailPage = () => {
                 <h3 style={{ margin: "0 0 1rem 0", fontWeight: 700, color: "#0f172a" }}>Thông tin chung</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   {[
-                    { label: "Tên kho",          value: warehouse.name },
-                    { label: "Địa chỉ",           value: warehouse.address },
-                    { label: "Loại kho",          value: warehouse.warehouseType || "Khác" },
-                    { label: "Diện tích sàn",    value: `${warehouse.totalArea} m²` },
+                    { label: "Tên kho", value: warehouse.name },
+                    { label: "Địa chỉ", value: warehouse.address },
+                    { label: "Loại kho", value: warehouse.warehouseType || "Khác" },
+                    { label: "Diện tích sàn", value: `${warehouse.totalArea} m²` },
                     { label: "Diện tích còn trống", value: `${warehouse.availableArea} m²` },
-                    { label: "Chiều cao",          value: (warehouse.height ?? warehouse.Height) != null ? `${warehouse.height ?? warehouse.Height} m` : "—" },
-                
-                    { label: "Giờ hoạt động",     value: warehouse.is24HoursAccess ? "24/7" : (warehouse.operatingHours || "—") },
-                    { label: "Pháp lý",           value: warehouse.mainDoorDirection || "—" },
-                    { label: "Trạng thái",         value: STATUS_BADGE[warehouse.status?.toUpperCase()]?.label || warehouse.status },
+                    { label: "Chiều cao", value: (warehouse.height ?? warehouse.Height) != null ? `${warehouse.height ?? warehouse.Height} m` : "—" },
+
+                    { label: "Giờ hoạt động", value: warehouse.is24HoursAccess ? "24/7" : (warehouse.operatingHours || "—") },
+                    { label: "Pháp lý", value: warehouse.mainDoorDirection || "—" },
+                    { label: "Trạng thái", value: STATUS_BADGE[warehouse.status?.toUpperCase()]?.label || warehouse.status },
                   ].map(f => (
                     <div key={f.label} style={{ padding: "12px", background: "#f8fafc", borderRadius: 10 }}>
                       <p style={{ margin: 0, fontSize: "0.78rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{f.label}</p>
@@ -754,27 +754,27 @@ const OwnerWarehouseDetailPage = () => {
                   <div style={{ textAlign: "center", minWidth: 110 }}>
                     <div style={{ fontSize: "3rem", fontWeight: 900, color: "#d97706", lineHeight: 1 }}>{ratingsData.averageStar}</div>
                     <div style={{ display: "flex", gap: 3, justifyContent: "center", margin: "8px 0 4px" }}>
-                      {[1,2,3,4,5].map(s => (
+                      {[1, 2, 3, 4, 5].map(s => (
                         <svg key={s} width="18" height="18" viewBox="0 0 24 24"
                           fill={s <= Math.round(ratingsData.averageStar) ? '#f59e0b' : 'none'}
                           stroke={s <= Math.round(ratingsData.averageStar) ? '#f59e0b' : '#cbd5e1'}
                           strokeWidth="1.5"
                           style={{ filter: s <= Math.round(ratingsData.averageStar) ? 'drop-shadow(0 1px 4px rgba(245,158,11,0.5))' : 'none' }}
                         >
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                         </svg>
                       ))}
                     </div>
                     <div style={{ fontSize: "0.82rem", color: "#92400e", fontWeight: 700 }}>{ratingsData.totalCount} đánh giá</div>
                   </div>
                   <div style={{ flex: 1 }}>
-                    {[5,4,3,2,1].map(star => {
+                    {[5, 4, 3, 2, 1].map(star => {
                       const count = ratingsData.starDistribution ? ratingsData.starDistribution[star - 1] || 0 : 0;
                       const pct = ratingsData.totalCount > 0 ? (count / ratingsData.totalCount * 100) : 0;
                       return (
                         <div key={star} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
                           <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#78716c", width: 24, textAlign: "right" }}>{star}</span>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b" style={{ flexShrink: 0 }}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="#f59e0b" style={{ flexShrink: 0 }}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                           <div style={{ flex: 1, height: 8, backgroundColor: "#fef3c7", borderRadius: 4, overflow: "hidden" }}>
                             <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #f59e0b, #d97706)", borderRadius: 4, transition: "width 0.5s ease" }} />
                           </div>
@@ -812,14 +812,14 @@ const OwnerWarehouseDetailPage = () => {
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           {/* Stars */}
                           <div style={{ display: "flex", gap: 3 }}>
-                            {[1,2,3,4,5].map(s => (
+                            {[1, 2, 3, 4, 5].map(s => (
                               <svg key={s} width="16" height="16" viewBox="0 0 24 24"
                                 fill={s <= r.star ? '#f59e0b' : 'none'}
                                 stroke={s <= r.star ? '#f59e0b' : '#cbd5e1'}
                                 strokeWidth="1.5"
                                 style={{ filter: s <= r.star ? 'drop-shadow(0 1px 4px rgba(245,158,11,0.4))' : 'none' }}
                               >
-                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                               </svg>
                             ))}
                           </div>
@@ -830,7 +830,7 @@ const OwnerWarehouseDetailPage = () => {
                       {r.comment && (
                         <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 12 }}>
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                           </svg>
                           <p style={{ color: "#475569", fontSize: "0.9rem", lineHeight: 1.6, margin: 0 }}>{r.comment}</p>
                         </div>
@@ -842,7 +842,7 @@ const OwnerWarehouseDetailPage = () => {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
                             <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#16a34a", display: "flex", alignItems: "center", gap: 4 }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                               </svg>
                               Phản hồi của bạn
                             </div>
@@ -907,7 +907,7 @@ const OwnerWarehouseDetailPage = () => {
                         <div style={{ marginTop: 12 }}>
                           <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#64748b", display: "flex", alignItems: "center", gap: 5, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                             </svg>
                             Phản hồi đánh giá này
                           </label>
@@ -915,7 +915,7 @@ const OwnerWarehouseDetailPage = () => {
                             <div style={{ flex: 1, position: "relative" }}>
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                                 style={{ position: "absolute", top: 12, left: 12, pointerEvents: "none" }}>
-                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                               </svg>
                               <input
                                 type="text"
@@ -950,8 +950,8 @@ const OwnerWarehouseDetailPage = () => {
                               }}
                             >
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <line x1="22" y1="2" x2="11" y2="13"/>
-                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                <line x1="22" y1="2" x2="11" y2="13" />
+                                <polygon points="22 2 15 22 11 13 2 9 22 2" />
                               </svg>
                               Gửi
                             </button>
@@ -966,7 +966,7 @@ const OwnerWarehouseDetailPage = () => {
               <div style={{ textAlign: "center", padding: "4rem 2rem", background: "#fff", borderRadius: 16, border: "1px solid #f1f5f9" }}>
                 <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #fef3c7, #fde68a)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
                   <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                   </svg>
                 </div>
                 <h3 style={{ margin: "0 0 8px", fontSize: "1.1rem", fontWeight: 700, color: "#64748b" }}>Chưa có đánh giá nào</h3>
