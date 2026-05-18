@@ -146,8 +146,10 @@ public class RentalContract
         if (Status != "NEGOTIATING" && Status != "REVISION_REQUESTED")
             throw new InvalidOperationException($"Cannot approve for signing with status {Status}");
 
-        Status = RentalContractStatus.PendingPayment;
-        PaymentExpiry = DateTime.UtcNow.AddHours(expiryHours);
+        Status = RentalContractStatus.ApprovedForSigning;
+        OwnerSignatureExpiry = DateTime.UtcNow.AddHours(expiryHours);
+        PaymentExpiry = null;
+        RenterSignatureExpiry = null;
         UpdatedAt = DateTime.UtcNow;
     }
 

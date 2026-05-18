@@ -130,25 +130,17 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             }
         }
 
-        if (existingPendingPayment != null && !isCashConfirmationRequest)
+        if (existingPendingPayment != null)
         {
-            // Recover from stale/invalid pending records (e.g., old amount = 0) by regenerating payment.
-            if (existingPendingPayment.Amount <= 0)
+            if (isManualConfirmation)
             {
-                existingPendingPayment.MarkFailed();
+                // Convert the existing pending payment into a manual confirmation request
+                ApplyPaymentProof(existingPendingPayment, request);
+                existingPendingPayment.PaymentMethod = request.PaymentMethod;
+                existingPendingPayment.Status = PaymentStatus.PendingConfirmation;
                 await _paymentRepo.UpdateAsync(existingPendingPayment);
-            }
-            else
-            {
-                // Normalize legacy pending payments to the current expiry policy (24h max from now).
-                var maxAllowedExpiry = DateTime.UtcNow.AddHours(PaymentExpiryHours);
-                if (!existingPendingPayment.ExpiredAt.HasValue || existingPendingPayment.ExpiredAt.Value > maxAllowedExpiry)
-                {
-                    existingPendingPayment.UpdateExpiry(maxAllowedExpiry);
-                    await _paymentRepo.UpdateAsync(existingPendingPayment);
-                }
+                await SendCashPaymentNotificationToOwner(contract, existingPendingPayment);
 
-                // Return existing pending payment
                 return new CreatePaymentResult
                 {
                     PaymentId = existingPendingPayment.PaymentId,
@@ -159,6 +151,38 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
                         ? DateTime.SpecifyKind(existingPendingPayment.ExpiredAt.Value, DateTimeKind.Utc)
                         : null
                 };
+            }
+
+            if (!isCashConfirmationRequest)
+            {
+                // Recover from stale/invalid pending records (e.g., old amount = 0) by regenerating payment.
+                if (existingPendingPayment.Amount <= 0)
+                {
+                    existingPendingPayment.MarkFailed();
+                    await _paymentRepo.UpdateAsync(existingPendingPayment);
+                }
+                else
+                {
+                    // Normalize legacy pending payments to the current expiry policy (24h max from now).
+                    var maxAllowedExpiry = DateTime.UtcNow.AddHours(PaymentExpiryHours);
+                    if (!existingPendingPayment.ExpiredAt.HasValue || existingPendingPayment.ExpiredAt.Value > maxAllowedExpiry)
+                    {
+                        existingPendingPayment.UpdateExpiry(maxAllowedExpiry);
+                        await _paymentRepo.UpdateAsync(existingPendingPayment);
+                    }
+
+                    // Return existing pending payment
+                    return new CreatePaymentResult
+                    {
+                        PaymentId = existingPendingPayment.PaymentId,
+                        PaymentCode = existingPendingPayment.PaymentCode,
+                        Amount = existingPendingPayment.Amount,
+                        Status = existingPendingPayment.Status,
+                        ExpiredAt = existingPendingPayment.ExpiredAt.HasValue
+                            ? DateTime.SpecifyKind(existingPendingPayment.ExpiredAt.Value, DateTimeKind.Utc)
+                            : null
+                    };
+                }
             }
         }
 

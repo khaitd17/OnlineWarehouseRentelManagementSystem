@@ -46,9 +46,11 @@ const ContractPaymentSelection = () => {
         const contractData = await rentalService.getContractById(id);
         setContract(contractData);
 
-        if (!isTerminationPayment && !isExtensionPayment && contractData.status === "ACTIVE") {
-          navigate(`/contracts/${id}`);
-          return;
+        if (!isTerminationPayment && !isExtensionPayment) {
+          const allowedStatuses = ["PENDING_PAYMENT", "SIGNED", "ACTIVE"];
+          if (!allowedStatuses.includes(contractData.status)) {
+            throw new Error("Hợp đồng chưa ở bước thanh toán.");
+          }
         }
 
         if (isTerminationPayment) {
@@ -84,6 +86,13 @@ const ContractPaymentSelection = () => {
 
         const paymentType = resolvePaymentType(contractData);
         const payments = await paymentService.getPaymentsByContract(Number(id));
+        const completedPayment = payments.find((p) =>
+          p.paymentType === paymentType && p.status === "COMPLETED"
+        );
+        if (!isTerminationPayment && !isExtensionPayment && contractData.status === "ACTIVE" && completedPayment) {
+          navigate(`/contracts/${id}`);
+          return;
+        }
         const existingManual = payments.find((p) =>
           p.paymentType === paymentType
           && (p.paymentMethod === "CASH" || p.paymentMethod === "BANK_TRANSFER")

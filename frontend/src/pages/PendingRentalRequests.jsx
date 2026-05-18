@@ -222,6 +222,14 @@ const PendingRentalRequests = () => {
     return new Date(dateStr).toLocaleDateString("vi-VN");
   };
 
+  const getTodayInputValue = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const openZonePreview = async (req) => {
     try {
       const [warehouse, areasRes] = await Promise.all([
@@ -247,8 +255,14 @@ const PendingRentalRequests = () => {
       const calculatedMonthlyPayment = req.requestedArea * pricePerM2;
 
       setActionModal({ type: "approve", request: req });
+      const todayValue = getTodayInputValue();
+      const requestedStartDate = req.startDate ? req.startDate.split("T")[0] : "";
+      const normalizedStartDate = requestedStartDate
+        ? (requestedStartDate < todayValue ? todayValue : requestedStartDate)
+        : todayValue;
+
       setContractForm({
-        startDate: req.startDate ? req.startDate.split("T")[0] : "",
+        startDate: normalizedStartDate,
         durationMonths: req.durationMonths || "",
         monthlyPayment: calculatedMonthlyPayment.toFixed(0), // Tự động tính giá
         depositAmount: "",
@@ -311,6 +325,11 @@ const PendingRentalRequests = () => {
     }
     if (!contractForm.startDate) {
       alert("Vui lòng chọn ngày bắt đầu hợp đồng");
+      return;
+    }
+    const todayValue = getTodayInputValue();
+    if (contractForm.startDate < todayValue) {
+      alert("Ngày bắt đầu hợp đồng không được là ngày trong quá khứ");
       return;
     }
     if (!contractForm.durationMonths || parseInt(contractForm.durationMonths) < 1 || parseInt(contractForm.durationMonths) > 120) {
@@ -543,6 +562,7 @@ const PendingRentalRequests = () => {
             <input
               type="date"
               value={contractForm.startDate}
+              min={getTodayInputValue()}
               onChange={(e) => handleFormChange("startDate", e.target.value)}
               style={modalInputStyle}
             />

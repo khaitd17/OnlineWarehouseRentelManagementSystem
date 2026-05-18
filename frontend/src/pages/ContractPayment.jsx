@@ -63,9 +63,9 @@ const ContractPayment = () => {
           return;
         }
       } else if (!isExtensionPayment) {
-        if (contractData.status === 'ACTIVE') {
-          navigate(`/contracts/${id}`);
-          return;
+        const allowedStatuses = ['PENDING_PAYMENT', 'SIGNED', 'ACTIVE'];
+        if (!allowedStatuses.includes(contractData.status)) {
+          throw new Error('Hợp đồng chưa ở bước thanh toán.');
         }
       }
 
@@ -117,6 +117,11 @@ const ContractPayment = () => {
       const completedPayment = relevantPayments
         .filter(p => p.status === 'COMPLETED')
         .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+
+      if (!isTerminationPayment && !isExtensionPayment && contractData.status === 'ACTIVE' && completedPayment) {
+        navigate(`/contracts/${id}`);
+        return;
+      }
 
       if (completedPayment) {
         currentPayment = completedPayment;
