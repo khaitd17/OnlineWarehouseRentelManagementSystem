@@ -250,15 +250,15 @@ const DetailModal = ({ req, onClose }) => {
             </div>
           )}
 
-          {/* Capacity (INBOUND only) */}
-          {req.type === 'INBOUND' && (
+          {/* Capacity (INBOUND only, only when contract data available) */}
+          {req.type === 'INBOUND' && (loadingCap || (capacity && capacity.hasContract)) && (
             <div style={{ background:'#f8fafc', borderRadius:10, padding:'14px 16px', marginBottom:16, border:'1px solid #e2e8f0' }}>
               <p style={{ margin:'0 0 10px', fontSize:'0.69rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
                 Sức chứa hợp đồng của người thuê
               </p>
               {loadingCap ? (
                 <p style={{ margin:0, fontSize:'0.82rem', color:'#94a3b8' }}>Đang tải thông tin hợp đồng...</p>
-              ) : capacity && capacity.hasContract ? (
+              ) : (
                 <>
                   <div style={{ fontSize:'0.85rem', marginBottom:12 }}>
                     <span style={{ color:'#94a3b8' }}>Diện tích hợp đồng: </span>
@@ -294,8 +294,6 @@ const DetailModal = ({ req, onClose }) => {
                     )}
                   </div>
                 </>
-              ) : (
-                <p style={{ margin:0, fontSize:'0.82rem', color:'#ef4444', fontWeight:600 }}>Không tìm thấy hợp đồng hiệu lực của người thuê này trong kho này.</p>
               )}
             </div>
           )}

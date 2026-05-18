@@ -800,7 +800,7 @@ export default function CreateInventoryRequest() {
 
         {step === 2 && warehouseId && type === 'INBOUND' && (
           <div style={{ marginTop: '16px', marginBottom: '-8px' }}>
-            <RenterSpaceUsageWarning warehouseId={warehouseId} renterId={authService.getCurrentUser()?.id} />
+            <RenterSpaceUsageWarning warehouseId={warehouseId} renterId={authService.getCurrentUser()?.userId} />
           </div>
         )}
 
@@ -921,7 +921,17 @@ export default function CreateInventoryRequest() {
             </div>}
           </div>
 
-          <div style={{ marginTop:28, display:'flex', justifyContent:'flex-end' }}>
+          {/* Space usage warning — show as soon as a warehouse is selected (including auto-select when renter has only 1 warehouse) */}
+          {warehouseId && type === 'INBOUND' && (
+            <div style={{ marginTop:20 }}>
+              <RenterSpaceUsageWarning
+                warehouseId={warehouseId}
+                renterId={authService.getCurrentUser()?.userId}
+              />
+            </div>
+          )}
+
+          <div style={{ marginTop:16, display:'flex', justifyContent:'flex-end' }}>
             <button onClick={handleProceed} disabled={!warehouseId||loadingWH}
               style={{ padding:'12px 28px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.95rem', cursor:warehouseId?'pointer':'not-allowed', color:'#fff', background:warehouseId?`linear-gradient(135deg,${accent},${accent}bb)`:'#e2e8f0', boxShadow:warehouseId?`0 4px 16px ${accent}40`:'none', transition:'all 0.2s' }}>
               Tiếp theo →
