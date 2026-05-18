@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
@@ -986,9 +986,11 @@ namespace WMS.Infrastructure.Persistence
             if (renter1 != null && renter2 != null && !context.Contracts.Any())
             {
                 // Seed RentalRequest trước (Contract có FK → RentalRequest)
+                // req0: renterUser (renter@owrms.com / Lê Văn Đạt) — tài khoản demo chính
+                var req0 = new RentalRequest { RenterId = renterUser.UserId, WarehouseId = warehouse.WarehouseId, RequestedArea = 300, StartDate = new DateTime(2024,1,1), DurationMonths = 24, Status = "APPROVED", CreatedAt = new DateTime(2024,1,1) };
                 var req1 = new RentalRequest { RenterId = renter1.UserId, WarehouseId = warehouse.WarehouseId,  RequestedArea = 200, StartDate = new DateTime(2024,1,1), DurationMonths = 12, Status = "APPROVED", CreatedAt = new DateTime(2024,1,1) };
                 var req2 = new RentalRequest { RenterId = renter2.UserId, WarehouseId = warehouse2.WarehouseId, RequestedArea = 100, StartDate = new DateTime(2024,3,1), DurationMonths = 12, Status = "APPROVED", CreatedAt = new DateTime(2024,3,1) };
-                context.RentalRequests.AddRange(req1, req2);
+                context.RentalRequests.AddRange(req0, req1, req2);
                 RentalRequest? req3 = null;
                 if (renter3 != null)
                 {
@@ -997,6 +999,21 @@ namespace WMS.Infrastructure.Persistence
                 }
                 context.SaveChanges();
 
+                // Hợp đồng 0: renterUser (renter@owrms.com / Lê Văn Đạt) thuê warehouse 1 — tài khoản demo chính
+                var contract0 = new Contract
+                {
+                    RenterId       = renterUser.UserId,
+                    WarehouseId    = warehouse.WarehouseId,
+                    RequestId      = req0.RequestId,
+                    ContractNumber = "HD-2024-000",
+                    StartDate      = new DateOnly(2024, 1, 1),
+                    EndDate        = new DateOnly(2026, 1, 1),
+                    Status         = "ACTIVE",
+                    TotalValue     = 240_000_000,
+                    MonthlyPayment = 10_000_000,
+                    DepositAmount  = 20_000_000,
+                    CreatedAt      = new DateTime(2024, 1, 1),
+                };
                 // Hợp đồng 1: renter1 thuê warehouse 1
                 var contract1 = new Contract
                 {
@@ -1043,6 +1060,7 @@ namespace WMS.Infrastructure.Persistence
                     CreatedAt      = new DateTime(2024, 6, 1),
                 };
 
+                context.Contracts.Add(contract0);
                 context.Contracts.Add(contract1);
                 context.Contracts.Add(contract2);
                 if (contract3 != null) context.Contracts.Add(contract3);

@@ -155,7 +155,8 @@ export default function WarehouseGridMapPage() {
             setGlobalQuantity(1);
             fetchData();
         } catch (err) {
-            showToast('Lỗi khi phân bổ hàng', true);
+            const msg = err.response?.data?.message || 'Lỗi khi phân bổ hàng';
+            showToast(msg, true);
         } finally {
             setActionLoading(false);
         }
