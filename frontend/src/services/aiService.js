@@ -32,6 +32,18 @@ const aiService = {
    * @returns { usedToday, dailyLimit, remaining }
    */
   getQuota: () => axiosClient.get("/ai/quota"),
+
+  /**
+   * Tìm kiếm kho thông minh bằng prompt AI.
+   * @param {string} prompt - Câu mô tả nhu cầu
+   * @param {number|null} lat - Vĩ độ (tùy chọn)
+   * @param {number|null} lng - Kinh độ (tùy chọn)
+   */
+  smartSearch: (prompt, lat = null, lng = null) => {
+    return axiosClient.post("/ai/smart-search", { prompt, lat, lng }, {
+      timeout: 60000,
+    });
+  },
 };
 
 export default aiService;

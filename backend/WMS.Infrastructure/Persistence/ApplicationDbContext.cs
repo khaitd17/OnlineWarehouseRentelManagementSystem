@@ -1041,6 +1041,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.SuggestedType).HasMaxLength(100).HasColumnName("suggested_type").IsRequired(false);
             entity.Property(e => e.SpecialNotes).HasColumnName("special_notes").IsRequired(false);
             entity.Property(e => e.Confidence).HasColumnName("confidence").IsRequired(false);
+            entity.Property(e => e.SessionType).HasMaxLength(20).HasDefaultValue("IMAGE_ANALYSIS").HasColumnName("session_type");
+            entity.Property(e => e.UserPrompt).HasColumnName("user_prompt").IsRequired(false);
             entity.HasOne(d => d.User)
                   .WithMany()
                   .HasForeignKey(d => d.UserId)
