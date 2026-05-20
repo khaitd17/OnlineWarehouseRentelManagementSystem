@@ -1,21 +1,27 @@
 namespace WMS.Domain.Interfaces;
 
 /// <summary>
-/// Contract cho service gọi Gemini Vision API để phân tích ảnh đồ vật.
+/// Contract cho service gọi Gemini API.
 /// </summary>
 public interface IGeminiService
 {
     /// <summary>
-    /// Gửi danh sách ảnh (bytes) đến Gemini và nhận kết quả phân tích.
+    /// Gửi danh sách ảnh (bytes) đến Gemini và nhận kết quả phân tích đồ vật.
     /// </summary>
-    /// <param name="imageBytes">Danh sách bytes của từng ảnh (tối đa 5).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     Task<GeminiAnalysisResult> AnalyzeItemsAsync(
         List<byte[]> imageBytes,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Tìm kiếm kho thông minh: gửi prompt người dùng + dữ liệu kho → Gemini phân tích & xếp hạng.
+    /// </summary>
+    Task<GeminiSmartSearchResult> SmartSearchAsync(
+        string userPrompt,
+        List<WarehouseSearchData> warehouses,
+        CancellationToken cancellationToken);
 }
 
-/// <summary>Kết quả phân tích từ Gemini Vision API.</summary>
+/// <summary>Kết quả phân tích ảnh từ Gemini Vision API.</summary>
 public record GeminiAnalysisResult(
     List<DetectedItem> Items,
     double TotalVolumeM3,
@@ -33,3 +39,40 @@ public record DetectedItem(
     double LengthM,
     double HeightM
 );
+
+/// <summary>Kết quả tìm kiếm thông minh từ Gemini.</summary>
+public record GeminiSmartSearchResult(
+    List<RankedWarehouse> RankedWarehouses,
+    string AiSummary,
+    List<string> FollowUpSuggestions
+);
+
+/// <summary>Một kho được AI xếp hạng.</summary>
+public record RankedWarehouse(
+    int WarehouseId,
+    int Rank,
+    double MatchScore,
+    string Explanation,
+    List<string> Pros,
+    List<string> Cons
+);
+
+/// <summary>Dữ liệu kho gửi cho Gemini để phân tích.</summary>
+public record WarehouseSearchData(
+    int WarehouseId,
+    string Name,
+    string Address,
+    string? WarehouseType,
+    double TotalArea,
+    double AvailableArea,
+    decimal? PricePerM2,
+    bool Is24HoursAccess,
+    string? OperatingHours,
+    double? Lat,
+    double? Lng,
+    double? AverageRating,
+    int RatingCount,
+    string? Description,
+    double? DistanceKm
+);
+

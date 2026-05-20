@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import aiService from "../services/aiService";
 
@@ -236,6 +236,15 @@ export default function AiItemAnalyzerPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [expandedSessionId, setExpandedSessionId] = useState(null);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState("image"); // "image" | "search"
+
+  // Smart Search state
+  const [searchPrompt, setSearchPrompt] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResult, setSearchResult] = useState(null);
+  const [searchError, setSearchError] = useState(null);
+
   // Load quota on mount
   useEffect(() => {
     aiService.getQuota()
@@ -438,6 +447,115 @@ export default function AiItemAnalyzerPage() {
     });
   };
 
+  // ─── Location keywords detection ────────────────────────────
+  const LOCATION_KEYWORDS = [
+    "gần tôi", "gần toi", "gan toi", "quanh tôi", "quanh toi",
+    "gần đây", "gần day", "gan day", "khu vực tôi", "khu vuc toi",
+    "nơi tôi", "noi toi", "chỗ tôi", "cho toi", "vị trí của tôi",
+    "vị trí tôi", "vi tri toi", "gần nhất", "gan nhat"
+  ];
+
+  const hasLocationKeyword = (text) => {
+    const lower = text.toLowerCase();
+    return LOCATION_KEYWORDS.some(kw => lower.includes(kw));
+  };
+
+  /**
+   * Tự động lấy vị trí nếu prompt chứa từ khóa vị trí + chưa có GPS.
+   * Trả về {lat, lng} hoặc {lat: null, lng: null}
+   */
+  const ensureLocationIfNeeded = (promptText) => {
+    return new Promise((resolve) => {
+      // Nếu đã có vị trí hoặc prompt không chứa keyword → bỏ qua
+      if (userLat && userLng) return resolve({ lat: userLat, lng: userLng });
+      if (!hasLocationKeyword(promptText)) return resolve({ lat: userLat, lng: userLng });
+
+      // Không hỗ trợ geolocation
+      if (!navigator.geolocation) return resolve({ lat: null, lng: null });
+
+      setLoadingLocation(true);
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLat(latitude);
+          setUserLng(longitude);
+          // Reverse geocode
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`);
+            const data = await res.json();
+            if (data?.address) {
+              const city = data.address.city || data.address.state || data.address.province || "";
+              const dist = data.address.county || data.address.district || data.address.suburb || "";
+              if (city) setProvince(city);
+              if (dist) setDistrict(dist);
+            }
+          } catch (e) { console.error("Reverse geocoding failed", e); }
+          setLoadingLocation(false);
+          resolve({ lat: latitude, lng: longitude });
+        },
+        () => {
+          // User denied → vẫn tiếp tục search mà không có vị trí
+          setLoadingLocation(false);
+          resolve({ lat: null, lng: null });
+        },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+      );
+    });
+  };
+
+  // ─── Smart Search handler ───────────────────────────────────
+  const handleSmartSearch = async () => {
+    if (!searchPrompt.trim()) { setSearchError("Vui lòng nhập mô tả nhu cầu tìm kho."); return; }
+    if (quota && quota.remaining === 0) { setSearchError(`Bạn đã dùng hết ${quota.dailyLimit} lượt hôm nay.`); return; }
+    setSearchLoading(true); setSearchError(null); setSearchResult(null);
+    try {
+      // Auto-detect location keywords → request GPS if needed
+      const loc = await ensureLocationIfNeeded(searchPrompt);
+      const res = await aiService.smartSearch(searchPrompt, loc.lat, loc.lng);
+      setSearchResult(res.data);
+      setQuota(prev => prev ? { ...prev, remaining: prev.remaining - 1, usedToday: prev.usedToday + 1 } : null);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Tìm kiếm thất bại. Vui lòng thử lại.";
+      setSearchError(msg);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const quickChips = [
+    "Giá rẻ nhất", "Gần tôi nhất", "Đánh giá cao nhất",
+    "Mở cửa 24/7", "Kho lạnh", "Diện tích lớn"
+  ];
+
+  const handleChipClick = (chip) => {
+    setSearchPrompt(prev => {
+      const trimmed = prev.trim();
+      return trimmed ? `${trimmed}, ${chip.toLowerCase()}` : chip;
+    });
+  };
+
+  const handleFollowUp = async (suggestion) => {
+    setSearchPrompt(suggestion);
+    setSearchResult(null);
+    setSearchLoading(true); setSearchError(null);
+    try {
+      const loc = await ensureLocationIfNeeded(suggestion);
+      const res = await aiService.smartSearch(suggestion, loc.lat, loc.lng);
+      setSearchResult(res.data);
+      setQuota(prev => prev ? { ...prev, remaining: prev.remaining - 1, usedToday: prev.usedToday + 1 } : null);
+    } catch (err) {
+      setSearchError(err?.response?.data?.message || "Tìm kiếm thất bại.");
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const getScoreColor = (score) => {
+    if (score >= 0.8) return "#22c55e";
+    if (score >= 0.6) return "#f59e0b";
+    return "#ef4444";
+  };
+
   return (
     <div style={styles.page}>
       <style>{`
@@ -452,8 +570,42 @@ export default function AiItemAnalyzerPage() {
         <div style={styles.header}>
           <h1 style={styles.title}>Tìm Kho Thông Minh</h1>
           <p style={styles.subtitle}>
-            Chụp ảnh đồ vật → AI nhận dạng & ước tính diện tích → Hệ thống gợi ý kho phù hợp nhất
+            {activeTab === "image"
+              ? "Chụp ảnh đồ vật → AI nhận dạng & ước tính diện tích → Hệ thống gợi ý kho phù hợp nhất"
+              : "Mô tả nhu cầu của bạn → AI phân tích & xếp hạng kho → Tìm kho phù hợp nhất"}
           </p>
+        </div>
+
+        {/* ── Tab Switcher ── */}
+        <div style={{
+          display: "flex", gap: 0, marginBottom: 28,
+          background: "rgba(30,41,59,0.6)",
+          borderRadius: 14, padding: 4,
+          border: "1px solid rgba(99,102,241,0.15)"
+        }}>
+          {[
+            { key: "image", label: "Phân tích ảnh" },
+            { key: "search", label: "Tìm kiếm thông minh" }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                flex: 1, padding: "12px 20px",
+                background: activeTab === tab.key
+                  ? "linear-gradient(135deg, #6366f1, #8b5cf6)"
+                  : "transparent",
+                border: "none", borderRadius: 11,
+                color: activeTab === tab.key ? "#fff" : "#94a3b8",
+                fontSize: 15, fontWeight: 600, cursor: "pointer",
+                transition: "all 0.3s ease",
+                boxShadow: activeTab === tab.key ? "0 2px 12px rgba(99,102,241,0.3)" : "none",
+                fontFamily: "inherit",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         {/* ── Quota bar ── */}
@@ -491,6 +643,8 @@ export default function AiItemAnalyzerPage() {
           </div>
         )}
 
+        {/* ══════════ TAB: IMAGE ANALYSIS ══════════ */}
+        {activeTab === "image" && (<>
         {/* ── Main Result (if available) ── */}
         {result && (
           <>
@@ -844,6 +998,257 @@ export default function AiItemAnalyzerPage() {
               <li>Có thể chụp ảnh từng góc phòng: phòng khách, phòng ngủ, bếp...</li>
             </ul>
           </div>
+        )}
+        </>)}
+
+        {/* ══════════ TAB: SMART SEARCH ══════════ */}
+        {activeTab === "search" && (
+          <>
+            {/* Search Results */}
+            {searchResult && (
+              <>
+                {/* AI Summary Banner */}
+                <div style={{
+                  ...styles.card,
+                  background: "linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))",
+                  borderColor: "rgba(99,102,241,0.3)",
+                  padding: "20px 24px"
+                }}>
+                  <div style={{ fontSize: 15, color: "#e2e8f0", lineHeight: 1.6 }}>
+                    {searchResult.aiSummary}
+                  </div>
+                </div>
+
+                {/* Ranked Warehouses */}
+                {searchResult.warehouses?.length > 0 ? (
+                  <div style={styles.card}>
+                    <div style={styles.cardTitle}>
+                      Top {searchResult.warehouses.length} kho phù hợp nhất
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                      {searchResult.warehouses.map((wh) => (
+                        <div key={wh.warehouseId} className="wh-card" style={{
+                          ...styles.whCard, flexDirection: "column", gap: 0,
+                          border: wh.rank === 1 ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(148,163,184,0.1)"
+                        }}>
+                          {/* Header row */}
+                          <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+                            {wh.imageUrl && (
+                              <img
+                                src={wh.imageUrl.startsWith('http') ? wh.imageUrl : `http://localhost:5000${wh.imageUrl}`}
+                                alt={wh.name}
+                                style={styles.whImg}
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                            )}
+                            {!wh.imageUrl && (
+                              <div style={styles.whImgPlaceholder}>
+                                <WarehouseIcon />
+                              </div>
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                                <span style={{
+                                  background: wh.rank <= 3 ? "linear-gradient(135deg, #6366f1, #8b5cf6)" : "rgba(148,163,184,0.2)",
+                                  color: "#fff", borderRadius: 8,
+                                  padding: "2px 10px", fontSize: 13, fontWeight: 700,
+                                  minWidth: 28, textAlign: "center"
+                                }}>#{wh.rank}</span>
+                                <span style={styles.whName}>{wh.name}</span>
+                              </div>
+                              <div style={styles.whAddress}>{wh.address}</div>
+                              <div style={styles.whTags}>
+                                {wh.warehouseType && <span style={styles.tag("purple")}>{wh.warehouseType}</span>}
+                                <span style={styles.tag("none")}>{wh.availableArea} m² trống</span>
+                                {wh.pricePerM2 && <span style={styles.tag("none")}>{Number(wh.pricePerM2).toLocaleString("vi-VN")} ₫/m²</span>}
+                                {wh.is24HoursAccess && <span style={styles.tag("green")}>24/7</span>}
+                                {wh.distanceKm != null && <span style={styles.tag("purple")}>Cách {wh.distanceKm} km</span>}
+                              </div>
+                            </div>
+                            {/* Match Score */}
+                            <div style={{ textAlign: "center", flexShrink: 0 }}>
+                              <div style={{
+                                width: 56, height: 56, borderRadius: "50%",
+                                border: `3px solid ${getScoreColor(wh.matchScore)}`,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                flexDirection: "column"
+                              }}>
+                                <div style={{ fontSize: 16, fontWeight: 800, color: getScoreColor(wh.matchScore) }}>
+                                  {Math.round(wh.matchScore * 100)}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>% phù hợp</div>
+                            </div>
+                          </div>
+
+                          {/* AI Explanation */}
+                          <div style={{
+                            background: "rgba(99,102,241,0.06)",
+                            borderRadius: 10, padding: "10px 14px", marginBottom: 10,
+                            fontSize: 13, color: "#cbd5e1", lineHeight: 1.5,
+                            borderLeft: "3px solid rgba(99,102,241,0.4)"
+                          }}>
+                            {wh.explanation}
+                          </div>
+
+                          {/* Pros & Cons */}
+                          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+                            {wh.pros?.map((p, i) => (
+                              <span key={`p${i}`} style={{
+                                padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 500,
+                                background: "rgba(34,197,94,0.12)", color: "#4ade80"
+                              }}>+ {p}</span>
+                            ))}
+                            {wh.cons?.map((c, i) => (
+                              <span key={`c${i}`} style={{
+                                padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 500,
+                                background: "rgba(239,68,68,0.12)", color: "#f87171"
+                              }}>- {c}</span>
+                            ))}
+                          </div>
+
+                          {/* Rating + CTA */}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <StarRating value={wh.averageRating} />
+                              {wh.ratingCount > 0 && <span style={{ fontSize: 12, color: "#64748b", marginLeft: 4 }}>({wh.ratingCount} đánh giá)</span>}
+                            </div>
+                            <button
+                              className="rent-btn"
+                              style={styles.rentBtn}
+                              onClick={() => goToWarehouse(wh)}
+                            >
+                              Xem chi tiết
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ ...styles.card, textAlign: "center", padding: "40px 24px" }}>
+                    <div style={{ color: "#94a3b8", fontSize: 15 }}>Không tìm thấy kho phù hợp với yêu cầu. Hãy thử mô tả khác.</div>
+                  </div>
+                )}
+
+                {/* Follow-up Suggestions */}
+                {searchResult.followUpSuggestions?.length > 0 && (
+                  <div style={{ ...styles.card, padding: "16px 24px" }}>
+                    <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 10 }}>Gợi ý tìm kiếm tiếp theo:</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {searchResult.followUpSuggestions.map((s, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleFollowUp(s)}
+                          style={{
+                            padding: "8px 16px", borderRadius: 999,
+                            background: "rgba(99,102,241,0.1)",
+                            border: "1px solid rgba(99,102,241,0.25)",
+                            color: "#a78bfa", fontSize: 13, cursor: "pointer",
+                            fontFamily: "inherit", transition: "all 0.2s"
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.2)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.1)"; }}
+                        >{s}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Search Input Form */}
+            {searchLoading ? (
+              <div style={styles.card}>
+                <div style={{ textAlign: "center", padding: "20px 0 28px" }}>
+                  <div style={{ color: "#a78bfa", fontWeight: 700, fontSize: 17, marginBottom: 6 }}>AI đang phân tích kho...</div>
+                  <div style={{ color: "#64748b", fontSize: 14, marginBottom: 24 }}>Quá trình này mất khoảng 5-15 giây</div>
+                </div>
+                <LoadingSkeleton />
+              </div>
+            ) : (
+              <div style={styles.card}>
+                <div style={styles.cardTitle}>
+                  {searchResult ? "Tìm kiếm lại" : "Mô tả nhu cầu kho của bạn"}
+                </div>
+
+                {/* Prompt textarea */}
+                <textarea
+                  value={searchPrompt}
+                  onChange={e => setSearchPrompt(e.target.value)}
+                  placeholder="VD: Tìm kho gần Hà Nội, giá dưới 200.000₫/m², có mở cửa 24/7, đánh giá cao..."
+                  rows={3}
+                  style={{
+                    ...styles.input,
+                    resize: "vertical", minHeight: 80, lineHeight: 1.6,
+                    fontFamily: "inherit", fontSize: 15
+                  }}
+                />
+
+                {/* Quick filter chips */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+                  {quickChips.map(chip => (
+                    <button
+                      key={chip}
+                      onClick={() => handleChipClick(chip)}
+                      style={{
+                        padding: "6px 14px", borderRadius: 999,
+                        background: "rgba(99,102,241,0.08)",
+                        border: "1px solid rgba(99,102,241,0.2)",
+                        color: "#818cf8", fontSize: 13, cursor: "pointer",
+                        fontFamily: "inherit", transition: "all 0.2s"
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.18)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.08)"; }}
+                    >{chip}</button>
+                  ))}
+                </div>
+
+                {/* Location */}
+                <div style={{ ...styles.cardTitle, marginTop: 20, marginBottom: 12, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>Vị trí ưa thích <span style={{ fontSize: 13, color: "#64748b", fontWeight: 400 }}>(tùy chọn)</span></div>
+                  <button
+                    onClick={handleGetLocation}
+                    disabled={loadingLocation}
+                    style={{
+                      background: "rgba(99,102,241,0.15)",
+                      border: "1px solid rgba(99,102,241,0.3)",
+                      color: "#a78bfa", padding: "6px 12px",
+                      borderRadius: 8, fontSize: 13,
+                      cursor: loadingLocation ? "not-allowed" : "pointer",
+                      fontFamily: "inherit"
+                    }}
+                  >{loadingLocation ? "Đang định vị..." : "Vị trí của tôi"}</button>
+                </div>
+                <div style={styles.row}>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Tỉnh / Thành phố</label>
+                    <input style={styles.input} placeholder="VD: Hà Nội" value={province} onChange={e => setProvince(e.target.value)} />
+                  </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Quận / Huyện</label>
+                    <input style={styles.input} placeholder="VD: Cầu Giấy" value={district} onChange={e => setDistrict(e.target.value)} />
+                  </div>
+                </div>
+
+                {/* Error */}
+                {searchError && (
+                  <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 10, padding: "12px 16px", marginTop: 16, color: "#fca5a5", fontSize: 14 }}>
+                    {searchError}
+                  </div>
+                )}
+
+                {/* Search button */}
+                <button
+                  style={styles.btnPrimary(!searchPrompt.trim() || searchLoading)}
+                  disabled={!searchPrompt.trim() || searchLoading}
+                  onClick={handleSmartSearch}
+                >
+                  {searchResult ? "Tìm Kiếm Lại" : "Tìm Kiếm Với AI"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

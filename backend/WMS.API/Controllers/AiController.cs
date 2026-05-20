@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using WMS.Application.Features.AiAnalysis.AnalyzeItems;
+using WMS.Application.Features.AiAnalysis.SmartSearch;
 using WMS.Domain.Interfaces;
 
 namespace WMS.API.Controllers;
@@ -162,4 +163,65 @@ public class AiController : ControllerBase
             remaining = Math.Max(0, dailyLimit - usedToday)
         });
     }
+
+    /// <summary>
+    /// [POST] /api/ai/smart-search
+    /// Tìm kiếm kho thông minh bằng prompt tự nhiên + AI xếp hạng.
+    /// Giới hạn: dùng chung 10 lần/ngày/user với analyze-items.
+    /// </summary>
+    [HttpPost("smart-search")]
+    public async Task<IActionResult> SmartSearch([FromBody] SmartSearchRequest req)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                        ?? User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(userIdStr))
+            return Unauthorized(new { message = "Vui lòng đăng nhập để sử dụng tính năng này." });
+
+        if (!int.TryParse(userIdStr, out var userId))
+            return Unauthorized(new { message = "Token không hợp lệ." });
+
+        if (string.IsNullOrWhiteSpace(req.Prompt))
+            return BadRequest(new { message = "Vui lòng nhập yêu cầu tìm kiếm." });
+
+        if (req.Prompt.Length > 1000)
+            return BadRequest(new { message = "Yêu cầu tìm kiếm quá dài (tối đa 1000 ký tự)." });
+
+        try
+        {
+            var result = await _mediator.Send(new SmartSearchCommand(
+                UserId: userId,
+                Prompt: req.Prompt,
+                Lat: req.Lat,
+                Lng: req.Lng
+            ));
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("hết"))
+        {
+            return StatusCode(429, new { message = ex.Message });
+        }
+        catch (TimeoutException ex)
+        {
+            return StatusCode(504, new { message = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"[AiController.SmartSearch] HttpRequestException: {ex.Message}");
+            return StatusCode(502, new { message = $"Lỗi Gemini API: {ex.Message}" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AiController.SmartSearch] Error: {ex}");
+            return StatusCode(500, new { message = $"Lỗi server: {ex.Message}" });
+        }
+    }
+}
+
+/// <summary>Request body cho SmartSearch endpoint.</summary>
+public class SmartSearchRequest
+{
+    public string Prompt { get; set; } = "";
+    public double? Lat { get; set; }
+    public double? Lng { get; set; }
 }

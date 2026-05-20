@@ -1,4 +1,4 @@
-﻿using System.Net.Http.Headers;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -357,6 +357,303 @@ public class GeminiService : IGeminiService
 
         // Fallback cuối cùng: trả về JSON rỗng để không crash toàn bộ
         return "{ \"items\": [], \"totalEstimatedVolumeM3\": 0, \"suggestedWarehouseType\": \"Kho thường\", \"specialNotes\": \"AI không thể phân tích đầy đủ — ảnh có quá nhiều đồ vật.\", \"confidence\": 0.3 }";
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // SMART SEARCH — Tìm kiếm kho bằng prompt tự nhiên
+    // ════════════════════════════════════════════════════════════════
+
+    public async Task<GeminiSmartSearchResult> SmartSearchAsync(
+        string userPrompt,
+        List<WarehouseSearchData> warehouses,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(userPrompt))
+            throw new ArgumentException("Vui lòng nhập yêu cầu tìm kiếm.", nameof(userPrompt));
+
+        // Xây dựng dữ liệu kho dưới dạng text table cho Gemini
+        var warehouseLines = warehouses.Select(w =>
+        {
+            var price = w.PricePerM2.HasValue ? $"{w.PricePerM2:N0} ₫/m²" : "Chưa có";
+            var rating = w.RatingCount > 0 ? $"{w.AverageRating:F1}/5 ({w.RatingCount} đánh giá)" : "Chưa có đánh giá";
+            var hours = w.Is24HoursAccess ? "24/7" : (w.OperatingHours ?? "Chưa rõ");
+            var distance = w.DistanceKm.HasValue ? $"{w.DistanceKm:F1} km" : "Không xác định";
+            return $"ID:{w.WarehouseId} | Tên:{w.Name} | Địa chỉ:{w.Address} | Loại:{w.WarehouseType ?? "Chưa phân loại"} | " +
+                   $"Tổng DT:{w.TotalArea:F0}m² | Còn trống:{w.AvailableArea:F0}m² | Giá:{price} | " +
+                   $"Giờ:{hours} | Rating:{rating} | Khoảng cách:{distance} | Mô tả:{w.Description ?? "Không có"}";
+        });
+
+        var warehouseData = string.Join("\n", warehouseLines);
+
+        // Detect nếu user yêu cầu kho "gần" → thêm hướng dẫn ưu tiên khoảng cách
+        var hasDistanceData = warehouses.Any(w => w.DistanceKm.HasValue);
+        var locationKeywords = new[] { "gần", "gan", "quanh", "khu vực", "nơi tôi", "chỗ tôi", "vị trí", "vi tri" };
+        var userWantsNearby = locationKeywords.Any(kw => userPrompt.Contains(kw, StringComparison.OrdinalIgnoreCase));
+
+        var distanceGuidance = "";
+        if (hasDistanceData && userWantsNearby)
+        {
+            distanceGuidance = @"
+== QUY TẮC ƯU TIÊN KHOẢNG CÁCH (RẤT QUAN TRỌNG) ==
+Khách hàng yêu cầu kho GẦN. Khoảng cách PHẢI là tiêu chí QUAN TRỌNG NHẤT:
+- Kho dưới 30 km → Rất gần → matchScore +0.3 bonus
+- Kho 30–80 km → Trung bình → không bonus
+- Kho 80–150 km → Xa → matchScore bị phạt -0.2
+- Kho trên 150 km → Quá xa → matchScore bị phạt -0.4, KHÔNG nên xếp hạng cao
+Nếu khách hàng nói ""gần tôi"" hoặc ""gần nhất"": sắp xếp theo khoảng cách TRƯỚC, sau đó mới xét giá/đánh giá.
+Tuyệt đối KHÔNG đặt kho >100km lên vị trí #1 khi khách hàng yêu cầu ""gần"".
+";
+        }
+        else if (!hasDistanceData && userWantsNearby)
+        {
+            distanceGuidance = @"
+== LƯU Ý VỀ VỊ TRÍ ==
+Khách hàng yêu cầu kho gần nhưng KHÔNG có dữ liệu GPS. Hãy ưu tiên dựa trên địa chỉ/khu vực được nhắc đến trong prompt.
+Nếu prompt không nói rõ khu vực, hãy ghi trong aiSummary là cần bật chia sẻ vị trí để tìm chính xác hơn.
+";
+        }
+
+        var prompt = $@"Bạn là chuyên gia tư vấn kho bãi tại Việt Nam. Nhiệm vụ: phân tích yêu cầu của khách hàng và xếp hạng các kho phù hợp nhất.
+
+== YÊU CẦU CỦA KHÁCH HÀNG ==
+{userPrompt}
+
+== DANH SÁCH KHO CÓ SẴN ({warehouses.Count} kho) ==
+{warehouseData}
+{distanceGuidance}
+== HƯỚNG DẪN PHÂN TÍCH ==
+1. Đọc kỹ yêu cầu khách hàng, xác định các tiêu chí: vị trí, giá, loại kho, diện tích, giờ hoạt động, đánh giá, khoảng cách...
+2. TRỌNG SỐ tiêu chí: Nếu khách nói ""gần tôi"" → khoảng cách chiếm 50% trọng số, giá 30%, các tiêu chí khác 20%.
+   Nếu khách nói ""giá rẻ"" nhưng KHÔNG nói ""gần"" → giá chiếm 50%.
+   Nếu cả ""gần"" và ""giá rẻ"" → khoảng cách 40%, giá 40%, khác 20%.
+3. So khớp từng kho → tính điểm phù hợp tổng hợp (matchScore: 0.0 đến 1.0)
+4. Xếp hạng từ phù hợp nhất đến ít phù hợp nhất
+5. Chỉ trả về tối đa 5 kho phù hợp nhất (matchScore >= 0.3)
+6. Nếu không có kho nào phù hợp, trả mảng rỗng
+7. Viết giải thích, ưu/nhược điểm bằng tiếng Việt tự nhiên, ngắn gọn
+
+== OUTPUT (chỉ JSON, KHÔNG markdown/text khác) ==
+{{
+  ""rankedWarehouses"": [
+    {{
+      ""warehouseId"": <int>,
+      ""rank"": <1-5>,
+      ""matchScore"": <0.0-1.0>,
+      ""explanation"": ""<giải thích ngắn gọn tại sao kho này phù hợp>"",
+      ""pros"": [""<ưu điểm 1>"", ""<ưu điểm 2>""],
+      ""cons"": [""<nhược điểm 1>""]
+    }}
+  ],
+  ""aiSummary"": ""<tóm tắt 1-2 câu về kết quả tìm kiếm>"",
+  ""followUpSuggestions"": [""<gợi ý tìm kiếm tiếp theo 1>"", ""<gợi ý 2>"", ""<gợi ý 3>""]
+}}";
+
+        var parts = new List<object> { new { text = prompt } };
+
+        var requestBody = new
+        {
+            contents = new[] { new { parts } },
+            generationConfig = new
+            {
+                temperature = 0.3,
+                maxOutputTokens = 16384,
+                responseMimeType = "application/json"
+            }
+        };
+
+        var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+        var json = JsonSerializer.Serialize(requestBody, jsonOptions);
+
+        // Gọi Gemini API với retry
+        const int maxRetries = 3;
+        int[] delaysMs = [2000, 5000, 10000];
+        (string model, string apiVer)[] modelChain =
+        [
+            (_model,              "v1beta"),
+            ("gemini-2.5-flash",  "v1beta"),
+            ("gemini-2.5-flash",  "v1"),
+        ];
+
+        HttpResponseMessage response = null!;
+        string responseBody = "";
+
+        Console.WriteLine($"[SmartSearch] Sending request to Gemini with {warehouses.Count} warehouses, prompt: {userPrompt}");
+
+        for (int attempt = 0; attempt < maxRetries; attempt++)
+        {
+            var (modelToUse, apiVersion) = attempt < modelChain.Length ? modelChain[attempt] : modelChain[^1];
+            var url = $"https://generativelanguage.googleapis.com/{apiVersion}/models/{modelToUse}:generateContent?key={_apiKey}";
+
+            var contentPayload = new StringContent(json, Encoding.UTF8, "application/json");
+            Console.WriteLine($"[SmartSearch] Attempt {attempt + 1}: calling {modelToUse} ({apiVersion})...");
+
+            try { response = await _http.PostAsync(url, contentPayload, cancellationToken); }
+            catch (TaskCanceledException) { throw new TimeoutException("Gemini API không phản hồi. Vui lòng thử lại."); }
+
+            responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            Console.WriteLine($"[SmartSearch] Response status: {(int)response.StatusCode}, body length: {responseBody.Length}");
+
+            if (response.IsSuccessStatusCode) break;
+
+            var statusCode = (int)response.StatusCode;
+            if ((statusCode == 429 || statusCode == 503 || statusCode == 404) && attempt < maxRetries - 1)
+            {
+                int delayMs = statusCode == 404 ? 500 : delaysMs[attempt];
+                Console.WriteLine($"[GeminiService.SmartSearch] {statusCode} - Retry {attempt + 1} với '{modelToUse}' ({apiVersion})...");
+                await Task.Delay(delayMs, cancellationToken);
+                continue;
+            }
+
+            throw new HttpRequestException($"Gemini API lỗi {statusCode}: {responseBody}");
+        }
+
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException($"Gemini API thất bại sau {maxRetries} lần thử: {responseBody}");
+
+        return ParseSmartSearchResponse(responseBody);
+    }
+
+    private static GeminiSmartSearchResult ParseSmartSearchResponse(string responseBody)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(responseBody);
+
+            var text = doc.RootElement
+                .GetProperty("candidates")[0]
+                .GetProperty("content")
+                .GetProperty("parts")[0]
+                .GetProperty("text")
+                .GetString() ?? "{}";
+
+            Console.WriteLine($"[SmartSearch] Raw Gemini text (first 500 chars): {text[..Math.Min(500, text.Length)]}");
+
+            var jsonText = text.Trim();
+            if (jsonText.StartsWith("```"))
+            {
+                var firstNewLine = jsonText.IndexOf('\n');
+                if (firstNewLine >= 0) jsonText = jsonText[(firstNewLine + 1)..];
+                var lastFence = jsonText.LastIndexOf("```");
+                if (lastFence >= 0) jsonText = jsonText[..lastFence];
+                jsonText = jsonText.Trim();
+            }
+
+            // Repair truncated JSON — Smart Search specific
+            jsonText = RepairSmartSearchJson(jsonText);
+
+            using var resultDoc = JsonDocument.Parse(jsonText);
+            var root = resultDoc.RootElement;
+
+            // Log all top-level keys for debugging
+            Console.WriteLine($"[SmartSearch] JSON top-level keys: {string.Join(", ", root.EnumerateObject().Select(p => p.Name))}");
+
+            // Parse ranked warehouses — try both camelCase and snake_case
+            // Parse ranked warehouses — try both camelCase and snake_case
+            var ranked = new List<RankedWarehouse>();
+            JsonElement rwEl = default;
+            bool hasRw = root.TryGetProperty("rankedWarehouses", out rwEl) 
+                      || root.TryGetProperty("ranked_warehouses", out rwEl);
+            if (hasRw)
+            {
+                foreach (var item in rwEl.EnumerateArray())
+                {
+                    var pros = new List<string>();
+                    if (item.TryGetProperty("pros", out var prosEl))
+                        foreach (var p in prosEl.EnumerateArray())
+                            if (p.GetString() is string ps) pros.Add(ps);
+
+                    var cons = new List<string>();
+                    if (item.TryGetProperty("cons", out var consEl))
+                        foreach (var c in consEl.EnumerateArray())
+                            if (c.GetString() is string cs) cons.Add(cs);
+
+                    int wId = 0;
+                    if (item.TryGetProperty("warehouseId", out var wid)) wId = wid.GetInt32();
+                    else if (item.TryGetProperty("warehouse_id", out wid)) wId = wid.GetInt32();
+
+                    int rank = 0;
+                    if (item.TryGetProperty("rank", out var rk)) rank = rk.GetInt32();
+
+                    double score = 0.5;
+                    if (item.TryGetProperty("matchScore", out var ms)) score = ms.GetDouble();
+                    else if (item.TryGetProperty("match_score", out ms)) score = ms.GetDouble();
+
+                    string expl = "";
+                    if (item.TryGetProperty("explanation", out var ex)) expl = ex.GetString() ?? "";
+
+                    ranked.Add(new RankedWarehouse(wId, rank, score, expl, pros, cons));
+                }
+            }
+
+            Console.WriteLine($"[SmartSearch] Parsed {ranked.Count} ranked warehouses");
+
+            string aiSummary = "Đã phân tích xong.";
+            if (root.TryGetProperty("aiSummary", out var sumEl)) aiSummary = sumEl.GetString() ?? aiSummary;
+            else if (root.TryGetProperty("ai_summary", out sumEl)) aiSummary = sumEl.GetString() ?? aiSummary;
+
+            var suggestions = new List<string>();
+            JsonElement sugEl = default;
+            bool hasSug = root.TryGetProperty("followUpSuggestions", out sugEl)
+                       || root.TryGetProperty("follow_up_suggestions", out sugEl);
+            if (hasSug)
+                foreach (var s in sugEl.EnumerateArray())
+                    if (s.GetString() is string ss) suggestions.Add(ss);
+
+            return new GeminiSmartSearchResult(ranked, aiSummary, suggestions);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GeminiService.SmartSearch] Parse error ({ex.GetType().Name}): {ex.Message}");
+            Console.WriteLine($"[GeminiService.SmartSearch] Raw response (first 1000): {responseBody[..Math.Min(1000, responseBody.Length)]}");
+            return new GeminiSmartSearchResult([], "AI không thể phân tích kết quả. Vui lòng thử lại.", []);
+        }
+    }
+    /// <summary>
+    /// Sửa JSON bị cắt cụt cho Smart Search (khác schema Image Analysis).
+    /// </summary>
+    private static string RepairSmartSearchJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return "{}";
+
+        // Thử parse trước — nếu OK thì không cần sửa
+        try { JsonDocument.Parse(json); return json; } catch { /* tiếp tục repair */ }
+
+        Console.WriteLine("[SmartSearch] JSON bị truncate, đang thử tự sửa...");
+
+        var sb = new System.Text.StringBuilder(json.TrimEnd());
+
+        // Xóa dấu phẩy thừa ở cuối
+        while (sb.Length > 0 && sb[sb.Length - 1] == ',')
+            sb.Remove(sb.Length - 1, 1);
+
+        // Đếm bracket/brace mở chưa đóng
+        int openBraces = 0, openBrackets = 0;
+        bool inString = false, escaped = false;
+
+        foreach (char c in sb.ToString())
+        {
+            if (escaped) { escaped = false; continue; }
+            if (c == '\\' && inString) { escaped = true; continue; }
+            if (c == '"') { inString = !inString; continue; }
+            if (inString) continue;
+            if (c == '{') openBraces++;
+            else if (c == '}') openBraces--;
+            else if (c == '[') openBrackets++;
+            else if (c == ']') openBrackets--;
+        }
+
+        if (inString) sb.Append('"');
+        for (int i = 0; i < openBrackets; i++) sb.Append(']');
+        for (int i = 0; i < openBraces; i++) sb.Append('}');
+
+        var repaired = sb.ToString();
+
+        try { JsonDocument.Parse(repaired); return repaired; } catch { /* fallback */ }
+
+        // Fallback Smart Search schema (KHÔNG phải Image Analysis)
+        return """
+            { "rankedWarehouses": [], "aiSummary": "AI không thể phân tích đầy đủ. Vui lòng thử lại với mô tả ngắn hơn.", "followUpSuggestions": [] }
+            """;
     }
 }
 

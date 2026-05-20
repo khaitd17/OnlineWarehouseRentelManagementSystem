@@ -225,20 +225,24 @@ using (var scope = app.Services.CreateScope())
     try
     {
         // 1. Apply Entity Framework migrations
-        // We use Migrate instead of EnsureCreated to properly apply the schema changes
-        // in dependency order. (Any conflicting manual migration files were removed).
         context.Database.Migrate();
         logger.LogInformation("Database migrations applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Migration failed: {Message}. Bypassing...", ex.Message);
+    }
 
+    try
+    {
         // 2. Seed the database
         DatabaseSeeder.Seed(context);
         logger.LogInformation("Database seeded successfully.");
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred while initializing the database: {Message}", ex.Message);
-        // We log the error but allow the application to continue starting
-        logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi (có thể data đã tồn tại hoặc SQL Server chưa sẵn sàng). Backend vẫn tiếp tục chạy.");
+        logger.LogError(ex, "An error occurred while seeding the database: {Message}", ex.Message);
+        logger.LogWarning(ex, "⚠️ DatabaseSeeder gặp lỗi. Backend vẫn tiếp tục chạy.");
     }
 }
 

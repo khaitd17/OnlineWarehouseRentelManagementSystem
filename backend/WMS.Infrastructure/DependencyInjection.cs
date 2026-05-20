@@ -40,7 +40,7 @@ public static class DependencyInjection
         // HttpClient cho Gemini API (timeout 60 giây vì xử lý ảnh lâu)
         services.AddHttpClient("Gemini", client =>
         {
-            client.Timeout = TimeSpan.FromSeconds(60);
+            client.Timeout = TimeSpan.FromSeconds(90);
         });
 
         return services;
