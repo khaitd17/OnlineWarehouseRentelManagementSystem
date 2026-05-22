@@ -396,10 +396,10 @@ public class GeminiService : IGeminiService
             distanceGuidance = @"
 == QUY TẮC ƯU TIÊN KHOẢNG CÁCH (RẤT QUAN TRỌNG) ==
 Khách hàng yêu cầu kho GẦN. Khoảng cách PHẢI là tiêu chí QUAN TRỌNG NHẤT:
-- Kho dưới 30 km → Rất gần → matchScore +0.3 bonus
+- Kho dưới 30 km → Rất gần → match_score +0.3 bonus
 - Kho 30–80 km → Trung bình → không bonus
-- Kho 80–150 km → Xa → matchScore bị phạt -0.2
-- Kho trên 150 km → Quá xa → matchScore bị phạt -0.4, KHÔNG nên xếp hạng cao
+- Kho 80–150 km → Xa → match_score bị phạt -0.2
+- Kho trên 150 km → Quá xa → match_score bị phạt -0.4, KHÔNG nên xếp hạng cao
 Nếu khách hàng nói ""gần tôi"" hoặc ""gần nhất"": sắp xếp theo khoảng cách TRƯỚC, sau đó mới xét giá/đánh giá.
 Tuyệt đối KHÔNG đặt kho >100km lên vị trí #1 khi khách hàng yêu cầu ""gần"".
 ";
@@ -409,7 +409,7 @@ Tuyệt đối KHÔNG đặt kho >100km lên vị trí #1 khi khách hàng yêu 
             distanceGuidance = @"
 == LƯU Ý VỀ VỊ TRÍ ==
 Khách hàng yêu cầu kho gần nhưng KHÔNG có dữ liệu GPS. Hãy ưu tiên dựa trên địa chỉ/khu vực được nhắc đến trong prompt.
-Nếu prompt không nói rõ khu vực, hãy ghi trong aiSummary là cần bật chia sẻ vị trí để tìm chính xác hơn.
+Nếu prompt không nói rõ khu vực, hãy ghi trong ai_summary là cần bật chia sẻ vị trí để tìm chính xác hơn.
 ";
         }
 
@@ -426,26 +426,26 @@ Nếu prompt không nói rõ khu vực, hãy ghi trong aiSummary là cần bật
 2. TRỌNG SỐ tiêu chí: Nếu khách nói ""gần tôi"" → khoảng cách chiếm 50% trọng số, giá 30%, các tiêu chí khác 20%.
    Nếu khách nói ""giá rẻ"" nhưng KHÔNG nói ""gần"" → giá chiếm 50%.
    Nếu cả ""gần"" và ""giá rẻ"" → khoảng cách 40%, giá 40%, khác 20%.
-3. So khớp từng kho → tính điểm phù hợp tổng hợp (matchScore: 0.0 đến 1.0)
+3. So khớp từng kho → tính điểm phù hợp tổng hợp (match_score: 0.0 đến 1.0)
 4. Xếp hạng từ phù hợp nhất đến ít phù hợp nhất
-5. Chỉ trả về tối đa 5 kho phù hợp nhất (matchScore >= 0.3)
+5. Chỉ trả về tối đa 5 kho phù hợp nhất (match_score >= 0.3)
 6. Nếu không có kho nào phù hợp, trả mảng rỗng
 7. Viết giải thích, ưu/nhược điểm bằng tiếng Việt tự nhiên, ngắn gọn
 
 == OUTPUT (chỉ JSON, KHÔNG markdown/text khác) ==
 {{
-  ""rankedWarehouses"": [
+  ""ranked_warehouses"": [
     {{
-      ""warehouseId"": <int>,
+      ""warehouse_id"": <int>,
       ""rank"": <1-5>,
-      ""matchScore"": <0.0-1.0>,
+      ""match_score"": <0.0-1.0>,
       ""explanation"": ""<giải thích ngắn gọn tại sao kho này phù hợp>"",
       ""pros"": [""<ưu điểm 1>"", ""<ưu điểm 2>""],
       ""cons"": [""<nhược điểm 1>""]
     }}
   ],
-  ""aiSummary"": ""<tóm tắt 1-2 câu về kết quả tìm kiếm>"",
-  ""followUpSuggestions"": [""<gợi ý tìm kiếm tiếp theo 1>"", ""<gợi ý 2>"", ""<gợi ý 3>""]
+  ""ai_summary"": ""<tóm tắt 1-2 câu về kết quả tìm kiếm>"",
+  ""follow_up_suggestions"": [""<gợi ý tìm kiếm tiếp theo 1>"", ""<gợi ý 2>"", ""<gợi ý 3>""]
 }}";
 
         var parts = new List<object> { new { text = prompt } };
@@ -455,9 +455,42 @@ Nếu prompt không nói rõ khu vực, hãy ghi trong aiSummary là cần bật
             contents = new[] { new { parts } },
             generationConfig = new
             {
-                temperature = 0.3,
-                maxOutputTokens = 16384,
-                responseMimeType = "application/json"
+                temperature = 0.2,
+                // gemini-2.5-flash dùng "thinking tokens" chung budget với maxOutputTokens.
+                // 4096 quá nhỏ → thinking chiếm hết → output bị MAX_TOKENS cắt cụt.
+                // Đặt 65536 để đảm bảo đủ không gian cho cả thinking lẫn output JSON.
+                maxOutputTokens = 65536,
+                responseMimeType = "application/json",
+                responseSchema = new
+                {
+                    type = "OBJECT",
+                    properties = new
+                    {
+                        ranked_warehouses = new
+                        {
+                            type = "ARRAY",
+                            items = new
+                            {
+                                type = "OBJECT",
+                                properties = new
+                                {
+                                    warehouse_id = new { type = "INTEGER" },
+                                    rank = new { type = "INTEGER" },
+                                    match_score = new { type = "NUMBER" },
+                                    explanation = new { type = "STRING" },
+                                    pros = new { type = "ARRAY", items = new { type = "STRING" } },
+                                    cons = new { type = "ARRAY", items = new { type = "STRING" } }
+                                },
+                                required = new[] { "warehouse_id", "rank", "match_score", "explanation", "pros", "cons" }
+                            }
+                        },
+                        ai_summary = new { type = "STRING" },
+                        follow_up_suggestions = new { type = "ARRAY", items = new { type = "STRING" } }
+                    },
+                    required = new[] { "ranked_warehouses", "ai_summary", "follow_up_suggestions" }
+                },
+                // Giới hạn thinking budget để dành token cho output thực tế
+                thinkingConfig = new { thinkingBudget = 2048 }
             }
         };
 
@@ -492,6 +525,7 @@ Nếu prompt không nói rõ khu vực, hãy ghi trong aiSummary là cần bật
 
             responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             Console.WriteLine($"[SmartSearch] Response status: {(int)response.StatusCode}, body length: {responseBody.Length}");
+            Console.WriteLine($"[SmartSearch] Raw Response Body: {responseBody}");
 
             if (response.IsSuccessStatusCode) break;
 
@@ -616,7 +650,11 @@ Nếu prompt không nói rõ khu vực, hãy ghi trong aiSummary là cần bật
         if (string.IsNullOrWhiteSpace(json)) return "{}";
 
         // Thử parse trước — nếu OK thì không cần sửa
-        try { JsonDocument.Parse(json); return json; } catch { /* tiếp tục repair */ }
+        try { JsonDocument.Parse(json); return json; } 
+        catch (Exception ex) 
+        { 
+            Console.WriteLine($"[Repair] Initial JSON parse failed: {ex.Message}. Length: {json.Length}");
+        }
 
         Console.WriteLine("[SmartSearch] JSON bị truncate, đang thử tự sửa...");
 
@@ -648,11 +686,15 @@ Nếu prompt không nói rõ khu vực, hãy ghi trong aiSummary là cần bật
 
         var repaired = sb.ToString();
 
-        try { JsonDocument.Parse(repaired); return repaired; } catch { /* fallback */ }
+        try { JsonDocument.Parse(repaired); return repaired; } 
+        catch (Exception ex) 
+        { 
+            Console.WriteLine($"[Repair] Repaired JSON parse failed: {ex.Message}. Repaired text: {repaired}"); 
+        }
 
-        // Fallback Smart Search schema (KHÔNG phải Image Analysis)
+        // Fallback Smart Search schema — dùng snake_case khớp với responseSchema
         return """
-            { "rankedWarehouses": [], "aiSummary": "AI không thể phân tích đầy đủ. Vui lòng thử lại với mô tả ngắn hơn.", "followUpSuggestions": [] }
+            { "ranked_warehouses": [], "ai_summary": "AI không thể phân tích đầy đủ. Vui lòng thử lại với mô tả chi tiết hơn.", "follow_up_suggestions": ["Thử tìm kho giá rẻ", "Tìm kho diện tích lớn", "Kho mở cửa 24/7"] }
             """;
     }
 }

@@ -41,7 +41,7 @@ const aiService = {
    */
   smartSearch: (prompt, lat = null, lng = null) => {
     return axiosClient.post("/ai/smart-search", { prompt, lat, lng }, {
-      timeout: 60000,
+      timeout: 120000,
     });
   },
 };
