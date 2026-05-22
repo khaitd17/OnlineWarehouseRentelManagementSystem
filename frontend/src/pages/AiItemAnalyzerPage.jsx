@@ -174,6 +174,44 @@ const styles = {
   },
   statVal: { fontSize: 28, fontWeight: 800, background: "linear-gradient(135deg,#818cf8,#a78bfa)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" },
   statLabel: { fontSize: 12, color: "#64748b", marginTop: 4 },
+  
+  // Smart Filter Bar Styles
+  filterCard: {
+    background: "rgba(30,41,59,0.7)",
+    border: "1px solid rgba(99,102,241,0.25)",
+    borderRadius: 20, padding: "24px 28px", marginBottom: 24,
+    backdropFilter: "blur(16px)",
+    boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.3)",
+  },
+  filterGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: 20,
+    marginBottom: 20,
+  },
+  filterItem: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+  },
+  filterBadgeRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 8,
+  },
+  filterBadge: (active) => ({
+    padding: "6px 14px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: "pointer",
+    background: active ? "linear-gradient(135deg, #6366f1, #8b5cf6)" : "rgba(148, 163, 184, 0.08)",
+    border: `1px solid ${active ? "transparent" : "rgba(148, 163, 184, 0.15)"}`,
+    color: active ? "#fff" : "#94a3b8",
+    transition: "all 0.2s ease",
+    boxShadow: active ? "0 2px 8px rgba(99, 102, 241, 0.3)" : "none",
+  }),
 };
 
 // ─── Confidence bar ─────────────────────────────────
@@ -244,6 +282,13 @@ export default function AiItemAnalyzerPage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResult, setSearchResult] = useState(null);
   const [searchError, setSearchError] = useState(null);
+
+  // Smart Filter states
+  const [filterDistance, setFilterDistance] = useState("all"); // "all" | "10" | "25" | "50" | "100"
+  const [filterMaxPrice, setFilterMaxPrice] = useState("");
+  const [filterMinArea, setFilterMinArea] = useState("");
+  const [filterFacilities, setFilterFacilities] = useState([]); // Array of strings: "cold", "247", "container", "pccc"
+  const [filterSortBy, setFilterSortBy] = useState("ai_score"); // "ai_score" | "distance" | "price_asc" | "rating_desc"
 
   // Load quota on mount
   useEffect(() => {
@@ -550,11 +595,104 @@ export default function AiItemAnalyzerPage() {
     }
   };
 
+  const getFilteredAndSortedWarehouses = (warehouses, isSmartSearch = false) => {
+    if (!warehouses) return [];
+    
+    let list = [...warehouses];
+    
+    // 1. Filter by Max Distance
+    if (filterDistance !== "all") {
+      const maxDist = parseFloat(filterDistance);
+      list = list.filter(w => w.distanceKm !== null && w.distanceKm !== undefined && w.distanceKm <= maxDist);
+    }
+    
+    // 2. Filter by Max Price
+    if (filterMaxPrice) {
+      const maxPrice = parseFloat(filterMaxPrice);
+      list = list.filter(w => w.pricePerM2 !== null && w.pricePerM2 !== undefined && w.pricePerM2 <= maxPrice);
+    }
+    
+    // 3. Filter by Min Area
+    if (filterMinArea) {
+      const minArea = parseFloat(filterMinArea);
+      list = list.filter(w => w.availableArea !== null && w.availableArea !== undefined && w.availableArea >= minArea);
+    }
+    
+    // 4. Filter by Facilities
+    if (filterFacilities.length > 0) {
+      list = list.filter(w => {
+        return filterFacilities.every(fac => {
+          if (fac === "cold") {
+            return w.warehouseType && w.warehouseType.toLowerCase().includes("lạnh");
+          }
+          if (fac === "247") {
+            return w.is24HoursAccess === true;
+          }
+          if (fac === "container") {
+            const text = ((w.matchReason || "") + " " + (w.explanation || "") + " " + (w.pros?.join(" ") || "")).toLowerCase();
+            return text.includes("container") || text.includes("xe cont");
+          }
+          if (fac === "pccc") {
+            const text = ((w.matchReason || "") + " " + (w.explanation || "") + " " + (w.pros?.join(" ") || "")).toLowerCase();
+            return text.includes("pccc") || text.includes("phòng cháy");
+          }
+          return true;
+        });
+      });
+    }
+    
+    // 5. Sort by selected option
+    list.sort((a, b) => {
+      if (filterSortBy === "ai_score") {
+        const scoreA = isSmartSearch ? (a.matchScore || 0) : (1 / (a.rank || 1));
+        const scoreB = isSmartSearch ? (b.matchScore || 0) : (1 / (b.rank || 1));
+        return scoreB - scoreA;
+      }
+      if (filterSortBy === "distance") {
+        const distA = a.distanceKm !== null && a.distanceKm !== undefined ? a.distanceKm : 999999;
+        const distB = b.distanceKm !== null && b.distanceKm !== undefined ? b.distanceKm : 999999;
+        return distA - distB;
+      }
+      if (filterSortBy === "price_asc") {
+        const priceA = a.pricePerM2 !== null && a.pricePerM2 !== undefined ? a.pricePerM2 : 999999;
+        const priceB = b.pricePerM2 !== null && b.pricePerM2 !== undefined ? b.pricePerM2 : 999999;
+        return priceA - priceB;
+      }
+      if (filterSortBy === "rating_desc") {
+        const ratingA = a.averageRating !== null && a.averageRating !== undefined ? a.averageRating : 0;
+        const ratingB = b.averageRating !== null && b.averageRating !== undefined ? b.averageRating : 0;
+        return ratingB - ratingA;
+      }
+      return 0;
+    });
+    
+    return list;
+  };
+
+  const toggleFacility = (facility) => {
+    setFilterFacilities(prev =>
+      prev.includes(facility) ? prev.filter(f => f !== facility) : [...prev, facility]
+    );
+  };
+
+  const handleResetFilters = () => {
+    setFilterDistance("all");
+    setFilterMaxPrice("");
+    setFilterMinArea("");
+    setFilterFacilities([]);
+    setFilterSortBy("ai_score");
+    setProvince("");
+    setDistrict("");
+  };
+
   const getScoreColor = (score) => {
     if (score >= 0.8) return "#22c55e";
     if (score >= 0.6) return "#f59e0b";
     return "#ef4444";
   };
+
+  const displaySuggestedWarehouses = result ? getFilteredAndSortedWarehouses(result.suggestedWarehouses, false) : [];
+  const displaySearchWarehouses = searchResult ? getFilteredAndSortedWarehouses(searchResult.warehouses, true) : [];
 
   return (
     <div style={styles.page}>
@@ -643,6 +781,149 @@ export default function AiItemAnalyzerPage() {
           </div>
         )}
 
+        {/* ── Smart Filter & Sort Bar ── */}
+        <div style={styles.filterCard}>
+          <div style={{ ...styles.cardTitle, marginBottom: 16, borderBottom: "1px solid rgba(99,102,241,0.15)", paddingBottom: 12 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8, color: "#a78bfa" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+              Bộ Lọc & Sắp Xếp Thông Minh
+            </span>
+            {(filterDistance !== "all" || filterMaxPrice || filterMinArea || filterFacilities.length > 0 || province || district) && (
+              <button
+                onClick={handleResetFilters}
+                style={{
+                  marginLeft: "auto",
+                  background: "none",
+                  border: "none",
+                  color: "#ef4444",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4
+                }}
+              >
+                ✕ Đặt lại bộ lọc
+              </button>
+            )}
+          </div>
+
+          <div style={styles.filterGrid}>
+            {/* Cột 1: Vị trí & Khoảng cách */}
+            <div style={styles.filterItem}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={styles.label}>Khu vực & Định vị</span>
+                <button
+                  onClick={handleGetLocation}
+                  disabled={loadingLocation}
+                  style={{
+                    background: "rgba(99,102,241,0.12)",
+                    border: "1px solid rgba(99,102,241,0.25)",
+                    color: "#a78bfa",
+                    padding: "3px 8px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: loadingLocation ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4
+                  }}
+                >
+                  {loadingLocation ? "Đang định vị..." : "GPS"}
+                </button>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <input
+                  style={styles.input}
+                  placeholder="Tỉnh/TP"
+                  value={province}
+                  onChange={e => setProvince(e.target.value)}
+                />
+              </div>
+              <span style={styles.label}>Khoảng cách tối đa</span>
+              <select
+                value={filterDistance}
+                onChange={e => setFilterDistance(e.target.value)}
+                style={styles.input}
+              >
+                <option value="all">Tất cả khoảng cách</option>
+                <option value="10">Dưới 10 km (Rất gần)</option>
+                <option value="25">Dưới 25 km (Tiện đi lại)</option>
+                <option value="50">Dưới 50 km</option>
+                <option value="100">Dưới 100 km</option>
+              </select>
+            </div>
+
+            {/* Cột 2: Ngân sách & Diện tích */}
+            <div style={styles.filterItem}>
+              <span style={styles.label}>Giá thuê tối đa (₫/m²)</span>
+              <input
+                type="number"
+                min="0"
+                style={{ ...styles.input, marginBottom: 12 }}
+                placeholder="Nhập giá tối đa (VD: 80000)"
+                value={filterMaxPrice}
+                onChange={e => setFilterMaxPrice(e.target.value)}
+              />
+              <span style={styles.label}>Diện tích tối thiểu (m²)</span>
+              <input
+                type="number"
+                min="0"
+                style={styles.input}
+                placeholder="Nhập diện tích tối thiểu"
+                value={filterMinArea}
+                onChange={e => setFilterMinArea(e.target.value)}
+              />
+            </div>
+
+            {/* Cột 3: Sắp xếp & Tiện ích */}
+            <div style={styles.filterItem}>
+              <span style={styles.label}>Sắp xếp kết quả</span>
+              <select
+                value={filterSortBy}
+                onChange={e => setFilterSortBy(e.target.value)}
+                style={{ ...styles.input, marginBottom: 12 }}
+              >
+                <option value="ai_score">Phù hợp nhất (AI)</option>
+                <option value="distance">Khoảng cách gần nhất</option>
+                <option value="price_asc">Giá thuê thấp nhất</option>
+                <option value="rating_desc">Đánh giá cao nhất</option>
+              </select>
+              <span style={styles.label}>Tiện ích chọn nhanh</span>
+              <div style={styles.filterBadgeRow}>
+                <button
+                  onClick={() => toggleFacility("cold")}
+                  style={styles.filterBadge(filterFacilities.includes("cold"))}
+                >
+                  Kho lạnh
+                </button>
+                <button
+                  onClick={() => toggleFacility("247")}
+                  style={styles.filterBadge(filterFacilities.includes("247"))}
+                >
+                  Mở 24/7
+                </button>
+                <button
+                  onClick={() => toggleFacility("container")}
+                  style={styles.filterBadge(filterFacilities.includes("container"))}
+                >
+                  Xe cont
+                </button>
+                <button
+                  onClick={() => toggleFacility("pccc")}
+                  style={styles.filterBadge(filterFacilities.includes("pccc"))}
+                >
+                  PCCC chuẩn
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* ══════════ TAB: IMAGE ANALYSIS ══════════ */}
         {activeTab === "image" && (<>
         {/* ── Main Result (if available) ── */}
@@ -659,7 +940,7 @@ export default function AiItemAnalyzerPage() {
                 <div style={styles.statLabel}>diện tích cần thiết</div>
               </div>
               <div style={styles.statBox}>
-                <div style={styles.statVal}>{result.suggestedWarehouses?.length || 0}</div>
+                <div style={styles.statVal}>{displaySuggestedWarehouses.length}</div>
                 <div style={styles.statLabel}>Kho phù hợp</div>
               </div>
             </div>
@@ -805,13 +1086,13 @@ export default function AiItemAnalyzerPage() {
             </div>
 
             {/* Suggested warehouses */}
-            {result.suggestedWarehouses?.length > 0 ? (
+            {displaySuggestedWarehouses.length > 0 ? (
               <div style={styles.card}>
                 <div style={styles.cardTitle}>
-                Top {result.suggestedWarehouses.length} Kho Phù Hợp
+                Top {displaySuggestedWarehouses.length} Kho Phù Hợp
               </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {result.suggestedWarehouses.map((wh) => (
+                  {displaySuggestedWarehouses.map((wh) => (
                     <div
                       key={wh.warehouseId}
                       className="wh-card"
@@ -936,38 +1217,7 @@ export default function AiItemAnalyzerPage() {
               </div>
             )}
 
-            {/* Location filter */}
-            <div style={{ ...styles.cardTitle, marginTop: 24, marginBottom: 16, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>Bước 2: Vị trí ưa thích <span style={{ fontSize: 13, color: "#64748b", fontWeight: 400 }}>(tùy chọn)</span></div>
-              <button 
-                onClick={handleGetLocation} 
-                disabled={loadingLocation}
-                style={{
-                  background: "rgba(99,102,241,0.15)",
-                  border: "1px solid rgba(99,102,241,0.3)",
-                  color: "#a78bfa",
-                  padding: "6px 12px",
-                  borderRadius: 8,
-                  fontSize: 13,
-                  cursor: loadingLocation ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6
-                }}
-              >
-                {loadingLocation ? "Đang định vị..." : "Vị trí của tôi"}
-              </button>
-            </div>
-            <div style={styles.row}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Tỉnh / Thành phố</label>
-                <input style={styles.input} placeholder="VD: Hà Nội" value={province} onChange={e => setProvince(e.target.value)} />
-              </div>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Quận / Huyện</label>
-                <input style={styles.input} placeholder="VD: Cầu Giấy" value={district} onChange={e => setDistrict(e.target.value)} />
-              </div>
-            </div>
+
 
             {/* Error */}
             {error && (
@@ -1020,13 +1270,13 @@ export default function AiItemAnalyzerPage() {
                 </div>
 
                 {/* Ranked Warehouses */}
-                {searchResult.warehouses?.length > 0 ? (
+                {displaySearchWarehouses.length > 0 ? (
                   <div style={styles.card}>
                     <div style={styles.cardTitle}>
-                      Top {searchResult.warehouses.length} kho phù hợp nhất
+                      Top {displaySearchWarehouses.length} kho phù hợp nhất
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                      {searchResult.warehouses.map((wh) => (
+                      {displaySearchWarehouses.map((wh) => (
                         <div key={wh.warehouseId} className="wh-card" style={{
                           ...styles.whCard, flexDirection: "column", gap: 0,
                           border: wh.rank === 1 ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(148,163,184,0.1)"
@@ -1204,32 +1454,7 @@ export default function AiItemAnalyzerPage() {
                   ))}
                 </div>
 
-                {/* Location */}
-                <div style={{ ...styles.cardTitle, marginTop: 20, marginBottom: 12, fontSize: 15, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>Vị trí ưa thích <span style={{ fontSize: 13, color: "#64748b", fontWeight: 400 }}>(tùy chọn)</span></div>
-                  <button
-                    onClick={handleGetLocation}
-                    disabled={loadingLocation}
-                    style={{
-                      background: "rgba(99,102,241,0.15)",
-                      border: "1px solid rgba(99,102,241,0.3)",
-                      color: "#a78bfa", padding: "6px 12px",
-                      borderRadius: 8, fontSize: 13,
-                      cursor: loadingLocation ? "not-allowed" : "pointer",
-                      fontFamily: "inherit"
-                    }}
-                  >{loadingLocation ? "Đang định vị..." : "Vị trí của tôi"}</button>
-                </div>
-                <div style={styles.row}>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Tỉnh / Thành phố</label>
-                    <input style={styles.input} placeholder="VD: Hà Nội" value={province} onChange={e => setProvince(e.target.value)} />
-                  </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Quận / Huyện</label>
-                    <input style={styles.input} placeholder="VD: Cầu Giấy" value={district} onChange={e => setDistrict(e.target.value)} />
-                  </div>
-                </div>
+
 
                 {/* Error */}
                 {searchError && (
