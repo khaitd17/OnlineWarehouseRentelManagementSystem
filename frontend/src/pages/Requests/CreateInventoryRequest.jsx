@@ -841,11 +841,13 @@ export default function CreateInventoryRequest() {
             {loadingWH ? <div style={{ padding:20, textAlign:'center', color:'#94a3b8' }}>Đang tải...</div>
             : warehouses.length===0 ? <div style={{ padding:16, borderRadius:12, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.87rem' }}>Bạn chưa có hợp đồng thuê kho nào đang hoạt động.</div>
             : <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {warehouses.map(wh=>(
-                <label key={wh.warehouseId} className="wh-card" style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', borderRadius:12, cursor:'pointer', border:`2px solid ${warehouseId===wh.warehouseId?accent:'#e2e8f0'}`, background:warehouseId===wh.warehouseId?(type==='INBOUND'?'#e0f7fa':'#fff8e1'):'#fafbff', transition:'all 0.15s' }}>
-                  <input type="radio" name="wh" value={wh.warehouseId} checked={warehouseId===wh.warehouseId} onChange={()=>setWarehouseId(wh.warehouseId)} style={{ accentColor:accent, width:18, height:18, flexShrink:0, cursor:'pointer' }}/>
+              {warehouses.map(wh=>{
+                const isDisabled = type === 'INBOUND' && wh.status !== 'ACTIVE';
+                return (
+                <label key={wh.warehouseId} className="wh-card" style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', borderRadius:12, cursor: isDisabled ? 'not-allowed' : 'pointer', border:`2px solid ${warehouseId===wh.warehouseId?accent:'#e2e8f0'}`, background:warehouseId===wh.warehouseId?(type==='INBOUND'?'#e0f7fa':'#fff8e1'):(isDisabled ? '#f8fafc' : '#fafbff'), transition:'all 0.15s', opacity: isDisabled ? 0.6 : 1 }}>
+                  <input type="radio" name="wh" value={wh.warehouseId} checked={warehouseId===wh.warehouseId} onChange={()=>{if(!isDisabled) setWarehouseId(wh.warehouseId);}} disabled={isDisabled} style={{ accentColor:accent, width:18, height:18, flexShrink:0, cursor:isDisabled ? 'not-allowed' : 'pointer' }}/>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1e293b' }}>{wh.name}</div>
+                    <div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1e293b' }}>{wh.name} {isDisabled && <span style={{fontSize:'0.7rem', color:'#dc2626', fontWeight:600, marginLeft:6}}>(Chỉ được xuất kho)</span>}</div>
                     {wh.contractNumber&&<div style={{ fontSize:'0.77rem', color:'#64748b', marginTop:2 }}>HĐ: {wh.contractNumber}</div>}
                     {warehouseId===wh.warehouseId && type==='INBOUND' && (
                       <div style={{ marginTop:8 }}>
@@ -917,7 +919,7 @@ export default function CreateInventoryRequest() {
                     </span>
                   )}
                 </label>
-              ))}
+              );})}
             </div>}
           </div>
 
