@@ -47,10 +47,6 @@ const ContractPaymentSelection = () => {
         const contractData = await rentalService.getContractById(id);
         setContract(contractData);
 
-        if (!isTerminationPayment && !isExtensionPayment && contractData.status === "ACTIVE") {
-          navigate(`/contracts/${id}`);
-          return;
-        }
 
         if (isTerminationPayment) {
           if (contractData.status === "TERMINATED") {

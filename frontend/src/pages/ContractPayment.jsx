@@ -62,11 +62,6 @@ const ContractPayment = () => {
           navigate(`/contracts/${id}`);
           return;
         }
-      } else if (!isExtensionPayment) {
-        if (contractData.status === 'ACTIVE') {
-          navigate(`/contracts/${id}`);
-          return;
-        }
       }
 
       if (isExtensionPayment) {
@@ -92,7 +87,7 @@ const ContractPayment = () => {
       const relevantPayments = Array.isArray(existingPayments)
         ? existingPayments.filter((p) => p.paymentType === determinedPaymentType)
         : [];
-        
+
       const latestPaymentAmount = relevantPayments.length > 0
         ? relevantPayments.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0]?.amount
         : null;
@@ -272,11 +267,11 @@ const ContractPayment = () => {
             {paymentStatus === 'FAILED' ? 'Thanh toán thất bại' : 'Mã QR đã hết hạn'}
           </div>
           <div style={{ marginBottom: "1rem", color: "#7f1d1d" }}>
-            {paymentStatus === 'FAILED' 
+            {paymentStatus === 'FAILED'
               ? 'Không nhận được xác nhận từ ngân hàng. Vui lòng thử lại.'
               : 'Thời gian thanh toán đã hết (10 phút). Bấm nút bên dưới để tạo mã QR mới.'}
           </div>
-          
+
           {paymentStatus === 'EXPIRED' ? (
             // For expired payments: re-run initPayment to create a new QR
             <button
@@ -354,7 +349,7 @@ const ContractPayment = () => {
       }}>
         {/* Left Column: Info & Instructions */}
         <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
-          
+
           {/* Payment Info */}
           <div style={{
             backgroundColor: "#fff", borderRadius: "16px",
@@ -380,9 +375,9 @@ const ContractPayment = () => {
                 <span style={{ color: "#64748b", fontSize: "0.95rem" }}>Loại giao dịch</span>
                 <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.95rem" }}>
                   {payment?.paymentType === 'DEPOSIT' ? 'Đặt cọc'
-                  : payment?.paymentType === 'PENALTY' ? 'Phí kết thúc sớm'
-                  : payment?.paymentType === 'EXTENSION' ? `Phí gia hạn (${extensionInfo?.durationMonths || 0} tháng)`
-                  : 'Thanh toán hoá đơn'}
+                    : payment?.paymentType === 'PENALTY' ? 'Phí kết thúc sớm'
+                      : payment?.paymentType === 'EXTENSION' ? `Phí gia hạn (${extensionInfo?.durationMonths || 0} tháng)`
+                        : 'Thanh toán hoá đơn'}
                 </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -418,7 +413,7 @@ const ContractPayment = () => {
                 </div>
               </div>
             </div>
-            
+
             <div style={{
               marginTop: "1.5rem", padding: "1.25rem", backgroundColor: "#fefce8",
               borderRadius: "10px", border: "1px solid #fef08a"
@@ -456,7 +451,7 @@ const ContractPayment = () => {
               <li>Mở ứng dụng Mobile Banking của bạn</li>
               <li>Sử dụng chức năng quét mã QR Pay</li>
               <li>Kiểm tra kĩ thông tin người nhận trước khi duyệt</li>
-              <li><strong>Phải đảm bảo nội dung chuyển khoản nhập chính xác mã: <span style={{color: '#854d0e'}}>{payment?.paymentCode}</span></strong></li>
+              <li><strong>Phải đảm bảo nội dung chuyển khoản nhập chính xác mã: <span style={{ color: '#854d0e' }}>{payment?.paymentCode}</span></strong></li>
               <li>{isTerminationPayment ? "Hệ thống sẽ ghi nhận kết thúc sớm ngay." : "Hệ thống tự động xác nhận trong vòng 30s."}</li>
             </ol>
           </div>
@@ -493,7 +488,7 @@ const ContractPayment = () => {
                   }}
                 />
               </div>
-              
+
               <p style={{ marginTop: "1.5rem", color: "#64748b", fontSize: "0.85rem" }}>
                 Hỗ trợ thanh toán VietQR với hơn 40 ngân hàng hiển thị
               </p>

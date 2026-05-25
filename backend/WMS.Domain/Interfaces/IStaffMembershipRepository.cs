@@ -21,6 +21,7 @@ public interface IStaffMembershipRepository
     Task<MembershipInfoDto?> GetMembershipByIdAsync(int membershipId, CancellationToken ct = default);
 
     Task ReassignMembershipAsync(ReassignMembershipDto dto, CancellationToken ct = default);
+    Task SetWarehouseShiftAsync(int membershipId, int? warehouseShiftId, CancellationToken ct = default);
 
     Task<List<ManagerScopeDto>> GetActiveManagersInWarehouseAsync(int warehouseId, CancellationToken ct = default);
 
@@ -45,6 +46,8 @@ public class StaffMembershipDto
     public string RoleName { get; set; } = null!;
     public bool IsAllSkill { get; set; }
     public List<SkillDto> Skills { get; set; } = new();
+    public int? WarehouseShiftId { get; set; }
+    public string? WarehouseShiftName { get; set; }
 }
 
 public class SkillDto

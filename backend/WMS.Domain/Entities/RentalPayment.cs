@@ -26,6 +26,10 @@ public class RentalPayment
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     
+    // NEW - Billing Period Tracking
+    public DateTime? TermStartDate { get; private set; }
+    public DateTime? TermEndDate { get; private set; }
+    
     // NEW - Retry tracking
     public int RetryCount { get; private set; } = 0;
     public int MaxRetry { get; private set; } = 3;
@@ -39,7 +43,9 @@ public class RentalPayment
         int contractId,
         decimal amount,
         string paymentType,
-        double expiryHours = 48)
+        double expiryHours = 48,
+        DateTime? termStartDate = null,
+        DateTime? termEndDate = null)
     {
         // Use GUID-based temp code — guaranteed unique even with concurrent requests
         // Will be replaced with WMS{paymentId:D6} after DB insert
@@ -53,7 +59,9 @@ public class RentalPayment
             Status = PaymentStatus.Pending,
             PaymentCode = tempCode,
             ExpiredAt = DateTime.UtcNow.AddHours(expiryHours),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            TermStartDate = termStartDate,
+            TermEndDate = termEndDate
         };
 
         return payment;
