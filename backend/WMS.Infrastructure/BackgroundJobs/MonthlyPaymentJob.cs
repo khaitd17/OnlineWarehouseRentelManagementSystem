@@ -85,11 +85,25 @@ public class MonthlyPaymentJob
                 }
 
                 var overdueDays = contract.PaymentTerm?.AllowedOverdueDays ?? 7;
+                var monthsPerTerm = contract.PaymentTerm?.MonthsPerTerm ?? 1;
+                var termEndDate = nextDueDate.Value.AddMonths(monthsPerTerm);
+                decimal calculatedAmount;
+
+                if (termEndDate > contract.EndDate)
+                {
+                    termEndDate = contract.EndDate;
+                    var termDays = (termEndDate - nextDueDate.Value).Days;
+                    calculatedAmount = Math.Round((contract.MonthlyPayment / 30m) * termDays, 2);
+                }
+                else
+                {
+                    calculatedAmount = contract.MonthlyPayment * monthsPerTerm;
+                }
 
                 // Create new monthly payment
                 var payment = RentalPayment.Create(
                     contractId: contract.ContractId,
-                    amount: contract.MonthlyPayment * (contract.PaymentTerm?.MonthsPerTerm ?? 1),
+                    amount: calculatedAmount,
                     paymentType: "MONTHLY",
                     expiryHours: overdueDays * 24
                 );
@@ -100,7 +114,7 @@ public class MonthlyPaymentJob
                 var notification = Notification.Create(
                     receiverUserId: contract.RenterId,
                     title: "Kỳ thanh toán mới",
-                    message: $"Thanh toán {contract.MonthlyPayment:N0} VNĐ cho hợp đồng {contract.ContractNumber} đến hạn vào {nextDueDate.Value:dd/MM/yyyy}",
+                    message: $"Thanh toán {calculatedAmount:N0} VNĐ cho hợp đồng {contract.ContractNumber} đến hạn vào {nextDueDate.Value:dd/MM/yyyy}",
                     notificationType: "IN_APP",
                     referenceId: contract.ContractId,
                     referenceType: "RentalContract"
@@ -117,7 +131,7 @@ public class MonthlyPaymentJob
                             contract.Renter.FullName,
                             contract.Warehouse?.Name ?? "Không xác định",
                             contract.ContractNumber,
-                            contract.MonthlyPayment,
+                            calculatedAmount,
                             nextDueDate.Value
                         );
                     }

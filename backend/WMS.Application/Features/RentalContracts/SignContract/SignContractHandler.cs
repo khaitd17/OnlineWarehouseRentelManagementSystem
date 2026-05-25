@@ -94,13 +94,19 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         int monthsPerTerm = fullContractInfo?.PaymentTerm?.MonthsPerTerm ?? 1;
         int overdueDays = fullContractInfo?.PaymentTerm?.AllowedOverdueDays ?? 7;
 
-        var totalDays = (contract.EndDate - contract.StartDate).Days;
         var firstTermEndDate = contract.StartDate.AddMonths(monthsPerTerm);
+        decimal proratedAmount;
+
         if (firstTermEndDate > contract.EndDate)
+        {
             firstTermEndDate = contract.EndDate;
-            
-        var termDays = (firstTermEndDate - contract.StartDate).Days;
-        var proratedAmount = (contract.MonthlyPayment / 30) * termDays;
+            var termDays = (firstTermEndDate - contract.StartDate).Days;
+            proratedAmount = (contract.MonthlyPayment / 30m) * termDays;
+        }
+        else
+        {
+            proratedAmount = contract.MonthlyPayment * monthsPerTerm;
+        }
         
         // If contract starts within 5 days or in the past, create bill now
         if ((contract.StartDate - DateTime.UtcNow).TotalDays <= 5)
