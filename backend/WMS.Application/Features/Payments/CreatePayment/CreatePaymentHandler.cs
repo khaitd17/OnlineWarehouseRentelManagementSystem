@@ -162,12 +162,33 @@ public class CreatePaymentHandler : IRequestHandler<CreatePaymentCommand, Create
             }
         }
 
+        DateTime? targetTermStartDate = null;
+        DateTime? targetTermEndDate = null;
+
+        if (existingPendingPayment == null)
+        {
+            // Find latest expired/failed payment of the same type to inherit term dates
+            var allPayments = await _paymentRepo.GetByContractIdAsync(request.ContractId);
+            var latestFailedOrExpired = allPayments
+                .Where(p => p.PaymentType == request.PaymentType && (p.Status == "EXPIRED" || p.Status == "FAILED" || p.Status == "CANCELLED"))
+                .OrderByDescending(p => p.CreatedAt)
+                .FirstOrDefault();
+
+            if (latestFailedOrExpired != null)
+            {
+                targetTermStartDate = latestFailedOrExpired.TermStartDate;
+                targetTermEndDate = latestFailedOrExpired.TermEndDate;
+            }
+        }
+
         // Create new payment using a transaction to ensure PaymentCode is finalized atomically
         var payment = RentalPayment.Create(
             contractId: request.ContractId,
             amount: amount,
             paymentType: request.PaymentType,
-            expiryHours: PaymentExpiryHours
+            expiryHours: PaymentExpiryHours,
+            termStartDate: targetTermStartDate,
+            termEndDate: targetTermEndDate
         );
 
         // Set payment method

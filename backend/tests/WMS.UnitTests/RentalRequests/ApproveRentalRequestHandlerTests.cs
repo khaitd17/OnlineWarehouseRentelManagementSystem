@@ -26,6 +26,7 @@ public class ApproveRentalRequestHandlerTests
     private readonly Mock<INotificationSender> _mockNotificationSender;
     private readonly Mock<IUserRepository> _mockUserRepo;
     private readonly Mock<IPdfService> _mockPdfService;
+    private readonly Mock<IEmailService> _mockEmailService;
 
     private readonly ApproveRentalRequestHandler _approveHandler;
     private readonly RejectRentalRequestHandler _rejectHandler;
@@ -41,6 +42,7 @@ public class ApproveRentalRequestHandlerTests
         _mockNotificationSender = new Mock<INotificationSender>();
         _mockUserRepo = new Mock<IUserRepository>();
         _mockPdfService = new Mock<IPdfService>();
+        _mockEmailService = new Mock<IEmailService>();
 
         _approveHandler = new ApproveRentalRequestHandler(
             _mockRentalRequestRepo.Object,
@@ -49,13 +51,16 @@ public class ApproveRentalRequestHandlerTests
             _mockNotificationRepo.Object,
             _mockNotificationSender.Object,
             _mockUserRepo.Object,
-            _mockPdfService.Object);
+            _mockPdfService.Object,
+            _mockEmailService.Object);
 
         _rejectHandler = new RejectRentalRequestHandler(
             _mockRentalRequestRepo.Object,
             _mockWarehouseRepo.Object,
             _mockNotificationRepo.Object,
-            _mockNotificationSender.Object);
+            _mockNotificationSender.Object,
+            _mockUserRepo.Object,
+            _mockEmailService.Object);
 
         _approveValidator = new ApproveRentalRequestValidator();
         _rejectValidator = new RejectRentalRequestValidator();

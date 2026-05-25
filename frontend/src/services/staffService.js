@@ -57,6 +57,11 @@ const staffService = {
     const response = await axiosClient.post("/staff/activate", { membershipId });
     return response.data;
   },
+
+  setStaffShift: async (membershipId, warehouseShiftId) => {
+    const response = await axiosClient.put("/staff/set-shift", { membershipId, warehouseShiftId });
+    return response.data;
+  },
 };
 
 export default staffService;

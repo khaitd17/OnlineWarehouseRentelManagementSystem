@@ -7,7 +7,6 @@ using static WMS.Application.Interfaces.IUserRepository;
 
 namespace WMS.UnitTests.RentalContracts;
 
-// Unit tests: SignContractHandler – 4 test cases (UTCID01–04)
 public class SignContractHandlerTests
 {
     private readonly Mock<IRentalContractRepository>       _contractRepoMock;
@@ -17,9 +16,6 @@ public class SignContractHandlerTests
     private readonly Mock<INotificationSender>             _notificationSenderMock;
     private readonly Mock<IWarehouseRepository>            _warehouseRepoMock;
     private readonly Mock<IUserRepository>                 _userRepoMock;
-    private readonly Mock<IRentalRequestRepository>        _rentalRequestRepoMock;
-    private readonly Mock<IEquipmentRepository>            _equipmentRepoMock;
-    private readonly Mock<IRentalPaymentRepository>        _paymentRepoMock;
     private readonly SignContractHandler                   _handler;
 
     public SignContractHandlerTests()
@@ -31,9 +27,6 @@ public class SignContractHandlerTests
         _notificationSenderMock = new Mock<INotificationSender>();
         _warehouseRepoMock      = new Mock<IWarehouseRepository>();
         _userRepoMock           = new Mock<IUserRepository>();
-        _rentalRequestRepoMock  = new Mock<IRentalRequestRepository>();
-        _equipmentRepoMock      = new Mock<IEquipmentRepository>();
-        _paymentRepoMock        = new Mock<IRentalPaymentRepository>();
 
         _handler = new SignContractHandler(
             _contractRepoMock.Object,
@@ -42,16 +35,12 @@ public class SignContractHandlerTests
             _notificationRepoMock.Object,
             _notificationSenderMock.Object,
             _warehouseRepoMock.Object,
-            _userRepoMock.Object,
-            _rentalRequestRepoMock.Object,
-            _equipmentRepoMock.Object,
-            _paymentRepoMock.Object);
+            _userRepoMock.Object);
     }
 
-    // Helpers – dùng reflection vì RentalContract có private constructor
     private static RentalContract BuildContract(
         int contractId  = 1, int renterId = 10, int warehouseId = 5,
-        int rentalReqId = 2, string status = "PENDING_RENTER_SIGNATURE",
+        int rentalReqId = 2, string status = "NEGOTIATING",
         string contractNo = "RTC-2026-00001")
     {
         var c = (RentalContract)System.Runtime.CompilerServices.RuntimeHelpers
@@ -80,14 +69,11 @@ public class SignContractHandlerTests
     private static SignContractCommand BuildCommand(int contractId = 1, int userId = 10)
         => new() { ContractId = contractId, UserId = userId, SignatureBase64 = "base64SIG==", IpAddress = "127.0.0.1" };
 
-    // Setup cho happy-path sau khi contract + OTP hợp lệ
     private void SetupHappyPath(RentalContract contract)
     {
         var wh = BuildWarehouse();
         _pdfServiceMock.Setup(p => p.GenerateContractPdfAsync(It.IsAny<ContractPdfData>(), It.IsAny<string?>())).ReturnsAsync("https://storage/signed.pdf");
         _contractRepoMock.Setup(r => r.UpdateAsync(It.IsAny<RentalContract>())).Returns(Task.CompletedTask);
-        _contractRepoMock.Setup(r => r.GetWithEquipmentsByIdAsync(contract.ContractId)).ReturnsAsync(contract);
-        _rentalRequestRepoMock.Setup(r => r.GetByIdAsync(contract.RentalRequestId)).ReturnsAsync((RentalRequest?)null);
         _logRepoMock.Setup(l => l.AddAsync(It.IsAny<ContractLog>())).ReturnsAsync(1);
         _notificationRepoMock.Setup(n => n.AddAsync(It.IsAny<Notification>())).ReturnsAsync(1);
         _notificationSenderMock.Setup(s => s.SendToUserAsync(It.IsAny<int>(), It.IsAny<Notification>())).Returns(Task.CompletedTask);
@@ -96,7 +82,6 @@ public class SignContractHandlerTests
         _userRepoMock.Setup(u => u.GetByIdAsync(wh.OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(BuildUserRecord(wh.OwnerId, "Chủ kho B"));
     }
 
-    // UTCID01 – (A) Contract không tồn tại → InvalidOperationException
     [Fact]
     public async Task Handle_ContractNotFound_ThrowsInvalidOperationException()
     {
@@ -108,7 +93,6 @@ public class SignContractHandlerTests
         Assert.Equal("Contract not found", ex.Message);
     }
 
-    // UTCID02 – (N) UserId ≠ RenterId → UnauthorizedAccessException
     [Fact]
     public async Task Handle_UserIsNotRenter_ThrowsUnauthorizedAccessException()
     {
@@ -121,11 +105,10 @@ public class SignContractHandlerTests
         Assert.Equal("Only the renter can sign the contract", ex.Message);
     }
 
-    // UTCID03 – (N) Status ≠ PENDING_RENTER_SIGNATURE → InvalidOperationException
     [Fact]
     public async Task Handle_WrongStatus_ThrowsInvalidOperationException()
     {
-        const string wrongStatus = "PENDING_PAYMENT";
+        const string wrongStatus = "REVISION_REQUESTED";
         var contract = BuildContract(renterId: 10, status: wrongStatus);
         _contractRepoMock.Setup(r => r.GetByIdAsync(contract.ContractId)).ReturnsAsync(contract);
 
@@ -136,12 +119,11 @@ public class SignContractHandlerTests
         Assert.Contains(wrongStatus, ex.Message);
     }
 
-    // UTCID04 – (N) Happy path: ký thành công → trả SignContractResult, log, notify cả Renter và Owner
     [Fact]
     public async Task Handle_ValidSign_ReturnsResult_AndLogsAndNotifiesBothParties()
     {
         const int renterId = 10, ownerId = 99;
-        var contract     = BuildContract(renterId: renterId, warehouseId: 5);
+        var contract     = BuildContract(renterId: renterId, warehouseId: 5, status: "NEGOTIATING");
 
         _contractRepoMock.Setup(r => r.GetByIdAsync(contract.ContractId)).ReturnsAsync(contract);
         SetupHappyPath(contract);
@@ -151,7 +133,7 @@ public class SignContractHandlerTests
         Assert.NotNull(result);
         Assert.False(string.IsNullOrEmpty(result.SignedFileUrl));
         Assert.False(string.IsNullOrEmpty(result.Status));
-        _logRepoMock.Verify(l => l.AddAsync(It.Is<ContractLog>(x => x.Action == "CONTRACT_SIGNED")), Times.Once);
+        _logRepoMock.Verify(l => l.AddAsync(It.Is<ContractLog>(x => x.Action == "CONTRACT_SIGNED_BY_RENTER")), Times.Once);
         _notificationSenderMock.Verify(s => s.SendToUserAsync(renterId, It.IsAny<Notification>()), Times.Once);
         _notificationSenderMock.Verify(s => s.SendToUserAsync(ownerId, It.IsAny<Notification>()), Times.Once);
     }

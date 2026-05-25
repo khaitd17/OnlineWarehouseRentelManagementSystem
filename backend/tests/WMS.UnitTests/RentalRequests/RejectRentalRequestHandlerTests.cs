@@ -16,6 +16,8 @@ public class RejectRentalRequestHandlerTests
     private readonly Mock<IWarehouseRepository>     _warehouseRepoMock;
     private readonly Mock<INotificationRepository>  _notificationRepoMock;
     private readonly Mock<INotificationSender>      _notificationSenderMock;
+    private readonly Mock<IUserRepository>          _userRepoMock;
+    private readonly Mock<IEmailService>            _emailServiceMock;
     private readonly RejectRentalRequestHandler     _handler;
 
     public RejectRentalRequestHandlerTests()
@@ -24,12 +26,16 @@ public class RejectRentalRequestHandlerTests
         _warehouseRepoMock      = new Mock<IWarehouseRepository>();
         _notificationRepoMock   = new Mock<INotificationRepository>();
         _notificationSenderMock = new Mock<INotificationSender>();
+        _userRepoMock           = new Mock<IUserRepository>();
+        _emailServiceMock       = new Mock<IEmailService>();
 
         _handler = new RejectRentalRequestHandler(
             _rentalRequestRepoMock.Object,
             _warehouseRepoMock.Object,
             _notificationRepoMock.Object,
-            _notificationSenderMock.Object);
+            _notificationSenderMock.Object,
+            _userRepoMock.Object,
+            _emailServiceMock.Object);
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────

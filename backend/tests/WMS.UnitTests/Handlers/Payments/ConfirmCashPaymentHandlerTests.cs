@@ -20,6 +20,8 @@ public class ConfirmCashPaymentHandlerTests
     private readonly Mock<IContractExtensionRepository> _mockExtensionRepository;
     private readonly Mock<ILogger<ConfirmCashPaymentHandler>> _mockLogger;
     private readonly Mock<IRentalRequestRepository> _mockRentalRequestRepository;
+    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<IEmailService> _mockEmailService;
     private readonly ConfirmCashPaymentHandler _handler;
 
     public ConfirmCashPaymentHandlerTests()
@@ -33,6 +35,8 @@ public class ConfirmCashPaymentHandlerTests
         _mockExtensionRepository = new Mock<IContractExtensionRepository>();
         _mockLogger = new Mock<ILogger<ConfirmCashPaymentHandler>>();
         _mockRentalRequestRepository = new Mock<IRentalRequestRepository>();
+        _mockUserRepository = new Mock<IUserRepository>();
+        _mockEmailService = new Mock<IEmailService>();
 
         _handler = new ConfirmCashPaymentHandler(
             _mockPaymentRepository.Object,
@@ -43,7 +47,9 @@ public class ConfirmCashPaymentHandlerTests
             _mockMembershipRepository.Object,
             _mockLogger.Object,
             _mockExtensionRepository.Object,
-            _mockRentalRequestRepository.Object
+            _mockRentalRequestRepository.Object,
+            _mockUserRepository.Object,
+            _mockEmailService.Object
         );
     }
 

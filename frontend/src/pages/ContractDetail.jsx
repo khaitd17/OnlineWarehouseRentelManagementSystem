@@ -12,27 +12,27 @@ import CustomAreaSelectorModal from "../components/warehouse/CustomAreaSelectorM
 
 
 const statusConfig = {
-  DRAFT:      { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
+  DRAFT: { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
   NEGOTIATING: { bg: "#dbeafe", color: "#2563eb", label: "Đang đàm phán" },
   REVISION_REQUESTED: { bg: "#fef3c7", color: "#d97706", label: "Yêu cầu chỉnh sửa" },
   APPROVED_FOR_SIGNING: { bg: "#dcfce7", color: "#16a34a", label: "Sẵn sàng ký" },
   PENDING_OWNER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ chủ kho ký" },
   PENDING_RENTER_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ người thuê ký" },
   PENDING_SIGNATURE: { bg: "#fef3c7", color: "#d97706", label: "Chờ xác thực ký" },
-  SIGNED:     { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
+  SIGNED: { bg: "#dbeafe", color: "#2563eb", label: "Đã ký" },
   PENDING_PAYMENT: { bg: "#fef3c7", color: "#f59e0b", label: "Chờ thanh toán" },
   PENDING_PAYMENT_CONFIRMATION: { bg: "#dbeafe", color: "#2563eb", label: "Chờ xác nhận từ chủ kho" },
   PAYMENT_FAILED: { bg: "#fee2e2", color: "#dc2626", label: "Thanh toán thất bại" },
-  ACTIVE:     { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
-  COMPLETED:  { bg: "#e0e7ff", color: "#6366f1", label: "Đã hoàn thành" },
-  CLOSED:     { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
-  EXPIRED:    { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
+  ACTIVE: { bg: "#dcfce7", color: "#16a34a", label: "Đang hiệu lực" },
+  COMPLETED: { bg: "#e0e7ff", color: "#6366f1", label: "Đã hoàn thành" },
+  CLOSED: { bg: "#f1f5f9", color: "#64748b", label: "Đã đóng" },
+  EXPIRED: { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
-  CANCELLED:  { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
+  CANCELLED: { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
   CANCELLED_BY_USER: { bg: "#fee2e2", color: "#dc2626", label: "Người dùng hủy" },
   CANCELLED_BY_OWNER: { bg: "#fee2e2", color: "#dc2626", label: "Chủ kho hủy" },
   CANCELLED_NO_PAYMENT: { bg: "#fee2e2", color: "#dc2626", label: "Hủy - Không thanh toán" },
-  OVERDUE:    { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
+  OVERDUE: { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },
   EXPIRED_SIGNATURE: { bg: "#fee2e2", color: "#dc2626", label: "Hết hạn ký" },
   EXPIRED_PAYMENT: { bg: "#fee2e2", color: "#dc2626", label: "Hết hạn thanh toán" },
   // 2-party approval statuses
@@ -149,7 +149,6 @@ const ContractDetail = () => {
   const [revisionMessage, setRevisionMessage] = useState("");
   const [replyDrafts, setReplyDrafts] = useState({});
   const [applyingChanges, setApplyingChanges] = useState(false);
-  const [approvingSigning, setApprovingSigning] = useState(false);
   const [sendingDraft, setSendingDraft] = useState(false);
   const [versionHistory, setVersionHistory] = useState([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
@@ -182,7 +181,7 @@ const ContractDetail = () => {
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [isSubmittingDecline, setIsSubmittingDecline] = useState(false);
-  
+
   // Approval action states
   const [processingApproval, setProcessingApproval] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -359,7 +358,7 @@ const ContractDetail = () => {
                 setHasPendingPayment(cashPending || onlineCompleted);
               }
             })
-            .catch(() => {}); // silently ignore
+            .catch(() => { }); // silently ignore
         } else {
           setHasPendingPayment(false);
           setReuploadPayment(null);
@@ -379,7 +378,7 @@ const ContractDetail = () => {
 
     api.get(`/Warehouse/${contract.warehouseId}`)
       .then(res => setWarehouseInfo(res.data))
-      .catch(() => {});
+      .catch(() => { });
   }, [contract?.warehouseId]);
 
   useEffect(() => {
@@ -463,22 +462,22 @@ const ContractDetail = () => {
   const isPendingClose = contract?.status === "PENDING_CLOSE";
   const isPendingApproval = isPendingTermination || isPendingClose;
   const isRequester = (contract?.terminationRequestedBy === "RENTER" && contract?.isCurrentUserRenter) ||
-                      (contract?.terminationRequestedBy === "OWNER" && contract?.isCurrentUserOwner);
+    (contract?.terminationRequestedBy === "OWNER" && contract?.isCurrentUserOwner);
   const isRenterInitiatedTermination = isPendingTermination && contract?.terminationRequestedBy === "RENTER";
   const hasCurrentUserApproved = (contract?.isCurrentUserOwner && contract?.ownerApprovedTermination) ||
-                                 (contract?.isCurrentUserRenter && contract?.renterApprovedTermination);
+    (contract?.isCurrentUserRenter && contract?.renterApprovedTermination);
   const canOwnerReviewRenterTermination = isRenterInitiatedTermination && contract?.isCurrentUserOwner && !contract?.ownerApprovedTermination;
   const canRenterRespondToOwnerReview = isRenterInitiatedTermination && contract?.isCurrentUserRenter && contract?.ownerApprovedTermination && !contract?.renterApprovedTermination;
   const canPayTerminationFee = isPendingTermination &&
-                               contract?.isCurrentUserRenter &&
-                               contract?.ownerApprovedTermination &&
-                               contract?.renterApprovedTermination &&
-                               Number(contract?.earlyTerminationFee || 0) > 0;
+    contract?.isCurrentUserRenter &&
+    contract?.ownerApprovedTermination &&
+    contract?.renterApprovedTermination &&
+    Number(contract?.earlyTerminationFee || 0) > 0;
   const canStandardApproveOrReject = isPendingApproval &&
-                                     !isRequester &&
-                                     !hasCurrentUserApproved &&
-                                     !canOwnerReviewRenterTermination &&
-                                     !canRenterRespondToOwnerReview;
+    !isRequester &&
+    !hasCurrentUserApproved &&
+    !canOwnerReviewRenterTermination &&
+    !canRenterRespondToOwnerReview;
   const canApproveOrReject = canOwnerReviewRenterTermination || canRenterRespondToOwnerReview || canStandardApproveOrReject;
   const waitingForCounterparty = isPendingApproval && !isRequester && hasCurrentUserApproved && !canPayTerminationFee;
   const shouldShowApprovalModal = canOwnerReviewRenterTermination;
@@ -603,31 +602,20 @@ const ContractDetail = () => {
     }
   };
 
-  const handleApproveForSigning = async () => {
-    try {
-      setApprovingSigning(true);
-      await rentalService.approveContractForSigning(contract.contractId);
-      reloadContract();
-    } catch (err) {
-      alert(err.response?.data?.message || "Không thể duyệt ký");
-    } finally {
-      setApprovingSigning(false);
-    }
-  };
+
 
   // Access control: Determine who can sign/pay based on status and role
-  const canOwnerSign = contract?.isCurrentUserOwner && contract?.status === "APPROVED_FOR_SIGNING";
-  const canRenterSign = contract?.isCurrentUserRenter && contract?.status === "PENDING_RENTER_SIGNATURE";
-  const canRenterDecline = contract?.isCurrentUserRenter && contract?.status === "PENDING_RENTER_SIGNATURE";
+  const canOwnerSign = contract?.isCurrentUserOwner && contract?.status === "PENDING_OWNER_SIGNATURE";
+  const canRenterSign = contract?.isCurrentUserRenter && ["NEGOTIATING", "DRAFT", "APPROVED_FOR_SIGNING"].includes(contract?.status);
+  const canRenterDecline = contract?.isCurrentUserRenter && ["NEGOTIATING", "DRAFT", "APPROVED_FOR_SIGNING"].includes(contract?.status);
   const hasReuploadRequest = Boolean(reuploadPayment);
   // canRenterPay: true only if no payment has been submitted/pending yet
   const canRenterPay = contract?.isCurrentUserRenter &&
-    (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED") &&
+    ["PENDING_PAYMENT", "SIGNED", "ACTIVE"].includes(contract?.status) &&
     !hasPendingPayment;
   const isNegotiating = ["NEGOTIATING", "REVISION_REQUESTED"].includes(contract?.status);
   const canRequestRevision = contract?.isCurrentUserRenter && isNegotiating;
-  const canOwnerRespondRevision = contract?.isCurrentUserOwner && isNegotiating;
-  const canApproveForSigning = contract?.isCurrentUserOwner && isNegotiating;
+  const canOwnerRespondRevision = contract?.isCurrentUserOwner && contract?.status === "REVISION_REQUESTED";
 
   if (loading) return (
     <div style={{ padding: "5rem 2rem", textAlign: "center" }}>
@@ -858,10 +846,14 @@ const ContractDetail = () => {
 
       {/* Ảnh / tài liệu đính kèm từ chủ kho */}
       {contract.contractImageUrl && (
-        <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem" }}>
-          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
-            paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9" }}>
+        <div style={{
+          backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem"
+        }}>
+          <h2 style={{
+            fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
+            paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9"
+          }}>
             Tài liệu đính kèm từ chủ kho
           </h2>
           {/\.(jpg|jpeg|png|gif|webp)$/i.test(contract.contractImageUrl) ? (
@@ -869,8 +861,10 @@ const ContractDetail = () => {
               <img
                 src={`http://localhost:5276${contract.contractImageUrl}`}
                 alt="Tài liệu hợp đồng"
-                style={{ maxWidth: "100%", maxHeight: "400px", borderRadius: "10px",
-                  objectFit: "contain", border: "1px solid #e2e8f0" }}
+                style={{
+                  maxWidth: "100%", maxHeight: "400px", borderRadius: "10px",
+                  objectFit: "contain", border: "1px solid #e2e8f0"
+                }}
               />
               <div style={{ marginTop: "0.8rem" }}>
                 <a href={`http://localhost:5276${contract.contractImageUrl}`}
@@ -892,18 +886,24 @@ const ContractDetail = () => {
 
       {/* Thông báo DRAFT */}
       {contract.status === "DRAFT" && (
-        <div style={{ marginBottom: "1rem", padding: "1rem 1.5rem", backgroundColor: "#fefce8",
-          borderRadius: "12px", border: "1px solid #fde047", color: "#854d0e", fontSize: "0.9rem" }}>
+        <div style={{
+          marginBottom: "1rem", padding: "1rem 1.5rem", backgroundColor: "#fefce8",
+          borderRadius: "12px", border: "1px solid #fde047", color: "#854d0e", fontSize: "0.9rem"
+        }}>
           <strong>Hợp đồng đang ở trạng thái bản nháp.</strong> Chủ kho cần gửi bản nháp để bắt đầu đàm phán.
         </div>
       )}
 
       {/* PDF Links */}
       {(contract.contractFileUrl || contract.ownerSignedFileUrl || contract.signedFileUrl) && (
-        <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem" }}>
-          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
-            paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9" }}>
+        <div style={{
+          backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem"
+        }}>
+          <h2 style={{
+            fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
+            paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9"
+          }}>
             Tài liệu hợp đồng
           </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
@@ -952,7 +952,7 @@ const ContractDetail = () => {
 
       {/* Pending Approval Section - Show when waiting for approval from the other party */}
       {isPendingApproval && (
-        <div style={{ 
+        <div style={{
           backgroundColor: "#fef3c7", borderRadius: "16px", padding: "1.5rem 2rem",
           border: "1px solid #fde047", marginBottom: "1rem"
         }}>
@@ -961,7 +961,7 @@ const ContractDetail = () => {
           </h2>
           <p style={{ color: "#92400e", fontSize: "0.9rem", marginBottom: "1rem" }}>
             {contract.terminationRequestedBy === "RENTER" ? "Người thuê" : "Chủ kho"} đã gửi yêu cầu {contract.status === "PENDING_TERMINATION" ? "kết thúc sớm" : "kết thúc"} hợp đồng.
-            {contract.terminationReason && <><br/><strong>Lý do:</strong> {contract.terminationReason}</>}
+            {contract.terminationReason && <><br /><strong>Lý do:</strong> {contract.terminationReason}</>}
             {isRenterInitiatedTermination && contract.ownerApprovedTermination && (
               <>
                 <br />
@@ -1308,21 +1308,7 @@ const ContractDetail = () => {
                 >
                   {applyingChanges ? "Đang áp dụng..." : "Apply Changes"}
                 </button>
-                <button
-                  onClick={handleApproveForSigning}
-                  disabled={approvingSigning}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 8,
-                    border: "1px solid #10b981",
-                    background: approvingSigning ? "#d1fae5" : "#ecfdf5",
-                    color: "#047857",
-                    fontWeight: 700,
-                    cursor: approvingSigning ? "not-allowed" : "pointer"
-                  }}
-                >
-                  {approvingSigning ? "Đang duyệt..." : "Approve for signing"}
-                </button>
+
               </div>
             </div>
           )}
@@ -1382,10 +1368,14 @@ const ContractDetail = () => {
 
       {/* Actions Section */}
       {(canTerminate || canRequestClose) && !isPendingApproval && (
-        <div style={{ backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem" }}>
-          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
-            paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9" }}>
+        <div style={{
+          backgroundColor: "#fff", borderRadius: "16px", padding: "1.5rem 2rem",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04)", border: "1px solid #f1f5f9", marginBottom: "1rem"
+        }}>
+          <h2 style={{
+            fontSize: "1rem", fontWeight: 700, color: "#0f172a", marginBottom: "1rem",
+            paddingBottom: "0.8rem", borderBottom: "1px solid #f1f5f9"
+          }}>
             Thao tác
           </h2>
           <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
@@ -1441,100 +1431,94 @@ const ContractDetail = () => {
 
       {/* Signing Button - Only for users who have permission to sign */}
       <div id="contract-tab-signing" style={{ scrollMarginTop: 120 }}>
-      {(canOwnerSign || canRenterSign) && (
-        <div>
-          {/* Signature Expiry Countdown */}
-          {contract.renterSignatureExpiry && (
-            <ExpiryCountdown
-              expiryDate={contract.renterSignatureExpiry}
-              onExpired={() => {
-                alert('Thời gian ký hợp đồng đã hết. Hợp đồng sẽ bị hủy.');
-                reloadContract();
-              }}
-              warningThresholdMinutes={720}
-              className="mb-3"
-            />
-          )}
-          
-          <button
-            onClick={() => setShowSigningModal(true)}
-            style={{
-              marginTop: "0.5rem",
-              width: "100%",
-              padding: "1rem",
-              backgroundColor: "#0095c7",
-              color: "#fff",
-              border: "none",
-              borderRadius: "12px",
-              fontWeight: 700,
-              fontSize: "1rem",
-              cursor: "pointer",
-              transition: "background-color 0.2s",
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0077a3"}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#0095c7"}
-          >
-            Ký hợp đồng
-          </button>
-          
-          {/* Decline button - Only for renter */}
-          {canRenterDecline && (
+        {(canOwnerSign || canRenterSign) && (
+          <div>
+            {/* Signature Expiry Countdown */}
+            {contract.renterSignatureExpiry && (
+              <ExpiryCountdown
+                expiryDate={contract.renterSignatureExpiry}
+                onExpired={() => {
+                  alert('Thời gian ký hợp đồng đã hết. Hợp đồng sẽ bị hủy.');
+                  reloadContract();
+                }}
+                warningThresholdMinutes={720}
+                className="mb-3"
+              />
+            )}
+
             <button
-              onClick={() => setShowDeclineModal(true)}
+              onClick={() => setShowSigningModal(true)}
               style={{
                 marginTop: "0.5rem",
                 width: "100%",
-                padding: "0.875rem",
-                backgroundColor: "#fff",
-                color: "#dc2626",
-                border: "1px solid #fecaca",
+                padding: "1rem",
+                backgroundColor: "#0095c7",
+                color: "#fff",
+                border: "none",
                 borderRadius: "12px",
-                fontWeight: 600,
-                fontSize: "0.95rem",
+                fontWeight: 700,
+                fontSize: "1rem",
                 cursor: "pointer",
-                transition: "all 0.2s",
+                transition: "background-color 0.2s",
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "#fef2f2";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "#fff";
-              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#0077a3"}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#0095c7"}
             >
-              Từ chối hợp đồng này
+              Ký hợp đồng
             </button>
-          )}
-        </div>
-      )}
+
+            {/* Decline button - Only for renter */}
+            {canRenterDecline && (
+              <button
+                onClick={() => setShowDeclineModal(true)}
+                style={{
+                  marginTop: "0.5rem",
+                  width: "100%",
+                  padding: "0.875rem",
+                  backgroundColor: "#fff",
+                  color: "#dc2626",
+                  border: "1px solid #fecaca",
+                  borderRadius: "12px",
+                  fontWeight: 600,
+                  fontSize: "0.95rem",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#fef2f2";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#fff";
+                }}
+              >
+                Từ chối hợp đồng này
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Payment Button - Only for renter, only if no payment submitted yet */}
       {canRenterPay && (
         <div style={{ marginTop: "0.5rem" }}>
-          <div style={{
-            padding: "1rem 1.5rem",
-            backgroundColor: "#fef3c7",
-            borderRadius: "12px",
-            border: "1px solid #fde047",
-            color: "#854d0e",
-            fontSize: "0.9rem",
-            marginBottom: "1rem"
-          }}>
-            {hasReuploadRequest ? (
-              <>
-                <strong>Chủ kho yêu cầu tải lại chứng từ thanh toán.</strong> Vui lòng cập nhật và gửi lại xác nhận.
-                {reuploadPayment?.proofRequestReason && (
-                  <div style={{ marginTop: 6, fontSize: "0.85rem" }}>
-                    <strong>Lý do:</strong> {reuploadPayment.proofRequestReason}
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <strong>Hợp đồng đã ký thành công!</strong> Vui lòng thanh toán để kích hoạt hợp đồng.
-              </>
-            )}
-          </div>
+          {hasReuploadRequest && (
+            <div style={{
+              padding: "1rem 1.5rem",
+              backgroundColor: "#fef3c7",
+              borderRadius: "12px",
+              border: "1px solid #fde047",
+              color: "#854d0e",
+              fontSize: "0.9rem",
+              marginBottom: "1rem"
+            }}>
+              <strong>Chủ kho yêu cầu tải lại chứng từ thanh toán.</strong> Vui lòng cập nhật và gửi lại xác nhận.
+              {reuploadPayment?.proofRequestReason && (
+                <div style={{ marginTop: 6, fontSize: "0.85rem" }}>
+                  <strong>Lý do:</strong> {reuploadPayment.proofRequestReason}
+                </div>
+              )}
+            </div>
+          )}
           <button
             onClick={() => navigate(`/contracts/${id}/payment`)}
             style={{
@@ -1560,24 +1544,24 @@ const ContractDetail = () => {
       {/* Payment submitted, awaiting owner confirmation */}
       {hasPendingPayment && contract?.isCurrentUserRenter &&
         (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED") && (
-        <div style={{
-          marginTop: "0.5rem",
-          padding: "16px 20px",
-          backgroundColor: "#eff6ff",
-          borderRadius: "14px",
-          border: "1px solid #bfdbfe",
-          display: "flex", alignItems: "center", gap: 12,
-        }}>
-          <div>
-            <div style={{ fontWeight: 700, color: "#1d4ed8", fontSize: "0.92rem", marginBottom: 3 }}>
-              Đang chờ chủ kho xác nhận thanh toán
-            </div>
-            <div style={{ fontSize: "0.82rem", color: "#3b82f6" }}>
-              Bạn đã gửi thanh toán thành công. Chủ kho sẽ xác nhận và kích hoạt hợp đồng sớm nhất có thể.
+          <div style={{
+            marginTop: "0.5rem",
+            padding: "16px 20px",
+            backgroundColor: "#eff6ff",
+            borderRadius: "14px",
+            border: "1px solid #bfdbfe",
+            display: "flex", alignItems: "center", gap: 12,
+          }}>
+            <div>
+              <div style={{ fontWeight: 700, color: "#1d4ed8", fontSize: "0.92rem", marginBottom: 3 }}>
+                Đang chờ chủ kho xác nhận thanh toán
+              </div>
+              <div style={{ fontSize: "0.82rem", color: "#3b82f6" }}>
+                Bạn đã gửi thanh toán thành công. Chủ kho sẽ xác nhận và kích hoạt hợp đồng sớm nhất có thể.
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Signing Modal */}
       {showSigningModal && (
@@ -1594,7 +1578,7 @@ const ContractDetail = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
             <h3 className="text-lg font-semibold mb-4">Từ chối hợp đồng</h3>
-            
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Lý do từ chối <span className="text-red-500">*</span>

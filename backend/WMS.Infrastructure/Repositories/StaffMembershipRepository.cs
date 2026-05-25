@@ -96,6 +96,7 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             .Include(m => m.User)
             .Include(m => m.Role)
             .Include(m => m.Skills)
+            .Include(m => m.WarehouseShift)
             .ToListAsync(ct);
 
         var rolePriority = new[] { "OWNER", "OPERATOR", "MANAGER", "STAFF", "RENTER" };
@@ -135,6 +136,8 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             RoleName           = m.Role.Name,
             IsAllSkill         = m.IsAllSkill,
             Skills = m.Skills.Select(s => new SkillDto { Id = s.Id, Code = s.Code, Name = s.Name }).ToList(),
+            WarehouseShiftId   = m.WarehouseShiftId,
+            WarehouseShiftName = m.WarehouseShift?.Name,
         }).ToList();
 
         return new StaffMembershipPagedResult
@@ -367,6 +370,17 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             foreach (var s in skills) membership.Skills.Add(s);
         }
 
+        await _db.SaveChangesAsync(ct);
+    }
+
+    // ── SetWarehouseShiftAsync ──────────────────────────────────────────
+    public async Task SetWarehouseShiftAsync(int membershipId, int? warehouseShiftId, CancellationToken ct = default)
+    {
+        var membership = await _db.WarehouseMemberships
+            .FirstOrDefaultAsync(m => m.Id == membershipId, ct)
+            ?? throw new KeyNotFoundException($"Membership {membershipId} không tồn tại.");
+
+        membership.WarehouseShiftId = warehouseShiftId;
         await _db.SaveChangesAsync(ct);
     }
 

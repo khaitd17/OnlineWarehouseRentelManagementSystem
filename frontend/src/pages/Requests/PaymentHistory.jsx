@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import inventoryService from '../../services/inventoryService';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ const PaymentHistory = () => {
   const [to,     setTo]     = useState('');
   const [page,   setPage]   = useState(1);
   const PAGE_SIZE = 20;
+  const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -126,7 +128,7 @@ const PaymentHistory = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  {['Mã TT', 'Hợp đồng', 'Kho', 'Người thuê', 'Số tiền', 'Kỳ thanh toán', 'Ngày TT', 'Hạn chót', 'PT', 'Mã GD', 'Trạng thái'].map(h => (
+                  {['Mã TT', 'Hợp đồng', 'Kho', 'Người thuê', 'Số tiền', 'Kỳ', 'Ngày TT', 'Hạn chót', 'PT', 'Mã GD', 'Trạng thái', 'Hành động'].map(h => (
                     <th key={h} className="px-4 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -137,7 +139,7 @@ const PaymentHistory = () => {
                     <span className="material-symbols-outlined animate-spin block text-2xl mb-1">progress_activity</span>Đang tải...
                   </td></tr>
                 ) : payments.length === 0 ? (
-                  <tr><td colSpan={11} className="py-12 text-center text-slate-400 text-sm">
+                  <tr><td colSpan={12} className="py-12 text-center text-slate-400 text-sm">
                     <span className="material-symbols-outlined block text-3xl mb-1 text-slate-300">receipt_long</span>
                     Không có khoản thanh toán nào.
                   </td></tr>
@@ -160,6 +162,16 @@ const PaymentHistory = () => {
                      </td>
                     <td className="px-4 py-4 font-mono text-xs text-slate-400">{row.transactionReference ?? '—'}</td>
                     <td className="px-4 py-4"><StatusBadge status={row.status} /></td>
+                    <td className="px-4 py-4 text-sm font-medium">
+                      {['PENDING', 'REUPLOAD_REQUESTED', 'FAILED'].includes(row.status) && (
+                        <button
+                          onClick={() => navigate(`/contracts/${row.contractId}/payment`)}
+                          className="px-3 py-1.5 bg-[#00b2d6] text-white rounded-lg text-xs font-bold hover:bg-[#0092b3] transition-colors"
+                        >
+                          Thanh toán
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
