@@ -105,10 +105,12 @@ public class SignContractHandler : IRequestHandler<SignContractCommand, SignCont
         // If contract starts within 5 days or in the past, create bill now
         if ((contract.StartDate - DateTime.UtcNow).TotalDays <= 5)
         {
+            decimal totalInitialAmount = Math.Round(proratedAmount, 2) + (contract.DepositAmount ?? 0);
+            
             var payment = RentalPayment.Create(
                 contractId: contract.ContractId,
-                amount: Math.Round(proratedAmount, 2),
-                paymentType: "MONTHLY",
+                amount: totalInitialAmount,
+                paymentType: contract.DepositAmount > 0 ? "DEPOSIT" : "MONTHLY",
                 expiryHours: overdueDays * 24
             );
             await _paymentRepo.AddAsync(payment);

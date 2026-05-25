@@ -27,6 +27,7 @@ const ContractPaymentSelection = () => {
   const [extensionInfo, setExtensionInfo] = useState(null);
   const [hoveredMethod, setHoveredMethod] = useState(null);
   const [manualPayment, setManualPayment] = useState(null);
+  const [pendingPaymentAmount, setPendingPaymentAmount] = useState(null);
   const [proofMethod, setProofMethod] = useState("BANK_TRANSFER");
   const [proofAmount, setProofAmount] = useState("");
   const [proofTransactionCode, setProofTransactionCode] = useState("");
@@ -84,6 +85,12 @@ const ContractPaymentSelection = () => {
 
         const paymentType = resolvePaymentType(contractData);
         const payments = await paymentService.getPaymentsByContract(Number(id));
+        
+        const existingPending = payments.find(p => p.paymentType === paymentType && (p.status === "PENDING" || p.status === "RETRY_PENDING"));
+        if (existingPending) {
+           setPendingPaymentAmount(existingPending.amount);
+        }
+        
         const existingManual = payments.find((p) =>
           p.paymentType === paymentType
           && (p.paymentMethod === "CASH" || p.paymentMethod === "BANK_TRANSFER")
@@ -209,7 +216,7 @@ const ContractPaymentSelection = () => {
     ? (contract?.earlyTerminationFee || 0)
     : isExtensionPayment
       ? ((extensionInfo?.proposedMonthlyPayment || 0) * (extensionInfo?.durationMonths || 0))
-      : (contract?.depositAmount || contract?.monthlyPayment || 0);
+      : (pendingPaymentAmount || contract?.depositAmount || contract?.monthlyPayment || 0);
 
   const paymentLabel = isTerminationPayment
     ? "Phí kết thúc sớm"

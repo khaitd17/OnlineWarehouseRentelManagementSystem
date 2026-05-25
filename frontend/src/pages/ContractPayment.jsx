@@ -78,12 +78,6 @@ const ContractPayment = () => {
         setExtensionInfo(extensionData);
       }
 
-      const amountOverride = isTerminationPayment
-        ? contractData.earlyTerminationFee
-        : isExtensionPayment
-          ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
-          : (contractData.depositAmount || contractData.monthlyPayment);
-
       const determinedPaymentType = isTerminationPayment
         ? "PENALTY"
         : isExtensionPayment
@@ -91,6 +85,23 @@ const ContractPayment = () => {
           : (contractData.depositAmount && contractData.depositAmount > 0)
             ? "DEPOSIT"
             : "MONTHLY";
+
+      const existingPayments = await paymentService.getPaymentsByContract(id);
+      console.log('[initPayment] existingPayments:', existingPayments);
+
+      const relevantPayments = Array.isArray(existingPayments)
+        ? existingPayments.filter((p) => p.paymentType === determinedPaymentType)
+        : [];
+        
+      const latestPaymentAmount = relevantPayments.length > 0
+        ? relevantPayments.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0]?.amount
+        : null;
+
+      const amountOverride = isTerminationPayment
+        ? contractData.earlyTerminationFee
+        : isExtensionPayment
+          ? ((extensionData?.proposedMonthlyPayment || 0) * (extensionData?.durationMonths || 0))
+          : (latestPaymentAmount || contractData.depositAmount || contractData.monthlyPayment);
 
       // Helper: check if a payment is still valid (PENDING and not expired)
       // IMPORTANT: expiredAt from API is UTC, must parse as UTC to avoid timezone shift
@@ -103,13 +114,6 @@ const ContractPayment = () => {
           : p.expiredAt;
         return new Date(expiryStr) > new Date();
       };
-
-      const existingPayments = await paymentService.getPaymentsByContract(id);
-      console.log('[initPayment] existingPayments:', existingPayments);
-
-      const relevantPayments = Array.isArray(existingPayments)
-        ? existingPayments.filter((p) => p.paymentType === determinedPaymentType)
-        : [];
 
       let currentPayment;
 
