@@ -106,7 +106,7 @@ const OwnerContracts = () => {
 
   const handleCreateTemplate = async () => {
     if (!templateForm.templateName.trim()) {
-      alert("Vui lòng nhập tên template");
+      alert("Vui lòng nhập tên mẫu hợp đồng");
       return;
     }
 
@@ -119,23 +119,23 @@ const OwnerContracts = () => {
     ].some(Boolean);
 
     if (!hasEnabledSection) {
-      alert("Cần bật ít nhất 1 nhóm trường trong template");
+      alert("Cần bật ít nhất 1 nhóm trường trong mẫu hợp đồng");
       return;
     }
 
     setTemplateSubmitting(true);
     try {
       const result = await contractTemplateService.createOwnerTemplate(templateForm);
-      const shouldSetDefault = window.confirm("Đã lưu template. Bạn có muốn đặt template này làm mặc định không?");
+      const shouldSetDefault = window.confirm("Đã lưu mẫu hợp đồng. Bạn có muốn đặt mẫu này làm mặc định không?");
       if (shouldSetDefault && result?.templateId) {
         await contractTemplateService.setDefaultTemplate(result.templateId);
       }
       await loadTemplates();
       setShowTemplateModal(false);
-      alert("Tạo template hợp đồng thành công!");
+      alert("Tạo mẫu hợp đồng thành công!");
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Không thể tạo template hợp đồng");
+      alert(err.response?.data?.message || "Không thể tạo mẫu hợp đồng");
     } finally {
       setTemplateSubmitting(false);
     }
@@ -145,10 +145,10 @@ const OwnerContracts = () => {
     try {
       await contractTemplateService.setDefaultTemplate(templateId);
       await loadTemplates();
-      alert("Đã đặt template mặc định thành công");
+      alert("Đã đặt mẫu hợp đồng mặc định thành công");
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Không thể đặt template mặc định");
+      alert(err.response?.data?.message || "Không thể đặt mẫu hợp đồng mặc định");
     }
   };
 
@@ -263,7 +263,7 @@ const OwnerContracts = () => {
             }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>note_add</span>
-            Tạo template hợp đồng
+            Tạo mẫu hợp đồng
           </button>
         </div>
 
@@ -329,10 +329,10 @@ const OwnerContracts = () => {
             <div>
               <div style={{ fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "6px" }}>
                 <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#0ea5e9" }}>description</span>
-                Template hợp đồng mặc định
+                Mẫu hợp đồng mặc định
               </div>
               <div style={{ fontSize: "0.82rem", color: "#64748b" }}>
-                {defaultTemplate ? defaultTemplate.templateName : "Chưa đặt template mặc định"}
+                {defaultTemplate ? defaultTemplate.templateName : "Chưa đặt mẫu hợp đồng mặc định"}
               </div>
             </div>
             <button
@@ -349,7 +349,7 @@ const OwnerContracts = () => {
                 whiteSpace: "nowrap",
               }}
             >
-              Chọn template
+              Chọn mẫu
             </button>
           </div>
 
@@ -539,12 +539,12 @@ const OwnerContracts = () => {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>Tạo template hợp đồng</h3>
+              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>Tạo mẫu hợp đồng</h3>
               <button onClick={() => !templateSubmitting && setShowTemplateModal(false)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#64748b", fontSize: "1.25rem" }}>×</button>
             </div>
 
             <div style={{ marginBottom: "10px" }}>
-              <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#475569", marginBottom: "4px" }}>Tên template *</label>
+              <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#475569", marginBottom: "4px" }}>Tên mẫu *</label>
               <input
                 type="text"
                 value={templateForm.templateName}
@@ -613,7 +613,7 @@ const OwnerContracts = () => {
                 Hủy
               </button>
               <button onClick={handleCreateTemplate} disabled={templateSubmitting} style={{ padding: "8px 14px", borderRadius: "8px", border: "none", backgroundColor: templateSubmitting ? "#94a3b8" : "#0284c7", color: "#fff", fontWeight: 700, cursor: templateSubmitting ? "not-allowed" : "pointer" }}>
-                {templateSubmitting ? "Đang lưu..." : "Lưu template"}
+                {templateSubmitting ? "Đang lưu..." : "Lưu mẫu"}
               </button>
             </div>
           </div>
@@ -649,14 +649,14 @@ const OwnerContracts = () => {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-              <h3 style={{ margin: 0, fontSize: "1.02rem", fontWeight: 800, color: "#0f172a" }}>Chọn template hợp đồng</h3>
+              <h3 style={{ margin: 0, fontSize: "1.02rem", fontWeight: 800, color: "#0f172a" }}>Chọn mẫu hợp đồng</h3>
               <button onClick={() => setShowTemplatePicker(false)} style={{ border: "none", background: "transparent", cursor: "pointer", color: "#64748b", fontSize: "1.25rem" }}>×</button>
             </div>
 
             {templateLoading && <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Đang tải...</div>}
             {!templateLoading && contractTemplates.length === 0 && (
               <div style={{ fontSize: "0.88rem", color: "#64748b" }}>
-                Chưa có template nào. Hãy tạo template trước khi chọn mặc định.
+                Chưa có mẫu hợp đồng nào. Hãy tạo mẫu trước khi chọn mặc định.
               </div>
             )}
             {contractTemplates.length > 0 && (

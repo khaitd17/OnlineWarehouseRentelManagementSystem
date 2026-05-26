@@ -20,8 +20,8 @@ const formatTimeOnly = (dateStr) => {
 };
 
 const formatMethod = (method) => {
-  if (method === "BANK_TRANSFER") return "Bank Transfer";
-  if (method === "CASH") return "Cash";
+  if (method === "BANK_TRANSFER") return "Chuyển khoản ngân hàng";
+  if (method === "CASH") return "Tiền mặt";
   return method || "—";
 };
 
@@ -238,7 +238,7 @@ const PendingCashPayments = () => {
           </div>
             <div>
               <div style={{ fontSize: "0.75rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>
-                Time
+                Thời gian
               </div>
               <div style={{ fontSize: "0.9rem", color: "#0f172a", fontWeight: 600 }}>
                 {formatTimeOnly(proofTime)}
@@ -248,27 +248,27 @@ const PendingCashPayments = () => {
 
         <div style={{ marginBottom: "1rem" }}>
           <div style={{ fontSize: "0.82rem", fontWeight: 800, color: "#0f172a", marginBottom: 8 }}>
-            Payment Proof Submitted
+            Chứng từ thanh toán
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 20px" }}>
             <div style={{ fontSize: "0.85rem", color: "#475569" }}>
-              Amount: <strong style={{ color: "#0f172a" }}>{formatCurrency(payment.amount)}</strong>
+              Số tiền: <strong style={{ color: "#0f172a" }}>{formatCurrency(payment.amount)}</strong>
             </div>
             <div style={{ fontSize: "0.85rem", color: "#475569" }}>
-              Transaction Code: <strong style={{ color: "#0f172a" }}>{payment.transactionCode || "—"}</strong>
+              Mã giao dịch: <strong style={{ color: "#0f172a" }}>{payment.transactionCode || "—"}</strong>
             </div>
             <div style={{ fontSize: "0.85rem", color: "#475569" }}>
-              Proof Image:{" "}
+              Ảnh chứng từ:{" "}
               {proofUrl ? (
                 <a href={proofUrl} target="_blank" rel="noreferrer" style={{ color: "#0ea5e9", fontWeight: 700 }}>
-                  attached
+                  đính kèm
                 </a>
               ) : (
                 <span style={{ color: "#94a3b8" }}>—</span>
               )}
             </div>
             <div style={{ fontSize: "0.85rem", color: "#475569" }}>
-              Method: <strong style={{ color: "#0f172a" }}>{formatMethod(payment.paymentMethod)}</strong>
+              Phương thức: <strong style={{ color: "#0f172a" }}>{formatMethod(payment.paymentMethod)}</strong>
             </div>
           </div>
           {isImageProof && (
@@ -282,7 +282,7 @@ const PendingCashPayments = () => {
           )}
           {payment.proofNote && (
             <div style={{ marginTop: 10, fontSize: "0.85rem", color: "#475569" }}>
-              Note: <span style={{ color: "#0f172a", fontWeight: 600 }}>{payment.proofNote}</span>
+              Ghi chú: <span style={{ color: "#0f172a", fontWeight: 600 }}>{payment.proofNote}</span>
             </div>
           )}
         </div>
@@ -308,7 +308,7 @@ const PendingCashPayments = () => {
                 onMouseEnter={e => { if (!isProcessing) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(34,197,94,0.35)"; }}}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 10px rgba(34,197,94,0.25)"; }}
               >
-                {isProcessing ? "Đang xử lý..." : "Approve Payment"}
+                {isProcessing ? "Đang xử lý..." : "Xác nhận thanh toán"}
               </button>
               <button
                 onClick={() => handleRejectClick(payment.paymentId)}
@@ -324,7 +324,7 @@ const PendingCashPayments = () => {
                 onMouseEnter={e => { e.currentTarget.style.background = "#fef2f2"; e.currentTarget.style.borderColor = "#f87171"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#fca5a5"; }}
               >
-                Reject Payment
+                Từ chối thanh toán
               </button>
               <button
                 onClick={() => handleRequestReuploadClick(payment.paymentId)}
@@ -340,7 +340,7 @@ const PendingCashPayments = () => {
                 onMouseEnter={e => { e.currentTarget.style.background = "#fffbeb"; e.currentTarget.style.borderColor = "#fcd34d"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "#fff"; e.currentTarget.style.borderColor = "#fde68a"; }}
               >
-                Request Re-upload
+                Yêu cầu tải lại chứng từ
               </button>
             </>
           )}
@@ -387,7 +387,7 @@ const PendingCashPayments = () => {
           fontSize: "1.65rem", fontWeight: 800, color: "#fff", margin: "0 0 6px",
           letterSpacing: "-0.02em", position: "relative",
         }}>
-          Payment Verification
+          Xác nhận thanh toán
         </h1>
         <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "0.9rem", margin: 0, position: "relative" }}>
           Xác minh chứng từ thanh toán từ khách thuê

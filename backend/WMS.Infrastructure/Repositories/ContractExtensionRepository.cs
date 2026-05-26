@@ -142,5 +142,28 @@ namespace WMS.Infrastructure.Repositories
                 .OrderByDescending(e => e.ReviewedAt)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<ContractExtension>> GetCompletedByWarehouseIdsAsync(
+            IEnumerable<int> warehouseIds)
+        {
+            var statuses = new[]
+            {
+                ContractExtensionStatus.Completed,
+                ContractExtensionStatus.Rejected,
+                ContractExtensionStatus.Cancelled,
+                ContractExtensionStatus.PendingPayment,
+                ContractExtensionStatus.Approved,
+            };
+
+            return await _context.ContractExtensions
+                .Include(e => e.OriginalContract)
+                .Include(e => e.NewContract)
+                .Include(e => e.Requester)
+                .Where(e => statuses.Contains(e.Status)
+                            && e.OriginalContract != null
+                            && warehouseIds.Contains(e.OriginalContract.WarehouseId))
+                .OrderByDescending(e => e.ReviewedAt ?? e.RequestedAt)
+                .ToListAsync();
+        }
     }
 }

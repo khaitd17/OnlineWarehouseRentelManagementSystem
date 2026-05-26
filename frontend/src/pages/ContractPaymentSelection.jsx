@@ -312,7 +312,7 @@ const ContractPaymentSelection = () => {
 
             <div style={{ display: "grid", gap: 12 }}>
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Payment Method
+                Phương thức thanh toán
                 <select
                   value={proofMethod}
                   onChange={(e) => setProofMethod(e.target.value)}
@@ -322,13 +322,13 @@ const ContractPaymentSelection = () => {
                     fontSize: "0.9rem", outline: "none",
                   }}
                 >
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="CASH">Cash</option>
+                  <option value="BANK_TRANSFER">Chuyển khoản ngân hàng</option>
+                  <option value="CASH">Tiền mặt</option>
                 </select>
               </label>
 
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Amount
+                Số tiền
                 <input
                   type="text"
                   value={formatAmountInput(proofAmount)}
@@ -343,7 +343,7 @@ const ContractPaymentSelection = () => {
               </label>
 
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Transaction Code
+                Mã giao dịch
                 <input
                   type="text"
                   value={proofTransactionCode}
@@ -358,7 +358,7 @@ const ContractPaymentSelection = () => {
               </label>
 
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Upload Proof
+                Tải lên chứng từ
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png,.pdf"
@@ -368,7 +368,7 @@ const ContractPaymentSelection = () => {
               </label>
 
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Note
+                Ghi chú
                 <textarea
                   value={proofNote}
                   onChange={(e) => setProofNote(e.target.value)}

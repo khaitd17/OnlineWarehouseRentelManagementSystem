@@ -92,10 +92,10 @@ public class ContractExtension
         UpdatedAt = DateTime.UtcNow;
     }
 
-    // Cancel extension (by requester)
+    // Cancel extension (by requester) - works from Pending or PendingPayment
     public void Cancel()
     {
-        if (Status != ContractExtensionStatus.Pending)
+        if (Status != ContractExtensionStatus.Pending && Status != ContractExtensionStatus.PendingPayment)
             throw new InvalidOperationException($"Cannot cancel extension with status {Status}");
 
         Status = ContractExtensionStatus.Cancelled;

@@ -84,10 +84,12 @@ const S = {
 const OwnerExtensionPage = () => {
   const [pendingExtensions, setPendingExtensions] = useState([]);
   const [pendingSignatureExtensions, setPendingSignatureExtensions] = useState([]);
+  const [allExtensions, setAllExtensions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
+  const [trackingStatusFilter, setTrackingStatusFilter] = useState('');
 
   const [selectedExtension, setSelectedExtension] = useState(null);
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
@@ -103,12 +105,14 @@ const OwnerExtensionPage = () => {
   const loadData = useCallback(async (refresh = false) => {
     try {
       refresh ? setRefreshing(true) : setLoading(true);
-      const [p, s] = await Promise.all([
+      const [p, s, all] = await Promise.all([
         contractExtensionService.getPendingExtensions(),
         contractExtensionService.getPendingSignatureExtensions(),
+        contractExtensionService.getAllExtensionsForOwner(),
       ]);
       setPendingExtensions(p);
       setPendingSignatureExtensions(s);
+      setAllExtensions(Array.isArray(all) ? all : []);
     } catch { message.error('Không thể tải dữ liệu.'); }
     finally { setLoading(false); setRefreshing(false); }
   }, []);
@@ -123,6 +127,31 @@ const OwnerExtensionPage = () => {
       e.requester?.fullName?.toLowerCase().includes(q) ||
       e.originalContract?.warehouseName?.toLowerCase().includes(q)
     );
+  };
+
+  const filterAllExtensions = (list) => {
+    let result = list;
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      result = result.filter(e =>
+        e.originalContract?.contractNumber?.toLowerCase().includes(q) ||
+        e.requester?.fullName?.toLowerCase().includes(q) ||
+        e.originalContract?.warehouseName?.toLowerCase().includes(q)
+      );
+    }
+    if (trackingStatusFilter) {
+      result = result.filter(e => e.status === trackingStatusFilter);
+    }
+    return result;
+  };
+
+  const STATUS_TRACKING_CONFIG = {
+    APPROVED:        { color: '#1677ff', bg: '#e6f4ff', label: 'Đã duyệt' },
+    PENDING_PAYMENT: { color: '#fa8c16', bg: '#fff7e6', label: 'Chờ thanh toán' },
+    COMPLETED:       { color: '#52c41a', bg: '#f6ffed', label: 'Hoàn tất' },
+    REJECTED:        { color: '#f5222d', bg: '#fff1f0', label: 'Từ chối' },
+    CANCELLED:       { color: '#8c8c8c', bg: '#f5f5f5', label: 'Đã hủy' },
+    PENDING:         { color: '#faad14', bg: '#fffbe6', label: 'Chờ duyệt' },
   };
 
   /* ── Actions ── */
@@ -341,6 +370,146 @@ const OwnerExtensionPage = () => {
                   ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có hợp đồng gia hạn nào cần ký" />
                   : filterExtensions(pendingSignatureExtensions).map(ext => renderExtensionCard(ext, false))
                 }
+              </div>
+            </TabPane>
+
+            {/* --- Tab: Theo dõi hợp đồng gia hạn --- */}
+            <TabPane
+              tab={
+                <span style={{ padding: '8px 0', fontSize: 15, fontWeight: activeTab === 'tracking' ? 600 : 400 }}>
+                  Theo dõi gia hạn
+                  <Badge count={allExtensions.length} showZero style={{ backgroundColor: '#52c41a', marginLeft: 8 }} />
+                </span>
+              }
+              key="tracking"
+            >
+              <div style={S.tabContent}>
+                {/* Status filter */}
+                <div style={{ marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {[
+                    { val: '', label: 'Tất cả' },
+                    { val: 'APPROVED', label: 'Đã duyệt' },
+                    { val: 'PENDING_PAYMENT', label: 'Chờ thanh toán' },
+                    { val: 'COMPLETED', label: 'Hoàn tất' },
+                    { val: 'REJECTED', label: 'Từ chối' },
+                    { val: 'CANCELLED', label: 'Đã hủy' },
+                  ].map(opt => (
+                    <button
+                      key={opt.val}
+                      onClick={() => setTrackingStatusFilter(opt.val)}
+                      style={{
+                        padding: '5px 14px',
+                        borderRadius: 20,
+                        border: '1.5px solid',
+                        borderColor: trackingStatusFilter === opt.val ? '#1677ff' : '#e2e8f0',
+                        background: trackingStatusFilter === opt.val ? '#e6f4ff' : '#fff',
+                        color: trackingStatusFilter === opt.val ? '#1677ff' : '#64748b',
+                        fontWeight: trackingStatusFilter === opt.val ? 700 : 400,
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {filterAllExtensions(allExtensions).length === 0 ? (
+                  <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Không có hợp đồng gia hạn nào" />
+                ) : (
+                  <div>
+                    {filterAllExtensions(allExtensions).map((ext, idx) => {
+                      if (!ext.originalContract) return null;
+                      const stCfg = STATUS_TRACKING_CONFIG[ext.status] || { color: '#8c8c8c', bg: '#f5f5f5', label: ext.status };
+                      const contract = ext.originalContract;
+                      return (
+                        <div
+                          key={ext.extensionId}
+                          style={{
+                            ...S.card,
+                            marginBottom: 16,
+                            borderLeft: `4px solid ${stCfg.color}`,
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,.08)'}
+                          onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+                        >
+                          <div style={{ ...S.cardHeader, paddingBottom: 12 }}>
+                            <div>
+                              <div style={S.contractLabel}>Mã hợp đồng</div>
+                              <div style={S.contractNum}>{contract.contractNumber}</div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <span style={S.durationTag}>
+                                Gia hạn {contractExtensionService.formatDuration(ext.durationMonths)}
+                              </span>
+                              <span style={{
+                                padding: '4px 12px', borderRadius: 20,
+                                background: stCfg.bg, color: stCfg.color,
+                                fontSize: 12, fontWeight: 700, border: `1px solid ${stCfg.color}44`
+                              }}>
+                                {stCfg.label}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ padding: '12px 24px 16px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+                              <div>
+                                <div style={S.infoLabel}>Người yêu cầu</div>
+                                <div style={{ ...S.infoValue, fontWeight: 600, marginTop: 4 }}>{ext.requester?.fullName || 'N/A'}</div>
+                              </div>
+                              <div>
+                                <div style={S.infoLabel}>Ngày yêu cầu</div>
+                                <div style={{ ...S.infoValue, marginTop: 4 }}>{contractExtensionService.formatDate(ext.requestedAt)}</div>
+                              </div>
+                              <div>
+                                <div style={S.infoLabel}>Ngày xử lý</div>
+                                <div style={{ ...S.infoValue, marginTop: 4 }}>{ext.reviewedAt ? contractExtensionService.formatDate(ext.reviewedAt) : '—'}</div>
+                              </div>
+                              <div>
+                                <div style={S.infoLabel}>Giá gia hạn</div>
+                                <div style={{ ...S.infoValue, fontWeight: 700, color: '#059669', marginTop: 4 }}>
+                                  {ext.proposedMonthlyPayment ? contractExtensionService.formatCurrency(ext.proposedMonthlyPayment) + '/tháng' : '—'}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={S.infoLabel}>Tổng tiền</div>
+                                <div style={{ ...S.infoValue, fontWeight: 700, marginTop: 4 }}>
+                                  {ext.proposedMonthlyPayment
+                                    ? contractExtensionService.formatCurrency(ext.proposedMonthlyPayment * ext.durationMonths)
+                                    : '—'}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={S.infoLabel}>Thời hạn cũ</div>
+                                <div style={{ ...S.infoValue, marginTop: 4 }}>
+                                  {contract.endDate ? contractExtensionService.formatDate(contract.endDate) : '—'}
+                                </div>
+                              </div>
+                            </div>
+                            {ext.rejectionReason && (
+                              <div style={{ marginTop: 12, padding: '8px 12px', background: '#fff1f0', borderLeft: '3px solid #f5222d', borderRadius: 4 }}>
+                                <span style={{ color: '#f5222d', fontSize: 12, fontWeight: 700 }}>Lý do từ chối: </span>
+                                <span style={{ color: '#5c0011', fontSize: 12 }}>{ext.rejectionReason}</span>
+                              </div>
+                            )}
+                            {ext.notes && (
+                              <div style={{ marginTop: 8, padding: '8px 12px', background: '#f6ffed', borderLeft: '3px solid #52c41a', borderRadius: 4 }}>
+                                <span style={{ color: '#135200', fontSize: 12, fontWeight: 700 }}>Ghi chú: </span>
+                                <span style={{ color: '#135200', fontSize: 12 }}>{ext.notes}</span>
+                              </div>
+                            )}
+                            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                              <Button size="small" onClick={() => showDetailModal(ext)} style={S.detailBtn}>
+                                Xem chi tiết
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </TabPane>
           </Tabs>
