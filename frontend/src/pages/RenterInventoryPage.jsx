@@ -78,7 +78,6 @@ const RenterInventoryPage = () => {
   const totalTypes = filtered.length;
   const totalQty   = filtered.reduce((s, r) => s + (r.quantity ?? 0), 0);
   const outOfStock = filtered.filter(r => r.quantity === 0).length;
-  const totalUsedArea = filtered.reduce((s, r) => s + ((r.quantity ?? 0) * (r.volumePerUnit ?? 0)), 0);
 
   /* Unique warehouse set in current rows */
   const activeWhSet = new Set(filtered.map(r => r.warehouseId));
@@ -105,12 +104,11 @@ const RenterInventoryPage = () => {
       </div>
 
       {/* ── Stat Cards ── */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:24 }}>
         {[
-          { icon:'inventory_2', label:'Loại hàng hóa',   val:totalTypes,                color:'#0ea5e9' },
-          { icon:'tag', label:'Tổng số lượng',    val:totalQty.toLocaleString('vi-VN'), color:'#22c55e' },
-          { icon:'space_dashboard', label:'Sức chứa đã dùng (m²)', val:totalUsedArea.toLocaleString('vi-VN', {maximumFractionDigits:2}), color:'#8b5cf6' },
-          { icon:'warning', label:'Hết hàng',          val:outOfStock,               color:'#ef4444' },
+          { icon:'inventory_2', label:'Loại hàng hóa', val:totalTypes,                color:'#0ea5e9' },
+          { icon:'tag',         label:'Tổng số lượng', val:totalQty.toLocaleString('vi-VN'), color:'#22c55e' },
+          { icon:'warning',     label:'Hết hàng',      val:outOfStock,               color:'#ef4444' },
         ].map(({icon,label,val,color})=>(
           <div key={label} style={{ ...card, padding:'18px 22px', display:'flex', alignItems:'center', gap:14 }}>
             <div style={{ width:46, height:46, borderRadius:12, background:`${color}18`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color: color }}>
@@ -193,7 +191,7 @@ const RenterInventoryPage = () => {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#f8fafc' }}>
-                  {[['Hàng hóa', 'auto'], ['Đơn vị', '100px'], ['Kho lưu trữ', '150px'], ['Số lượng', '120px', 'center'], ['Diện tích (m²)', '120px', 'right'], ['Cập nhật', '110px'], ['', '100px']].map(([h, w, align])=>(
+                  {[['Hàng hóa', 'auto'], ['Đơn vị', '100px'], ['Kho lưu trữ', '150px'], ['Số lượng', '120px', 'center'], ['Cập nhật', '110px'], ['', '100px']].map(([h, w, align])=>(
                     <th key={h} style={{ padding:'11px 16px', textAlign:align||'left', fontSize:'0.68rem', fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', textTransform:'uppercase', width:w }}>
                       {h}
                     </th>
@@ -231,12 +229,6 @@ const RenterInventoryPage = () => {
                     {/* Số lượng */}
                     <td style={{ padding:'13px 16px', textAlign:'center' }}>
                       <QtyBadge qty={row.quantity ?? 0} />
-                    </td>
-                    {/* Diện tích (m²) */}
-                    <td style={{ padding:'13px 16px', textAlign:'right' }}>
-                      <div style={{ fontSize:'0.85rem', color:'#0f172a', fontWeight:600 }}>
-                        {row.volumePerUnit ? ((row.quantity ?? 0) * row.volumePerUnit).toLocaleString('vi-VN', {maximumFractionDigits:2}) + ' m²' : '—'}
-                      </div>
                     </td>
                     {/* Cập nhật */}
                     <td style={{ padding:'13px 16px', fontSize:'0.78rem', color:'#94a3b8' }}>

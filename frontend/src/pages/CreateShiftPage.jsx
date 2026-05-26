@@ -60,8 +60,68 @@ function ConfirmModal({ shift, onConfirm, onCancel }) {
   );
 }
 
-// ── Shift Card ────────────────────────────────────────────────────────────────
-function ShiftCard({ shift, onDelete }) {
+// ── Edit Shift Modal ──────────────────────────────────────────────────────────
+function EditShiftModal({ shift, onConfirm, onCancel, saving }) {
+  const [form, setForm] = useState({ name: shift.name, startTime: shift.startTime, endTime: shift.endTime });
+
+  const inp = {
+    width:"100%", padding:"9px 12px", borderRadius:8, border:`1px solid ${C.border}`,
+    fontSize:13, color:C.text, background:C.bg, boxSizing:"border-box", outline:"none",
+    fontFamily:"inherit",
+  };
+  const lbl = { display:"block", fontSize:11, fontWeight:700, color:C.sub,
+    textTransform:"uppercase", letterSpacing:".5px", marginBottom:5 };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:C.overlay, zIndex:1000,
+      display:"flex", alignItems:"center", justifyContent:"center" }}>
+      <div style={{ background:C.surface, borderRadius:14, padding:"28px 32px",
+        border:`1px solid ${C.border}`, boxShadow:C.shadowMd, maxWidth:420, width:"100%" }}>
+        <div style={{ fontSize:18, fontWeight:800, color:C.text, marginBottom:16 }}>Chỉnh sửa ca làm</div>
+        
+        <div style={{ marginBottom:16 }}>
+          <label style={lbl}>Tên ca *</label>
+          <input
+            type="text"
+            value={form.name}
+            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            style={inp}
+            maxLength={100}
+          />
+        </div>
+
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:20 }}>
+          <div>
+            <label style={lbl}>Giờ vào *</label>
+            <input type="time" value={form.startTime}
+              onChange={e => setForm(f => ({ ...f, startTime: e.target.value }))}
+              style={inp} required />
+          </div>
+          <div>
+            <label style={lbl}>Giờ ra *</label>
+            <input type="time" value={form.endTime}
+              onChange={e => setForm(f => ({ ...f, endTime: e.target.value }))}
+              style={inp} required />
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={onCancel} disabled={saving}
+            style={{ flex:1, padding:"9px 0", borderRadius:8, border:`1px solid ${C.border}`,
+              background:"transparent", color:C.sub, cursor:"pointer", fontSize:13, fontWeight:600 }}>
+            Huỷ
+          </button>
+          <button onClick={() => onConfirm(shift.id, form)} disabled={saving}
+            style={{ flex:1, padding:"9px 0", borderRadius:8, border:"none",
+              background:C.accent, color:"#fff", cursor:saving ? "not-allowed" : "pointer", fontSize:13, fontWeight:700 }}>
+            {saving ? "Đang lưu..." : "Lưu thay đổi"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function ShiftCard({ shift, onDelete, onEdit }) {
   const dur = calcDuration(shift.startTime, shift.endTime);
   const isOvernight = shift.endTime < shift.startTime;
   return (
@@ -99,17 +159,29 @@ function ShiftCard({ shift, onDelete }) {
         </div>
       </div>
 
-      {/* Right: Delete */}
-      <button onClick={() => onDelete(shift)}
-        style={{ width:34, height:34, borderRadius:8, border:`1px solid ${C.border}`,
-          background:"transparent", color:C.subLight, cursor:"pointer", display:"flex",
-          alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}
-        onMouseEnter={e => { e.currentTarget.style.background = C.dangerBg; e.currentTarget.style.color = C.danger; e.currentTarget.style.borderColor = "#fecaca"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.subLight; e.currentTarget.style.borderColor = C.border; }}
-        title="Xoá ca này"
-      >
-        <span className="material-symbols-outlined" style={{ fontSize:17 }}>delete</span>
-      </button>
+      {/* Right: Actions */}
+      <div style={{ display:"flex", gap:6 }}>
+        <button onClick={() => onEdit(shift)}
+          style={{ width:34, height:34, borderRadius:8, border:`1px solid ${C.border}`,
+            background:"transparent", color:C.subLight, cursor:"pointer", display:"flex",
+            alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.accentBg; e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = "#c7d2fe"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.subLight; e.currentTarget.style.borderColor = C.border; }}
+          title="Sửa ca này"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize:17 }}>edit</span>
+        </button>
+        <button onClick={() => onDelete(shift)}
+          style={{ width:34, height:34, borderRadius:8, border:`1px solid ${C.border}`,
+            background:"transparent", color:C.subLight, cursor:"pointer", display:"flex",
+            alignItems:"center", justifyContent:"center", flexShrink:0, transition:"all .15s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = C.dangerBg; e.currentTarget.style.color = C.danger; e.currentTarget.style.borderColor = "#fecaca"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.subLight; e.currentTarget.style.borderColor = C.border; }}
+          title="Xoá ca này"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize:17 }}>delete</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -129,6 +201,7 @@ export default function CreateShiftPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState({ name: "", startTime: "07:00", endTime: "16:00" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -193,6 +266,26 @@ export default function CreateShiftPage() {
     } catch (ex) {
       setError(ex?.response?.data?.message || "Không thể xoá ca này.");
       setTimeout(() => setError(""), 4000);
+    }
+  };
+
+  const handleEdit = async (id, updatedForm) => {
+    if (!updatedForm.name.trim() || !updatedForm.startTime || !updatedForm.endTime) {
+      alert("Vui lòng điền đầy đủ thông tin ca làm.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await axiosClient.put(`/schedule/warehouse-shifts/${id}`, updatedForm);
+      setSuccess(`Đã cập nhật ca "${updatedForm.name}".`);
+      loadShifts(selectedWhId);
+      setEditTarget(null);
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (ex) {
+      setError(ex?.response?.data?.message || "Không thể cập nhật ca này.");
+      setTimeout(() => setError(""), 4000);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -326,21 +419,6 @@ export default function CreateShiftPage() {
               </button>
             </form>
           </div>
-
-          {/* Tips */}
-          <div style={{ marginTop:16, padding:"14px 16px", borderRadius:10,
-            background:"#fefce8", border:"1px solid #fde68a" }}>
-            <div style={{ fontSize:11, fontWeight:700, color:"#92400e", marginBottom:6,
-              display:"flex", alignItems:"center", gap:5 }}>
-              <span className="material-symbols-outlined" style={{ fontSize:14 }}>lightbulb</span>
-              Lưu ý
-            </div>
-            <ul style={{ margin:0, padding:"0 0 0 16px", fontSize:11, color:"#78350f", lineHeight:1.8 }}>
-              <li>Ca làm mẫu được dùng khi phân ca cho nhân viên.</li>
-              <li>Giờ ra nhỏ hơn giờ vào = ca qua đêm (+1 ngày).</li>
-              <li>Chỉ Điều phối viên (OPERATOR) mới có quyền tạo ca.</li>
-            </ul>
-          </div>
         </div>
 
         {/* ── Shift list ── */}
@@ -378,7 +456,7 @@ export default function CreateShiftPage() {
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {shifts.map(s => (
-                <ShiftCard key={s.id} shift={s} onDelete={setDeleteTarget} />
+                <ShiftCard key={s.id} shift={s} onDelete={setDeleteTarget} onEdit={setEditTarget} />
               ))}
             </div>
           )}
@@ -391,6 +469,16 @@ export default function CreateShiftPage() {
           shift={deleteTarget}
           onConfirm={() => handleDelete(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+      
+      {/* ── Edit shift modal ── */}
+      {editTarget && (
+        <EditShiftModal
+          shift={editTarget}
+          onConfirm={handleEdit}
+          onCancel={() => setEditTarget(null)}
+          saving={saving}
         />
       )}
 

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace WMS.Domain.Entities;
@@ -31,6 +31,12 @@ public class AiAnalysisSession
 
     /// <summary>Độ tự tin của AI (0.0 – 1.0).</summary>
     public double? Confidence { get; set; }
+
+    /// <summary>Loại phiên: "IMAGE_ANALYSIS" hoặc "SMART_SEARCH".</summary>
+    public string SessionType { get; set; } = "IMAGE_ANALYSIS";
+
+    /// <summary>Câu prompt người dùng nhập (chỉ dùng cho SMART_SEARCH).</summary>
+    public string? UserPrompt { get; set; }
 
     public virtual User User { get; set; } = null!;
 }

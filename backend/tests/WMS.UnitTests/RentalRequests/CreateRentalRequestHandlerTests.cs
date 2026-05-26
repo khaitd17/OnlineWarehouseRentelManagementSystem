@@ -23,6 +23,7 @@ public class CreateRentalRequestHandlerTests
     private readonly Mock<INotificationRepository> _mockNotificationRepo;
     private readonly Mock<INotificationSender> _mockNotificationSender;
     private readonly Mock<IEquipmentRepository> _mockEquipmentRepo;
+    private readonly Mock<IEmailService> _mockEmailService;
     private readonly CreateRentalRequestHandler _handler;
     private readonly CreateRentalRequestValidator _validator;
 
@@ -34,6 +35,7 @@ public class CreateRentalRequestHandlerTests
         _mockNotificationRepo = new Mock<INotificationRepository>();
         _mockNotificationSender = new Mock<INotificationSender>();
         _mockEquipmentRepo = new Mock<IEquipmentRepository>();
+        _mockEmailService = new Mock<IEmailService>();
 
         _handler = new CreateRentalRequestHandler(
             _mockRentalRequestRepo.Object,
@@ -41,7 +43,8 @@ public class CreateRentalRequestHandlerTests
             _mockUserRepo.Object,
             _mockNotificationRepo.Object,
             _mockNotificationSender.Object,
-            _mockEquipmentRepo.Object);
+            _mockEquipmentRepo.Object,
+            _mockEmailService.Object);
 
         _validator = new CreateRentalRequestValidator();
     }

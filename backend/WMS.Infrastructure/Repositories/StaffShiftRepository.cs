@@ -373,6 +373,16 @@ public class StaffShiftRepository : IStaffShiftRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task UpdateWarehouseShiftAsync(int id, string name, string startTime, string endTime, CancellationToken ct = default)
+    {
+        var entity = await _db.WarehouseShifts.FindAsync(new object[] { id }, ct)
+            ?? throw new KeyNotFoundException("Không tìm thấy ca làm việc.");
+        entity.Name = name;
+        entity.StartTime = startTime;
+        entity.EndTime = endTime;
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task<GenerateScheduleSummary> GenerateScheduleAsync(
         int warehouseId,
         DateOnly from,

@@ -82,6 +82,13 @@ public class CreateInventoryRequestHandler
 
         if (cmd.Type.ToUpper() == "INBOUND")
         {
+            // Kiểm tra trạng thái hợp đồng, chỉ cho nhập khi ACTIVE
+            bool isActiveContract = await _contractRepo.IsRenterByContractAsync(cmd.RenterId, cmd.WarehouseId, cancellationToken);
+            if (!isActiveContract)
+            {
+                throw new InvalidOperationException("Hợp đồng đã hết hạn hoặc không tồn tại, không thể yêu cầu nhập thêm hàng.");
+            }
+
             const decimal KgPerM2Limit = 500m;
 
             var contractedArea = await _contractRepo.GetContractedAreaAsync(

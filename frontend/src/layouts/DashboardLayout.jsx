@@ -644,7 +644,7 @@ const DashboardLayout = () => {
                 />
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <span className="nav-user-trigger-name">
-                    Xin chào, {(user.fullName || user.FullName || 'Bạn').split(' ').slice(-2).join(' ')}
+                    Xin chào, {user.fullName || user.FullName || 'Bạn'}
                   </span>
                 </div>
                 <span className="nav-dropdown-caret">▾</span>
@@ -721,7 +721,7 @@ const DashboardLayout = () => {
         }
         .nav-user-trigger:hover { background: #f1f5f9; }
         .nav-user-trigger-name {
-          max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
           font-size: 0.85rem; font-weight: 600; color: #1e293b; line-height: 1.1;
         }
         .nav-dropdown-caret { font-size: 0.65rem; color: #94a3b8; transition: transform 0.2s; margin-left: 2px; }

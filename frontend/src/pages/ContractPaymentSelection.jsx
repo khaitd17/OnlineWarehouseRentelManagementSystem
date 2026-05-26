@@ -27,6 +27,7 @@ const ContractPaymentSelection = () => {
   const [extensionInfo, setExtensionInfo] = useState(null);
   const [hoveredMethod, setHoveredMethod] = useState(null);
   const [manualPayment, setManualPayment] = useState(null);
+  const [pendingPaymentAmount, setPendingPaymentAmount] = useState(null);
   const [proofMethod, setProofMethod] = useState("BANK_TRANSFER");
   const [proofAmount, setProofAmount] = useState("");
   const [proofTransactionCode, setProofTransactionCode] = useState("");
@@ -92,6 +93,11 @@ const ContractPaymentSelection = () => {
         if (!isTerminationPayment && !isExtensionPayment && contractData.status === "ACTIVE" && completedPayment) {
           navigate(`/contracts/${id}`);
           return;
+        }
+
+        const existingPending = payments.find(p => p.paymentType === paymentType && (p.status === "PENDING" || p.status === "RETRY_PENDING"));
+        if (existingPending) {
+          setPendingPaymentAmount(existingPending.amount);
         }
         const existingManual = payments.find((p) =>
           p.paymentType === paymentType
@@ -218,7 +224,7 @@ const ContractPaymentSelection = () => {
     ? (contract?.earlyTerminationFee || 0)
     : isExtensionPayment
       ? ((extensionInfo?.proposedMonthlyPayment || 0) * (extensionInfo?.durationMonths || 0))
-      : (contract?.depositAmount || contract?.monthlyPayment || 0);
+      : (pendingPaymentAmount || contract?.depositAmount || contract?.monthlyPayment || 0);
 
   const paymentLabel = isTerminationPayment
     ? "Phí kết thúc sớm"

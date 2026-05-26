@@ -140,6 +140,35 @@ public class ScheduleController : ControllerBase
         }
     }
 
+    [HttpPut("warehouse-shifts/{id:int}")]
+    public async Task<IActionResult> UpdateWarehouseShift(int id, [FromBody] UpdateWarehouseShiftRequest req, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(req.Name))
+            return BadRequest(new { message = "Tên ca không được để trống." });
+        if (string.IsNullOrWhiteSpace(req.StartTime) || string.IsNullOrWhiteSpace(req.EndTime))
+            return BadRequest(new { message = "Giờ vào và giờ ra là bắt buộc." });
+
+        try
+        {
+            await _mediator.Send(new WMS.Application.Features.Shifts.UpdateWarehouseShift.UpdateWarehouseShiftCommand
+            {
+                Id        = id,
+                Name      = req.Name.Trim(),
+                StartTime = req.StartTime,
+                EndTime   = req.EndTime,
+            }, ct);
+            return Ok(new { message = "Cập nhật ca thành công." });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { message = "Không tìm thấy ca làm việc." });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = ex.Message });
+        }
+    }
+
     [HttpDelete("warehouse-shifts/{id:int}")]
     public async Task<IActionResult> DeleteWarehouseShift(int id, CancellationToken ct)
     {
@@ -187,4 +216,5 @@ public class ScheduleController : ControllerBase
 public record GenerateRequest(int WarehouseId, string From, string To);
 public record SaveShiftsRequest(List<UpsertShiftDto> Shifts);
 public record CreateWarehouseShiftRequest(int WarehouseId, string Name, string StartTime, string EndTime);
+public record UpdateWarehouseShiftRequest(string Name, string StartTime, string EndTime);
 

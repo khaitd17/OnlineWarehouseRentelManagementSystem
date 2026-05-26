@@ -294,7 +294,7 @@ const NAV_STYLES = `
     background: rgba(255,255,255,0.06);
   }
   .nav-user-trigger-name {
-    max-width: 120px;
+    max-width: 200px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -736,7 +736,7 @@ const MainLayout = () => {
                     />
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       <span className="nav-user-trigger-name">
-                        Xin chào, {(user?.fullName || user?.FullName || 'Bạn').split(' ').slice(-2).join(' ')}
+                        Xin chào, {user?.fullName || user?.FullName || 'Bạn'}
                       </span>
                     </div>
                     <span className="nav-dropdown-caret">▾</span>

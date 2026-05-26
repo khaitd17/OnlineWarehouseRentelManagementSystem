@@ -1,4 +1,5 @@
 using MediatR;
+using System.Collections.Generic;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
 using WMS.Domain.Interfaces;
@@ -13,6 +14,9 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
     private readonly IPdfService _pdfService;
     private readonly INotificationRepository _notificationRepo;
     private readonly INotificationSender _notificationSender;
+    private readonly IRentalRequestRepository _rentalRequestRepo;
+    private readonly IEquipmentRepository _equipmentRepo;
+    private readonly IRentalPaymentRepository _paymentRepo;
 
     public OwnerSignContractHandler(
         IRentalContractRepository contractRepo,
@@ -20,7 +24,10 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
         IUserRepository userRepo,
         IPdfService pdfService,
         INotificationRepository notificationRepo,
-        INotificationSender notificationSender)
+        INotificationSender notificationSender,
+        IRentalRequestRepository rentalRequestRepo,
+        IEquipmentRepository equipmentRepo,
+        IRentalPaymentRepository paymentRepo)
     {
         _contractRepo = contractRepo;
         _warehouseRepo = warehouseRepo;
@@ -28,6 +35,9 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
         _pdfService = pdfService;
         _notificationRepo = notificationRepo;
         _notificationSender = notificationSender;
+        _rentalRequestRepo = rentalRequestRepo;
+        _equipmentRepo = equipmentRepo;
+        _paymentRepo = paymentRepo;
     }
 
     public async Task<OwnerSignContractResult> Handle(OwnerSignContractCommand request, CancellationToken cancellationToken)
@@ -41,7 +51,7 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
         if (warehouse.OwnerId != request.OwnerId)
             throw new UnauthorizedAccessException("Only warehouse owner can sign the contract");
 
-        if (contract.Status != "APPROVED_FOR_SIGNING")
+        if (contract.Status != "PENDING_OWNER_SIGNATURE")
             throw new InvalidOperationException($"Cannot owner-sign contract with status {contract.Status}");
 
         // Generate PDF with owner signature
@@ -63,23 +73,118 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
             TotalValue = contract.TotalValue,
             DepositAmount = contract.DepositAmount,
             Terms = contract.Terms,
-            OwnerSignatureBase64 = request.SignatureBase64  // Chữ ký chủ kho
+            OwnerSignatureBase64 = request.SignatureBase64,  // Chữ ký chủ kho
+            RenterSignatureBase64 = contract.RenterSignatureBase64 // Lấy chữ ký Renter đã ký trước đó
         };
 
-        // Generate PDF with owner signature embedded
+        // Generate PDF with both signatures embedded
         var ownerSignedFileUrl = await _pdfService.GenerateContractPdfAsync(pdfData);
 
         // Update contract domain
-        contract.OwnerSign(ownerSignedFileUrl, request.SignatureBase64);
+        contract.OwnerSign(ownerSignedFileUrl, request.SignatureBase64); // Chuyển status thành ACTIVE
         await _contractRepo.UpdateAsync(contract);
+
+        // Sinh hóa đơn (Bill)
+        var fullContractInfo = await _contractRepo.GetByIdWithDetailsAsync(contract.ContractId);
+        
+        int monthsPerTerm = fullContractInfo?.PaymentTerm?.MonthsPerTerm ?? 1;
+        int overdueDays = fullContractInfo?.PaymentTerm?.AllowedOverdueDays ?? 7;
+
+        var firstTermEndDate = contract.StartDate.AddMonths(monthsPerTerm);
+        decimal proratedAmount;
+
+        if (firstTermEndDate > contract.EndDate)
+        {
+            firstTermEndDate = contract.EndDate;
+            var termDays = (firstTermEndDate - contract.StartDate).Days;
+            proratedAmount = (contract.MonthlyPayment / 30m) * termDays;
+        }
+        else
+        {
+            proratedAmount = contract.MonthlyPayment * monthsPerTerm;
+        }
+        
+        // If contract starts within 5 days or in the past, create bill now
+        if ((contract.StartDate - DateTime.UtcNow).TotalDays <= 5)
+        {
+            decimal totalInitialAmount = Math.Round(proratedAmount, 2) + (contract.DepositAmount ?? 0);
+            
+            var payment = RentalPayment.Create(
+                contractId: contract.ContractId,
+                amount: totalInitialAmount,
+                paymentType: contract.DepositAmount > 0 ? "DEPOSIT" : "MONTHLY",
+                expiryHours: overdueDays * 24,
+                termStartDate: contract.StartDate,
+                termEndDate: firstTermEndDate
+            );
+            await _paymentRepo.AddAsync(payment);
+            await _paymentRepo.SaveChangesAsync();
+            payment.SetPaymentCode();
+            await _paymentRepo.UpdatePaymentCodeAsync(payment.PaymentId, payment.PaymentCode);
+        }
+
+        // Cập nhật trạng thái Equipments thành IN_USE
+        var fullContract = await _contractRepo.GetWithEquipmentsByIdAsync(contract.ContractId);
+        var equipmentIdsToUpdate = new HashSet<int>();
+
+        // 1. Add explicitly included equipments
+        if (fullContract?.IncludedEquipments != null && fullContract.IncludedEquipments.Any())
+        {
+            foreach (var e in fullContract.IncludedEquipments)
+                equipmentIdsToUpdate.Add(e.EquipmentId);
+        }
+
+        // 2. Add equipments from the rented area/warehouse automatically
+        var rentalRequest = await _rentalRequestRepo.GetByIdAsync(contract.RentalRequestId);
+        if (rentalRequest != null)
+        {
+            var autoEquipments = new List<Equipment>();
+            
+            if (rentalRequest.RentalAreaId.HasValue)
+            {
+                var areaEquipments = await _equipmentRepo.GetByRentalAreaIdAsync(rentalRequest.RentalAreaId.Value, cancellationToken);
+                autoEquipments.AddRange(areaEquipments);
+            }
+
+            var warehouseEquipments = await _equipmentRepo.GetByWarehouseIdAsync(contract.WarehouseId, cancellationToken);
+            var sharedEquipments = warehouseEquipments.Where(e => e.RentalAreaId == null);
+            autoEquipments.AddRange(sharedEquipments);
+
+            foreach (var e in autoEquipments)
+            {
+                if (e.Status == "AVAILABLE")
+                {
+                    equipmentIdsToUpdate.Add(e.EquipmentId);
+                }
+            }
+        }
+
+        if (equipmentIdsToUpdate.Any())
+        {
+            var idList = equipmentIdsToUpdate.ToList();
+            await _contractRepo.AssignEquipmentsAsync(contract.ContractId, idList, cancellationToken);
+            await _equipmentRepo.UpdateStatusesAsync(idList, "IN_USE", cancellationToken);
+            
+            foreach (var eqId in idList)
+            {
+                await _equipmentRepo.AddHistoryAsync(new EquipmentHistory
+                {
+                    EquipmentId = eqId,
+                    PreviousStatus = "AVAILABLE",
+                    NewStatus = "IN_USE",
+                    ContractId = contract.ContractId,
+                    Note = $"Equipment automatically assigned to active contract {contract.ContractNumber}"
+                }, cancellationToken);
+            }
+        }
 
         // Send notification to renter
         var notification = new Notification
         {
             UserId = contract.RenterId,
-            Title = "Hợp đồng thuê kho đã được gửi đến bạn",
-            Message = $"Chủ kho đã ký và gửi hợp đồng thuê kho {warehouse.Name} đến bạn. Hợp đồng #{contract.ContractNumber} đang chờ bạn xem xét và ký.",
-            Type = "CONTRACT_SENT",
+            Title = "Hợp đồng đã hoàn tất và kích hoạt",
+            Message = $"Chủ kho đã ký hợp đồng {contract.ContractNumber}. Hợp đồng hiện đã ACTIVE. Vui lòng thanh toán hóa đơn kỳ đầu tiên (nếu có).",
+            Type = "CONTRACT_ACTIVE",
             ReferenceId = contract.ContractId,
             ReferenceType = "CONTRACT"
         };

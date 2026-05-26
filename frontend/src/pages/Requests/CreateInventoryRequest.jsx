@@ -4,6 +4,8 @@ import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
 import renterAssetService from '../../services/renterAssetService';
 import aiService from '../../services/aiService';
+import authService from '../../services/authService';
+import RenterSpaceUsageWarning from '../../components/warehouse/RenterSpaceUsageWarning';
 
 const INBOUND_COLOR = '#0ea5e9';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -795,6 +797,13 @@ export default function CreateInventoryRequest() {
         <p style={{ color:'#64748b', fontSize:'0.88rem', margin:0 }}>
           {step===1 ? 'Chọn loại yêu cầu và kho hàng để tiếp tục.' : 'Thêm hàng hóa, chứng từ và ghi chú cho yêu cầu.'}
         </p>
+
+        {step === 2 && warehouseId && type === 'INBOUND' && (
+          <div style={{ marginTop: '16px', marginBottom: '-8px' }}>
+            <RenterSpaceUsageWarning warehouseId={warehouseId} renterId={authService.getCurrentUser()?.userId} />
+          </div>
+        )}
+
         <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:16 }}>
           {[1,2].map(s=>(
             <React.Fragment key={s}>
@@ -832,11 +841,13 @@ export default function CreateInventoryRequest() {
             {loadingWH ? <div style={{ padding:20, textAlign:'center', color:'#94a3b8' }}>Đang tải...</div>
             : warehouses.length===0 ? <div style={{ padding:16, borderRadius:12, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.87rem' }}>Bạn chưa có hợp đồng thuê kho nào đang hoạt động.</div>
             : <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {warehouses.map(wh=>(
-                <label key={wh.warehouseId} className="wh-card" style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', borderRadius:12, cursor:'pointer', border:`2px solid ${warehouseId===wh.warehouseId?accent:'#e2e8f0'}`, background:warehouseId===wh.warehouseId?(type==='INBOUND'?'#e0f7fa':'#fff8e1'):'#fafbff', transition:'all 0.15s' }}>
-                  <input type="radio" name="wh" value={wh.warehouseId} checked={warehouseId===wh.warehouseId} onChange={()=>setWarehouseId(wh.warehouseId)} style={{ accentColor:accent, width:18, height:18, flexShrink:0, cursor:'pointer' }}/>
+              {warehouses.map(wh=>{
+                const isDisabled = type === 'INBOUND' && wh.status !== 'ACTIVE';
+                return (
+                <label key={wh.warehouseId} className="wh-card" style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 18px', borderRadius:12, cursor: isDisabled ? 'not-allowed' : 'pointer', border:`2px solid ${warehouseId===wh.warehouseId?accent:'#e2e8f0'}`, background:warehouseId===wh.warehouseId?(type==='INBOUND'?'#e0f7fa':'#fff8e1'):(isDisabled ? '#f8fafc' : '#fafbff'), transition:'all 0.15s', opacity: isDisabled ? 0.6 : 1 }}>
+                  <input type="radio" name="wh" value={wh.warehouseId} checked={warehouseId===wh.warehouseId} onChange={()=>{if(!isDisabled) setWarehouseId(wh.warehouseId);}} disabled={isDisabled} style={{ accentColor:accent, width:18, height:18, flexShrink:0, cursor:isDisabled ? 'not-allowed' : 'pointer' }}/>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1e293b' }}>{wh.name}</div>
+                    <div style={{ fontWeight:700, fontSize:'0.95rem', color:'#1e293b' }}>{wh.name} {isDisabled && <span style={{fontSize:'0.7rem', color:'#dc2626', fontWeight:600, marginLeft:6}}>(Chỉ được xuất kho)</span>}</div>
                     {wh.contractNumber&&<div style={{ fontSize:'0.77rem', color:'#64748b', marginTop:2 }}>HĐ: {wh.contractNumber}</div>}
                     {warehouseId===wh.warehouseId && type==='INBOUND' && (
                       <div style={{ marginTop:8 }}>
@@ -908,11 +919,21 @@ export default function CreateInventoryRequest() {
                     </span>
                   )}
                 </label>
-              ))}
+              );})}
             </div>}
           </div>
 
-          <div style={{ marginTop:28, display:'flex', justifyContent:'flex-end' }}>
+          {/* Space usage warning — show as soon as a warehouse is selected (including auto-select when renter has only 1 warehouse) */}
+          {warehouseId && type === 'INBOUND' && (
+            <div style={{ marginTop:20 }}>
+              <RenterSpaceUsageWarning
+                warehouseId={warehouseId}
+                renterId={authService.getCurrentUser()?.userId}
+              />
+            </div>
+          )}
+
+          <div style={{ marginTop:16, display:'flex', justifyContent:'flex-end' }}>
             <button onClick={handleProceed} disabled={!warehouseId||loadingWH}
               style={{ padding:'12px 28px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.95rem', cursor:warehouseId?'pointer':'not-allowed', color:'#fff', background:warehouseId?`linear-gradient(135deg,${accent},${accent}bb)`:'#e2e8f0', boxShadow:warehouseId?`0 4px 16px ${accent}40`:'none', transition:'all 0.2s' }}>
               Tiếp theo →

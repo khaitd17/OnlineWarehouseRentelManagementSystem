@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using WMS.Domain.Entities;
@@ -372,6 +372,40 @@ namespace WMS.Infrastructure.Persistence
             {
                 EnsureMembership(context, ownerUser.UserId, warehouse3.WarehouseId, ownerWhRole.Id,    true, true);
                 EnsureMembership(context, ownerUser.UserId, warehouse3.WarehouseId, operatorWhRole.Id, true, true);
+            }
+
+            // ─── Tạo 7 Kho Hàng Ảo Tại Hà Nội Cho Tài Khoản Trandinhkhai ───
+            var hanoiMockWarehouses = new[]
+            {
+                new { Name = "Kho Long Biên - KCN Sài Đồng", Address = "Ngõ 163 Tư Đình, Long Biên, Hà Nội", TotalArea = 2000.0, Lat = 21.0336, Lng = 105.8829, Desc = "Kho sạch sẽ, thoáng mát, thuận tiện xe tải lớn ra vào, giá cả hợp lý. Phù hợp làm kho trung chuyển.", Price = 75000m },
+                new { Name = "Kho Công Nghiệp Ngọc Hồi", Address = "KCN Ngọc Hồi, Thanh Trì, Hà Nội", TotalArea = 4000.0, Lat = 20.9234, Lng = 105.8451, Desc = "Kho xưởng cao ráo, tiêu chuẩn công nghiệp, phù hợp chứa máy móc, vật liệu xây dựng. Có bảo vệ 24/7.", Price = 60000m },
+                new { Name = "Kho Trung Tâm Cầu Giấy", Address = "Dịch Vọng, Cầu Giấy, Hà Nội", TotalArea = 1500.0, Lat = 21.0360, Lng = 105.7950, Desc = "Kho trung tâm thành phố, tiện phân phối hàng hóa tiêu dùng, mỹ phẩm. An ninh 24/7, có sẵn camera.", Price = 120000m },
+                new { Name = "Kho Tổng Đông Anh", Address = "Đường Trường Sa, Đông Anh, Hà Nội", TotalArea = 6000.0, Lat = 21.1147, Lng = 105.8361, Desc = "Kho tổng quy mô cực lớn, sát đường quốc lộ, xe container ra vào thoải mái. Diện tích sân bãi rộng rãi.", Price = 50000m },
+                new { Name = "Kho Lạnh Nam Từ Liêm", Address = "Tây Mỗ, Nam Từ Liêm, Hà Nội", TotalArea = 2500.0, Lat = 21.0089, Lng = 105.7483, Desc = "Kho mát, đạt chuẩn bảo quản thực phẩm, hàng tiêu dùng, có trang bị hệ thống PCCC, nền Epoxy chuẩn.", Price = 90000m },
+                new { Name = "Kho Lưu Trữ Hà Đông", Address = "Phú Lãm, Hà Đông, Hà Nội", TotalArea = 3000.0, Lat = 20.9419, Lng = 105.7533, Desc = "Kho thoáng mát, thích hợp làm xưởng sản xuất nhẹ hoặc lưu trữ hàng nội thất, điện máy.", Price = 65000m },
+                new { Name = "Kho Nông Sản Gia Lâm", Address = "Trâu Quỳ, Gia Lâm, Hà Nội", TotalArea = 5000.0, Lat = 21.0200, Lng = 105.9320, Desc = "Kho bãi rộng, có dịch vụ nâng hạ, bốc xếp, phù hợp hàng nông sản, phân bón, vật liệu nặng.", Price = 55000m }
+            };
+
+            foreach (var whData in hanoiMockWarehouses)
+            {
+                var newWh = EnsureWarehouse(context, whData.Name, whData.Address, ownerUser.UserId, adminUser.UserId, whData.TotalArea, whData.TotalArea, whData.Lat, whData.Lng, "08:00 - 18:00", whData.Desc);
+                if (newWh.PricePerM2 != whData.Price)
+                {
+                    newWh.PricePerM2 = whData.Price;
+                    context.SaveChanges();
+                }
+                EnsureMembership(context, ownerUser.UserId, newWh.WarehouseId, ownerWhRole.Id, true, true);
+                EnsureMembership(context, ownerUser.UserId, newWh.WarehouseId, operatorWhRole.Id, true, true);
+                
+                if (!context.WarehouseMedia.Any(i => i.WarehouseId == newWh.WarehouseId))
+                {
+                    context.WarehouseMedia.AddRange(
+                        new WarehouseMedium { WarehouseId = newWh.WarehouseId, MediaUrl = "https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop", MediaType = "IMAGE", IsPrimary = true, DisplayOrder = 1, CreatedAt = DateTime.UtcNow },
+                        new WarehouseMedium { WarehouseId = newWh.WarehouseId, MediaUrl = "https://images.unsplash.com/photo-1565891741441-64926e441838?q=80&w=2071&auto=format&fit=crop", MediaType = "IMAGE", IsPrimary = false, DisplayOrder = 2, CreatedAt = DateTime.UtcNow },
+                        new WarehouseMedium { WarehouseId = newWh.WarehouseId, MediaUrl = "https://images.unsplash.com/photo-1553413077-190dd305871c?q=80&w=2070&auto=format&fit=crop", MediaType = "IMAGE", IsPrimary = false, DisplayOrder = 3, CreatedAt = DateTime.UtcNow }
+                    );
+                    context.SaveChanges();
+                }
             }
 
             // ══════════════════════════════════════════════════
@@ -986,9 +1020,11 @@ namespace WMS.Infrastructure.Persistence
             if (renter1 != null && renter2 != null && !context.Contracts.Any())
             {
                 // Seed RentalRequest trước (Contract có FK → RentalRequest)
+                // req0: renterUser (renter@owrms.com / Lê Văn Đạt) — tài khoản demo chính
+                var req0 = new RentalRequest { RenterId = renterUser.UserId, WarehouseId = warehouse.WarehouseId, RequestedArea = 300, StartDate = new DateTime(2024,1,1), DurationMonths = 24, Status = "APPROVED", CreatedAt = new DateTime(2024,1,1) };
                 var req1 = new RentalRequest { RenterId = renter1.UserId, WarehouseId = warehouse.WarehouseId,  RequestedArea = 200, StartDate = new DateTime(2024,1,1), DurationMonths = 12, Status = "APPROVED", CreatedAt = new DateTime(2024,1,1) };
                 var req2 = new RentalRequest { RenterId = renter2.UserId, WarehouseId = warehouse2.WarehouseId, RequestedArea = 100, StartDate = new DateTime(2024,3,1), DurationMonths = 12, Status = "APPROVED", CreatedAt = new DateTime(2024,3,1) };
-                context.RentalRequests.AddRange(req1, req2);
+                context.RentalRequests.AddRange(req0, req1, req2);
                 RentalRequest? req3 = null;
                 if (renter3 != null)
                 {
@@ -997,6 +1033,21 @@ namespace WMS.Infrastructure.Persistence
                 }
                 context.SaveChanges();
 
+                // Hợp đồng 0: renterUser (renter@owrms.com / Lê Văn Đạt) thuê warehouse 1 — tài khoản demo chính
+                var contract0 = new Contract
+                {
+                    RenterId       = renterUser.UserId,
+                    WarehouseId    = warehouse.WarehouseId,
+                    RequestId      = req0.RequestId,
+                    ContractNumber = "HD-2024-000",
+                    StartDate      = new DateOnly(2024, 1, 1),
+                    EndDate        = new DateOnly(2026, 1, 1),
+                    Status         = "ACTIVE",
+                    TotalValue     = 240_000_000,
+                    MonthlyPayment = 10_000_000,
+                    DepositAmount  = 20_000_000,
+                    CreatedAt      = new DateTime(2024, 1, 1),
+                };
                 // Hợp đồng 1: renter1 thuê warehouse 1
                 var contract1 = new Contract
                 {
@@ -1043,6 +1094,7 @@ namespace WMS.Infrastructure.Persistence
                     CreatedAt      = new DateTime(2024, 6, 1),
                 };
 
+                context.Contracts.Add(contract0);
                 context.Contracts.Add(contract1);
                 context.Contracts.Add(contract2);
                 if (contract3 != null) context.Contracts.Add(contract3);
@@ -1105,6 +1157,24 @@ namespace WMS.Infrastructure.Persistence
                 });
                 context.SaveChanges();
             }
+
+            // ── Cập nhật toàn bộ diện tích kho của ownerUser < 1000m2 (không trùng lặp) ──
+            var ownerWarehouses = context.Warehouses.Where(w => w.OwnerId == ownerUser.UserId).ToList();
+            var randArea = new Random(123);
+            var usedAreas = new System.Collections.Generic.HashSet<double>();
+            foreach (var w in ownerWarehouses)
+            {
+                double newArea;
+                do
+                {
+                    newArea = randArea.Next(30, 99) * 10; // 300, 310, ..., 980
+                } while (usedAreas.Contains(newArea));
+                
+                usedAreas.Add(newArea);
+                w.TotalArea = newArea;
+                w.AvailableArea = newArea; // Reset available area for test account
+            }
+            context.SaveChanges();
         }
 
         // ──────────── Helper Methods ────────────

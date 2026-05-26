@@ -111,15 +111,14 @@ public class RentalContract
 
     public void OwnerSign(string ownerSignedFileUrl, string ownerSignatureBase64)
     {
-        if (Status != "APPROVED_FOR_SIGNING")
+        if (Status != "PENDING_OWNER_SIGNATURE")
             throw new InvalidOperationException($"Cannot owner-sign contract with status {Status}");
 
         OwnerSignedFileUrl = ownerSignedFileUrl;
         OwnerSignedAt = DateTime.UtcNow;
         OwnerSignatureBase64 = ownerSignatureBase64;
-        Status = "PENDING_RENTER_SIGNATURE"; // Chờ xác thực ký của người thuê
-        RenterSignatureExpiry = DateTime.UtcNow.AddHours(48); // 48h timeout for renter to sign
-        OwnerSignatureExpiry = null; // Clear owner expiry
+        Status = "ACTIVE"; 
+        OwnerSignatureExpiry = null;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -190,13 +189,14 @@ public class RentalContract
 
     public void Sign(string signedFileUrl, string renterSignatureBase64)
     {
-        if (Status != "PENDING_RENTER_SIGNATURE")
+        if (Status != "NEGOTIATING" && Status != "DRAFT" && Status != "APPROVED_FOR_SIGNING")
             throw new InvalidOperationException($"Cannot sign contract with status {Status}");
 
         SignedFileUrl = signedFileUrl;
         RenterSignatureBase64 = renterSignatureBase64;
         SignedAt = DateTime.UtcNow;
-        Status = "ACTIVE";
+        Status = "PENDING_OWNER_SIGNATURE";
+        OwnerSignatureExpiry = DateTime.UtcNow.AddHours(48); // 48h timeout for owner to sign
         UpdatedAt = DateTime.UtcNow;
     }
 

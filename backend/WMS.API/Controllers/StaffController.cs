@@ -5,6 +5,7 @@ using System.Security.Claims;
 using WMS.Application.Features.Staff.CreateStaff;
 using WMS.Application.Features.Staff.ListStaff;
 using WMS.Application.Features.Staff.ReassignMembership;
+using WMS.Application.Features.Staff.SetStaffShift;
 using WMS.Application.Features.Staff.ToggleMembership;
 using WMS.Application.Features.Warehouses.GetMyWarehouses;
 using WMS.Application.Interfaces;
@@ -227,6 +228,27 @@ public class StaffController : ControllerBase
         catch (InvalidOperationException ex)   { return BadRequest(new { message = ex.Message }); }
     }
 
+    [HttpPut("set-shift")]
+    public async Task<IActionResult> SetShift([FromBody] SetStaffShiftRequest req, CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var callerId))
+            return Unauthorized(new { message = "User ID not found in token." });
+
+        try
+        {
+            await _mediator.Send(new SetStaffShiftCommand
+            {
+                CallerId = callerId,
+                MembershipId = req.MembershipId,
+                WarehouseShiftId = req.WarehouseShiftId
+            }, ct);
+            return Ok(new { message = "Cấu hình ca làm việc thành công." });
+        }
+        catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
+        catch (UnauthorizedAccessException ex) { return StatusCode(403, new { message = ex.Message }); }
+    }
+
     [HttpGet("my-warehouses")]
     public async Task<IActionResult> MyWarehouses(CancellationToken ct)
     {
@@ -267,3 +289,4 @@ public class StaffController : ControllerBase
 }
 
 public record ToggleMembershipRequest(int MembershipId);
+public record SetStaffShiftRequest(int MembershipId, int? WarehouseShiftId);
