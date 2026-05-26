@@ -71,12 +71,14 @@ const RenterExtensionPage = () => {
   const handleRenterDecision = useCallback(async (extension, isAccepted) => {
     try {
       setExtensionActionLoading(extension.extensionId);
-      const result = await contractExtensionService.submitRenterDecision(extension.extensionId, isAccepted);
       if (isAccepted) {
+        const result = await contractExtensionService.submitRenterDecision(extension.extensionId, true);
         message.success('Đã xác nhận gia hạn. Đang chuyển đến thanh toán...');
         window.location.href = result.redirectUrl;
         return;
       }
+      // Từ chối / hủy - dùng cancelExtension cho cả APPROVED và PENDING_PAYMENT
+      await contractExtensionService.cancelExtension(extension.extensionId);
       message.success('Đã hủy yêu cầu gia hạn.');
       loadData(true);
     } catch (error) {
@@ -295,6 +297,7 @@ const RenterExtensionPage = () => {
               {extensions.map((ext, idx) => {
                 const st = extStatusConfig[ext.status] || { bg: '#f1f5f9', color: '#64748b', label: ext.status };
                 const isActionable = ext.status === 'APPROVED' || ext.status === 'PENDING_PAYMENT';
+                const canReject = ext.status === 'APPROVED' || ext.status === 'PENDING_PAYMENT';
                 const isLoading = extensionActionLoading === ext.extensionId;
 
                 return (
@@ -395,7 +398,7 @@ const RenterExtensionPage = () => {
                           >
                             {isLoading ? 'Đang xử lý...' : ext.status === 'APPROVED' ? 'Đồng ý & thanh toán' : 'Tiếp tục thanh toán'}
                           </button>
-                          {ext.status === 'APPROVED' && (
+                          {canReject && (
                             <button
                               onClick={() => handleRenterDecision(ext, false)}
                               disabled={isLoading}

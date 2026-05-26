@@ -341,21 +341,25 @@ const ContractDetail = () => {
           monthsPerTerm: data?.monthsPerTerm ?? 1,
           allowedOverdueDays: data?.allowedOverdueDays ?? 7
         });
-        // If PENDING_PAYMENT, check if a payment is already submitted
-        if (data?.status === "PENDING_PAYMENT" || data?.status === "SIGNED") {
+        // Check if renter already submitted/completed the initial payment
+        if (data?.status === "PENDING_PAYMENT" || data?.status === "SIGNED" || data?.status === "ACTIVE") {
           paymentService.getPaymentsByContract(id)
             .then(payments => {
               if (Array.isArray(payments)) {
-                const manualPayments = payments.filter(p =>
+                const expectedPaymentType = data?.depositAmount && Number(data.depositAmount) > 0
+                  ? "DEPOSIT"
+                  : "MONTHLY";
+                const relevantPayments = payments.filter(p => p.paymentType === expectedPaymentType);
+                const manualPayments = relevantPayments.filter(p =>
                   p.paymentMethod === "CASH" || p.paymentMethod === "BANK_TRANSFER"
                 );
                 const reuploadRequestedPayment = manualPayments.find(p => p.status === "REUPLOAD_REQUESTED");
-                // Trường hợp 1: Thanh toán tiền mặt đã gửi, chờ chủ kho xác nhận
-                const cashPending = manualPayments.some(p => p.status === "PENDING_CONFIRMATION");
-                // Trường hợp 2: Thanh toán online đã hoàn tất (ngân hàng xác nhận) nhưng contract chưa update
-                const onlineCompleted = payments.some(p => p.paymentMethod !== "CASH" && p.status === "COMPLETED");
+                const hasManualPendingConfirmation = manualPayments.some(p => p.status === "PENDING_CONFIRMATION");
+                const hasCompletedPayment = relevantPayments.some(p => p.status === "COMPLETED");
                 setReuploadPayment(reuploadRequestedPayment || null);
-                setHasPendingPayment(cashPending || onlineCompleted);
+                // Block the pay button only when payment is fully done or manual proof is waiting owner confirmation.
+                // Online PENDING/RETRY_PENDING should still allow user to continue payment flow.
+                setHasPendingPayment(hasManualPendingConfirmation || hasCompletedPayment);
               }
             })
             .catch(() => { }); // silently ignore
@@ -609,9 +613,9 @@ const ContractDetail = () => {
   const canRenterSign = contract?.isCurrentUserRenter && ["NEGOTIATING", "DRAFT", "APPROVED_FOR_SIGNING"].includes(contract?.status);
   const canRenterDecline = contract?.isCurrentUserRenter && ["NEGOTIATING", "DRAFT", "APPROVED_FOR_SIGNING"].includes(contract?.status);
   const hasReuploadRequest = Boolean(reuploadPayment);
-  // canRenterPay: true only if no payment has been submitted/pending yet
+  // canRenterPay: true only if no payment has been submitted/completed yet
   const canRenterPay = contract?.isCurrentUserRenter &&
-    ["PENDING_PAYMENT", "SIGNED", "ACTIVE"].includes(contract?.status) &&
+    (contract?.status === "PENDING_PAYMENT" || contract?.status === "SIGNED" || contract?.status === "ACTIVE") &&
     !hasPendingPayment;
   const isNegotiating = ["NEGOTIATING", "REVISION_REQUESTED"].includes(contract?.status);
   const canRequestRevision = contract?.isCurrentUserRenter && isNegotiating;

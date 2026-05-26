@@ -47,6 +47,12 @@ const ContractPaymentSelection = () => {
         const contractData = await rentalService.getContractById(id);
         setContract(contractData);
 
+        if (!isTerminationPayment && !isExtensionPayment) {
+          const allowedStatuses = ["PENDING_PAYMENT", "SIGNED", "ACTIVE"];
+          if (!allowedStatuses.includes(contractData.status)) {
+            throw new Error("Hợp đồng chưa ở bước thanh toán.");
+          }
+        }
 
         if (isTerminationPayment) {
           if (contractData.status === "TERMINATED") {
@@ -81,12 +87,18 @@ const ContractPaymentSelection = () => {
 
         const paymentType = resolvePaymentType(contractData);
         const payments = await paymentService.getPaymentsByContract(Number(id));
-        
+        const completedPayment = payments.find((p) =>
+          p.paymentType === paymentType && p.status === "COMPLETED"
+        );
+        if (!isTerminationPayment && !isExtensionPayment && contractData.status === "ACTIVE" && completedPayment) {
+          navigate(`/contracts/${id}`);
+          return;
+        }
+
         const existingPending = payments.find(p => p.paymentType === paymentType && (p.status === "PENDING" || p.status === "RETRY_PENDING"));
         if (existingPending) {
-           setPendingPaymentAmount(existingPending.amount);
+          setPendingPaymentAmount(existingPending.amount);
         }
-        
         const existingManual = payments.find((p) =>
           p.paymentType === paymentType
           && (p.paymentMethod === "CASH" || p.paymentMethod === "BANK_TRANSFER")
@@ -306,7 +318,7 @@ const ContractPaymentSelection = () => {
 
             <div style={{ display: "grid", gap: 12 }}>
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Payment Method
+                Phương thức thanh toán
                 <select
                   value={proofMethod}
                   onChange={(e) => setProofMethod(e.target.value)}
@@ -316,13 +328,13 @@ const ContractPaymentSelection = () => {
                     fontSize: "0.9rem", outline: "none",
                   }}
                 >
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="CASH">Cash</option>
+                  <option value="BANK_TRANSFER">Chuyển khoản ngân hàng</option>
+                  <option value="CASH">Tiền mặt</option>
                 </select>
               </label>
 
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Amount
+                Số tiền
                 <input
                   type="text"
                   value={formatAmountInput(proofAmount)}
@@ -337,7 +349,7 @@ const ContractPaymentSelection = () => {
               </label>
 
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Transaction Code
+                Mã giao dịch
                 <input
                   type="text"
                   value={proofTransactionCode}
@@ -352,7 +364,7 @@ const ContractPaymentSelection = () => {
               </label>
 
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Upload Proof
+                Tải lên chứng từ
                 <input
                   type="file"
                   accept=".jpg,.jpeg,.png,.pdf"
@@ -362,7 +374,7 @@ const ContractPaymentSelection = () => {
               </label>
 
               <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Note
+                Ghi chú
                 <textarea
                   value={proofNote}
                   onChange={(e) => setProofNote(e.target.value)}

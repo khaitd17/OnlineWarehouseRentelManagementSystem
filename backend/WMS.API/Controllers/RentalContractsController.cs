@@ -701,11 +701,31 @@ public class RentalContractsController : ControllerBase
                 return NotFound(new { message = "No PDF available for this contract" });
             }
 
-            // PDFs are generated into {ContentRoot}/uploads/contracts
-            var sourceFileName = Path.GetFileName(pdfUrl);
-            var filePath = Path.Combine(_env.ContentRootPath, "uploads", "contracts", sourceFileName);
+            // If the PDF is stored remotely, redirect to the source
+            if (Uri.TryCreate(pdfUrl, UriKind.Absolute, out var absoluteUri))
+            {
+                if (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps)
+                {
+                    return Redirect(pdfUrl);
+                }
+            }
 
-            if (!System.IO.File.Exists(filePath))
+            // PDFs are generated into {ContentRoot}/uploads/contracts or {WebRoot}/uploads/contracts
+            var sourceFileName = Uri.TryCreate(pdfUrl, UriKind.Absolute, out var fileUri)
+                ? Path.GetFileName(fileUri.LocalPath)
+                : Path.GetFileName(pdfUrl);
+
+            var contentRootPath = Path.Combine(_env.ContentRootPath, "uploads", "contracts", sourceFileName);
+            var webRootBase = _env.WebRootPath ?? _env.ContentRootPath;
+            var webRootPath = Path.Combine(webRootBase, "uploads", "contracts", sourceFileName);
+
+            var filePath = System.IO.File.Exists(contentRootPath)
+                ? contentRootPath
+                : System.IO.File.Exists(webRootPath)
+                    ? webRootPath
+                    : null;
+
+            if (filePath == null)
             {
                 return NotFound(new { message = "PDF file not found" });
             }

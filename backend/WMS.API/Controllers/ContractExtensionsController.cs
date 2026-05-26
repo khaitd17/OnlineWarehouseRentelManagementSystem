@@ -152,6 +152,31 @@ namespace WMS.API.Controllers
         }
 
         /// <summary>
+        /// Get all extensions (completed, rejected, cancelled, pending-payment) for owner tracking
+        /// </summary>
+        [HttpGet("all-extensions")]
+        public async Task<IActionResult> GetAllExtensionsForOwner()
+        {
+            try
+            {
+                var userId = GetUserId();
+                var warehouses = await _warehouseRepo.GetByOwnerIdAsync(userId, CancellationToken.None);
+                var warehouseIds = warehouses.Select(w => w.WarehouseId).ToList();
+
+                var extensions = await _extensionRepo.GetCompletedByWarehouseIdsAsync(warehouseIds);
+                return Ok(extensions.Select(MapExtensionToDto));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Forbid(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            }
+        }
+
+        /// <summary>
         /// Get approved extensions with new contracts pending owner signature
         /// </summary>
         [HttpGet("pending-signature")]
@@ -400,10 +425,10 @@ namespace WMS.API.Controllers
                 if (extension.RequesterId != userId)
                     return Forbid("You can only cancel your own extension requests");
 
-                if (!extension.IsPending)
-                    return BadRequest(new { message = "Can only cancel pending extension requests" });
+                if (!extension.IsPending && !extension.IsPendingPayment)
+                    return BadRequest(new { message = "Chỉ có thể hủy yêu cầu đang chờ duyệt hoặc chờ thanh toán" });
 
-                extension.DeclineOffer();
+                extension.Cancel();
                 await _extensionRepo.UpdateAsync(extension);
 
                 return Ok(new { message = "Extension cancelled successfully" });
@@ -471,7 +496,7 @@ namespace WMS.API.Controllers
                     });
                 }
 
-                if (extension.Status != ContractExtensionStatus.Approved)
+                if (extension.Status != ContractExtensionStatus.Approved && extension.Status != ContractExtensionStatus.PendingPayment)
                     return BadRequest(new { message = "Yêu cầu gia hạn không ở trạng thái có thể hủy." });
 
                 extension.Cancel();

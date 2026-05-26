@@ -115,6 +115,15 @@ const contractExtensionService = {
     return response.data;
   },
 
+  /**
+   * Lấy tất cả extensions đã xử lý cho owner theo dõi
+   * @returns {Promise} all processed extensions
+   */
+  getAllExtensionsForOwner: async () => {
+    const response = await axiosClient.get("/contract-extensions/all-extensions");
+    return response.data;
+  },
+
   // ── Utility Methods ──────────────────────────────────────────
 
   /**

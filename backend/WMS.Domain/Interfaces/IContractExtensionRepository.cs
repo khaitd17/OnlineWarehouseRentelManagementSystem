@@ -20,5 +20,8 @@ namespace WMS.Domain.Interfaces
 
         // Get approved extensions where new contract is pending owner signature
         Task<IEnumerable<ContractExtension>> GetApprovedPendingSignatureByWarehouseIdsAsync(IEnumerable<int> warehouseIds);
+
+        // Get completed/processed extensions for tracking
+        Task<IEnumerable<ContractExtension>> GetCompletedByWarehouseIdsAsync(IEnumerable<int> warehouseIds);
     }
 }
