@@ -29,6 +29,7 @@ public class GetRentalRequestByIdHandler : IRequestHandler<GetRentalRequestByIdQ
 
         var warehouse = await _warehouseRepository.GetByIdAsync(rentalRequest.WarehouseId, cancellationToken);
         var renter = await _userRepository.GetByIdAsync(rentalRequest.RenterId, cancellationToken);
+        var owner = warehouse != null ? await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken) : null;
 
         return new RentalRequestDto
         {
@@ -36,6 +37,10 @@ public class GetRentalRequestByIdHandler : IRequestHandler<GetRentalRequestByIdQ
             RenterId = rentalRequest.RenterId,
             RenterName = renter?.FullName ?? "",
             RenterEmail = renter?.Email ?? "",
+            RenterPhone = renter?.Phone ?? "",
+            OwnerName = owner?.FullName ?? "",
+            OwnerPhone = owner?.Phone ?? "",
+            OwnerEmail = owner?.Email ?? "",
             WarehouseId = rentalRequest.WarehouseId,
             WarehouseName = warehouse?.Name ?? "",
             WarehouseAddress = warehouse?.Address ?? "",

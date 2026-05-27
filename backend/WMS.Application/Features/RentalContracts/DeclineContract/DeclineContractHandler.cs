@@ -23,7 +23,7 @@ public class DeclineContractHandler : IRequestHandler<DeclineContractCommand, Un
 
     public async Task<Unit> Handle(DeclineContractCommand request, CancellationToken cancellationToken)
     {
-        var contract = await _contractRepository.GetByIdAsync(request.ContractId);
+        var contract = await _contractRepository.GetByIdWithDetailsAsync(request.ContractId);
         if (contract == null)
             throw new InvalidOperationException("Contract not found");
 
@@ -34,12 +34,15 @@ public class DeclineContractHandler : IRequestHandler<DeclineContractCommand, Un
         if (!isRenter && !isOwner)
             throw new UnauthorizedAccessException("Only renter or owner can decline this contract");
 
-        // Can only decline if contract is waiting for signature
-        if (contract.Status != RentalContractStatus.ApprovedForSigning &&
+        // Can only decline if contract is not active, terminated, completed, etc.
+        if (contract.Status != RentalContractStatus.Draft &&
+            contract.Status != RentalContractStatus.Negotiating &&
+            contract.Status != RentalContractStatus.RevisionRequested &&
+            contract.Status != RentalContractStatus.ApprovedForSigning &&
             contract.Status != RentalContractStatus.PendingOwnerSignature && 
             contract.Status != RentalContractStatus.PendingRenterSignature)
         {
-            throw new InvalidOperationException($"Cannot decline contract with status {contract.Status}. Contract must be pending signature.");
+            throw new InvalidOperationException($"Cannot decline contract with status {contract.Status}. Contract must be in draft, negotiation or pending signature.");
         }
 
         if (string.IsNullOrWhiteSpace(request.Reason))

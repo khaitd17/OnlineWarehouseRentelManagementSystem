@@ -37,8 +37,12 @@ public class SendContractDraftHandler : IRequestHandler<SendContractDraftCommand
 
     public async Task<SendContractDraftResult> Handle(SendContractDraftCommand request, CancellationToken cancellationToken)
     {
+        Console.WriteLine($"[SendContractDraft] Starting - ContractId: {request.ContractId}, UserId: {request.UserId}");
+
         var contract = await _contractRepo.GetByIdAsync(request.ContractId)
             ?? throw new InvalidOperationException("Contract not found");
+
+        Console.WriteLine($"[SendContractDraft] Contract found - Status: {contract.Status}, RenterId: {contract.RenterId}");
 
         var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, cancellationToken)
             ?? throw new InvalidOperationException("Warehouse not found");
@@ -46,61 +50,92 @@ public class SendContractDraftHandler : IRequestHandler<SendContractDraftCommand
         if (warehouse.OwnerId != request.UserId)
             throw new UnauthorizedAccessException("Only owner can send draft");
 
-        if (contract.Status != RentalContractStatus.Draft)
+        if (contract.Status != RentalContractStatus.Draft &&
+            contract.Status != RentalContractStatus.Negotiating &&
+            contract.Status != RentalContractStatus.RevisionRequested)
+        {
             throw new InvalidOperationException($"Cannot send draft for contract with status {contract.Status}");
+        }
 
+        // ═══ CRITICAL STEP: Update contract status ═══
+        // This is the only step that MUST succeed. All subsequent steps are non-critical.
         contract.MarkNegotiating();
         await _contractRepo.UpdateAsync(contract);
+        Console.WriteLine($"[SendContractDraft] Contract status updated to NEGOTIATING");
 
-        var versions = await _versionRepo.GetByContractIdAsync(contract.ContractId);
-        var nextVersion = versions.Count == 0 ? 1 : versions.Max(v => v.VersionNumber) + 1;
-        var snapshot = new
-        {
-            contract.ContractId,
-            contract.ContractNumber,
-            contract.StartDate,
-            contract.EndDate,
-            contract.MonthlyPayment,
-            contract.DepositAmount,
-            contract.TotalValue,
-            contract.Terms,
-            contract.Status,
-            contract.UpdatedAt
-        };
-
-        var version = new ContractVersion
-        {
-            ContractId = contract.ContractId,
-            VersionNumber = nextVersion,
-            SnapshotJson = JsonSerializer.Serialize(snapshot),
-            CreatedBy = request.UserId,
-            CreatedAt = DateTime.UtcNow
-        };
-        await _versionRepo.AddAsync(version);
-
-        var notification = Notification.Create(
-            receiverUserId: contract.RenterId,
-            title: "Hợp đồng nháp đã được gửi",
-            message: $"Chủ kho đã gửi bản nháp hợp đồng {contract.ContractNumber}. Vui lòng xem và phản hồi.",
-            notificationType: "CONTRACT_DRAFT_SENT",
-            referenceId: contract.ContractId,
-            referenceType: "CONTRACT");
-        await _notificationRepo.AddAsync(notification);
+        // ═══ NON-CRITICAL: Create version snapshot ═══
         try
         {
-            await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+            var versions = await _versionRepo.GetByContractIdAsync(contract.ContractId);
+            var nextVersion = versions.Count == 0 ? 1 : versions.Max(v => v.VersionNumber) + 1;
+            var snapshot = new
+            {
+                contract.ContractId,
+                contract.ContractNumber,
+                contract.StartDate,
+                contract.EndDate,
+                contract.MonthlyPayment,
+                contract.DepositAmount,
+                contract.TotalValue,
+                contract.Terms,
+                contract.Status,
+                contract.UpdatedAt
+            };
+
+            var version = new ContractVersion
+            {
+                ContractId = contract.ContractId,
+                VersionNumber = nextVersion,
+                SnapshotJson = JsonSerializer.Serialize(snapshot),
+                CreatedBy = request.UserId,
+                CreatedAt = DateTime.UtcNow
+            };
+            await _versionRepo.AddAsync(version);
+            Console.WriteLine($"[SendContractDraft] Version {nextVersion} created");
         }
-        catch
+        catch (Exception ex)
         {
-            // Keep sending draft successful even if realtime push fails.
+            Console.WriteLine($"[SendContractDraft] WARNING: Failed to create version snapshot - {ex.Message}");
+            // Non-critical: don't block the draft from being sent
         }
 
-        var renter = await _userRepository.GetByIdAsync(contract.RenterId, cancellationToken);
-        if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
+        // ═══ NON-CRITICAL: Create notification ═══
+        try
         {
-            var subject = $"Bản nháp hợp đồng đã được gửi - {warehouse.Name}";
-            var contractLink = $"http://localhost:3000/contracts/{contract.ContractId}?tab=negotiation";
-            var htmlContent = $@"
+            var notification = Notification.Create(
+                receiverUserId: contract.RenterId,
+                title: "Hợp đồng nháp đã được gửi",
+                message: $"Chủ kho đã gửi bản nháp hợp đồng {contract.ContractNumber}. Vui lòng xem và phản hồi.",
+                notificationType: "CONTRACT_DRAFT_SENT",
+                referenceId: contract.ContractId,
+                referenceType: "CONTRACT");
+            await _notificationRepo.AddAsync(notification);
+            Console.WriteLine($"[SendContractDraft] Notification created for renter {contract.RenterId}");
+
+            try
+            {
+                await _notificationSender.SendToUserAsync(contract.RenterId, notification);
+            }
+            catch
+            {
+                // Keep sending draft successful even if realtime push fails.
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SendContractDraft] WARNING: Failed to create notification - {ex.Message}");
+            // Non-critical: don't block the draft from being sent
+        }
+
+        // ═══ NON-CRITICAL: Send email ═══
+        try
+        {
+            var renter = await _userRepository.GetByIdAsync(contract.RenterId, cancellationToken);
+            if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
+            {
+                var subject = $"Bản nháp hợp đồng đã được gửi - {warehouse.Name}";
+                var contractLink = $"http://localhost:3000/contracts/{contract.ContractId}?tab=negotiation";
+                var htmlContent = $@"
 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
     <h2 style='color: #2563eb; text-align: center;'>Bản nháp hợp đồng đã được gửi</h2>
     <p>Xin chào <strong>{renter.FullName}</strong>,</p>
@@ -120,16 +155,17 @@ public class SendContractDraftHandler : IRequestHandler<SendContractDraftCommand
     <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
 </div>";
 
-            try
-            {
                 await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
-            }
-            catch
-            {
-                // Keep sending draft successful even if email delivery fails.
+                Console.WriteLine($"[SendContractDraft] Email sent to {renter.Email}");
             }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SendContractDraft] WARNING: Failed to send email - {ex.Message}");
+            // Non-critical: don't block the draft from being sent
+        }
 
+        Console.WriteLine($"[SendContractDraft] Completed successfully");
         return new SendContractDraftResult
         {
             Status = contract.Status

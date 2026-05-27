@@ -35,6 +35,7 @@ public class GetContractsByWarehouseHandler : IRequestHandler<GetContractsByWare
             throw new UnauthorizedAccessException("Only warehouse owner can view contracts");
 
         var contracts = await _contractRepo.GetByWarehouseIdAsync(request.WarehouseId);
+        var owner = await _userRepo.GetByIdAsync(warehouse.OwnerId, cancellationToken);
 
         var result = new List<RentalContractDto>();
         foreach (var contract in contracts)
@@ -50,6 +51,9 @@ public class GetContractsByWarehouseHandler : IRequestHandler<GetContractsByWare
                 RenterId = contract.RenterId,
                 RenterName = renter?.FullName ?? "Unknown",
                 RenterEmail = renter?.Email ?? "",
+                OwnerName = owner?.FullName ?? "",
+                OwnerPhone = owner?.Phone,
+                OwnerEmail = owner?.Email,
                 WarehouseId = contract.WarehouseId,
                 WarehouseName = warehouse.Name,
                 WarehouseAddress = warehouse.Address,

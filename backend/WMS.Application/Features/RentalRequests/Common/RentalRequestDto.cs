@@ -6,6 +6,7 @@ public class RentalRequestDto
     public int RenterId { get; set; }
     public string RenterName { get; set; } = null!;
     public string RenterEmail { get; set; } = null!;
+    public string? RenterPhone { get; set; }
     public int WarehouseId { get; set; }
     public string WarehouseName { get; set; } = null!;
     public string WarehouseAddress { get; set; } = null!;

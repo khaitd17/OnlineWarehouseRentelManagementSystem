@@ -36,6 +36,7 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
         {
             var warehouse = await _warehouseRepository.GetByIdAsync(r.WarehouseId, cancellationToken);
             var renter = await _userRepository.GetByIdAsync(r.RenterId, cancellationToken);
+            var owner = warehouse != null ? await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken) : null;
 
             // Get contract ID and status if request is approved
             int? contractId = null;
@@ -66,6 +67,10 @@ public class GetMyRentalRequestsHandler : IRequestHandler<GetMyRentalRequestsQue
                 RenterId = r.RenterId,
                 RenterName = renter?.FullName ?? "",
                 RenterEmail = renter?.Email ?? "",
+                RenterPhone = renter?.Phone ?? "",
+                OwnerName = owner?.FullName ?? "",
+                OwnerPhone = owner?.Phone ?? "",
+                OwnerEmail = owner?.Email ?? "",
                 WarehouseId = r.WarehouseId,
                 WarehouseName = warehouse?.Name ?? "",
                 WarehouseAddress = warehouse?.Address ?? "",

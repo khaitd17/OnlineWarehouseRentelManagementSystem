@@ -11,8 +11,8 @@ const SignatureCanvas = forwardRef((props, ref) => {
     const ctx = canvas.getContext("2d");
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 3;
 
     const startDrawing = (e) => {
       const rect = canvas.getBoundingClientRect();
@@ -120,14 +120,27 @@ const SignatureCanvas = forwardRef((props, ref) => {
     <canvas
       ref={canvasRef}
       width={500}
-      height={200}
+      height={220}
       style={{
-        border: "2px solid #cbd5e1",
-        borderRadius: "8px",
-        backgroundColor: "#fff",
+        border: "2.5px dashed #0284c7",
+        borderRadius: "16px",
+        backgroundColor: "#f8fafc",
         cursor: "crosshair",
         display: "block",
         touchAction: "none",
+        margin: "0 auto 16px auto",
+        boxShadow: "inset 0 2px 8px rgba(0,0,0,0.03)",
+        transition: "all 0.25s ease"
+      }}
+      onMouseEnter={(e) => {
+        e.target.style.borderColor = "#0ea5e9";
+        e.target.style.backgroundColor = "#fff";
+        e.target.style.boxShadow = "inset 0 2px 8px rgba(14,165,233,0.04), 0 4px 12px rgba(14,165,233,0.05)";
+      }}
+      onMouseLeave={(e) => {
+        e.target.style.borderColor = "#0284c7";
+        e.target.style.backgroundColor = "#f8fafc";
+        e.target.style.boxShadow = "inset 0 2px 8px rgba(0,0,0,0.03)";
       }}
     />
   );

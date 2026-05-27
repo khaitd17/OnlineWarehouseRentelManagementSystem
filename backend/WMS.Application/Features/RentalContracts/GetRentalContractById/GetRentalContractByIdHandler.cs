@@ -56,6 +56,7 @@ public class GetRentalContractByIdHandler : IRequestHandler<GetRentalContractByI
             RenterPhone = renter?.Phone,
             OwnerName = owner?.FullName ?? "",
             OwnerPhone = owner?.Phone,
+            OwnerEmail = owner?.Email,
             WarehouseId = contract.WarehouseId,
             WarehouseName = warehouse?.Name ?? "Unknown",
             WarehouseAddress = warehouse?.Address ?? "",

@@ -208,6 +208,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.RenterApprovedTermination).HasDefaultValue(false).HasColumnName("renter_approved_termination");
             entity.Property(e => e.OwnerApprovedTermination).HasDefaultValue(false).HasColumnName("owner_approved_termination");
             entity.Property(e => e.EarlyTerminationFee).HasColumnType("decimal(15, 2)").HasColumnName("early_termination_fee");
+            entity.Property(e => e.TerminatedAt).HasColumnName("terminated_at");
+            entity.Property(e => e.TerminationReason).HasColumnName("termination_reason");
             entity.Property(e => e.TotalValue).HasColumnType("decimal(15, 2)").HasColumnName("total_value");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("(getdate())").HasColumnName("updated_at");
             entity.Property(e => e.WarehouseId).HasColumnName("warehouse_id");

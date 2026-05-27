@@ -39,6 +39,7 @@ public class GetPendingRequestsHandler : IRequestHandler<GetPendingRequestsQuery
                 RenterId = r.RenterId,
                 RenterName = renter?.FullName ?? "",
                 RenterEmail = renter?.Email ?? "",
+                RenterPhone = renter?.Phone ?? "",
                 WarehouseId = r.WarehouseId,
                 WarehouseName = warehouse?.Name ?? "",
                 WarehouseAddress = warehouse?.Address ?? "",
