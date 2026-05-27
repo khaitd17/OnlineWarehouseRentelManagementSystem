@@ -57,6 +57,7 @@ public class GetOwnerRequestsHandler : IRequestHandler<GetOwnerRequestsQuery, IE
                 RenterId = r.RenterId,
                 RenterName = renter?.FullName ?? "",
                 RenterEmail = renter?.Email ?? "",
+                RenterPhone = renter?.Phone ?? "",
                 WarehouseId = r.WarehouseId,
                 WarehouseName = warehouse?.Name ?? "",
                 WarehouseAddress = warehouse?.Address ?? "",

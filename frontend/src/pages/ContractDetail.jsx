@@ -739,39 +739,13 @@ const ContractDetail = () => {
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", margin: "12px 0 22px" }}>
-        {[
-          { key: "overview", label: "Tổng quan" },
-          { key: "negotiation", label: "Đàm phán" },
-          { key: "versions", label: "Lịch sử phiên bản" },
-          { key: "signing", label: "Ký hợp đồng" },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => handleTabClick(tab.key)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: 999,
-              border: activeTab === tab.key ? "1.5px solid #0ea5e9" : "1px solid #e2e8f0",
-              background: activeTab === tab.key ? "#e0f2fe" : "#fff",
-              color: activeTab === tab.key ? "#0369a1" : "#64748b",
-              fontWeight: 700,
-              fontSize: "0.8rem",
-              cursor: "pointer",
-              boxShadow: activeTab === tab.key ? "0 2px 8px rgba(14,165,233,0.25)" : "none",
-              transition: "all 0.2s ease"
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       {/* ── Two-party info ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, animation: "cardFadeIn 0.4s ease 0.1s both" }}>
         {contract.ownerName && (
           <Section title="Bên cho thuê — Bên A" accent="#2563eb">
             <InfoRow label="Họ tên" value={contract.ownerName} />
+            <InfoRow label="Email" value={contract.ownerEmail || "—"} />
             <InfoRow label="Số điện thoại" value={contract.ownerPhone || "—"} />
           </Section>
         )}
@@ -1072,26 +1046,38 @@ const ContractDetail = () => {
           backgroundColor: "#fff",
           borderRadius: "18px",
           padding: "1.5rem 2rem",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
-          border: "1px solid #f1f5f9",
-          marginBottom: "1rem"
+          boxShadow: "0 4px 20px rgba(0,0,0,0.03)",
+          border: "1px solid #eef1f6",
+          borderTop: "3px solid #0284c7",
+          marginBottom: "1rem",
+          animation: "cardFadeIn 0.4s ease 0.35s both"
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h2 style={{ fontSize: "1rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>Đàm phán điều khoản</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 800, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+              <span className="material-symbols-outlined" style={{ color: "#0284c7", fontSize: "20px" }}>forum</span>
+              Đàm phán điều khoản
+            </h2>
             <span style={{
-              padding: "4px 12px",
+              padding: "6px 14px",
               borderRadius: 999,
               background: isNegotiating ? "#e0f2fe" : "#f1f5f9",
               color: isNegotiating ? "#0369a1" : "#64748b",
-              fontWeight: 700,
-              fontSize: "0.75rem"
+              fontWeight: 800,
+              fontSize: "0.75rem",
+              boxShadow: isNegotiating ? "0 2px 8px rgba(14,165,233,0.15)" : "none"
             }}>
               {contract.status === "DRAFT" ? "Chưa bắt đầu" : (isNegotiating ? "Đang đàm phán" : "Đã kết thúc")}
             </span>
           </div>
 
           {contract.status === "DRAFT" && contract.isCurrentUserOwner && (
-            <div style={{ marginBottom: 16, padding: "12px 14px", borderRadius: 12, border: "1px solid #e2e8f0", background: "#f8fafc" }}>
+            <div style={{
+              marginBottom: 16,
+              padding: "14px 16px",
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              background: "#f8fafc"
+            }}>
               <div style={{ fontSize: "0.85rem", color: "#475569", marginBottom: 8 }}>
                 Hợp đồng đang ở trạng thái bản nháp. Gửi bản nháp để bắt đầu đàm phán.
               </div>
@@ -1114,39 +1100,125 @@ const ContractDetail = () => {
           )}
 
           {canRequestRevision && (
-            <div style={{ marginBottom: 16, padding: "14px 16px", borderRadius: 12, border: "1px solid #e2e8f0", background: "#f8fafc" }}>
-              <div style={{ fontWeight: 700, marginBottom: 8, color: "#0f172a" }}>Yêu cầu chỉnh sửa</div>
-              <div style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: 10 }}>
-                <select
-                  value={revisionSection}
-                  onChange={(e) => setRevisionSection(e.target.value)}
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.85rem" }}
-                >
-                  {revisionSectionOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-                <textarea
-                  value={revisionMessage}
-                  onChange={(e) => setRevisionMessage(e.target.value)}
-                  rows={2}
-                  placeholder="Nhập nội dung yêu cầu chỉnh sửa..."
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.85rem" }}
-                />
+            <div style={{
+              marginBottom: 20,
+              padding: "20px",
+              borderRadius: "16px",
+              background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
+              border: "1.5px solid #bae6fd",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)"
+            }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontSize: "0.82rem",
+                fontWeight: 800,
+                color: "#0369a1",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                marginBottom: "14px"
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#0284c7" }}>
+                  edit_note
+                </span>
+                Yêu cầu chỉnh sửa điều khoản
               </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 12, alignItems: "stretch" }}>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <select
+                    value={revisionSection}
+                    onChange={(e) => setRevisionSection(e.target.value)}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "12px",
+                      border: "1.5px solid #bae6fd",
+                      fontSize: "0.88rem",
+                      fontWeight: 600,
+                      color: "#0369a1",
+                      backgroundColor: "#fff",
+                      outline: "none",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      height: "100%",
+                      boxSizing: "border-box"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#0284c7";
+                      e.target.style.boxShadow = "0 0 0 4px rgba(14, 165, 233, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#bae6fd";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  >
+                    {revisionSectionOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <textarea
+                    value={revisionMessage}
+                    onChange={(e) => setRevisionMessage(e.target.value)}
+                    rows={2}
+                    placeholder="Nhập rõ ràng nội dung điều khoản bạn muốn đề xuất thay đổi..."
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "12px",
+                      border: "1.5px solid #bae6fd",
+                      fontSize: "0.88rem",
+                      color: "#1e293b",
+                      backgroundColor: "#fff",
+                      outline: "none",
+                      transition: "all 0.2s ease",
+                      resize: "vertical",
+                      boxSizing: "border-box"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#0284c7";
+                      e.target.style.boxShadow = "0 0 0 4px rgba(14, 165, 233, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#bae6fd";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
                 <button
                   onClick={handleRequestRevision}
+                  disabled={!revisionMessage.trim()}
                   style={{
-                    padding: "8px 16px",
-                    borderRadius: 8,
+                    padding: "10px 22px",
+                    borderRadius: "12px",
                     border: "none",
-                    background: "#2563eb",
+                    background: revisionMessage.trim() ? "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" : "#cbd5e1",
                     color: "#fff",
                     fontWeight: 700,
-                    cursor: "pointer"
+                    fontSize: "0.88rem",
+                    boxShadow: revisionMessage.trim() ? "0 4px 12px rgba(14, 165, 233, 0.25)" : "none",
+                    cursor: revisionMessage.trim() ? "pointer" : "not-allowed",
+                    transition: "all 0.18s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (revisionMessage.trim()) {
+                      e.target.style.transform = "translateY(-1px)";
+                      e.target.style.boxShadow = "0 6px 16px rgba(14, 165, 233, 0.35)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (revisionMessage.trim()) {
+                      e.target.style.transform = "none";
+                      e.target.style.boxShadow = "0 4px 12px rgba(14, 165, 233, 0.25)";
+                    }
                   }}
                 >
+                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>send</span>
                   Gửi yêu cầu
                 </button>
               </div>
@@ -1156,7 +1228,23 @@ const ContractDetail = () => {
           {loadingRevisions ? (
             <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Đang tải trao đổi...</div>
           ) : revisionThreads.length === 0 ? (
-            <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Chưa có yêu cầu chỉnh sửa nào.</div>
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "32px 16px",
+              background: "#f8fafc",
+              borderRadius: "16px",
+              border: "1px dashed #cbd5e1",
+              textAlign: "center"
+            }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "40px", color: "#94a3b8", marginBottom: "10px" }}>
+                chat_bubble_outline
+              </span>
+              <div style={{ color: "#475569", fontSize: "0.9rem", fontWeight: 700 }}>Chưa có yêu cầu chỉnh sửa nào</div>
+              <div style={{ color: "#94a3b8", fontSize: "0.78rem", marginTop: "4px" }}>Các ý kiến thảo luận về điều khoản sẽ xuất hiện tại đây.</div>
+            </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {revisionThreads.map(thread => {
@@ -1579,38 +1667,159 @@ const ContractDetail = () => {
 
       {/* Decline Modal */}
       {showDeclineModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <h3 className="text-lg font-semibold mb-4">Từ chối hợp đồng</h3>
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          backgroundColor: "rgba(15, 23, 42, 0.45)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          animation: "cardFadeIn 0.3s ease-out"
+        }}>
+          <div style={{
+            backgroundColor: "#fff",
+            borderRadius: "20px",
+            padding: "24px",
+            width: "100%",
+            maxWidth: "440px",
+            margin: "0 16px",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            border: "1px solid rgba(226, 232, 240, 0.8)",
+            position: "relative"
+          }}>
+            {/* Soft Red Badge Icon */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              marginBottom: "20px"
+            }}>
+              <div style={{
+                width: "44px",
+                height: "44px",
+                borderRadius: "12px",
+                backgroundColor: "#fee2e2",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                <span className="material-symbols-outlined" style={{ color: "#ef4444", fontSize: "24px" }}>
+                  gpp_maybe
+                </span>
+              </div>
+              <div>
+                <h3 style={{ fontSize: "1.15rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>
+                  Từ chối hợp đồng
+                </h3>
+                <p style={{ fontSize: "0.78rem", color: "#64748b", margin: "2px 0 0" }}>
+                  Hành động này sẽ hủy tiến trình ký kết hiện tại.
+                </p>
+              </div>
+            </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Lý do từ chối <span className="text-red-500">*</span>
+            <div style={{ marginBottom: "20px" }}>
+              <label style={{
+                display: "block",
+                fontSize: "0.78rem",
+                fontWeight: 800,
+                color: "#475569",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                marginBottom: "8px"
+              }}>
+                Lý do từ chối <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <textarea
                 value={declineReason}
                 onChange={(e) => setDeclineReason(e.target.value)}
-                placeholder="Nhập lý do từ chối hợp đồng..."
+                placeholder="Nhập chi tiết lý do từ chối hợp đồng..."
                 rows={4}
-                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{
+                  width: "100%",
+                  border: "1.5px solid #e2e8f0",
+                  borderRadius: "12px",
+                  padding: "12px",
+                  fontSize: "0.9rem",
+                  color: "#1e293b",
+                  outline: "none",
+                  transition: "all 0.2s ease",
+                  resize: "vertical",
+                  boxSizing: "border-box"
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = "#ef4444";
+                  e.target.style.boxShadow = "0 0 0 4px rgba(239, 68, 68, 0.12)";
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = "#e2e8f0";
+                  e.target.style.boxShadow = "none";
+                }}
               />
             </div>
 
-            <div className="flex gap-3 justify-end">
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
               <button
                 onClick={() => {
                   setShowDeclineModal(false);
                   setDeclineReason('');
                 }}
                 disabled={isSubmittingDecline}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: "10px",
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#fff",
+                  color: "#64748b",
+                  fontWeight: 700,
+                  fontSize: "0.88rem",
+                  cursor: isSubmittingDecline ? "not-allowed" : "pointer",
+                  transition: "all 0.18s ease"
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = "#f8fafc";
+                  e.target.style.color = "#475569";
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = "#fff";
+                  e.target.style.color = "#64748b";
+                }}
               >
                 Đóng
               </button>
               <button
                 onClick={handleDeclineContract}
-                disabled={isSubmittingDecline}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                disabled={isSubmittingDecline || !declineReason.trim()}
+                style={{
+                  padding: "10px 22px",
+                  borderRadius: "10px",
+                  border: "none",
+                  backgroundColor: declineReason.trim() ? "#dc2626" : "#fca5a5",
+                  color: "#fff",
+                  fontWeight: 700,
+                  fontSize: "0.88rem",
+                  cursor: (isSubmittingDecline || !declineReason.trim()) ? "not-allowed" : "pointer",
+                  boxShadow: declineReason.trim() ? "0 4px 12px rgba(220, 38, 38, 0.2)" : "none",
+                  transition: "all 0.18s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+                onMouseEnter={(e) => {
+                  if (declineReason.trim() && !isSubmittingDecline) {
+                    e.target.style.backgroundColor = "#b91c1c";
+                    e.target.style.boxShadow = "0 6px 16px rgba(220, 38, 38, 0.3)";
+                    e.target.style.transform = "translateY(-1px)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (declineReason.trim() && !isSubmittingDecline) {
+                    e.target.style.backgroundColor = "#dc2626";
+                    e.target.style.boxShadow = "0 4px 12px rgba(220, 38, 38, 0.2)";
+                    e.target.style.transform = "none";
+                  }
+                }}
               >
                 {isSubmittingDecline ? 'Đang xử lý...' : 'Xác nhận từ chối'}
               </button>

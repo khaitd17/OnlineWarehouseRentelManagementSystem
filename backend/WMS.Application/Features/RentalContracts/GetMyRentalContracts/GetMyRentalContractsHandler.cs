@@ -42,6 +42,7 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
         {
             var warehouse = await _warehouseRepo.GetByIdAsync(contract.WarehouseId, cancellationToken);
             var renter    = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
+            var owner     = warehouse != null ? await _userRepo.GetByIdAsync(warehouse.OwnerId, cancellationToken) : null;
 
             // Lấy diện tích ĐÃ THUÊ của renter (từ RentalRequest), không phải diện tích kho
             var contractedArea = await _contractRepo.GetContractedAreaAsync(
@@ -55,6 +56,9 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
                 RenterId = contract.RenterId,
                 RenterName = renter?.FullName ?? "Unknown",
                 RenterEmail = renter?.Email ?? "",
+                OwnerName = owner?.FullName ?? "",
+                OwnerPhone = owner?.Phone,
+                OwnerEmail = owner?.Email,
                 WarehouseId = contract.WarehouseId,
                 WarehouseName = warehouse?.Name ?? "Unknown",
                 WarehouseAddress = warehouse?.Address ?? "",

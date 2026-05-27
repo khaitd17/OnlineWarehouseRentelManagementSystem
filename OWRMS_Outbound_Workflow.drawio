@@ -1,0 +1,246 @@
+<mxfile host="app.diagrams.net" agent="Antigravity" version="26.0">
+  <diagram id="outbound-workflow" name="Outbound (Warehouse Release) Workflow">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TITLE -->
+        <mxCell id="title" value="Online Warehouse Rental Management System&#xa;Outbound (Warehouse Release) Workflow" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="170" y="10" width="430" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- SWIM LANE HEADERS -->
+        <mxCell id="h_renter" value="Renter" style="shape=mxgraph.flowchart.annotation_2;align=center;labelPosition=center;pointerEvents=1;fontSize=14;fontStyle=1;verticalAlign=middle;verticalLabelPosition=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="h_manager" value="Manager / Owner" style="shape=mxgraph.flowchart.annotation_2;align=center;labelPosition=center;pointerEvents=1;fontSize=14;fontStyle=1;verticalAlign=middle;verticalLabelPosition=middle;" vertex="1" parent="1">
+          <mxGeometry x="260" y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="h_staff" value="Staff" style="shape=mxgraph.flowchart.annotation_2;align=center;labelPosition=center;pointerEvents=1;fontSize=14;fontStyle=1;verticalAlign=middle;verticalLabelPosition=middle;" vertex="1" parent="1">
+          <mxGeometry x="480" y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="h_system" value="OWRMS System" style="shape=mxgraph.flowchart.annotation_2;align=center;labelPosition=center;pointerEvents=1;fontSize=14;fontStyle=1;verticalAlign=middle;verticalLabelPosition=middle;" vertex="1" parent="1">
+          <mxGeometry x="700" y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Lane backgrounds -->
+        <mxCell id="bg1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCC;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="200" height="1910" as="geometry" />
+        </mxCell>
+        <mxCell id="bg2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCC;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="90" width="200" height="1910" as="geometry" />
+        </mxCell>
+        <mxCell id="bg3" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCC;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="90" width="200" height="1910" as="geometry" />
+        </mxCell>
+        <mxCell id="bg4" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCC;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="700" y="90" width="200" height="1910" as="geometry" />
+        </mxCell>
+
+        <!-- START -->
+        <mxCell id="start" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000;strokeColor=#000;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="130" y="110" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 1: CREATE REQUEST ═══ -->
+
+        <mxCell id="R1" value="View current inventory&#xa;in warehouse" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="150" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e01" style="" edge="1" source="start" target="R1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="R2" value="Select items to release&#xa;(name, quantity from&#xa;available stock)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="215" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e02" style="" edge="1" source="R1" target="R2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="R3" value="Submit outbound request&#xa;(Type: OUTBOUND)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="290" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e03" style="" edge="1" source="R2" target="R3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System validates -->
+        <mxCell id="SYS1" value="Validate request:&#xa;• Check stock availability&#xa;  for each item&#xa;• Requested ≤ Available?&#xa;Generate RequestCode&#xa;Create WarehouseTask" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="715" y="270" width="170" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="e04" style="" edge="1" source="R3" target="SYS1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Stock check -->
+        <mxCell id="SYS_stock" value="Stock&#xa;sufficient?" style="rhombus;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="765" y="400" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e05" style="" edge="1" source="SYS1" target="SYS_stock" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Insufficient stock -->
+        <mxCell id="SYS_nostock" value="Error: Insufficient stock&#xa;Request blocked" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="715" y="510" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e06" value="No" style="" edge="1" source="SYS_stock" target="SYS_nostock" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="R_error" value="Receive error:&#xa;insufficient stock" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="515" width="170" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="e07" style="" edge="1" source="SYS_nostock" target="R_error" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end_error" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000;strokeColor=#000;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="127" y="570" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="e08" style="" edge="1" source="R_error" target="end_error" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Auto-approve (OUTBOUND always auto-approved) -->
+        <mxCell id="SYS_auto" value="Auto-approve:&#xa;Status → CONFIRMED&#xa;(OUTBOUND has accurate&#xa;stock data = always&#xa;auto-approved)&#xa;Send confirmation email" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="715" y="590" width="170" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="e09" value="Yes" style="" edge="1" source="SYS_stock" target="SYS_auto" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="910" y="435" />
+              <mxPoint x="910" y="635" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="R_confirmed" value="Receive confirmation&#xa;email: outbound request&#xa;has been auto-approved" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="615" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="" edge="1" source="SYS_auto" target="R_confirmed" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 2: ASSIGN STAFF (optional) ═══ -->
+
+        <mxCell id="M_assign_check" value="Assign&#xa;staff?" style="rhombus;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="325" y="720" width="60" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="" edge="1" source="SYS_auto" target="M_assign_check" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="M_assign" value="Assign staff to request&#xa;Status → ASSIGNED" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="810" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="Yes" style="" edge="1" source="M_assign_check" target="M_assign" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="merge1" value="" style="rhombus;whiteSpace=wrap;html=1;fillColor=#000;strokeColor=#000;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="567" y="850" width="16" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="No (any staff)" style="fontSize=10;" edge="1" source="M_assign_check" target="merge1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="460" y="750" />
+              <mxPoint x="460" y="858" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" style="" edge="1" source="M_assign" target="merge1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 3: STAFF PICKS & RELEASES GOODS ═══ -->
+
+        <mxCell id="ST1" value="Receive job assignment&#xa;or pick up task" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="890" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" style="" edge="1" source="merge1" target="ST1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ST2" value="Pick &amp; prepare goods&#xa;for release&#xa;(verify quantity)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="960" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" style="" edge="1" source="ST1" target="ST2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 4: CREATE RECEIPT NOTE ═══ -->
+
+        <mxCell id="ST3" value="Create Receipt Note&#xa;(enter verified qty,&#xa;staff signature)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="1040" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" style="" edge="1" source="ST2" target="ST3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS_update" value="Receipt → VERIFIED&#xa;Subtract from inventory&#xa;Create transaction record&#xa;Update renter inventory" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="715" y="1035" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" style="" edge="1" source="ST3" target="SYS_update" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS_receiving" value="Request Status → RECEIVING" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="715" y="1130" width="170" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" style="" edge="1" source="SYS_update" target="SYS_receiving" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Release goods to Renter -->
+        <mxCell id="ST4" value="Release goods to Renter&#xa;(offline handover)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="1200" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" style="" edge="1" source="SYS_receiving" target="ST4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="R_pickup" value="Pick up goods&#xa;from warehouse&#xa;(offline)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="1195" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" style="dashed=1;strokeColor=#999;" edge="1" source="ST4" target="R_pickup" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 5: COMPLETION ═══ -->
+
+        <mxCell id="ST_confirm" value="Confirm request completion&#xa;(staff signature)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="1290" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" style="" edge="1" source="ST4" target="ST_confirm" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS_complete" value="Request Status → COMPLETED&#xa;Record all transactions&#xa;Update warehouse inventory&#xa;Update renter inventory" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="715" y="1280" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" style="" edge="1" source="ST_confirm" target="SYS_complete" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="R_done" value="View completed&#xa;outbound request&#xa;(inventory history)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="1290" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" style="" edge="1" source="SYS_complete" target="R_done" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- END -->
+        <mxCell id="end" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000;strokeColor=#000;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="127" y="1370" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="e25" style="" edge="1" source="R_done" target="end" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

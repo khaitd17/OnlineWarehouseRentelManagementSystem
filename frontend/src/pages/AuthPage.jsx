@@ -343,7 +343,7 @@ const VALIDATORS = {
   },
   password: (v) => {
     if (!v) return 'Mật khẩu không được để trống.';
-    if (v.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự.';
+    if (v.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự, chứa ít nhất 1 chữ hoa, 1 chữ thường và 1 chữ số.';
     if (v.length > 100) return 'Mật khẩu không được vượt quá 100 ký tự.';
     if (!/[A-Z]/.test(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ hoa (A-Z).';
     if (!/[a-z]/.test(v)) return 'Mật khẩu phải chứa ít nhất 1 chữ thường (a-z).';
@@ -392,7 +392,7 @@ function getSuggestedDomain(email) {
 const getPasswordStrength = (v) => {
 
   let score = 0;
-  if (v.length >= 6) score++;
+  if (v.length >= 8) score++;
   if (v.length >= 10) score++;
   if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
   if (/[0-9]/.test(v)) score++;

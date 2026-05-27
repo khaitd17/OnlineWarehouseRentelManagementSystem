@@ -11,6 +11,7 @@ public class RentalContractDto
     public string? RenterPhone { get; set; }
     public string? OwnerName { get; set; }
     public string? OwnerPhone { get; set; }
+    public string? OwnerEmail { get; set; }
     public int WarehouseId { get; set; }
     public string WarehouseName { get; set; } = null!;
     public string WarehouseAddress { get; set; } = null!;

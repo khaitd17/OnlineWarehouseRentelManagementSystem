@@ -132,6 +132,8 @@ const ReadOnlyField = ({ label, value, fullWidth }) => (
       border: "1px solid #e8edf3",
       minHeight: "34px",
       display: "flex", alignItems: "center",
+      wordBreak: "break-all",
+      overflowWrap: "anywhere",
     }}>
       {value || <span style={{ color: "#c0c9d4" }}>---</span>}
     </span>
@@ -537,12 +539,13 @@ const PendingRentalRequests = () => {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.8rem", marginBottom: "0.8rem" }}>
           <ContractSection title="Bên A — Cho thuê" icon="business" accent="#2563eb">
             <ReadOnlyField label="Họ và tên" value={req.ownerName} />
-            <ReadOnlyField label="Email" value={req.ownerEmail} />
-            <ReadOnlyField label="Số điện thoại" value={req.ownerPhone} fullWidth />
+            <ReadOnlyField label="Số điện thoại" value={req.ownerPhone} />
+            <ReadOnlyField label="Email" value={req.ownerEmail} fullWidth />
           </ContractSection>
           <ContractSection title="Bên B — Người thuê" icon="person" accent="#7c3aed">
             <ReadOnlyField label="Họ và tên" value={req.renterName} />
-            <ReadOnlyField label="Email" value={req.renterEmail} />
+            <ReadOnlyField label="Số điện thoại" value={req.renterPhone} />
+            <ReadOnlyField label="Email" value={req.renterEmail} fullWidth />
           </ContractSection>
         </div>
 
