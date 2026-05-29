@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../services/axiosClient";
 import authService from "../services/authService";
+import { useToast } from "../context/ToastContext";
 
 // ── Palette ──────────────────────────────────────────────────────────────────
 const C = {
@@ -188,6 +189,7 @@ function ShiftCard({ shift, onDelete, onEdit }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CreateShiftPage() {
+  const { showToast } = useToast();
   const ctx = authService.getWarehouseContext();
   const warehouses = ctx?.warehouses || [];
 
@@ -271,7 +273,7 @@ export default function CreateShiftPage() {
 
   const handleEdit = async (id, updatedForm) => {
     if (!updatedForm.name.trim() || !updatedForm.startTime || !updatedForm.endTime) {
-      alert("Vui lòng điền đầy đủ thông tin ca làm.");
+      showToast("Vui lòng điền đầy đủ thông tin ca làm.", "warning");
       return;
     }
     setSaving(true);

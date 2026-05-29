@@ -34,6 +34,25 @@ const RenterInventoryPage = () => {
   const [warehouses, setWarehouses] = useState([]);       // [{id, name}]
   const [activeWh,   setActiveWh]   = useState('');       // '' = tất cả
   const [locationItem, setLocationItem] = useState(null); // Item for the modal
+  const [toast,        setToast]        = useState(null);
+
+  const showToast = (msg, isError=false) => {
+    setToast({ msg, isError });
+    setTimeout(()=>setToast(null), 4000);
+  };
+
+  const handleDelete = async (row) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa mặt hàng "${row.assetName}" khỏi danh sách tồn kho?`)) {
+      return;
+    }
+    try {
+      await renterAssetService.deleteInventory(row.inventoryId);
+      showToast(`Đã xóa "${row.assetName}" khỏi danh sách tồn kho thành công!`);
+      fetchInventory();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Có lỗi xảy ra khi xóa mặt hàng.', true);
+    }
+  };
 
   /* Load warehouse list from active contracts */
   useEffect(() => {
@@ -89,7 +108,7 @@ const RenterInventoryPage = () => {
       style={{ fontFamily:'Inter, sans-serif', maxWidth:1060, margin:'0 auto', paddingBottom:48 }}>
       <style>{`
         @keyframes spin  { to { transform:rotate(360deg); } }
-        @keytml slide-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slide-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         .inv-row:hover   { background:#f8faff !important; }
       `}</style>
 
@@ -102,6 +121,13 @@ const RenterInventoryPage = () => {
           Danh sách hàng hoá đang lưu trữ tại các kho bạn đang thuê. Cập nhật tự động sau mỗi lần yêu cầu được xác nhận.
         </p>
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div style={{ marginBottom:20, padding:'12px 18px', borderRadius:12, background: toast.isError?'#fee2e2':'#dcfce7', border:`1px solid ${toast.isError?'#fecaca':'#bbf7d0'}`, display:'flex', alignItems:'center', gap:10, animation:'slide-in 0.25s ease' }}>
+          <span style={{ fontSize:'0.87rem', fontWeight:600, color: toast.isError?'#991b1b':'#166534' }}>{toast.msg}</span>
+        </div>
+      )}
 
       {/* ── Stat Cards ── */}
       <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:14, marginBottom:24 }}>
@@ -191,7 +217,7 @@ const RenterInventoryPage = () => {
             <table style={{ width:'100%', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#f8fafc' }}>
-                  {[['Hàng hóa', 'auto'], ['Đơn vị', '100px'], ['Kho lưu trữ', '150px'], ['Số lượng', '120px', 'center'], ['Cập nhật', '110px'], ['', '100px']].map(([h, w, align])=>(
+                  {[['Hàng hóa', 'auto'], ['Đơn vị', '100px'], ['Kho lưu trữ', '150px'], ['Số lượng', '120px', 'center'], ['Cập nhật', '110px'], ['', '125px']].map(([h, w, align])=>(
                     <th key={h} style={{ padding:'11px 16px', textAlign:align||'left', fontSize:'0.68rem', fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', textTransform:'uppercase', width:w }}>
                       {h}
                     </th>
@@ -255,6 +281,17 @@ const RenterInventoryPage = () => {
                         >
                           <span className="material-symbols-outlined" style={{ fontSize:'1.2rem' }}>output</span>
                         </button>
+                        {row.quantity === 0 && (
+                          <button 
+                            onClick={() => handleDelete(row)}
+                            title="Xóa hàng hóa khỏi danh sách tồn kho"
+                            style={{ border:'none', background:'none', cursor:'pointer', color:'#ef4444', display:'inline-flex', alignItems:'center', justifyContent:'center', padding:6, borderRadius:'50%', transition:'background 0.2s' }}
+                            onMouseEnter={e => e.currentTarget.style.background='#fee2e2'}
+                            onMouseLeave={e => e.currentTarget.style.background='none'}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize:'1.2rem' }}>delete</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -1,8 +1,10 @@
 import React, { useState, useRef } from "react";
 import rentalService from "../services/rentalService";
 import SignatureCanvas from "./SignatureCanvas";
+import { useToast } from "../context/ToastContext";
 
 const ContractSigningModal = ({ contract, onClose, onSignSuccess, isOwner = false }) => {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const signatureCanvasRef = useRef(null);
@@ -25,7 +27,7 @@ const ContractSigningModal = ({ contract, onClose, onSignSuccess, isOwner = fals
         await rentalService.signContract(contract.contractId, signatureBase64);
       }
       
-      alert("Hợp đồng đã được ký thành công!");
+      showToast("Hợp đồng đã được ký thành công!", "success");
       onSignSuccess?.();
       onClose();
     } catch (err) {

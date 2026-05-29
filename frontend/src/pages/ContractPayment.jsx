@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
 import contractExtensionService from "../services/contractExtensionService";
@@ -15,6 +16,7 @@ const formatCurrency = (amount) => {
 const ContractPayment = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const location = useLocation();
   const purpose = new URLSearchParams(location.search).get("purpose");
   const extensionId = new URLSearchParams(location.search).get("extensionId");
@@ -220,7 +222,7 @@ const ContractPayment = () => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    alert("Đã sao chép!");
+    showToast("Đã sao chép!", "success");
   };
 
   if (loading) {
@@ -316,7 +318,7 @@ const ContractPayment = () => {
                 }
               }}
               onRetryError={(error) => {
-                alert(error);
+                showToast(error, "error");
               }}
               className="mt-2"
             />

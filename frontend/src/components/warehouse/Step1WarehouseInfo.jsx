@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
+import { useToast } from "../../context/ToastContext";
 
 const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || "";
 
@@ -39,6 +40,7 @@ const ClickHandler = ({ onMapClick }) => {
 
 // ─────────────────────────────────────────────────────────────
 const Step1WarehouseInfo = ({ formData, handleChange, handleSubmit, setLatLng }) => {
+  const { showToast } = useToast();
   const [geocoding, setGeocoding] = useState(false);
   const isMapClickRef = useRef(false);
 
@@ -87,7 +89,7 @@ const Step1WarehouseInfo = ({ formData, handleChange, handleSubmit, setLatLng })
 
   // Lấy vị trí hiện tại
   const handleGetCurrentLocation = () => {
-    if (!navigator.geolocation) { alert("Trình duyệt không hỗ trợ định vị."); return; }
+    if (!navigator.geolocation) { showToast("Trình duyệt không hỗ trợ định vị.", "warning"); return; }
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         isMapClickRef.current = true;
@@ -95,7 +97,7 @@ const Step1WarehouseInfo = ({ formData, handleChange, handleSubmit, setLatLng })
         reverseGeocode(coords.latitude, coords.longitude);
         setTimeout(() => { isMapClickRef.current = false; }, 2000);
       },
-      () => alert("Không thể lấy vị trí. Vui lòng cấp quyền hoặc nhập thủ công.")
+      () => showToast("Không thể lấy vị trí. Vui lòng cấp quyền hoặc nhập thủ công.", "warning")
     );
   };
 

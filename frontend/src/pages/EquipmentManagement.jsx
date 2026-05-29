@@ -8,6 +8,7 @@ import authService from '../services/authService';
 import subscriptionService from '../services/subscriptionService';
 import { Modal, Result, Button, Spin } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 
 const COLORS = {
   primary: '#00b2d6',
@@ -26,6 +27,7 @@ const EquipmentManagement = () => {
   const [searchParams] = useSearchParams();
   const warehouseIdParam = searchParams.get('warehouseId');
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const [subStatus, setSubStatus] = useState(null);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -184,10 +186,10 @@ const EquipmentManagement = () => {
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     // Frontend validation
-    if (!formData.name?.trim()) { alert('Tên thiết bị không được để trống'); return; }
-    if (formData.name.trim().length > 100) { alert('Tên thiết bị không được vượt quá 100 ký tự'); return; }
+    if (!formData.name?.trim()) { showToast('Tên thiết bị không được để trống', 'warning'); return; }
+    if (formData.name.trim().length > 100) { showToast('Tên thiết bị không được vượt quá 100 ký tự', 'warning'); return; }
     if (formData.maintenanceCycleDays && (parseInt(formData.maintenanceCycleDays) < 1 || parseInt(formData.maintenanceCycleDays) > 3650)) {
-      alert('Chu kỳ bảo trì phải từ 1 đến 3650 ngày'); return;
+      showToast('Chu kỳ bảo trì phải từ 1 đến 3650 ngày', 'warning'); return;
     }
     try {
       const payload = {
@@ -200,18 +202,19 @@ const EquipmentManagement = () => {
       setShowAddModal(false);
       resetFormData();
       fetchEquipments();
+      showToast('Thêm thiết bị thành công!', 'success');
     } catch (err) {
-      alert('Thêm thiết bị thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || 'Có lỗi xảy ra'));
+      showToast('Thêm thiết bị thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || 'Có lỗi xảy ra'), 'error');
     }
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     // Frontend validation
-    if (!formData.name?.trim()) { alert('Tên thiết bị không được để trống'); return; }
-    if (formData.name.trim().length > 100) { alert('Tên thiết bị không được vượt quá 100 ký tự'); return; }
+    if (!formData.name?.trim()) { showToast('Tên thiết bị không được để trống', 'warning'); return; }
+    if (formData.name.trim().length > 100) { showToast('Tên thiết bị không được vượt quá 100 ký tự', 'warning'); return; }
     if (formData.maintenanceCycleDays && (parseInt(formData.maintenanceCycleDays) < 1 || parseInt(formData.maintenanceCycleDays) > 3650)) {
-      alert('Chu kỳ bảo trì phải từ 1 đến 3650 ngày'); return;
+      showToast('Chu kỳ bảo trì phải từ 1 đến 3650 ngày', 'warning'); return;
     }
     try {
       const payload = {
@@ -222,8 +225,9 @@ const EquipmentManagement = () => {
       await equipmentService.updateEquipment(currentEquipment.equipmentId, payload);
       setShowEditModal(false);
       fetchEquipments();
+      showToast('Cập nhật thiết bị thành công!', 'success');
     } catch (err) {
-      alert('Cập nhật thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || 'Có lỗi xảy ra'));
+      showToast('Cập nhật thất bại: ' + (err.response?.data?.message || err.response?.data?.errors?.[0] || 'Có lỗi xảy ra'), 'error');
     }
   };
 
@@ -237,8 +241,9 @@ const EquipmentManagement = () => {
       });
       setShowStatusModal(false);
       fetchEquipments();
+      showToast('Cập nhật trạng thái thành công!', 'success');
     } catch (err) {
-      alert('Cập nhật trạng thái thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
+      showToast('Cập nhật trạng thái thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'), 'error');
     }
   };
 
@@ -247,8 +252,9 @@ const EquipmentManagement = () => {
     try {
       await equipmentService.deleteEquipment(id);
       fetchEquipments();
+      showToast('Xóa thiết bị thành công!', 'success');
     } catch (err) {
-      alert('Xóa thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
+      showToast('Xóa thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'), 'error');
     }
   };
 
@@ -269,9 +275,9 @@ const EquipmentManagement = () => {
       setShowReportModal(false);
       setReportData({ title: '', description: '', severity: 'MEDIUM', attachments: [], selectedFiles: [] });
       fetchIncidents();
-      alert('Đã gửi báo cáo sự cố thành công.');
+      showToast('Đã gửi báo cáo sự cố thành công.', 'success');
     } catch (err) {
-      alert('Gửi báo cáo thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
+      showToast('Gửi báo cáo thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'), 'error');
     } finally {
       setIsUploading(false);
     }
@@ -284,7 +290,7 @@ const EquipmentManagement = () => {
       setSelectedIncident(detail);
       setShowIncidentModal(true);
     } catch (err) {
-      alert('Không thể tải chi tiết sự cố.');
+      showToast('Không thể tải chi tiết sự cố.', 'error');
     } finally {
       setIncidentLoading(false);
     }
@@ -298,9 +304,9 @@ const EquipmentManagement = () => {
       setSelectedIncident(detail);
       fetchIncidents();
       fetchEquipments();
-      alert('Cập nhật trạng thái thành công.');
+      showToast('Cập nhật trạng thái thành công.', 'success');
     } catch (err) {
-      alert('Cập nhật thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
+      showToast('Cập nhật thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'), 'error');
     }
   };
 
@@ -313,17 +319,18 @@ const EquipmentManagement = () => {
       // Refresh details
       const detail = await equipmentIncidentService.getIncidentById(selectedIncident.id);
       setSelectedIncident(detail);
+      showToast('Gửi phản hồi thành công!', 'success');
     } catch (err) {
-      alert('Gửi phản hồi thất bại.');
+      showToast('Gửi phản hồi thất bại.', 'error');
     }
   };
 
   const handleControl = async (id, command) => {
     try {
       const res = await equipmentService.controlEquipment(id, command);
-      alert(res.message);
+      showToast(res.message, 'success');
     } catch (err) {
-      alert('Điều khiển thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'));
+      showToast('Điều khiển thất bại: ' + (err.response?.data?.message || 'Có lỗi xảy ra'), 'error');
     }
   };
 
@@ -603,7 +610,7 @@ const EquipmentManagement = () => {
                           disabled={device.status === 'IN_USE'}
                           onClick={() => {
                             if (device.status === 'IN_USE') {
-                              alert("Không thể sửa thiết bị đang IN_USE");
+                              showToast("Không thể sửa thiết bị đang IN_USE", "warning");
                               return;
                             }
                             setCurrentEquipment(device);

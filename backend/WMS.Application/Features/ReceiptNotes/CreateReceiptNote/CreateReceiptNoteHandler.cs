@@ -74,6 +74,28 @@ public class CreateReceiptNoteHandler
                 $"Chỉ có thể tạo phiếu nhập khi yêu cầu ở trạng thái CONFIRMED, ASSIGNED hoặc RECEIVING. " +
                 $"Trạng thái hiện tại: '{req.Status}'.");
 
+        // 2b. Kiểm tra nếu yêu cầu đã được lập phiếu đầy đủ số lượng trong các phiếu trước đó
+        var existingNotes = await _receiptRepo.GetByRequestIdAsync(cmd.InvReqId, ct);
+        var receivedTotals = new Dictionary<int, int>();
+        foreach (var noteItem in existingNotes)
+        {
+            foreach (var item in noteItem.ReceiptItems)
+            {
+                if (item.InventoryItemId.HasValue)
+                {
+                    receivedTotals[item.InventoryItemId.Value] = 
+                        receivedTotals.GetValueOrDefault(item.InventoryItemId.Value) + item.ReceivedQuantity;
+                }
+            }
+        }
+
+        bool isFullyFulfilled = req.InventoryItems.Count > 0 && req.InventoryItems.All(i => 
+            receivedTotals.GetValueOrDefault(i.ItemId) >= i.Quantity);
+
+        if (isFullyFulfilled)
+            throw new InvalidOperationException(
+                "Yêu cầu này đã được lập phiếu đầy đủ số lượng trong các phiếu trước đó.");
+
         // 3. Sinh mã phiếu (ReceiptCode)
         var noteCount = await _receiptRepo.CountByRequestIdAsync(cmd.InvReqId, ct);
         var suffix = (char)('A' + noteCount);  // A, B, C, D...

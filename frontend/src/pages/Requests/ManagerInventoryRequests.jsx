@@ -436,8 +436,6 @@ const ManagerInventoryRequests = () => {
     { key:'',          label:'Tất cả' },
     { key:'PENDING',   label:'Chờ tiếp nhận',   ...STATUS_MAP.PENDING   },
     { key:'CONFIRMED', label:'Chờ xử lý tại kho',   ...STATUS_MAP.CONFIRMED },
-    { key:'ASSIGNED',  label:'Đã giao việc',    ...STATUS_MAP.ASSIGNED  },
-    { key:'RECEIVING', label:'Đang tiếp nhận', ...STATUS_MAP.RECEIVING },
     { key:'COMPLETED', label:'Hoàn thành', ...STATUS_MAP.COMPLETED },
     { key:'REJECTED',  label:'Từ chối',    ...STATUS_MAP.REJECTED  },
   ];

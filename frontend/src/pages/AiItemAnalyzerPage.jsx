@@ -32,6 +32,18 @@ const StarIcon = ({ filled }) => (
   </svg>
 );
 
+const translateSpecialNotes = (notes) => {
+  if (!notes) return notes;
+  const lower = notes.toLowerCase().trim();
+  if (lower === "none" || lower === "null" || lower === "no special notes" || lower === "no special notes.") {
+    return null;
+  }
+  if (lower.includes("estimated dimensions used for") || lower.includes("estimated dimensions")) {
+    return "Kích thước ước tính được sử dụng cho tủ âm tường, kệ nổi và một số đồ trang trí không được liệt kê rõ ràng trong bảng kích thước.";
+  }
+  return notes;
+};
+
 // ─── Styles (CSS-in-JS) ────────────────────────────────────────────────────────
 const styles = {
   page: {
@@ -289,6 +301,9 @@ export default function AiItemAnalyzerPage() {
   const [filterMinArea, setFilterMinArea] = useState("");
   const [filterFacilities, setFilterFacilities] = useState([]); // Array of strings: "cold", "247", "container", "pccc"
   const [filterSortBy, setFilterSortBy] = useState("ai_score"); // "ai_score" | "distance" | "price_asc" | "rating_desc"
+  const [showDetails, setShowDetails] = useState(false);
+  const [isCustomPrice, setIsCustomPrice] = useState(false);
+  const [isCustomArea, setIsCustomArea] = useState(false);
 
   // Load quota on mount
   useEffect(() => {
@@ -483,6 +498,14 @@ export default function AiItemAnalyzerPage() {
   };
 
   const goToWarehouse = (wh) => {
+    if (result) {
+      localStorage.setItem("recent_ai_analysis", JSON.stringify({
+        items: result.items || [],
+        totalVolumeM3: result.totalVolumeM3 || 0,
+        specialNotes: result.specialNotes || null,
+        timestamp: Date.now()
+      }));
+    }
     navigate(`/warehouse/${wh.warehouseId}`, {
       state: {
         fromAi: true,
@@ -609,13 +632,17 @@ export default function AiItemAnalyzerPage() {
     // 2. Filter by Max Price
     if (filterMaxPrice) {
       const maxPrice = parseFloat(filterMaxPrice);
-      list = list.filter(w => w.pricePerM2 !== null && w.pricePerM2 !== undefined && w.pricePerM2 <= maxPrice);
+      if (!isNaN(maxPrice) && maxPrice >= 0) {
+        list = list.filter(w => w.pricePerM2 !== null && w.pricePerM2 !== undefined && w.pricePerM2 <= maxPrice);
+      }
     }
     
     // 3. Filter by Min Area
     if (filterMinArea) {
       const minArea = parseFloat(filterMinArea);
-      list = list.filter(w => w.availableArea !== null && w.availableArea !== undefined && w.availableArea >= minArea);
+      if (!isNaN(minArea) && minArea >= 0) {
+        list = list.filter(w => w.availableArea !== null && w.availableArea !== undefined && w.availableArea >= minArea);
+      }
     }
     
     // 4. Filter by Facilities
@@ -683,6 +710,8 @@ export default function AiItemAnalyzerPage() {
     setFilterSortBy("ai_score");
     setProvince("");
     setDistrict("");
+    setIsCustomPrice(false);
+    setIsCustomArea(false);
   };
 
   const getScoreColor = (score) => {
@@ -861,23 +890,80 @@ export default function AiItemAnalyzerPage() {
             {/* Cột 2: Ngân sách & Diện tích */}
             <div style={styles.filterItem}>
               <span style={styles.label}>Giá thuê tối đa (₫/m²)</span>
-              <input
-                type="number"
-                min="0"
-                style={{ ...styles.input, marginBottom: 12 }}
-                placeholder="Nhập giá tối đa (VD: 80000)"
-                value={filterMaxPrice}
-                onChange={e => setFilterMaxPrice(e.target.value)}
-              />
+              <select
+                value={isCustomPrice ? "custom" : filterMaxPrice}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val === "custom") {
+                    setIsCustomPrice(true);
+                    setFilterMaxPrice("");
+                  } else {
+                    setIsCustomPrice(false);
+                    setFilterMaxPrice(val);
+                  }
+                }}
+                style={{ ...styles.input, marginBottom: isCustomPrice ? 8 : 12 }}
+              >
+                <option value="">Tất cả mức giá</option>
+                <option value="40000">Dưới 40.000 ₫/m²</option>
+                <option value="60000">Dưới 60.000 ₫/m²</option>
+                <option value="80000">Dưới 80.000 ₫/m²</option>
+                <option value="100000">Dưới 100.000 ₫/m²</option>
+                <option value="150000">Dưới 150.000 ₫/m²</option>
+                <option value="200000">Dưới 200.000 ₫/m²</option>
+                <option value="custom">Nhập số khác...</option>
+              </select>
+              {isCustomPrice && (
+                <input
+                  type="number"
+                  min="0"
+                  style={{ ...styles.input, marginBottom: 12 }}
+                  placeholder="Nhập giá tối đa (VD: 85000)"
+                  value={filterMaxPrice}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFilterMaxPrice(val);
+                  }}
+                />
+              )}
+
               <span style={styles.label}>Diện tích tối thiểu (m²)</span>
-              <input
-                type="number"
-                min="0"
-                style={styles.input}
-                placeholder="Nhập diện tích tối thiểu"
-                value={filterMinArea}
-                onChange={e => setFilterMinArea(e.target.value)}
-              />
+              <select
+                value={isCustomArea ? "custom" : filterMinArea}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val === "custom") {
+                    setIsCustomArea(true);
+                    setFilterMinArea("");
+                  } else {
+                    setIsCustomArea(false);
+                    setFilterMinArea(val);
+                  }
+                }}
+                style={{ ...styles.input, marginBottom: isCustomArea ? 8 : 0 }}
+              >
+                <option value="">Tất cả diện tích</option>
+                <option value="20">Từ 20 m² trở lên</option>
+                <option value="50">Từ 50 m² trở lên</option>
+                <option value="100">Từ 100 m² trở lên</option>
+                <option value="200">Từ 200 m² trở lên</option>
+                <option value="500">Từ 500 m² trở lên</option>
+                <option value="1000">Từ 1000 m² trở lên</option>
+                <option value="custom">Nhập số khác...</option>
+              </select>
+              {isCustomArea && (
+                <input
+                  type="number"
+                  min="0"
+                  style={{ ...styles.input, marginTop: 8 }}
+                  placeholder="Nhập diện tích tối thiểu"
+                  value={filterMinArea}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setFilterMinArea(val);
+                  }}
+                />
+              )}
             </div>
 
             {/* Cột 3: Sắp xếp & Tiện ích */}
@@ -947,19 +1033,41 @@ export default function AiItemAnalyzerPage() {
 
             {/* AI Analysis card */}
             <div style={styles.card}>
-              <div style={styles.cardTitle}>
-                Kết Quả Phân Tích AI
+              <div style={{ ...styles.cardTitle, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <span>Kết Quả Phân Tích AI</span>
+                <button
+                  type="button"
+                  onClick={() => setShowDetails(!showDetails)}
+                  style={{
+                    background: showDetails ? "rgba(99,102,241,0.2)" : "rgba(148,163,184,0.1)",
+                    border: "1px solid rgba(99,102,241,0.35)",
+                    color: showDetails ? "#a78bfa" : "#94a3b8",
+                    padding: "6px 14px",
+                    borderRadius: 10,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {showDetails ? "✕ Ẩn chi tiết kích thước" : "⚙️ Chỉnh sửa chi tiết"}
+                </button>
               </div>
 
               <table style={{ ...styles.table, fontSize: 13 }}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>Dố Vật</th>
+                    <th style={styles.th}>Đồ vật</th>
                     <th style={styles.th}>Số Lượng</th>
-                    <th style={{ ...styles.th, color: "#60a5fa" }}>Rộng (m)</th>
-                    <th style={{ ...styles.th, color: "#34d399" }}>Dài (m)</th>
-                    <th style={{ ...styles.th, color: "#f59e0b" }}>Cao (m)</th>
-                    <th style={{ ...styles.th, color: "#a78bfa" }}>diện tích/cái (m²)</th>
+                    {showDetails && (
+                      <>
+                        <th style={{ ...styles.th, color: "#60a5fa" }}>Rộng (m)</th>
+                        <th style={{ ...styles.th, color: "#34d399" }}>Dài (m)</th>
+                        <th style={{ ...styles.th, color: "#f59e0b" }}>Cao (m)</th>
+                        <th style={{ ...styles.th, color: "#a78bfa" }}>diện tích/cái (m²)</th>
+                      </>
+                    )}
                     <th style={{ ...styles.th, color: "#818cf8" }}>Tổng (m²)</th>
                     <th style={{ ...styles.th, width: 40 }}></th>
                   </tr>
@@ -985,37 +1093,38 @@ export default function AiItemAnalyzerPage() {
                             background: "rgba(15,23,42,0.4)", color: "#fff", outline: "none", fontFamily: "inherit" }}
                         />
                       </td>
-                      {/* Chiều rộng */}
-                      <td style={styles.td}>
-                        <input type="number" min="0" step="0.01" value={item.widthM ?? ""}
-                          onChange={(e) => handleDimChange(i, "widthM", e.target.value)}
-                          style={{ width: 64, padding: "5px 7px", borderRadius: 6,
-                            border: "1px solid rgba(96,165,250,0.4)",
-                            background: "rgba(15,23,42,0.4)", color: "#93c5fd", outline: "none", fontFamily: "inherit" }}
-                        />
-                      </td>
-                      {/* Chiều dài */}
-                      <td style={styles.td}>
-                        <input type="number" min="0" step="0.01" value={item.lengthM ?? ""}
-                          onChange={(e) => handleDimChange(i, "lengthM", e.target.value)}
-                          style={{ width: 64, padding: "5px 7px", borderRadius: 6,
-                            border: "1px solid rgba(52,211,153,0.4)",
-                            background: "rgba(15,23,42,0.4)", color: "#6ee7b7", outline: "none", fontFamily: "inherit" }}
-                        />
-                      </td>
-                      {/* Chiều cao */}
-                      <td style={styles.td}>
-                        <input type="number" min="0" step="0.01" value={item.heightM ?? ""}
-                          onChange={(e) => handleDimChange(i, "heightM", e.target.value)}
-                          style={{ width: 64, padding: "5px 7px", borderRadius: 6,
-                            border: "1px solid rgba(245,158,11,0.4)",
-                            background: "rgba(15,23,42,0.4)", color: "#fcd34d", outline: "none", fontFamily: "inherit" }}
-                        />
-                      </td>
-                      {/* diện tích/cái (auto) */}
-                      <td style={{ ...styles.td, color: "#c4b5fd", fontWeight: 600 }}>
-                        {(item.estimatedVolumeM3 || 0).toFixed(3)}
-                      </td>
+                      {/* Chiều rộng, dài, cao, volume */}
+                      {showDetails && (
+                        <>
+                          <td style={styles.td}>
+                            <input type="number" min="0" step="0.01" value={item.widthM ?? ""}
+                              onChange={(e) => handleDimChange(i, "widthM", e.target.value)}
+                              style={{ width: 64, padding: "5px 7px", borderRadius: 6,
+                                border: "1px solid rgba(96,165,250,0.4)",
+                                background: "rgba(15,23,42,0.4)", color: "#93c5fd", outline: "none", fontFamily: "inherit" }}
+                            />
+                          </td>
+                          <td style={styles.td}>
+                            <input type="number" min="0" step="0.01" value={item.lengthM ?? ""}
+                              onChange={(e) => handleDimChange(i, "lengthM", e.target.value)}
+                              style={{ width: 64, padding: "5px 7px", borderRadius: 6,
+                                border: "1px solid rgba(52,211,153,0.4)",
+                                background: "rgba(15,23,42,0.4)", color: "#6ee7b7", outline: "none", fontFamily: "inherit" }}
+                            />
+                          </td>
+                          <td style={styles.td}>
+                            <input type="number" min="0" step="0.01" value={item.heightM ?? ""}
+                              onChange={(e) => handleDimChange(i, "heightM", e.target.value)}
+                              style={{ width: 64, padding: "5px 7px", borderRadius: 6,
+                                border: "1px solid rgba(245,158,11,0.4)",
+                                background: "rgba(15,23,42,0.4)", color: "#fcd34d", outline: "none", fontFamily: "inherit" }}
+                            />
+                          </td>
+                          <td style={{ ...styles.td, color: "#c4b5fd", fontWeight: 600 }}>
+                            {(item.estimatedVolumeM3 || 0).toFixed(3)}
+                          </td>
+                        </>
+                      )}
                       {/* Tổng */}
                       <td style={{ ...styles.td, fontWeight: 700, color: "#a78bfa" }}>
                         {((item.estimatedVolumeM3 || 0) * (item.quantity === "" ? 0 : (item.quantity || 0))).toFixed(2)}
@@ -1037,15 +1146,23 @@ export default function AiItemAnalyzerPage() {
                     <td style={{ ...styles.td, fontWeight: 700, color: "#e2e8f0" }}>
                       {result.items?.reduce((acc, curr) => acc + (curr.quantity === "" ? 0 : (curr.quantity || 0)), 0) || 0}
                     </td>
-                    <td style={styles.td}></td>
-                    <td style={styles.td}></td>
-                    <td style={styles.td}></td>
-                    <td style={styles.td}></td>
+                    {showDetails && (
+                      <>
+                        <td style={styles.td}></td>
+                        <td style={styles.td}></td>
+                        <td style={styles.td}></td>
+                        <td style={styles.td}></td>
+                      </>
+                    )}
                     <td style={{ ...styles.td, fontWeight: 800, fontSize: 17, color: "#818cf8" }}>{result.totalVolumeM3} m²</td>
                     <td style={styles.td}></td>
                   </tr>
                 </tbody>
               </table>
+
+              <div style={{ marginTop: 12, fontSize: 12, color: "#94a3b8", fontStyle: "italic", lineHeight: 1.5 }}>
+                (*) Diện tích trên là ước tính cộng dồn. Trong thực tế, khi tháo lắp và xếp chồng khoa học, diện tích chiếm dụng thực tế tại kho có thể tối ưu hơn 20% - 30%.
+              </div>
 
               {/* Add item button */}
               <button
@@ -1072,10 +1189,10 @@ export default function AiItemAnalyzerPage() {
                   <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Loại kho gợi ý</div>
                   <span style={styles.tag("purple")}>{result.suggestedWarehouseType}</span>
                 </div>
-                {result.specialNotes && (
+                {translateSpecialNotes(result.specialNotes) && (
                   <div style={{ flex: 2, minWidth: 260 }}>
                     <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>Lưu ý từ AI</div>
-                    <div style={{ fontSize: 14, color: "#fbbf24" }}>{result.specialNotes}</div>
+                    <div style={{ fontSize: 14, color: "#fbbf24" }}>{translateSpecialNotes(result.specialNotes)}</div>
                   </div>
                 )}
                 <div style={{ flex: 1, minWidth: 200 }}>

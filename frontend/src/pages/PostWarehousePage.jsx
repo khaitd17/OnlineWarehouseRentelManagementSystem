@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useToast } from '../context/ToastContext';
 
 const PostWarehousePage = () => {
+  const { showToast } = useToast();
   const [step, setStep] = useState(1);
 
   const renderStep = () => {
@@ -131,7 +133,7 @@ const PostWarehousePage = () => {
             Quay lại
           </button>
           <button 
-            onClick={() => step < 3 ? setStep(s => s + 1) : alert('Tin đăng của bạn đã được gửi!')}
+            onClick={() => step < 3 ? setStep(s => s + 1) : showToast('Tin đăng của bạn đã được gửi!', 'success')}
             style={{ 
               padding: '0.8rem 2.5rem', 
               borderRadius: '10px', 

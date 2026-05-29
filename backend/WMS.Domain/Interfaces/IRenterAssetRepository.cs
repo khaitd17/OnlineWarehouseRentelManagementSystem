@@ -56,6 +56,15 @@ public interface IRenterAssetRepository
     /// = SUM(quantity * volumePerUnit) từ renter_inventory JOIN renter_assets.
     /// </summary>
     Task<decimal> GetUsedAreaAsync(int renterId, int warehouseId, CancellationToken ct);
+    /// <summary>
+    /// Lấy bản ghi tồn kho theo Id.
+    /// </summary>
+    Task<RenterInventory?> GetInventoryByIdAsync(int inventoryId, CancellationToken ct);
+
+    /// <summary>
+    /// Xóa bản ghi tồn kho khỏi cơ sở dữ liệu.
+    /// </summary>
+    Task DeleteInventoryAsync(RenterInventory inv, CancellationToken ct);
 }
 
 public record RenterInventoryRowDto

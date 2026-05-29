@@ -20,7 +20,7 @@ public class SubmitWarehouseHandler : IRequestHandler<SubmitWarehouseCommand>
         if (warehouse.OwnerId != request.RequestUserId)
             throw new UnauthorizedAccessException("You are not the owner of this warehouse");
 
-        if (warehouse.Status != "HIDDEN" && warehouse.Status != "DRAFT")
+        if (warehouse.Status != "HIDDEN" && warehouse.Status != "DRAFT" && warehouse.Status != "REJECTED")
             throw new Exception("Warehouse cannot be submitted in its current status");
 
         warehouse.Status = "PENDING";

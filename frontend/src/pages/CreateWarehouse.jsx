@@ -20,6 +20,12 @@ const CreateWarehouse = () => {
   const [step, setStep] = useState(1);
   const [warehouseId, setWarehouseId] = useState(null);
   const [loadingDraft, setLoadingDraft] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
 
   const [formData, setFormData] = useState({
     name: "",
@@ -117,33 +123,33 @@ const CreateWarehouse = () => {
   const handleStep1Submit = async (e) => {
     e.preventDefault();
     // Frontend validation matching backend CreateWarehouseValidator rules
-    if (!formData.name?.trim()) { alert('Tên kho không được để trống'); return; }
-    if (formData.name.trim().length > 255) { alert('Tên kho không được vượt quá 255 ký tự'); return; }
-    if (!formData.address?.trim()) { alert('Địa chỉ không được để trống'); return; }
+    if (!formData.name?.trim()) { showToast('Tên kho không được để trống', 'error'); return; }
+    if (formData.name.trim().length > 255) { showToast('Tên kho không được vượt quá 255 ký tự', 'error'); return; }
+    if (!formData.address?.trim()) { showToast('Địa chỉ không được để trống', 'error'); return; }
     const totalArea = parseFloat(formData.totalArea);
     if (!formData.totalArea || isNaN(totalArea) || totalArea <= 0 || totalArea > 200000) {
-      alert('Diện tích sàn kho phải từ 1 đến 200,000 m²'); return;
+      showToast('Diện tích sàn kho phải từ 1 đến 200,000 m²', 'error'); return;
     }
     const height = parseFloat(formData.height);
     if (!formData.height || isNaN(height) || height <= 0 || height > 50) {
-      alert('Chiều cao kho phải từ 0.1 đến 50 m'); return;
+      showToast('Chiều cao kho phải từ 0.1 đến 50 m', 'error'); return;
     }
     const price = parseFloat(formData.pricePerM2);
     if (formData.pricePerM2 && !isNaN(price) && (price < 1000 || price > 100000000)) {
-      alert('Giá thuê phải từ 1,000 đến 100,000,000 VNĐ/m²/tháng'); return;
+      showToast('Giá thuê phải từ 1,000 đến 100,000,000 VNĐ/m²/tháng', 'error'); return;
     }
     if (formData.lat && (parseFloat(formData.lat) < -90 || parseFloat(formData.lat) > 90)) {
-      alert('Vĩ độ phải từ -90 đến 90'); return;
+      showToast('Vĩ độ phải từ -90 đến 90', 'error'); return;
     }
     if (formData.lng && (parseFloat(formData.lng) < -180 || parseFloat(formData.lng) > 180)) {
-      alert('Kinh độ phải từ -180 đến 180'); return;
+      showToast('Kinh độ phải từ -180 đến 180', 'error'); return;
     }
     if (!formData.is24HoursAccess) {
       if (!formData.openTime || !formData.closeTime) {
-        alert('Vui lòng nhập giờ mở cửa và giờ đóng cửa'); return;
+        showToast('Vui lòng nhập giờ mở cửa và giờ đóng cửa', 'error'); return;
       }
       if (formData.openTime >= formData.closeTime) {
-        alert('Giờ mở cửa phải trước giờ đóng cửa'); return;
+        showToast('Giờ mở cửa phải trước giờ đóng cửa', 'error'); return;
       }
     }
     try {
@@ -180,7 +186,7 @@ const CreateWarehouse = () => {
         || (typeof rd === 'string' ? rd : null)
         || error?.message
         || "Có lỗi khi lưu bản nháp";
-      alert(msg);
+      showToast(msg, 'error');
     }
   };
 
@@ -188,7 +194,6 @@ const CreateWarehouse = () => {
     setStep(4); // After docs, go to floor plan drawing
   };
 
-  // Save floor plan (step 4) and move to done
   const handleFloorPlanSave = async (jsonString, gateString) => {
     try {
       // Thử PATCH trước (endpoint nhẹ)
@@ -223,7 +228,23 @@ const CreateWarehouse = () => {
       setBoundaryJson(jsonString);
       setStep(5); // Done
     } catch (err) {
-      alert('Lỗi khi lưu sơ đồ: ' + (err.response?.data?.message || err.message));
+      showToast('Lỗi khi lưu sơ đồ: ' + (err.response?.data?.message || err.message), 'error');
+    }
+  };
+
+  const handleFloorPlanSkip = async () => {
+    try {
+      // Xóa mọi sơ đồ nháp và cổng nếu chủ kho chọn bỏ qua vẽ sơ đồ
+      try {
+        await api.patch(`/Warehouse/${warehouseId}/boundary`, { boundaryPoints: "", gatePosition: "", clearGrid: true });
+      } catch (err) {
+        console.warn("Could not clear boundary layout:", err);
+      }
+      setBoundaryJson(null);
+      setStep(5); // Done
+    } catch (err) {
+      console.error("Lỗi khi bỏ qua sơ đồ:", err);
+      setStep(5);
     }
   };
 
@@ -287,6 +308,7 @@ const CreateWarehouse = () => {
             totalArea={parseFloat(formData.totalArea) || 100}
             initialJson={boundaryJson}
             onSave={handleFloorPlanSave}
+            onSkip={handleFloorPlanSkip}
             inline
           />
         )}
@@ -341,6 +363,72 @@ const CreateWarehouse = () => {
           </div>
         )}
       </div>
+
+      {/* Premium Glassmorphic Toast Notification */}
+      {toast && (
+        <div style={{
+          position: "fixed",
+          top: "24px",
+          right: "24px",
+          zIndex: 10000,
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          padding: "16px 24px",
+          borderRadius: "20px",
+          background: toast.type === "success" 
+            ? "linear-gradient(135deg, rgba(16, 185, 129, 0.95) 0%, rgba(5, 150, 105, 0.95) 100%)"
+            : "linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%)",
+          backdropFilter: "blur(8px)",
+          color: "#fff",
+          boxShadow: toast.type === "success"
+            ? "0 10px 30px rgba(16, 185, 129, 0.35)"
+            : "0 10px 30px rgba(239, 68, 68, 0.35)",
+          border: "1px solid rgba(255, 255, 255, 0.2)",
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 700,
+          fontSize: "0.95rem",
+          minWidth: "280px",
+          maxWidth: "420px",
+          animation: "slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: "all 0.3s ease"
+        }}>
+          <style>{`
+            @keyframes slideInRight {
+              from {
+                opacity: 0;
+                transform: translateX(40px) scale(0.95);
+              }
+              to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+              }
+            }
+          `}</style>
+          <span className="material-symbols-outlined" style={{ fontSize: "24px" }}>
+            {toast.type === "success" ? "check_circle" : "error"}
+          </span>
+          <span style={{ flex: 1, lineHeight: 1.4 }}>{toast.message}</span>
+          <button 
+            onClick={() => setToast(null)}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255, 255, 255, 0.7)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 0,
+              marginLeft: "8px"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = "#fff"}
+            onMouseLeave={(e) => e.currentTarget.style.color = "rgba(255, 255, 255, 0.7)"}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>close</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

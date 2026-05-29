@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import inventoryService from "../../services/inventoryService";
+import { useToast } from "../../context/ToastContext";
 
 /* ── Status config ────────────────────────────────────────────── */
 const STATUS_MAP = {
@@ -39,6 +40,7 @@ const th = { padding: "11px 14px", textAlign: "left", fontSize: "0.7rem", fontWe
 const td = { padding: "13px 14px", fontSize: "0.875rem", color: "#374151", borderBottom: "1px solid #f8fafc" };
 
 export default function RenterOutboundList() {
+  const { showToast } = useToast();
   const location = useLocation();
   const [data, setData]     = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,8 +86,9 @@ export default function RenterOutboundList() {
     try {
       await inventoryService.deleteInventoryRequest(id);
       setData(d => d.filter(r => r.invReqId !== id));
+      showToast("Đã xóa yêu cầu thành công!", "success");
     } catch (err) {
-      alert(err?.response?.data?.message || "Không thể xóa yêu cầu.");
+      showToast(err?.response?.data?.message || "Không thể xóa yêu cầu.", "error");
     }
     setConf(null);
   };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
 import rentalService from "../services/rentalService";
 import warehouseService from "../services/warehouseService";
 import axiosClient from "../services/axiosClient";
@@ -36,6 +37,7 @@ const formatDate = (dateStr) => {
 
 const MyRentalRequests = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -49,7 +51,7 @@ const MyRentalRequests = () => {
       ]);
       setZonePreview({ request: req, warehouseData: warehouse, areas: areasRes.data || [] });
     } catch (err) {
-      alert('Không thể tải bản đồ khu vực.');
+      showToast('Không thể tải bản đồ khu vực.', 'error');
     }
   };
 
@@ -78,8 +80,9 @@ const MyRentalRequests = () => {
     try {
       await rentalService.sendRentalRequest(requestId);
       fetchRequests();
+      showToast("Gửi yêu cầu thuê thành công!", "success");
     } catch (err) {
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi gửi yêu cầu");
+      showToast(err.response?.data?.message || "Có lỗi xảy ra khi gửi yêu cầu", "error");
     }
   };
 
@@ -438,7 +441,7 @@ const MyRentalRequests = () => {
                           onClick={(e) => {
                             e.stopPropagation();
                             if (req.contractId) navigate(`/contracts/${req.contractId}`);
-                            else alert("Không tìm thấy hợp đồng.");
+                            else showToast("Không tìm thấy hợp đồng.", "warning");
                           }}
                           style={{
                             padding: "11px 24px", borderRadius: 10, border: "none",

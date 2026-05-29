@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using WMS.Application.Behaviors;
 using WMS.Application.Features.Auth.Register;
+using WMS.Application.Features.InventoryRequests.Shared;
 using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Persistence;
@@ -121,6 +122,7 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseGridLocationRepositor
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IInventoryRequestStaffNotifier, InventoryRequestStaffNotifier>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
 builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<ISepayService, SepayService>();

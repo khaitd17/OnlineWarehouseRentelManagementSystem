@@ -34,6 +34,12 @@ const renterAssetService = {
    */
   getCapacity: (warehouseId) =>
     axiosClient.get(`/renter-assets/capacity?warehouseId=${warehouseId}`),
+
+  /**
+   * Xóa bản ghi tồn kho có số lượng = 0 khỏi danh sách hiển thị.
+   */
+  deleteInventory: (inventoryId) =>
+    axiosClient.delete(`/renter-assets/inventory/${inventoryId}`),
 };
 
 export default renterAssetService;

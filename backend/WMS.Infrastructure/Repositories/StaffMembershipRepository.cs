@@ -404,6 +404,41 @@ public class StaffMembershipRepository : IStaffMembershipRepository
             .ToListAsync(ct);
     }
 
+    public async Task<List<WarehouseNotificationRecipientDto>> GetActiveWarehouseNotificationRecipientsAsync(
+        int warehouseId,
+        CancellationToken ct = default)
+    {
+        const string preferredHanoiStaffEmail = "Phanhoangbao59@gmail.com";
+
+        var recipients = await _db.WarehouseMemberships
+            .Where(m =>
+                m.WarehouseId == warehouseId &&
+                m.IsActive &&
+                m.Role.Code == "STAFF" &&
+                m.User.Email != "")
+            .Include(m => m.User)
+            .Include(m => m.Role)
+            .Select(m => new WarehouseNotificationRecipientDto
+            {
+                UserId = m.UserId,
+                FullName = m.User.FullName,
+                Email = m.User.Email,
+                RoleCode = m.Role.Code,
+            })
+            .ToListAsync(ct);
+
+        return recipients
+            .Where(r => !string.IsNullOrWhiteSpace(r.Email))
+            .GroupBy(r => r.UserId)
+            .Select(g => g.First())
+            .GroupBy(r => r.Email.Trim().ToLowerInvariant())
+            .Select(g => g.First())
+            .OrderBy(r => string.Equals(r.Email, preferredHanoiStaffEmail, StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenBy(r => r.FullName)
+            .Take(1)
+            .ToList();
+    }
+
     // ── GetMyWarehousesAsync ───────────────────────────────────────────────────
     public async Task<List<MyWarehouseItemDto>> GetMyWarehousesAsync(
         int userId,

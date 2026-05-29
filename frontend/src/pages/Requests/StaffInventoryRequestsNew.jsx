@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosClient from '../../services/axiosClient';
 import authService from '../../services/authService';
@@ -55,6 +55,12 @@ const DetailModal = ({ req, onClose }) => {
   const items = displayReq.items || [];
   const totalQty = items.reduce((s, i) => s + (Number(i.quantity) || 0), 0);
   const totalVol = items.reduce((s, i) => s + (Number(i.estimatedVolume) || 0), 0);
+  const units = [...new Set(items.map(i => i.unit).filter(Boolean))];
+  const commonUnit = units.length === 1 ? units[0] : '';
+  const totalQtyLabel = commonUnit
+    ? `${totalQty.toLocaleString('vi-VN')} ${commonUnit}`
+    : `${totalQty.toLocaleString('vi-VN')} đơn vị`;
+  const showAggregates = items.length > 1;
 
   return (
     <>
@@ -91,24 +97,30 @@ const DetailModal = ({ req, onClose }) => {
             </div>
           )}
 
-          {/* Items header with count */}
+          {/* Items header with compact aggregate context */}
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
             <p style={{ margin:0, fontSize:'0.72rem', fontWeight:700, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em' }}>
               Danh sách hàng hóa
             </p>
-            <div style={{ display:'flex', gap:8 }}>
-              <span style={{ fontSize:'0.72rem', fontWeight:700, color:'#475569', background:'#f1f5f9', padding:'2px 10px', borderRadius:6 }}>
-                {items.length} mặt hàng
-              </span>
-              <span style={{ fontSize:'0.72rem', fontWeight:700, color:'#475569', background:'#f1f5f9', padding:'2px 10px', borderRadius:6 }}>
-                {totalQty} cái
-              </span>
-              {totalVol > 0 && (
-                <span style={{ fontSize:'0.72rem', fontWeight:700, color:'#4f46e5', background:'#eef2ff', padding:'2px 10px', borderRadius:6, border:'1px solid #c7d2fe' }}>
-                  ~{Number(totalVol.toFixed(2)).toLocaleString('vi-VN')} m²
-                </span>
-              )}
-            </div>
+            {showAggregates && (
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end' }}>
+                {items.length > 1 && (
+                  <span style={{ fontSize:'0.72rem', fontWeight:700, color:'#475569', background:'#f1f5f9', padding:'2px 10px', borderRadius:6 }}>
+                    {items.length} mặt hàng
+                  </span>
+                )}
+                {items.length > 1 && (
+                  <span style={{ fontSize:'0.72rem', fontWeight:700, color:'#475569', background:'#f1f5f9', padding:'2px 10px', borderRadius:6 }}>
+                    Tổng {totalQtyLabel}
+                  </span>
+                )}
+                {totalVol > 0 && (
+                  <span style={{ fontSize:'0.72rem', fontWeight:700, color:'#4f46e5', background:'#eef2ff', padding:'2px 10px', borderRadius:6, border:'1px solid #c7d2fe' }}>
+                    ~{Number(totalVol.toFixed(2)).toLocaleString('vi-VN')} m²
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -120,8 +132,12 @@ const DetailModal = ({ req, onClose }) => {
                     {item.estimatedVolume > 0 && <p style={{ margin:'3px 0 0', fontSize:'0.75rem', color:'#64748b' }}>Tổng diện tích: <span style={{fontWeight:600, color:'#4f46e5'}}>{item.estimatedVolume} m²</span></p>}
                     {item.description && <p style={{ margin:'3px 0 0', fontSize:'0.75rem', color:'#94a3b8' }}>{item.description}</p>}
                   </div>
-                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4 }}>
-                    <span style={{ fontWeight:700, color:accent, fontSize:'0.9rem' }}>{item.quantity?.toLocaleString()} <span style={{ color:'#94a3b8', fontWeight:400, fontSize:'0.78rem' }}>{item.unit}</span></span>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:5, minWidth:88 }}>
+                    <span style={{ fontSize:'0.66rem', fontWeight:700, color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.04em' }}>Số lượng</span>
+                    <span style={{ display:'inline-flex', alignItems:'baseline', gap:4, fontWeight:800, color:accent, fontSize:'0.96rem', background: req.type === 'INBOUND' ? '#ecfdf5' : '#fff7ed', border:`1px solid ${req.type === 'INBOUND' ? '#bbf7d0' : '#fed7aa'}`, borderRadius:999, padding:'3px 10px', whiteSpace:'nowrap' }}>
+                      {Number(item.quantity || 0).toLocaleString('vi-VN')}
+                      <span style={{ color:'#64748b', fontWeight:600, fontSize:'0.76rem' }}>{item.unit}</span>
+                    </span>
                     {item.verifiedQuantity != null && (
                       <span style={{ fontSize:'0.72rem', fontWeight:700,
                         color: item.verifiedQuantity === item.quantity ? '#16a34a' : item.verifiedQuantity < item.quantity ? '#dc2626' : '#d97706',
@@ -138,15 +154,6 @@ const DetailModal = ({ req, onClose }) => {
               </div>
             ))}
           </div>
-
-          {/* Summary bar */}
-          {items.length > 0 && (
-            <div style={{ marginTop:12, padding:'10px 14px', borderRadius:10, background:'#f8fafc', border:'1px solid #e2e8f0', display:'flex', gap:20, flexWrap:'wrap' }}>
-              <div style={{ fontSize:'0.78rem' }}><span style={{ color:'#94a3b8', fontWeight:600 }}>Tổng mặt hàng: </span><span style={{ color:'#1e293b', fontWeight:700 }}>{items.length}</span></div>
-              <div style={{ fontSize:'0.78rem' }}><span style={{ color:'#94a3b8', fontWeight:600 }}>Tổng số lượng: </span><span style={{ color:'#1e293b', fontWeight:700 }}>{totalQty.toLocaleString()}</span></div>
-              {totalVol > 0 && <div style={{ fontSize:'0.78rem' }}><span style={{ color:'#94a3b8', fontWeight:600 }}>Tổng diện tích: </span><span style={{ color:'#4f46e5', fontWeight:700 }}>{Number(totalVol.toFixed(2)).toLocaleString('vi-VN')} m²</span></div>}
-            </div>
-          )}
 
           {displayReq.documentUrls && displayReq.documentUrls.length > 0 && (
             <div style={{ marginTop: 20 }}>
@@ -254,9 +261,8 @@ const StaffInventoryRequestsNew = ({ defaultTab = 'INBOUND' }) => {
 
 
   const STATUS_FILTERS = [
-    { key:'',          label:'Tất cả (đã duyệt)' },
+    { key:'',          label:'Tất cả' },
     { key:'CONFIRMED', label:'Chờ xử lý tại kho',    ...STATUS_MAP.CONFIRMED },
-    { key:'ASSIGNED',  label:'Đã giao tôi', ...STATUS_MAP.ASSIGNED  },
     { key:'RECEIVING', label:'Đang tiếp nhận', ...STATUS_MAP.RECEIVING },
     { key:'COMPLETED', label:'Hoàn thành',  ...STATUS_MAP.COMPLETED },
   ];
@@ -358,7 +364,7 @@ const StaffInventoryRequestsNew = ({ defaultTab = 'INBOUND' }) => {
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
               <tr style={{ background:'#f8fafc' }}>
-                {[['Mã yêu cầu','90px'],['Người thuê','150px'],['Mặt hàng','auto'],['Trạng thái','120px'],['Phiếu','80px','center'],['Ngày tạo','100px'],['Thao tác','220px','center']].map(([h,w,align])=>(
+                {[['Mã yêu cầu','100px'],['Người thuê','auto'],['Mặt hàng','180px'],['Trạng thái','150px'],['Phiếu','80px','center'],['Ngày tạo','100px'],['Thao tác','170px','center']].map(([h,w,align])=>(
                   <th key={h} style={{ padding:'11px 14px', textAlign:align||'left', fontSize:'0.68rem', fontWeight:700, color:'#94a3b8', letterSpacing:'0.06em', whiteSpace:'nowrap', width:w }}>{h}</th>
                 ))}
               </tr>

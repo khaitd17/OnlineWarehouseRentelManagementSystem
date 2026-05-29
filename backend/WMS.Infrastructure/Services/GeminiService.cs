@@ -66,7 +66,8 @@ public class GeminiService : IGeminiService
                    "2. Đếm từng cái riêng (4 ghế → quantity=4, KHÔNG gộp 'bộ ghế').\n" +
                    "3. Bỏ qua: ổ điện gắn tường, rèm cửa, tranh nhỏ, cây nhỏ trong chậu <0.02m².\n" +
                    "4. Dùng kích thước khi tháo rời/đóng thùng để vận chuyển.\n" +
-                   "5. Tên đồ vật phải cụ thể (Sofa 3 chỗ, Tivi 55 inch, Tủ quần áo 2 cánh).\n\n" +
+                   "5. Tên đồ vật phải cụ thể (Sofa 3 chỗ, Tivi 55 inch, Tủ quần áo 2 cánh).\n" +
+                   "6. Ghi chú đặc biệt (specialNotes) PHẢI ĐƯỢC VIẾT BẰNG TIẾNG VIỆT (ví dụ: 'Kích thước ước tính được sử dụng cho tủ âm tường, kệ nổi và một số đồ trang trí không được liệt kê rõ ràng trong bảng kích thước.').\n\n" +
                    "== BẢNG KÍCH THƯỚC (Rộng×Dài×Cao mét) ==\n" +
                    "PHÒNG NGỦ:\n" +
                    "Giường đơn: 1.0×2.0×0.45=0.90m² | Giường đôi: 1.6×2.0×0.45=1.44m² | Giường king: 1.8×2.0×0.45=1.62m²\n" +
@@ -108,7 +109,7 @@ public class GeminiService : IGeminiService
                    "  ],\n" +
                    "  \"totalEstimatedVolumeM3\": <tổng quantity*estimatedVolumeM3 làm tròn 2 số>,\n" +
                    "  \"suggestedWarehouseType\": \"<Kho thường|Kho lạnh / mát|Kho hàng điện tử|Kho chuyên dụng>\",\n" +
-                   "  \"specialNotes\": \"<ghi chú hoặc null>\",\n" +
+                   "  \"specialNotes\": \"<ghi chú tiếng Việt hoặc null>\",\n" +
                    "  \"confidence\": <0.0-1.0>\n" +
                    "}\n\n" +
                    "Nếu ảnh quá tối/mờ: items=[], confidence<0.3."

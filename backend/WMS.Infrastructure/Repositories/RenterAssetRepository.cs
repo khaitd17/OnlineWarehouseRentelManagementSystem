@@ -183,4 +183,13 @@ public class RenterAssetRepository : IRenterAssetRepository
             .Where(ri => ri.Asset.RenterId == renterId && ri.WarehouseId == warehouseId)
             .SumAsync(ri => ri.Quantity * (ri.Asset.VolumePerUnit ?? 0m), ct);
     }
+
+    public async Task<RenterInventory?> GetInventoryByIdAsync(int inventoryId, CancellationToken ct)
+        => await _db.RenterInventories.FindAsync(new object[] { inventoryId }, ct);
+
+    public async Task DeleteInventoryAsync(RenterInventory inv, CancellationToken ct)
+    {
+        _db.RenterInventories.Remove(inv);
+        await _db.SaveChangesAsync(ct);
+    }
 }

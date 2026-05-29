@@ -22,15 +22,18 @@ public class ApproveInventoryRequestHandler
     private readonly IInventoryRequestRepository _repo;
     private readonly ITaskRepository _taskRepo;
     private readonly IEmailService _emailService;
+    private readonly IInventoryRequestStaffNotifier _staffNotifier;
 
     public ApproveInventoryRequestHandler(
         IInventoryRequestRepository repo,
         ITaskRepository taskRepo,
-        IEmailService emailService)
+        IEmailService emailService,
+        IInventoryRequestStaffNotifier staffNotifier)
     {
         _repo         = repo;
         _taskRepo     = taskRepo;
         _emailService = emailService;
+        _staffNotifier = staffNotifier;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -43,6 +46,7 @@ public class ApproveInventoryRequestHandler
             throw new InvalidOperationException(
                 $"Chỉ có thể tiếp nhận yêu cầu đang ở trạng thái Chờ tiếp nhận hoặc Đã tiếp nhận. Trạng thái hiện tại: '{req.Status}'.");
 
+        var previousStatus = req.Status;
         req.Status      = "CONFIRMED";
         req.ConfirmedBy = cmd.ManagerId;
         req.ConfirmedAt = DateTime.Now;
@@ -122,6 +126,11 @@ public class ApproveInventoryRequestHandler
         catch { /* Task không tìm thấy — không chặn nghiệp vụ */ }
 
         var updated = await _repo.GetByIdAsync(req.InvReqId, cancellationToken);
+        if (previousStatus == "PENDING")
+        {
+            await _staffNotifier.NotifyReadyForProcessingAsync(updated!, cancellationToken);
+        }
+
         return InventoryRequestMapper.ToDto(updated!);
     }
 }

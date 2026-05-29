@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../services/axiosClient";
 import contractTemplateService from "../services/contractTemplateService";
+import { useToast } from "../context/ToastContext";
 
 const statusConfig = {
   DRAFT: { bg: "#f1f5f9", color: "#64748b", label: "Bản nháp" },
@@ -42,6 +43,7 @@ const formatCurrency = (amount) => {
 
 const OwnerContracts = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -106,7 +108,7 @@ const OwnerContracts = () => {
 
   const handleCreateTemplate = async () => {
     if (!templateForm.templateName.trim()) {
-      alert("Vui lòng nhập tên mẫu hợp đồng");
+      showToast("Vui lòng nhập tên mẫu hợp đồng", "warning");
       return;
     }
 
@@ -119,7 +121,7 @@ const OwnerContracts = () => {
     ].some(Boolean);
 
     if (!hasEnabledSection) {
-      alert("Cần bật ít nhất 1 nhóm trường trong mẫu hợp đồng");
+      showToast("Cần bật ít nhất 1 nhóm trường trong mẫu hợp đồng", "warning");
       return;
     }
 
@@ -132,10 +134,10 @@ const OwnerContracts = () => {
       }
       await loadTemplates();
       setShowTemplateModal(false);
-      alert("Tạo mẫu hợp đồng thành công!");
+      showToast("Tạo mẫu hợp đồng thành công!", "success");
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Không thể tạo mẫu hợp đồng");
+      showToast(err.response?.data?.message || "Không thể tạo mẫu hợp đồng", "error");
     } finally {
       setTemplateSubmitting(false);
     }
@@ -145,10 +147,10 @@ const OwnerContracts = () => {
     try {
       await contractTemplateService.setDefaultTemplate(templateId);
       await loadTemplates();
-      alert("Đã đặt mẫu hợp đồng mặc định thành công");
+      showToast("Đã đặt mẫu hợp đồng mặc định thành công", "success");
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Không thể đặt mẫu hợp đồng mặc định");
+      showToast(err.response?.data?.message || "Không thể đặt mẫu hợp đồng mặc định", "error");
     }
   };
 

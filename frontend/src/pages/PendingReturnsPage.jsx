@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import returnService from "../services/returnService";
+import { useToast } from "../context/ToastContext";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -23,6 +24,7 @@ const statusConfig = {
 
 const PendingReturnsPage = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [returns, setReturns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -60,10 +62,10 @@ const PendingReturnsPage = () => {
     try {
       setActionLoading(true);
       await returnService.approveReturn(returnRecord.returnId);
-      alert("Đã phê duyệt yêu cầu trả kho thành công!");
+      showToast("Đã phê duyệt yêu cầu trả kho thành công!", "success");
       fetchReturns();
     } catch (err) {
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi duyệt yêu cầu");
+      showToast(err.response?.data?.message || "Có lỗi xảy ra khi duyệt yêu cầu", "error");
     } finally {
       setActionLoading(false);
     }
@@ -78,7 +80,7 @@ const PendingReturnsPage = () => {
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
-      alert("Vui lòng nhập lý do từ chối");
+      showToast("Vui lòng nhập lý do từ chối", "warning");
       return;
     }
 
@@ -88,11 +90,11 @@ const PendingReturnsPage = () => {
         reason: rejectReason,
         requiredActions: requiredActions,
       });
-      alert("Đã từ chối yêu cầu trả kho");
+      showToast("Đã từ chối yêu cầu trả kho", "success");
       setShowRejectModal(false);
       fetchReturns();
     } catch (err) {
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi từ chối yêu cầu");
+      showToast(err.response?.data?.message || "Có lỗi xảy ra khi từ chối yêu cầu", "error");
     } finally {
       setActionLoading(false);
     }

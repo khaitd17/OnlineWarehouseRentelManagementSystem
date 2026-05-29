@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import contractExtensionService from "../services/contractExtensionService";
+import { useToast } from "../context/ToastContext";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -22,6 +23,7 @@ const statusConfig = {
 
 const PendingExtensionsPage = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [extensions, setExtensions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,10 +60,10 @@ const PendingExtensionsPage = () => {
     try {
       setActionLoading(true);
       await contractExtensionService.approveExtension(extension.extensionId);
-      alert("Đã phê duyệt yêu cầu gia hạn thành công!");
+      showToast("Đã phê duyệt yêu cầu gia hạn thành công!", "success");
       fetchExtensions();
     } catch (err) {
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi duyệt yêu cầu");
+      showToast(err.response?.data?.message || "Có lỗi xảy ra khi duyệt yêu cầu", "error");
     } finally {
       setActionLoading(false);
     }
@@ -75,7 +77,7 @@ const PendingExtensionsPage = () => {
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
-      alert("Vui lòng nhập lý do từ chối");
+      showToast("Vui lòng nhập lý do từ chối", "warning");
       return;
     }
 
@@ -84,11 +86,11 @@ const PendingExtensionsPage = () => {
       await contractExtensionService.rejectExtension(selectedExtension.extensionId, {
         reason: rejectReason,
       });
-      alert("Đã từ chối yêu cầu gia hạn");
+      showToast("Đã từ chối yêu cầu gia hạn", "success");
       setShowRejectModal(false);
       fetchExtensions();
     } catch (err) {
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi từ chối yêu cầu");
+      showToast(err.response?.data?.message || "Có lỗi xảy ra khi từ chối yêu cầu", "error");
     } finally {
       setActionLoading(false);
     }

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using System.Net;
 using System.Net.Mail;
+using System.Text;
 using WMS.Application.Interfaces;
 
 namespace WMS.Infrastructure.Services;
@@ -59,13 +60,16 @@ public class EmailService : IEmailService
 
         using var message = new MailMessage
         {
-            From       = new MailAddress(smtpUser, fromName),
-            Subject    = subject,
-            Body       = htmlContent,
-            IsBodyHtml = htmlContent.TrimStart().StartsWith("<"),  // plain text nếu không bắt đầu bằng tag
+            From            = new MailAddress(smtpUser, fromName, Encoding.UTF8),
+            Subject         = subject,
+            Body            = htmlContent,
+            IsBodyHtml      = htmlContent.TrimStart().StartsWith("<"),  // plain text nếu không bắt đầu bằng tag
+            SubjectEncoding = Encoding.UTF8,
+            BodyEncoding    = Encoding.UTF8,
+            HeadersEncoding = Encoding.UTF8,
         };
 
-        message.To.Add(new MailAddress(email, toName));
+        message.To.Add(new MailAddress(email, toName, Encoding.UTF8));
 
         await client.SendMailAsync(message);
     }
@@ -104,12 +108,15 @@ public class EmailService : IEmailService
 
         var message = new MailMessage
         {
-            From = new MailAddress(smtpUser, fromName),
+            From = new MailAddress(smtpUser, fromName, Encoding.UTF8),
             Subject = "Đặt lại mật khẩu - OWRMS",
             Body = body,
-            IsBodyHtml = true
+            IsBodyHtml = true,
+            SubjectEncoding = Encoding.UTF8,
+            BodyEncoding = Encoding.UTF8,
+            HeadersEncoding = Encoding.UTF8,
         };
-        message.To.Add(new MailAddress(toEmail, toName));
+        message.To.Add(new MailAddress(toEmail, toName, Encoding.UTF8));
 
         await client.SendMailAsync(message);
     }

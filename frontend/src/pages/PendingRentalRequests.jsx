@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import rentalService from "../services/rentalService";
+import { useToast } from "../context/ToastContext";
 import warehouseService from "../services/warehouseService";
 import contractTemplateService from "../services/contractTemplateService";
 import ProposedZonePreviewModal from "../components/warehouse/ProposedZonePreviewModal";
@@ -141,6 +142,7 @@ const ReadOnlyField = ({ label, value, fullWidth }) => (
 );
 
 const PendingRentalRequests = () => {
+  const { showToast } = useToast();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -245,7 +247,7 @@ const PendingRentalRequests = () => {
       });
     } catch (err) {
       console.error('Failed to load zone preview:', err);
-      alert('Không thể tải bản đồ khu vực. Vui lòng thử lại.');
+      showToast('Không thể tải bản đồ khu vực. Vui lòng thử lại.', 'error');
     }
   };
 
@@ -278,7 +280,7 @@ const PendingRentalRequests = () => {
       setAssignedZone(null); // Reset zone assignment
     } catch (err) {
       console.error("Error fetching warehouse:", err);
-      alert("Không thể tải thông tin kho. Vui lòng thử lại.");
+      showToast("Không thể tải thông tin kho. Vui lòng thử lại.", "error");
     }
   };
 
@@ -322,20 +324,20 @@ const PendingRentalRequests = () => {
     }
 
     if (!contractForm.monthlyPayment || parseFloat(contractForm.monthlyPayment) <= 0) {
-      alert("Vui lòng nhập giá thuê hàng tháng hợp lệ");
+      showToast("Vui lòng nhập giá thuê hàng tháng hợp lệ", "warning");
       return;
     }
     if (!contractForm.startDate) {
-      alert("Vui lòng chọn ngày bắt đầu hợp đồng");
+      showToast("Vui lòng chọn ngày bắt đầu hợp đồng", "warning");
       return;
     }
     const todayValue = getTodayInputValue();
     if (contractForm.startDate < todayValue) {
-      alert("Ngày bắt đầu hợp đồng không được là ngày trong quá khứ");
+      showToast("Ngày bắt đầu hợp đồng không được là ngày trong quá khứ", "warning");
       return;
     }
     if (!contractForm.durationMonths || parseInt(contractForm.durationMonths) < 1 || parseInt(contractForm.durationMonths) > 120) {
-      alert("Vui lòng nhập thời hạn hợp đồng từ 1-120 tháng");
+      showToast("Vui lòng nhập thời hạn hợp đồng từ 1-120 tháng", "warning");
       return;
     }
 
@@ -343,11 +345,11 @@ const PendingRentalRequests = () => {
     const deposit = parseFloat(contractForm.depositAmount);
     const totalContractValue = calculateTotalValue(contractForm.monthlyPayment, contractForm.durationMonths);
     if (contractForm.depositAmount !== "" && (isNaN(deposit) || deposit < 0)) {
-      alert("Tiền đặt cọc không được nhỏ hơn 0.");
+      showToast("Tiền đặt cọc không được nhỏ hơn 0.", "warning");
       return;
     }
     if (deposit > totalContractValue) {
-      alert("Tiền đặt cọc không được vượt quá tổng giá trị hợp đồng.");
+      showToast("Tiền đặt cọc không được vượt quá tổng giá trị hợp đồng.", "warning");
       return;
     }
 
@@ -404,8 +406,9 @@ const PendingRentalRequests = () => {
       setShowSignatureStep(true);
     } catch (err) {
       console.error(err);
-      alert(
-        err.response?.data?.error || err.response?.data?.message || "Có lỗi khi tạo hợp đồng"
+      showToast(
+        err.response?.data?.error || err.response?.data?.message || "Có lỗi khi tạo hợp đồng",
+        "error"
       );
     } finally {
       setActionLoading(false);
@@ -418,9 +421,10 @@ const PendingRentalRequests = () => {
       await rentalService.sendContractDraft(createdContractId);
       closeModal();
       fetchRequests(); // Reload list after sending
+      showToast("Gửi bản nháp hợp đồng thành công!", "success");
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Có lỗi khi gửi bản nháp hợp đồng");
+      showToast(err.response?.data?.message || "Có lỗi khi gửi bản nháp hợp đồng", "error");
     } finally {
       setActionLoading(false);
     }
@@ -428,7 +432,7 @@ const PendingRentalRequests = () => {
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
-      alert("Vui lòng nhập lý do từ chối");
+      showToast("Vui lòng nhập lý do từ chối", "warning");
       return;
     }
     setActionLoading(true);
@@ -437,12 +441,12 @@ const PendingRentalRequests = () => {
         actionModal.request.requestId,
         { requestId: actionModal.request.requestId, rejectionReason: rejectReason }
       );
-      alert("Đã từ chối yêu cầu thuê!");
+      showToast("Đã từ chối yêu cầu thuê!", "success");
       closeModal();
       fetchRequests(); // Reload list after rejecting
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Có lỗi khi từ chối yêu cầu");
+      showToast(err.response?.data?.message || "Có lỗi khi từ chối yêu cầu", "error");
     } finally {
       setActionLoading(false);
     }
