@@ -1,7 +1,9 @@
 import { useState } from "react";
 import staffService from "../services/staffService";
+import { useToast } from "../context/ToastContext";
 
 function AssignStaffModal({ staff, warehouses, onClose, onSuccess }) {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     warehouseId: "",
     startDate: "",
@@ -42,7 +44,7 @@ function AssignStaffModal({ staff, warehouses, onClose, onSuccess }) {
         formData.notes
       );
 
-      alert("Giao nhân viên vào kho thành công!");
+      showToast("Giao nhân viên vào kho thành công!", "success");
       if (onSuccess) {
         onSuccess();
       }

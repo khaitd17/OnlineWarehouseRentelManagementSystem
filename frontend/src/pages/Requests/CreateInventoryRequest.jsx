@@ -4,6 +4,7 @@ import axiosClient from '../../services/axiosClient';
 import inventoryService from '../../services/inventoryService';
 import renterAssetService from '../../services/renterAssetService';
 import aiService from '../../services/aiService';
+import { useToast } from '../../context/ToastContext';
 import authService from '../../services/authService';
 import RenterSpaceUsageWarning from '../../components/warehouse/RenterSpaceUsageWarning';
 
@@ -58,6 +59,18 @@ function UnitCombobox({ value, onChange, accent }) {
   );
 }
 
+const translateSpecialNotes = (notes) => {
+  if (!notes) return notes;
+  const lower = notes.toLowerCase().trim();
+  if (lower === "none" || lower === "null" || lower === "no special notes" || lower === "no special notes.") {
+    return null;
+  }
+  if (lower.includes("estimated dimensions used for") || lower.includes("estimated dimensions")) {
+    return "Kích thước ước tính được sử dụng cho tủ âm tường, kệ nổi và một số đồ trang trí không được liệt kê rõ ràng trong bảng kích thước.";
+  }
+  return notes;
+};
+
 /* ── AI Photo Analysis Modal ────────────────────────────────────────────── */
 function AiPhotoModal({ onClose, onImport }) {
   const fileRef = useRef(null);
@@ -67,6 +80,51 @@ function AiPhotoModal({ onClose, onImport }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [quota, setQuota] = useState(null);
+
+  const [activeTab, setActiveTab] = useState('new'); // 'new' | 'history'
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    setError(null);
+    try {
+      const res = await aiService.getMySessions();
+      setHistory(res.data || []);
+    } catch (err) {
+      console.error(err);
+      setError("Không thể tải lịch sử phân tích AI.");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchHistory();
+    }
+  }, [activeTab]);
+
+  const handleSelectSession = (session) => {
+    try {
+      const parsed = session.resultJson ? JSON.parse(session.resultJson) : null;
+      if (parsed) {
+        setResult({
+          items: parsed.items || [],
+          totalVolumeM3: session.estimatedVolumeM3 || parsed.totalEstimatedVolumeM3 || 0,
+          suggestedWarehouseType: session.suggestedType || parsed.suggestedWarehouseType || "Kho thường",
+          specialNotes: session.specialNotes || parsed.specialNotes || null,
+          confidence: session.confidence || parsed.confidence || 1.0,
+        });
+        setActiveTab('new'); // Quay lại tab preview
+      } else {
+        setError("Không thể đọc dữ liệu phiên này.");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Lỗi dữ liệu lịch sử.");
+    }
+  };
 
   useEffect(() => {
     aiService.getQuota().then(r => setQuota(r.data)).catch(() => {});
@@ -136,10 +194,10 @@ function AiPhotoModal({ onClose, onImport }) {
         <div style={{ padding:'22px 28px 16px', borderBottom:'1px solid #f1f5f9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'linear-gradient(135deg,#eef2ff,#fff)', borderRadius:'20px 20px 0 0' }}>
           <div>
             <p style={{ margin:'0 0 2px', fontSize:'1.05rem', fontWeight:800, color:'#312e81' }}>Phân tích hàng hóa bằng AI</p>
-            <p style={{ margin:0, fontSize:'0.8rem', color:'#64748b' }}>Chụp ảnh hàng → AI tự nhận dạng tên, số lượng và diện tích ước tính</p>
+            <p style={{ margin:0, fontSize:'0.8rem', color:'#64748b' }}>Chụp ảnh hàng hoặc chọn lịch sử → AI tự nhận dạng và ước tính diện tích</p>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            {quota && (
+            {quota && activeTab === 'new' && (
               <span style={{ fontSize:'0.75rem', fontWeight:700, color: quota.remaining===0?'#dc2626':'#4f46e5', background: quota.remaining===0?'#fef2f2':'#eef2ff', border:`1px solid ${quota.remaining===0?'#fecaca':'#c7d2fe'}`, borderRadius:8, padding:'3px 10px' }}>
                 Còn {quota.remaining}/{quota.dailyLimit} lượt hôm nay
               </span>
@@ -148,110 +206,219 @@ function AiPhotoModal({ onClose, onImport }) {
           </div>
         </div>
 
-        <div style={{ padding:'20px 28px' }}>
-          {/* Upload zone */}
-          {!result && (
-            <div
-              onClick={() => fileRef.current?.click()}
-              style={{ border:`2px dashed ${files.length?accent:'#e2e8f0'}`, borderRadius:14, padding:'32px 20px', textAlign:'center', cursor:'pointer', background: files.length?'#eef2ff':'#f8fafc', transition:'all 0.2s', marginBottom:16 }}
-              onDragOver={e => { e.preventDefault(); }}
-              onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
+        {/* Tab Switcher */}
+        <div style={{
+          display: 'flex',
+          gap: 0,
+          margin: '0 28px 8px',
+          background: '#f1f5f9',
+          borderRadius: 12,
+          padding: 4,
+          border: '1px solid #e2e8f0'
+        }}>
+          {[
+            { key: 'new', label: 'Phân tích ảnh mới' },
+            { key: 'history', label: 'Chọn từ lịch sử AI' }
+          ].map(tab => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                setActiveTab(tab.key);
+                if (tab.key === 'history') {
+                  setResult(null); // Clear preview when checking history
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                background: activeTab === tab.key
+                  ? 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+                  : 'transparent',
+                border: 'none',
+                borderRadius: 9,
+                color: activeTab === tab.key ? '#fff' : '#64748b',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.25s ease',
+                fontFamily: 'inherit',
+              }}
             >
-              {files.length ? (
-                <p style={{ margin:0, fontWeight:700, color:accent }}>Đã chọn {files.length} ảnh — nhấp để thêm (tối đa 5)</p>
-              ) : (
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ padding:'20px 28px' }}>
+          {activeTab === 'new' ? (
+            <>
+              {/* Upload zone */}
+              {!result && (
+                <div
+                  onClick={() => fileRef.current?.click()}
+                  style={{ border:`2px dashed ${files.length?accent:'#e2e8f0'}`, borderRadius:14, padding:'32px 20px', textAlign:'center', cursor:'pointer', background: files.length?'#eef2ff':'#f8fafc', transition:'all 0.2s', marginBottom:16 }}
+                  onDragOver={e => { e.preventDefault(); }}
+                  onDrop={e => { e.preventDefault(); addFiles(e.dataTransfer.files); }}
+                >
+                  {files.length ? (
+                    <p style={{ margin:0, fontWeight:700, color:accent }}>Đã chọn {files.length} ảnh — nhấp để thêm (tối đa 5)</p>
+                  ) : (
+                    <>
+                      <p style={{ margin:'0 0 6px', fontWeight:700, color:'#64748b' }}>Kéo thả ảnh vào đây hoặc nhấp để chọn file</p>
+                      <p style={{ margin:0, fontSize:'0.78rem', color:'#94a3b8' }}>JPG, PNG, WEBP — tối đa 5 ảnh</p>
+                    </>
+                  )}
+                </div>
+              )}
+              <input ref={fileRef} type="file" accept="image/*" multiple style={{ display:'none' }} onChange={e => addFiles(e.target.files)} />
+
+              {/* Previews */}
+              {previews.length > 0 && !result && (
+                <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16 }}>
+                  {previews.map((src, i) => (
+                    <div key={i} style={{ position:'relative', width:80, height:80, borderRadius:10, overflow:'hidden', border:'2px solid #c7d2fe' }}>
+                      <img src={src} alt={`p${i}`} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                      <button onClick={() => { setFiles(p => p.filter((_,j)=>j!==i)); }} style={{ position:'absolute', top:3, right:3, background:'rgba(239,68,68,0.9)', border:'none', borderRadius:'50%', width:20, height:20, cursor:'pointer', color:'#fff', fontSize:13, lineHeight:'20px', textAlign:'center' }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Error */}
+              {error && (
+                <div style={{ padding:'10px 14px', borderRadius:10, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.83rem', marginBottom:14 }}>
+                  {error}
+                </div>
+              )}
+
+              {/* Loading */}
+              {loading && (
+                <div style={{ textAlign:'center', padding:'24px 0' }}>
+                  <div style={{ display:'inline-block', width:28, height:28, border:'3px solid #e2e8f0', borderTop:`3px solid ${accent}`, borderRadius:'50%', animation:'spin 0.8s linear infinite', marginBottom:12 }} />
+                  <p style={{ margin:0, color:accent, fontWeight:700, fontSize:'0.9rem' }}>AI đang phân tích ảnh... (10-30 giây)</p>
+                </div>
+              )}
+
+              {/* Results */}
+              {result && (
                 <>
-                  <p style={{ margin:'0 0 6px', fontWeight:700, color:'#64748b' }}>Kéo thả ảnh vào đây hoặc nhấp để chọn file</p>
-                  <p style={{ margin:0, fontSize:'0.78rem', color:'#94a3b8' }}>JPG, PNG, WEBP — tối đa 5 ảnh</p>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                    <p style={{ margin:0, fontWeight:800, fontSize:'0.9rem', color:'#0f172a' }}>Kết quả phân tích — {result.items?.length || 0} mặt hàng · Tổng ~{result.totalVolumeM3} m²</p>
+                    <button onClick={() => { setResult(null); setFiles([]); setError(null); }}
+                      style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:'0.78rem', fontWeight:600, color:'#475569' }}>
+                      Phân tích lại
+                    </button>
+                  </div>
+                  <div style={{ border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden', marginBottom:16 }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.83rem' }}>
+                      <thead>
+                        <tr style={{ background:'#f8fafc' }}>
+                          {['Tên hàng hóa','Số lượng','diện tích/cái (m²)','Tổng diện tích (m²)'].map(h => (
+                            <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontWeight:700, color:'#64748b', fontSize:'0.7rem', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #f1f5f9' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(result.items||[]).map((ai, i) => (
+                          <tr key={i} style={{ borderBottom:'1px solid #f9fafb' }}>
+                            <td style={{ padding:'10px 14px', fontWeight:600, color:'#1e293b' }}>{ai.name}</td>
+                            <td style={{ padding:'10px 14px', color:'#374151' }}>{ai.quantity || 1}</td>
+                            <td style={{ padding:'10px 14px', color:'#6366f1', fontWeight:600 }}>{(ai.estimatedVolumeM3||0).toFixed(4)}</td>
+                            <td style={{ padding:'10px 14px', color:'#4f46e5', fontWeight:700 }}>
+                              {((ai.estimatedVolumeM3||0)*(ai.quantity||1)).toFixed(3)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ marginTop: 10, marginBottom: 14, fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4 }}>
+                    (*) Diện tích trên là ước tính cộng dồn. Trong thực tế, khi tháo lắp và xếp chồng khoa học, diện tích chiếm dụng thực tế tại kho có thể tối ưu hơn 20% - 30%.
+                  </div>
+                  {translateSpecialNotes(result.specialNotes) && (
+                    <div style={{ padding:'10px 14px', borderRadius:10, background:'#fffbeb', border:'1px solid #fde68a', fontSize:'0.82rem', color:'#92400e', marginBottom:14 }}>
+                      Lưu ý từ AI: {translateSpecialNotes(result.specialNotes)}
+                    </div>
+                  )}
                 </>
               )}
-            </div>
-          )}
-          <input ref={fileRef} type="file" accept="image/*" multiple style={{ display:'none' }} onChange={e => addFiles(e.target.files)} />
 
-          {/* Previews */}
-          {previews.length > 0 && !result && (
-            <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16 }}>
-              {previews.map((src, i) => (
-                <div key={i} style={{ position:'relative', width:80, height:80, borderRadius:10, overflow:'hidden', border:'2px solid #c7d2fe' }}>
-                  <img src={src} alt={`p${i}`} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                  <button onClick={() => { setFiles(p => p.filter((_,j)=>j!==i)); }} style={{ position:'absolute', top:3, right:3, background:'rgba(239,68,68,0.9)', border:'none', borderRadius:'50%', width:20, height:20, cursor:'pointer', color:'#fff', fontSize:13, lineHeight:'20px', textAlign:'center' }}>×</button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div style={{ padding:'10px 14px', borderRadius:10, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.83rem', marginBottom:14 }}>
-              {error}
-            </div>
-          )}
-
-          {/* Loading */}
-          {loading && (
-            <div style={{ textAlign:'center', padding:'24px 0' }}>
-              <div style={{ display:'inline-block', width:28, height:28, border:'3px solid #e2e8f0', borderTop:`3px solid ${accent}`, borderRadius:'50%', animation:'spin 0.8s linear infinite', marginBottom:12 }} />
-              <p style={{ margin:0, color:accent, fontWeight:700, fontSize:'0.9rem' }}>AI đang phân tích ảnh... (10-30 giây)</p>
-            </div>
-          )}
-
-          {/* Results */}
-          {result && (
-            <>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-                <p style={{ margin:0, fontWeight:800, fontSize:'0.9rem', color:'#0f172a' }}>Kết quả phân tích — {result.items?.length || 0} mặt hàng · Tổng ~{result.totalVolumeM3} m²</p>
-                <button onClick={() => { setResult(null); setFiles([]); setError(null); }}
-                  style={{ padding:'5px 12px', borderRadius:8, border:'1px solid #e2e8f0', background:'#f8fafc', cursor:'pointer', fontSize:'0.78rem', fontWeight:600, color:'#475569' }}>
-                  Phân tích lại
-                </button>
+              {/* Actions */}
+              <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:4 }}>
+                {!result ? (
+                  <button onClick={handleAnalyze} disabled={loading || !files.length}
+                    style={{ padding:'11px 26px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.9rem', cursor: (!files.length||loading)?'not-allowed':'pointer', color:'#fff', background: (!files.length||loading)?'#e2e8f0':`linear-gradient(135deg,${accent},#8b5cf6)`, boxShadow: (!files.length||loading)?'none':'0 4px 16px rgba(99,102,241,0.4)', transition:'all 0.2s', display:'flex', alignItems:'center', gap:8 }}>
+                    {loading && <span style={{ display:'inline-block', width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />}
+                    {loading ? 'Đang phân tích...' : 'Phân tích với AI'}
+                  </button>
+                ) : (
+                  <button onClick={handleImport}
+                    style={{ padding:'11px 28px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.9rem', cursor:'pointer', color:'#fff', background:'linear-gradient(135deg,#10b981,#059669)', boxShadow:'0 4px 16px rgba(16,185,129,0.4)', transition:'all 0.2s' }}>
+                    Nhập {result.items?.length} mặt hàng vào yêu cầu
+                  </button>
+                )}
               </div>
-              <div style={{ border:'1px solid #e2e8f0', borderRadius:12, overflow:'hidden', marginBottom:16 }}>
-                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.83rem' }}>
-                  <thead>
-                    <tr style={{ background:'#f8fafc' }}>
-                      {['Tên hàng hóa','Số lượng','diện tích/cái (m²)','Tổng diện tích (m²)'].map(h => (
-                        <th key={h} style={{ padding:'9px 14px', textAlign:'left', fontWeight:700, color:'#64748b', fontSize:'0.7rem', textTransform:'uppercase', letterSpacing:'0.05em', borderBottom:'1px solid #f1f5f9' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(result.items||[]).map((ai, i) => (
-                      <tr key={i} style={{ borderBottom:'1px solid #f9fafb' }}>
-                        <td style={{ padding:'10px 14px', fontWeight:600, color:'#1e293b' }}>{ai.name}</td>
-                        <td style={{ padding:'10px 14px', color:'#374151' }}>{ai.quantity || 1}</td>
-                        <td style={{ padding:'10px 14px', color:'#6366f1', fontWeight:600 }}>{(ai.estimatedVolumeM3||0).toFixed(4)}</td>
-                        <td style={{ padding:'10px 14px', color:'#4f46e5', fontWeight:700 }}>
-                          {((ai.estimatedVolumeM3||0)*(ai.quantity||1)).toFixed(3)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {result.specialNotes && (
-                <div style={{ padding:'10px 14px', borderRadius:10, background:'#fffbeb', border:'1px solid #fde68a', fontSize:'0.82rem', color:'#92400e', marginBottom:14 }}>
-                  Lưu ý từ AI: {result.specialNotes}
+            </>
+          ) : (
+            <div>
+              {/* Error */}
+              {error && (
+                <div style={{ padding:'10px 14px', borderRadius:10, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.83rem', marginBottom:14 }}>
+                  {error}
                 </div>
               )}
-            </>
+              {loadingHistory ? (
+                <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                  <div style={{ display: 'inline-block', width: 24, height: 24, border: '2.5px solid #e2e8f0', borderTop: `2.5px solid ${accent}`, borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: 10 }} />
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.83rem' }}>Đang tải lịch sử phân tích...</p>
+                </div>
+              ) : history.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>📜</div>
+                  <p style={{ margin: 0, fontSize: '0.87rem', fontWeight: 700, color: '#475569' }}>Chưa có lịch sử phân tích AI nào</p>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>Hãy tải ảnh phân tích hàng hóa ở màn tìm kho AI để lưu lịch sử bãi kho.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '42vh', overflowY: 'auto', paddingRight: 4 }}>
+                  {history.map(session => (
+                    <div
+                      key={session.sessionId}
+                      onClick={() => handleSelectSession(session)}
+                      style={{
+                        padding: '14px 18px',
+                        borderRadius: 14,
+                        border: '1px solid #e2e8f0',
+                        background: '#f8fafc',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#818cf8'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1, marginRight: 16 }}>
+                        <p style={{ margin: '0 0 6px', fontSize: '0.87rem', fontWeight: 800, color: '#1e293b' }}>
+                          Phiên ngày {new Date(session.analyzedAt).toLocaleDateString('vi-VN')} {new Date(session.analyzedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                          {session.suggestedType && <span style={{ marginRight: 10, color: '#6366f1', fontWeight: 700 }}>{session.suggestedType}</span>}
+                          {session.specialNotes && <span style={{ color: '#d97706', fontStyle: 'italic' }}>Lưu ý: {translateSpecialNotes(session.specialNotes)}</span>}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#10b981', background: '#e6fbf2', border: '1px solid #a3f3d1', padding: '4px 10px', borderRadius: 8 }}>
+                          ~{session.estimatedVolumeM3?.toFixed(2) || 0} m²
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-
-          {/* Actions */}
-          <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:4 }}>
-            {!result ? (
-              <button onClick={handleAnalyze} disabled={loading || !files.length}
-                style={{ padding:'11px 26px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.9rem', cursor: (!files.length||loading)?'not-allowed':'pointer', color:'#fff', background: (!files.length||loading)?'#e2e8f0':`linear-gradient(135deg,${accent},#8b5cf6)`, boxShadow: (!files.length||loading)?'none':'0 4px 16px rgba(99,102,241,0.4)', transition:'all 0.2s', display:'flex', alignItems:'center', gap:8 }}>
-                {loading && <span style={{ display:'inline-block', width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite' }} />}
-                {loading ? 'Đang phân tích...' : 'Phân tích với AI'}
-              </button>
-            ) : (
-              <button onClick={handleImport}
-                style={{ padding:'11px 28px', borderRadius:10, border:'none', fontWeight:700, fontSize:'0.9rem', cursor:'pointer', color:'#fff', background:'linear-gradient(135deg,#10b981,#059669)', boxShadow:'0 4px 16px rgba(16,185,129,0.4)', transition:'all 0.2s' }}>
-                Nhập {result.items?.length} mặt hàng vào yêu cầu
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>
@@ -542,6 +709,7 @@ function DocUpload({ docFiles, setDocFiles, uploadedUrls, accent }) {
 export default function CreateInventoryRequest() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { showToast } = useToast();
   const initType = new URLSearchParams(location.search).get('tab')==='outbound' ? 'OUTBOUND' : 'INBOUND';
 
   const [step, setStep] = useState(1);
@@ -574,6 +742,55 @@ export default function CreateInventoryRequest() {
   const [loadingCapacity, setLoadingCapacity] = useState(false);
   const DRAFT_KEY = 'inv_req_draft';
 
+  // Recent AI Analysis state for quick auto-fill
+  const [recentAiAnalysis, setRecentAiAnalysis] = useState(null);
+
+  useEffect(() => {
+    if (step === 2 && type === 'INBOUND') {
+      try {
+        const raw = localStorage.getItem("recent_ai_analysis");
+        if (raw) {
+          const data = JSON.parse(raw);
+          // Expire after 24 hours
+          if (data && data.timestamp && Date.now() - data.timestamp < 24 * 60 * 60 * 1000) {
+            setRecentAiAnalysis(data);
+          } else {
+            localStorage.removeItem("recent_ai_analysis");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to parse recent AI analysis", err);
+      }
+    }
+  }, [step, type]);
+
+  const handleAutoFillFromRecent = () => {
+    if (!recentAiAnalysis || !recentAiAnalysis.items) return;
+    const rows = recentAiAnalysis.items.map(ai => ({
+      id: Date.now() + Math.random(),
+      assetId: null,
+      itemName: ai.name || '',
+      search: ai.name || '',
+      unit: 'cái',
+      qty: ai.quantity || 1,
+      estimatedVolume: ai.estimatedVolumeM3 || '',
+      weightPerUnit: null,
+      note: '',
+      isNew: true,
+      availableQty: null,
+      showDrop: false,
+    }));
+    setItems(rows);
+    setRecentAiAnalysis(null);
+    localStorage.removeItem("recent_ai_analysis");
+    showToast('Đã tự động điền danh sách hàng hóa từ dữ liệu AI gần đây!', 'success');
+  };
+
+  const handleDismissRecentAi = () => {
+    setRecentAiAnalysis(null);
+    localStorage.removeItem("recent_ai_analysis");
+  };
+
   // Import AI-analyzed rows into the items table
   const handleAiImport = (rows) => {
     setItems(prev => {
@@ -595,7 +812,7 @@ export default function CreateInventoryRequest() {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ type, warehouseId, step, items, notes, scheduledDate, savedAt: new Date().toISOString() }));
       setDraftSaved(true);
       setTimeout(()=>setDraftSaved(false), 2500);
-    } catch{ alert('Không thể lưu nháp.'); }
+    } catch{ showToast('Không thể lưu nháp.', 'error'); }
   };
 
   const loadDraft = () => {
@@ -610,7 +827,7 @@ export default function CreateInventoryRequest() {
       if(d.scheduledDate) setScheduledDate(d.scheduledDate);
       if(d.step)       setStep(d.step);
       setHasDraft(false);
-    } catch{ alert('Không thể phục hồi nháp.'); }
+    } catch{ showToast('Không thể phục hồi nháp.', 'error'); }
   };
 
   const clearDraft = () => { localStorage.removeItem(DRAFT_KEY); setHasDraft(false); };
@@ -945,13 +1162,58 @@ export default function CreateInventoryRequest() {
       {/* ── STEP 2 ── */}
       {step===2&&(
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          {/* Type info bar */}
-          <div style={{ display:'flex', alignItems:'center', gap:10, padding:'11px 18px', borderRadius:12, background: type==='INBOUND'?'#e0f7fa':'#fff8e1', border:`1.5px solid ${accent}30` }}>
-            <span style={{ fontWeight:900, fontSize:'0.9rem', color: accent }}>{type==='INBOUND'?'NHẬP KHO':'XUẤT KHO'}</span>
-            <span style={{ fontSize:'0.82rem', color:'#94a3b8', marginLeft:4 }}>—</span>
-            <span style={{ fontSize:'0.82rem', color:'#64748b' }}>Kho: <strong style={{color:'#1e293b'}}>{selectedWH?.name}</strong></span>
-            <span style={{ marginLeft:'auto', fontSize:'0.78rem', color:'#accent', fontStyle:'italic', cursor:'pointer' }} onClick={()=>{ setStep(1); setError(''); }}>Làm lại (Quay về bước 1)</span>
-          </div>
+
+          {recentAiAnalysis && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '14px 20px',
+              borderRadius: 14,
+              background: 'linear-gradient(135deg, #eef2ff, #e0e7ff)',
+              border: '1.5px solid #818cf8',
+              boxShadow: '0 4px 14px rgba(99,102,241,0.15)',
+              flexWrap: 'wrap',
+            }}>
+              <span style={{ fontSize: 20 }}>💡</span>
+              <span style={{ flex: 1, fontSize: '0.84rem', color: '#312e81', fontWeight: 700 }}>
+                Bạn có dữ liệu phân tích đồ vật từ AI gần đây (~{recentAiAnalysis.totalVolumeM3} m²). Bạn có muốn tự động điền danh sách hàng hóa?
+              </span>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={handleAutoFillFromRecent}
+                  style={{
+                    padding: '7px 16px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
+                  }}
+                >
+                  Tự động điền
+                </button>
+                <button
+                  onClick={handleDismissRecentAi}
+                  style={{
+                    padding: '7px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #c7d2fe',
+                    background: '#fff',
+                    color: '#4f46e5',
+                    fontWeight: 600,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Bỏ qua
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Items card */}
           <div style={card}>
@@ -979,7 +1241,7 @@ export default function CreateInventoryRequest() {
                       {/* Volume summary bar & Smart Routing Hint */}
                       {contractedVolume > 0 && (
                         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          {totalEstimatedVol > 0 ? (
+                          {totalEstimatedVol > 0 && (
                             <>
                               <div style={{ width:160, height:7, borderRadius:4, background:'#e2e8f0', overflow:'hidden' }}>
                                 <div style={{ height:'100%', borderRadius:4, transition:'width 0.4s', width:`${Math.min(100,volumeUsagePercent)}%`, background: isVolumeOverContract ? '#ef4444' : volumeUsagePercent > 80 ? '#f59e0b' : '#22c55e' }} />
@@ -993,11 +1255,6 @@ export default function CreateInventoryRequest() {
                                 </span>
                               )}
                             </>
-                          ) : (
-                            <div style={{ fontSize:'0.75rem', color:'#64748b', background:'#f8fafc', padding:'5px 12px', borderRadius:8, border:'1px solid #e2e8f0', display:'flex', alignItems:'center', gap:6 }}>
-                              <span style={{ fontWeight:700, color:'#4f46e5' }}>💡 Mẹo:</span> 
-                              Dùng AI phân tích để được <strong style={{ color:'#16a34a' }}>Hệ thống tự động duyệt ngay!</strong>
-                            </div>
                           )}
                         </div>
                       )}

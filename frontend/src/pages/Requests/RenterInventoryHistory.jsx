@@ -5,6 +5,8 @@ import axiosClient from "../../services/axiosClient";
 import { ReceiptPreviewModal } from "../../components/InventoryReceiptPDF";
 import ReceiptNotesListModal from "../../components/ReceiptNotesListModal";
 import RequestQRCode from "../../components/RequestQRCode";
+import { useToast } from "../../context/ToastContext";
+
 const INBOUND_COLOR = '#10b981';
 const OUTBOUND_COLOR = '#f59e0b';
 
@@ -58,11 +60,12 @@ const RejectReasonModal = ({ req, onClose }) => (
   </div>
 );
 
-const STATUSES = ["PENDING", "CONFIRMED", "COMPLETED", "REJECTED"];
+const STATUSES = ["PENDING", "CONFIRMED", "RECEIVING", "COMPLETED", "REJECTED"];
 const fmtDate = d => d ? new Date(d).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
 /* ── Tab Panel ──────────────────────────────────────────────────── */
 function TabPanel({ type }) {
+  const { showToast } = useToast();
   const location = useLocation();
   const accent = type === "INBOUND" ? INBOUND_COLOR : OUTBOUND_COLOR;
 
@@ -107,8 +110,13 @@ function TabPanel({ type }) {
   });
 
   const doDelete = async (id) => {
-    try { await inventoryService.deleteInventoryRequest(id); setData(d => d.filter(r => r.invReqId !== id)); }
-    catch (err) { alert(err?.response?.data?.message || "Không thể xóa."); }
+    try {
+      await inventoryService.deleteInventoryRequest(id);
+      setData(d => d.filter(r => r.invReqId !== id));
+      showToast("Đã xóa yêu cầu thành công!", "success");
+    } catch (err) {
+      showToast(err?.response?.data?.message || "Không thể xóa.", "error");
+    }
     setConf(null);
   };
 

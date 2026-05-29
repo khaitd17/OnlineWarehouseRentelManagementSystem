@@ -63,8 +63,9 @@ BEGIN
         received_at            DATETIME2 NOT NULL DEFAULT GETDATE(),
         staff_signature_base64 NVARCHAR(MAX) NULL,
         renter_signature_base64 NVARCHAR(MAX) NULL,
-        status                 NVARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+        status                 NVARCHAR(30) NOT NULL DEFAULT 'DRAFT',
         notes                  NVARCHAR(MAX) NULL,
+        capacity_overflow      DECIMAL(10,3) NULL,
         created_at             DATETIME2 NOT NULL DEFAULT GETDATE(),
         updated_at             DATETIME2 NULL,
 
@@ -84,6 +85,28 @@ END
 GO
 
 -- ── 4. Tạo bảng receipt_items ───────────────────────────────────────────────
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'receipt_notes')
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = 'receipt_notes' AND COLUMN_NAME = 'capacity_overflow'
+    )
+    BEGIN
+        ALTER TABLE receipt_notes ADD capacity_overflow DECIMAL(10,3) NULL;
+    END
+
+    IF EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = 'receipt_notes'
+          AND COLUMN_NAME = 'status'
+          AND CHARACTER_MAXIMUM_LENGTH < 30
+    )
+    BEGIN
+        ALTER TABLE receipt_notes ALTER COLUMN status NVARCHAR(30) NOT NULL;
+    END
+END
+GO
+
 IF NOT EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'receipt_items')
 BEGIN
     CREATE TABLE receipt_items (
@@ -96,6 +119,8 @@ BEGIN
         received_quantity   INT NOT NULL DEFAULT 0,
         unit                NVARCHAR(50) NOT NULL DEFAULT N'cái',
         verified_volume     DECIMAL(10,3) NULL,
+        measured_length     DECIMAL(10,3) NULL,
+        measured_width      DECIMAL(10,3) NULL,
         verified_weight     DECIMAL(10,3) NULL,
         note                NVARCHAR(500) NULL,
 
@@ -110,6 +135,26 @@ BEGIN
 
     CREATE NONCLUSTERED INDEX idx_receipt_items_note
         ON receipt_items(receipt_note_id);
+END
+GO
+
+IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'receipt_items')
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = 'receipt_items' AND COLUMN_NAME = 'measured_length'
+    )
+    BEGIN
+        ALTER TABLE receipt_items ADD measured_length DECIMAL(10,3) NULL;
+    END
+
+    IF NOT EXISTS (
+        SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_NAME = 'receipt_items' AND COLUMN_NAME = 'measured_width'
+    )
+    BEGIN
+        ALTER TABLE receipt_items ADD measured_width DECIMAL(10,3) NULL;
+    END
 END
 GO
 

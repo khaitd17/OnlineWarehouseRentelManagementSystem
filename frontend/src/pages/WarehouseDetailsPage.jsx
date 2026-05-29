@@ -7,6 +7,7 @@ import authService from '../services/authService';
 import favoritesService from '../services/favoritesService';
 import CustomAreaSelectorModal from '../components/warehouse/CustomAreaSelectorModal';
 import InteractiveGridMap from '../components/warehouse/InteractiveGridMap';
+import { useToast } from '../context/ToastContext';
 
 // ─── Floor Plan Blueprint ────────────────────────────────────────────────────
 const FloorPlanView = ({ areas, warehouseData }) => {
@@ -167,6 +168,7 @@ const FloorPlanView = ({ areas, warehouseData }) => {
 const WarehouseDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [formData, setFormData] = useState(() => {
     try {
       const saved = sessionStorage.getItem('pendingRentalRequest');
@@ -343,7 +345,7 @@ const WarehouseDetailsPage = () => {
       setReplyText(prev => ({ ...prev, [ratingId]: '' }));
     } catch (err) {
       console.error('Failed to reply:', err);
-      alert('Không thể gửi phản hồi. Vui lòng thử lại.');
+      showToast('Không thể gửi phản hồi. Vui lòng thử lại.', 'error');
     } finally {
       setReplyLoading(false);
     }

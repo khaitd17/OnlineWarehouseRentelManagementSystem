@@ -63,6 +63,30 @@ namespace WMS.Infrastructure.Persistence
 
                 IF COL_LENGTH(N'renter_assets', N'width_per_unit') IS NULL
                     ALTER TABLE [renter_assets] ADD [width_per_unit] decimal(10,3) NULL;
+
+                IF OBJECT_ID(N'[receipt_items]', N'U') IS NOT NULL
+                BEGIN
+                    IF COL_LENGTH(N'receipt_items', N'measured_length') IS NULL
+                        ALTER TABLE [receipt_items] ADD [measured_length] decimal(10,3) NULL;
+
+                    IF COL_LENGTH(N'receipt_items', N'measured_width') IS NULL
+                        ALTER TABLE [receipt_items] ADD [measured_width] decimal(10,3) NULL;
+                END;
+
+                IF OBJECT_ID(N'[receipt_notes]', N'U') IS NOT NULL
+                BEGIN
+                    IF COL_LENGTH(N'receipt_notes', N'capacity_overflow') IS NULL
+                        ALTER TABLE [receipt_notes] ADD [capacity_overflow] decimal(10,3) NULL;
+
+                    IF EXISTS (
+                        SELECT 1
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'receipt_notes'
+                          AND COLUMN_NAME = 'status'
+                          AND CHARACTER_MAXIMUM_LENGTH < 30
+                    )
+                        ALTER TABLE [receipt_notes] ALTER COLUMN [status] nvarchar(30) NOT NULL;
+                END;
             ");
 
             // ══════════════════════════════════════════════════

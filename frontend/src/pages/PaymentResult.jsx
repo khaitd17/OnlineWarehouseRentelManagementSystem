@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PaymentRetryButton from "../components/PaymentRetryButton";
+import { useToast } from "../context/ToastContext";
 
 const PaymentResult = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { showToast } = useToast();
 
   const success = searchParams.get('success') === 'true';
   const contractId = searchParams.get('contractId');
@@ -232,7 +234,7 @@ const PaymentResult = () => {
                   }
                 }}
                 onRetryError={(error) => {
-                  alert(error);
+                  showToast(error, 'error');
                 }}
               />
             )}

@@ -25,6 +25,10 @@ public interface IStaffMembershipRepository
 
     Task<List<ManagerScopeDto>> GetActiveManagersInWarehouseAsync(int warehouseId, CancellationToken ct = default);
 
+    Task<List<WarehouseNotificationRecipientDto>> GetActiveWarehouseNotificationRecipientsAsync(
+        int warehouseId,
+        CancellationToken ct = default);
+
     Task<List<MyWarehouseItemDto>> GetMyWarehousesAsync(int userId, CancellationToken ct = default);
 
     Task<List<SkillDto>> GetSkillsAsync(CancellationToken ct = default);
@@ -134,6 +138,14 @@ public class ManagerScopeDto
     public string FullName { get; set; } = null!;
     public bool IsAllSkill { get; set; }
     public List<int> SkillIds { get; set; } = new();
+}
+
+public class WarehouseNotificationRecipientDto
+{
+    public int UserId { get; set; }
+    public string FullName { get; set; } = null!;
+    public string Email { get; set; } = null!;
+    public string RoleCode { get; set; } = null!;
 }
 
 // ZoneDto kept for potential use in other non-staff features

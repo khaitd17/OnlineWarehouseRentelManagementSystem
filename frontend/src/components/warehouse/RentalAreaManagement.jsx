@@ -1,6 +1,7 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Rnd } from "react-rnd";
 import api from "../../services/axiosClient";
+import { useToast } from "../../context/ToastContext";
 import { parseBoundary, buildMaskPath, buildPolygonPoints, getGridDimensions, CELL_SIZE } from "../../utils/polygonUtils";
 
 // ── Auto-generate zones ────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ function buildAutoZones(warehouse, zoneW, zoneL, zoneH, existingCount) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
+  const { showToast } = useToast();
   const [areas, setAreas] = useState([]);
   const [warehouse, setWarehouse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -152,8 +154,8 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
     setSubmitLoading(true);
     try {
       const payload={name:formData.name,size:parsedSize,description:formData.description,width:w,length:l,positionX:x,positionY:y};
-      if(editingId){ await api.put(`/RentalAreas/${editingId}`,{id:editingId,...payload}); alert('Cập nhật thành công!'); }
-      else { await api.post('/RentalAreas',{warehouseId:parseInt(warehouseId),...payload}); alert('Thêm mới thành công!'); }
+      if(editingId){ await api.put(`/RentalAreas/${editingId}`,{id:editingId,...payload}); showToast('Cập nhật thành công!', 'success'); }
+      else { await api.post('/RentalAreas',{warehouseId:parseInt(warehouseId),...payload}); showToast('Thêm mới thành công!', 'success'); }
       closeForm(); fetchData();
     } catch(err){ setFormError(err.response?.data?.error || err.response?.data?.Error || err.response?.data?.message || 'Có lỗi xảy ra'); }
     finally { setSubmitLoading(false); }
@@ -166,7 +168,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
         closeForm(); fetchData();
       } catch(err) {
         const msg = err.response?.data?.error || err.response?.data?.Error || err.response?.data?.message || 'Lỗi khi xóa khu vực!';
-        alert(msg);
+        showToast(msg, 'error');
       }
     }
   };
@@ -174,9 +176,9 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
   const handleDragStop = async (id,d) => {
     if(viewOnly) return;
     const area=areas.find(a=>a.id===id); if(!area) return;
-    if(area.isOccupied){alert('Không thể di chuyển khu vực đang được thuê!');setAreas([...areas]);return;}
+    if(area.isOccupied){showToast('Không thể di chuyển khu vực đang được thuê!', 'warning');setAreas([...areas]);return;}
     const newX=Math.round((d.x/scale)*10)/10, newY=Math.round((d.y/scale)*10)/10;
-    if(checkOverlap(id,newX,newY,area.width||10,area.length||10)){alert('Vị trí không hợp lệ! Bị chạm vào một khu vực khác.');setAreas([...areas]);return;}
+    if(checkOverlap(id,newX,newY,area.width||10,area.length||10)){showToast('Vị trí không hợp lệ! Bị chạm vào một khu vực khác.', 'warning');setAreas([...areas]);return;}
     const upd={...area,positionX:newX,positionY:newY};
     setAreas(prev=>prev.map(a=>(a.id===id?upd:a)));
     try{ await api.put(`/RentalAreas/${id}`,upd); } catch(e){ console.error('Auto-save failed',e); }
@@ -185,14 +187,14 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
   const handleResizeStop = async (id,ref,position) => {
     if(viewOnly) return;
     const area=areas.find(a=>a.id===id); if(!area) return;
-    if(area.isOccupied){alert('Không thể thay đổi kích thước khu vực đang được thuê!');setAreas([...areas]);return;}
+    if(area.isOccupied){showToast('Không thể thay đổi kích thước khu vực đang được thuê!', 'warning');setAreas([...areas]);return;}
     const newW=Math.round((ref.offsetWidth/scale)*10)/10, newL=Math.round((ref.offsetHeight/scale)*10)/10;
     // derive warehouse height from TotalArea / (W × L) since Height is not a separate DB column
     const derivedH = (warehouse?.totalArea && whW && whL) ? Math.round((warehouse.totalArea / (whW * whL)) * 10) / 10 : 5;
     const newSize=Number((newW*newL*derivedH).toFixed(2));
     const newX=Math.round((position.x/scale)*10)/10, newY=Math.round((position.y/scale)*10)/10;
-    if(checkOverlap(id,newX,newY,newW,newL)){alert('Kích thước không hợp lệ! Bị chạm vào một khu vực khác.');setAreas([...areas]);return;}
-    if(!checkVolumeCapacity(id,newSize)){alert('Kích thước không hợp lệ! Tổng diện tích vượt quá sức chứa kho.');setAreas([...areas]);return;}
+    if(checkOverlap(id,newX,newY,newW,newL)){showToast('Kích thước không hợp lệ! Bị chạm vào một khu vực khác.', 'warning');setAreas([...areas]);return;}
+    if(!checkVolumeCapacity(id,newSize)){showToast('Kích thước không hợp lệ! Tổng diện tích vượt quá sức chứa kho.', 'warning');setAreas([...areas]);return;}
     const upd={...area,width:newW,length:newL,size:newSize,positionX:newX,positionY:newY};
     setAreas(prev=>prev.map(a=>(a.id===id?upd:a)));
     try{ await api.put(`/RentalAreas/${id}`,upd); } catch(e){ console.error('Auto-save failed',e); }
@@ -205,7 +207,7 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
     const w = parseFloat(wh.width ?? wh.Width ?? 0) || 0;
     const l = parseFloat(wh.length ?? wh.Length ?? 0) || 0;
     if (!w || !l) {
-      alert('Kho chưa có thông tin chiều rộng/dài. Vui lòng lưu thông tin kho với đầy đủ Chiều rộng và Chiều dài trước.');
+      showToast('Kho chưa có thông tin chiều rộng/dài. Vui lòng lưu thông tin kho với đầy đủ Chiều rộng và Chiều dài trước.', 'warning');
       return;
     }
     // Derive height from TotalArea (m²) / floor area (m²) since no Height column in DB
@@ -253,8 +255,9 @@ const RentalAreaManagement = ({ warehouseId, viewOnly = false }) => {
       }
       setShowAutoModal(false);
       fetchData();
+      showToast('Tự động tạo các ô khu vực thành công!', 'success');
     } catch (err) {
-      alert(err.response?.data?.error || err.response?.data?.Error || err.response?.data?.message || 'Lỗi khi tạo ô khu vực!');
+      showToast(err.response?.data?.error || err.response?.data?.Error || err.response?.data?.message || 'Lỗi khi tạo ô khu vực!', 'error');
     } finally { setAutoGenerating(false); }
   };
 

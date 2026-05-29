@@ -1,0 +1,317 @@
+<mxfile host="app.diagrams.net" agent="Antigravity" version="26.0">
+  <diagram id="create-warehouse" name="Create Warehouse Workflow">
+    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TITLE -->
+        <mxCell id="title" value="Online Warehouse Rental Management System&#xa;Create Warehouse Workflow" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=16;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="120" y="10" width="380" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- SWIM LANE HEADERS -->
+        <mxCell id="h_owner" value="Warehouse Owner" style="shape=mxgraph.flowchart.annotation_2;align=center;labelPosition=center;pointerEvents=1;fontSize=14;fontStyle=1;verticalAlign=middle;verticalLabelPosition=middle;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="h_system" value="OWRMS System" style="shape=mxgraph.flowchart.annotation_2;align=center;labelPosition=center;pointerEvents=1;fontSize=14;fontStyle=1;verticalAlign=middle;verticalLabelPosition=middle;" vertex="1" parent="1">
+          <mxGeometry x="260" y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="h_admin" value="Admin" style="shape=mxgraph.flowchart.annotation_2;align=center;labelPosition=center;pointerEvents=1;fontSize=14;fontStyle=1;verticalAlign=middle;verticalLabelPosition=middle;" vertex="1" parent="1">
+          <mxGeometry x="480" y="60" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Lane backgrounds -->
+        <mxCell id="bg1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCC;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="200" height="2010" as="geometry" />
+        </mxCell>
+        <mxCell id="bg2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCC;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="90" width="200" height="2010" as="geometry" />
+        </mxCell>
+        <mxCell id="bg3" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#CCC;strokeWidth=1;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="480" y="90" width="200" height="2010" as="geometry" />
+        </mxCell>
+
+        <!-- START -->
+        <mxCell id="start" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000;strokeColor=#000;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="130" y="110" width="20" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 1: CREATE WAREHOUSE ═══ -->
+
+        <mxCell id="O1" value="Create Warehouse&#xa;Enter information:&#xa;Name, Address, GPS,&#xa;Type, Total Area, Height,&#xa;Operating Hours, Price/m²,&#xa;Description" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="150" width="170" height="95" as="geometry" />
+        </mxCell>
+        <mxCell id="e01" style="" edge="1" source="start" target="O1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- System validates -->
+        <mxCell id="SYS1" value="Validate input:&#xa;• Name (2-150 chars)&#xa;• Address (10-300 chars)&#xa;• Area &gt; 0, ≤ 200,000 m²&#xa;• Height &gt; 0, ≤ 50 m&#xa;• GPS coordinates range&#xa;• Open/Close time rules&#xa;• Price ≥ 0" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="145" width="170" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="e02" style="" edge="1" source="O1" target="SYS1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Subscription check -->
+        <mxCell id="SYS2" value="Check subscription limits:&#xa;• Warehouse count limit?&#xa;• Total area limit?" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="290" y="300" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="e03" style="" edge="1" source="SYS1" target="SYS2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Exceeded limit -->
+        <mxCell id="SYS_limit" value="Error: Subscription&#xa;limit exceeded" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="310" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e04" value="Exceeded" style="" edge="1" source="SYS2" target="SYS_limit" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="O_limit" value="Receive error:&#xa;upgrade subscription&#xa;plan required" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="305" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e05" style="" edge="1" source="SYS_limit" target="O_limit" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end_limit" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000;strokeColor=#000;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="127" y="375" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="e06" style="" edge="1" source="O_limit" target="end_limit" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Within limit → Create -->
+        <mxCell id="SYS3" value="Create warehouse record&#xa;(Status: DRAFT)&#xa;AvailableArea = TotalArea" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="430" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e07" value="Within limit" style="" edge="1" source="SYS2" target="SYS3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS4" value="Create memberships:&#xa;• OWNER membership&#xa;• OPERATOR membership&#xa;for warehouse owner" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="510" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e08" style="" edge="1" source="SYS3" target="SYS4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 2: UPLOAD MEDIA & DOCUMENTS ═══ -->
+
+        <mxCell id="O2" value="Upload warehouse images&#xa;(photos, floor plan)&#xa;Set primary image" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="600" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e09" style="" edge="1" source="SYS4" target="O2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS5" value="Save uploaded media&#xa;to warehouse record" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="605" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="" edge="1" source="O2" target="SYS5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="O3" value="Upload legal documents&#xa;(business license,&#xa;ownership proof, etc.)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="670" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="" edge="1" source="SYS5" target="O3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS6" value="Save uploaded documents&#xa;to warehouse record" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="675" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="" edge="1" source="O3" target="SYS6" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 2.5: UPDATE (optional loop) ═══ -->
+
+        <mxCell id="O_update" value="Review &amp; update&#xa;warehouse information&#xa;(optional, while DRAFT)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#F5F5F5;strokeColor=#999;fontColor=#666;dashed=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="745" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="dashed=1;strokeColor=#999;" edge="1" source="SYS6" target="O_update" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 3: SUBMIT FOR REVIEW ═══ -->
+
+        <mxCell id="O4" value="Submit warehouse&#xa;for Admin review" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="830" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="" edge="1" source="O_update" target="O4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS_submit_check" value="Status is&#xa;DRAFT or&#xa;HIDDEN?" style="rhombus;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="325" y="825" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" style="" edge="1" source="O4" target="SYS_submit_check" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS_submit_error" value="Error: Cannot submit&#xa;in current status" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#F5F5F5;strokeColor=#999;fontColor=#666;dashed=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="500" y="835" width="160" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" value="No" style="dashed=1;strokeColor=#999;" edge="1" source="SYS_submit_check" target="SYS_submit_error" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS7" value="Update warehouse&#xa;Status → PENDING" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="275" y="930" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" value="Yes" style="" edge="1" source="SYS_submit_check" target="SYS7" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ═══ PHASE 4: ADMIN REVIEW ═══ -->
+
+        <mxCell id="A1" value="Receive pending&#xa;warehouse request" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="930" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" style="" edge="1" source="SYS7" target="A1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="A2" value="Review warehouse details:&#xa;Info, Images, Documents,&#xa;Legal compliance" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="1000" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" style="" edge="1" source="A1" target="A2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="A3" value="Information&#xa;valid?" style="rhombus;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="545" y="1085" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" style="" edge="1" source="A2" target="A3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- APPROVE -->
+        <mxCell id="A_approve" value="Approve warehouse&#xa;registration" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="1200" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" value="Yes" style="" edge="1" source="A3" target="A_approve" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="SYS_approve" value="Status → APPROVED&#xa;Record ApprovedBy &amp;&#xa;ApprovedAt timestamp&#xa;Clear RejectionReason" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="275" y="1190" width="170" height="65" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" style="" edge="1" source="A_approve" target="SYS_approve" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="O_approved" value="Warehouse is now&#xa;APPROVED and visible&#xa;to Renters on platform" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="1195" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" style="" edge="1" source="SYS_approve" target="O_approved" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="end_approve" value="" style="ellipse;whiteSpace=wrap;html=1;fillColor=#000;strokeColor=#000;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="127" y="1270" width="25" height="25" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" style="" edge="1" source="O_approved" target="end_approve" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- REJECT -->
+        <mxCell id="A_reject" value="Reject warehouse&#xa;(enter rejection reason)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="1330" width="170" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="e25" value="No" style="" edge="1" source="A3" target="A_reject" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="1120" />
+              <mxPoint x="680" y="1350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="SYS_reject" value="Status → REJECTED&#xa;Record RejectionReason&#xa;Record ApprovedBy" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="1325" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e26" style="" edge="1" source="A_reject" target="SYS_reject" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="O_rejected" value="View rejection reason&#xa;Owner can update info&#xa;and re-submit" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="55" y="1330" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e27" style="" edge="1" source="SYS_reject" target="O_rejected" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Loop back: re-submit after rejection fix -->
+        <mxCell id="e28" value="Re-submit after&#xa;fixing issues" style="curved=1;dashed=1;strokeColor=#999;fontStyle=2;fontSize=10;fontColor=#666;" edge="1" source="O_rejected" target="O_update" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="40" y="1355" />
+              <mxPoint x="40" y="768" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══ POST-APPROVAL: ADMIN LISTING MANAGEMENT ═══ -->
+
+        <mxCell id="divider" value="── Post-Approval: Admin Listing Management ──" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=11;fontStyle=3;fontColor=#999;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1440" width="380" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="A_post" value="Admin can manage&#xa;warehouse listing" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="495" y="1490" width="170" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="A_action" value="Action?" style="rhombus;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="545" y="1560" width="70" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="e29" style="" edge="1" source="A_post" target="A_action" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- HIDE -->
+        <mxCell id="SYS_hide" value="HIDE:&#xa;APPROVED → HIDDEN&#xa;(temporarily hide&#xa;from public listing)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="1530" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e30" value="Hide" style="" edge="1" source="A_action" target="SYS_hide" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- SHOW -->
+        <mxCell id="SYS_show" value="SHOW:&#xa;HIDDEN → APPROVED&#xa;(re-show warehouse&#xa;on public listing)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="1620" width="170" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e31" value="Show" style="" edge="1" source="A_action" target="SYS_show" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- DELETE -->
+        <mxCell id="SYS_delete" value="DELETE:&#xa;Any status → DELETED&#xa;(soft-delete)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="275" y="1710" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e32" value="Delete" style="" edge="1" source="A_action" target="SYS_delete" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="580" y="1660" />
+              <mxPoint x="580" y="1735" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Owner: can re-submit hidden -->
+        <mxCell id="O_hidden" value="Owner can re-submit&#xa;HIDDEN warehouse&#xa;for re-approval" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#F5F5F5;strokeColor=#999;fontColor=#666;dashed=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1560" width="160" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="e33" style="dashed=1;strokeColor=#999;" edge="1" source="SYS_hide" target="O_hidden" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

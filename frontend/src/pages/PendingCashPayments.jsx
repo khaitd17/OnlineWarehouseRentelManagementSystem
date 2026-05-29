@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import paymentService from "../services/paymentService";
 import axiosClient from "../services/axiosClient";
+import { useToast } from "../context/ToastContext";
 
 const formatCurrency = (amount) => {
   if (amount == null) return "—";
@@ -34,6 +35,7 @@ const buildFileUrl = (url) => {
 
 const PendingCashPayments = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -70,10 +72,10 @@ const PendingCashPayments = () => {
     try {
       setProcessingId(paymentId);
       await paymentService.confirmCashPayment(paymentId, true);
-      alert("Đã xác nhận thanh toán thành công!");
+      showToast("Đã xác nhận thanh toán thành công!", "success");
       loadPayments();
     } catch (err) {
-      alert(err.response?.data?.message || "Không thể xác nhận thanh toán");
+      showToast(err.response?.data?.message || "Không thể xác nhận thanh toán", "error");
     } finally {
       setProcessingId(null);
     }
@@ -86,15 +88,15 @@ const PendingCashPayments = () => {
   };
 
   const handleRejectConfirm = async () => {
-    if (!rejectReason.trim()) { alert("Vui lòng nhập lý do từ chối"); return; }
+    if (!rejectReason.trim()) { showToast("Vui lòng nhập lý do từ chối", "warning"); return; }
     try {
       setProcessingId(rejectPaymentId);
       await paymentService.confirmCashPayment(rejectPaymentId, false, rejectReason);
-      alert("Đã từ chối thanh toán");
+      showToast("Đã từ chối thanh toán", "success");
       setShowRejectModal(false);
       loadPayments();
     } catch (err) {
-      alert(err.response?.data?.message || "Không thể từ chối thanh toán");
+      showToast(err.response?.data?.message || "Không thể từ chối thanh toán", "error");
     } finally {
       setProcessingId(null);
     }
@@ -110,11 +112,11 @@ const PendingCashPayments = () => {
     try {
       setProcessingId(reuploadPaymentId);
       await paymentService.requestPaymentReupload(reuploadPaymentId, reuploadReason.trim() || null);
-      alert("Đã yêu cầu tải lại chứng từ");
+      showToast("Đã yêu cầu tải lại chứng từ", "success");
       setShowReuploadModal(false);
       loadPayments();
     } catch (err) {
-      alert(err.response?.data?.message || "Không thể yêu cầu tải lại chứng từ");
+      showToast(err.response?.data?.message || "Không thể yêu cầu tải lại chứng từ", "error");
     } finally {
       setProcessingId(null);
     }

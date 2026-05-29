@@ -633,9 +633,6 @@ export default function SearchResultsPage() {
       <div className="mx-auto max-w-7xl px-4 py-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-sm text-slate-500">
-              {loading ? "Đang tìm..." : `${displayTotal.toLocaleString("vi-VN")} kho phù hợp`}
-            </div>
             {geoError && sortBy === "distance" && (
               <div className="text-xs text-rose-500">Không thể lấy vị trí để sắp xếp theo khoảng cách.</div>
             )}

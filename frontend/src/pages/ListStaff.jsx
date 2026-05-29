@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import staffService from "../services/staffService";
 import axiosClient from "../services/axiosClient";
 import warehouseShiftService from "../services/shiftPresetService";
+import { useToast } from "../context/ToastContext";
 
 /* ─── Light Palette ─────────────────────────────────────────────────────── */
 const C = {
@@ -121,6 +122,7 @@ const ROLE_TYPES = [
 ];
 
 function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions, onClose, onSuccess }) {
+  const { showToast } = useToast();
   // Check từ warehouseContext.roles[] để hỗ trợ OWNER+OPERATOR
   const ctx = JSON.parse(localStorage.getItem("warehouseContext") || "{}");
   const warehouseEntry = (ctx.warehouses || []).find(w => w.warehouseId === warehouseId);
@@ -158,6 +160,7 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
         skillIds: form.skillIds,
         isAllSkill: false,
       });
+      showToast("Phân quyền nhân viên thành công!", "success");
       onSuccess();
     } catch (e) {
       setError(e?.response?.data?.message || "Cập nhật thất bại.");
@@ -263,6 +266,7 @@ function ReassignModal({ staff, warehouseId, callerMembership, warehouseOptions,
 
 /* ─── Shift Config Modal ────────────────────────────────────────────────── */
 function ShiftConfigModal({ staff, warehouseShifts, onClose, onSuccess }) {
+  const { showToast } = useToast();
   const [selectedShiftId, setSelectedShiftId] = useState(staff.warehouseShiftId || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -271,6 +275,7 @@ function ShiftConfigModal({ staff, warehouseShifts, onClose, onSuccess }) {
     setError(""); setSaving(true);
     try {
       await staffService.setStaffShift(staff.membershipId, selectedShiftId ? parseInt(selectedShiftId) : null);
+      showToast("Cấu hình ca làm việc thành công!", "success");
       onSuccess();
     } catch (e) {
       setError(e?.response?.data?.message || "Cấu hình ca thất bại.");
@@ -335,6 +340,7 @@ function ShiftConfigModal({ staff, warehouseShifts, onClose, onSuccess }) {
 
 /* ─── Staff Card ────────────────────────────────────────────────────────── */
 function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, warehouseShifts, onRefresh }) {
+  const { showToast } = useToast();
   const isActive = staff.membershipIsActive;
   const [busy, setBusy] = useState(false);
   const [showReassign, setReassign] = useState(false);
@@ -346,9 +352,10 @@ function StaffCard({ staff, warehouseId, callerMembership, warehouseOptions, war
     try {
       if (isActive) await staffService.deactivateMembership(staff.membershipId);
       else await staffService.activateMembership(staff.membershipId);
+      showToast(isActive ? "Vô hiệu hóa nhân viên thành công!" : "Kích hoạt nhân viên thành công!", "success");
       setShowConfirm(false);
       onRefresh();
-    } catch (e) { alert(e?.response?.data?.message || "Thao tác thất bại."); }
+    } catch (e) { showToast(e?.response?.data?.message || "Thao tác thất bại.", "error"); }
     finally { setBusy(false); }
   };
 

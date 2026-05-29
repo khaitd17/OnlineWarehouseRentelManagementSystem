@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import receiptNoteService from '../services/receiptNoteService';
 import renterAssetService from '../services/renterAssetService';
+import axiosClient from '../services/axiosClient';
 import SignatureCanvas from './SignatureCanvas';
 
 const INBOUND_ACCENT = '#10b981';
@@ -87,10 +88,23 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
 
     fetchExistingData();
 
-    // Fetch capacity info for INBOUND requests
-    if (request.type === 'INBOUND' && request.warehouseId) {
-      renterAssetService.getCapacity(request.warehouseId)
-        .then(res => setCapacityInfo(res.data))
+    // Fetch capacity info for INBOUND requests using the renter's specific ID
+    if (request.type === 'INBOUND' && request.warehouseId && request.renterId) {
+      axiosClient.get('/rental-contracts/renter-capacity', {
+        params: { renterId: request.renterId, warehouseId: request.warehouseId }
+      })
+        .then(res => {
+          if (res.data) {
+            setCapacityInfo({
+              contractedArea: res.data.contractedAreaM3,
+              usedArea: res.data.currentVolumeM3,
+              remainingArea: res.data.remainingM3,
+              usagePercent: res.data.usagePercent
+            });
+          } else {
+            setCapacityInfo(null);
+          }
+        })
         .catch(() => setCapacityInfo(null));
     }
   }, [request]);
@@ -113,6 +127,14 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
     return { zone: 'RED', overflow };
   }, [capacityInfo, totalVerifiedVolume, request]);
 
+  // Check if all requested items are already fully fulfilled
+  const isFullyFulfilled = useMemo(() => {
+    if (items.length === 0) return false;
+    const originalItems = items.filter(it => it.inventoryItemId != null);
+    if (originalItems.length === 0) return false;
+    return originalItems.every(it => Number(it.expectedQuantity) <= 0);
+  }, [items]);
+
   if (!request) return null;
 
   const updateItem = (idx, field, val) => {
@@ -127,6 +149,11 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
   };
 
   const handleSubmit = async () => {
+    if (isFullyFulfilled) {
+      setError('Yêu cầu này đã được xử lý đầy đủ số lượng. Không thể tạo thêm phiếu mới.');
+      return;
+    }
+
     if (!sigRef.current || sigRef.current.isEmpty()) {
       setError('Vui lòng ký xác nhận.');
       return;
@@ -203,8 +230,15 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
         </div>
 
         <div style={{ overflowY:'auto', flex:1, padding:'22px 28px' }}>
-          {error && (
+           {error && (
             <div style={{ padding:'10px 14px', borderRadius:10, background:'#fee2e2', border:'1px solid #fecaca', marginBottom:14, fontSize:'0.83rem', color:'#991b1b', fontWeight:600 }}>{error}</div>
+          )}
+
+          {isFullyFulfilled && (
+            <div style={{ padding:'12px 16px', borderRadius:12, background:'#fef3c7', border:'1.5px solid #fcd34d', marginBottom:16, fontSize:'0.85rem', color:'#92400e', fontWeight:700, display:'flex', flexDirection:'column', gap:4 }}>
+              <span>⚠️ Yêu cầu đã được lập phiếu đầy đủ số lượng trong các phiếu trước đó.</span>
+              <span style={{ fontSize:'0.78rem', fontWeight:500, color:'#b45309' }}>Tổng số lượng thực tế đã tạo phiếu bằng hoặc vượt quá số lượng yêu cầu. Vui lòng kiểm tra lại các phiếu hiện có hoặc đợi người thuê ký xác nhận để hoàn tất.</span>
+            </div>
           )}
 
           {/* Capacity Guard Bar */}
@@ -370,11 +404,13 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
             })}
           </div>
 
-          <button onClick={addExtraItem} style={{ width:'100%', padding:'10px', borderRadius:10, border:'1.5px dashed #cbd5e1', background:'#f8fafc', cursor:'pointer', fontSize:'0.83rem', fontWeight:600, color:'#64748b', marginBottom:16 }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = accent}
-            onMouseLeave={e => e.currentTarget.style.borderColor = '#cbd5e1'}>
-            + Thêm hàng phát sinh (ngoài danh sách)
-          </button>
+          {!isFullyFulfilled && (
+            <button onClick={addExtraItem} style={{ width:'100%', padding:'10px', borderRadius:10, border:'1.5px dashed #cbd5e1', background:'#f8fafc', cursor:'pointer', fontSize:'0.83rem', fontWeight:600, color:'#64748b', marginBottom:16 }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = accent}
+              onMouseLeave={e => e.currentTarget.style.borderColor = '#cbd5e1'}>
+              + Thêm hàng phát sinh (ngoài danh sách)
+            </button>
+          )}
 
           {hasDisc && (
             <div style={{ padding:'10px 14px', borderRadius:10, background:'#fff7ed', border:'1px solid #fed7aa', marginBottom:16, fontSize:'0.82rem', color:'#c2410c', fontWeight:600 }}>
@@ -410,11 +446,11 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
               style={{ padding:'10px 22px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', cursor:'pointer', fontWeight:600, fontSize:'0.875rem', color:'#64748b' }}>
               Hủy
             </button>
-            <button onClick={handleSubmit} disabled={loading}
+            <button onClick={handleSubmit} disabled={loading || isFullyFulfilled}
               style={{ padding:'10px 24px', borderRadius:10, border:'none',
-                background: loading ? '#e2e8f0' : capacityZone.zone === 'RED' ? 'linear-gradient(135deg,#f59e0b,#d97706)' : `linear-gradient(135deg,${accent},${isOutbound ? '#d97706' : '#059669'})`,
-                color: loading ? '#94a3b8' : '#fff', cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight:700, fontSize:'0.875rem', boxShadow: loading ? 'none' : capacityZone.zone === 'RED' ? '0 4px 14px rgba(245,158,11,0.4)' : isOutbound ? '0 4px 14px rgba(245,158,11,0.35)' : '0 4px 14px rgba(16,185,129,0.4)' }}>
+                background: (loading || isFullyFulfilled) ? '#cbd5e1' : capacityZone.zone === 'RED' ? 'linear-gradient(135deg,#f59e0b,#d97706)' : `linear-gradient(135deg,${accent},${isOutbound ? '#d97706' : '#059669'})`,
+                color: (loading || isFullyFulfilled) ? '#94a3b8' : '#fff', cursor: (loading || isFullyFulfilled) ? 'not-allowed' : 'pointer',
+                fontWeight:700, fontSize:'0.875rem', boxShadow: (loading || isFullyFulfilled) ? 'none' : capacityZone.zone === 'RED' ? '0 4px 14px rgba(245,158,11,0.4)' : isOutbound ? '0 4px 14px rgba(245,158,11,0.35)' : '0 4px 14px rgba(16,185,129,0.4)' }}>
               {loading ? 'Đang tạo phiếu...' : capacityZone.zone === 'RED' ? 'Tạo phiếu (chờ duyệt)' : `Tạo phiếu ${receiptTypeLabel}`}
             </button>
           </div>

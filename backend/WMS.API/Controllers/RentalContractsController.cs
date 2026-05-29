@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -915,26 +915,11 @@ public class RentalContractsController : ControllerBase
             .Select(u => new { u.FullName, u.Email })
             .FirstOrDefaultAsync(ct);
 
-        // Tính tổng diện tích đang lưu kho (m²) từ các phiếu đã duyệt (CONFIRMED/ASSIGNED/COMPLETED)
-        var inboundStatuses = new[] { "CONFIRMED", "ASSIGNED", "COMPLETED" };
-
-        var confirmedInboundVolume = await _db.InventoryRequests
-            .Where(r => r.RenterId == renterId
-                     && r.WarehouseId == warehouseId
-                     && r.Type == "INBOUND"
-                     && inboundStatuses.Contains(r.Status!))
-            .SelectMany(r => r.InventoryItems)
-            .SumAsync(i => (double?)(i.EstimatedVolume ?? 0), ct) ?? 0.0;
-
-        var confirmedOutboundVolume = await _db.InventoryRequests
-            .Where(r => r.RenterId == renterId
-                     && r.WarehouseId == warehouseId
-                     && r.Type == "OUTBOUND"
-                     && inboundStatuses.Contains(r.Status!))
-            .SelectMany(r => r.InventoryItems)
-            .SumAsync(i => (double?)(i.EstimatedVolume ?? 0), ct) ?? 0.0;
-
-        double currentVolumeM3 = Math.Max(0, confirmedInboundVolume - confirmedOutboundVolume);
+        // Tính tổng diện tích đang lưu kho (m²) từ tồn kho thực tế của renter trong kho
+        double currentVolumeM3 = (double)await _db.RenterInventories
+            .Include(ri => ri.Asset)
+            .Where(ri => ri.Asset.RenterId == renterId && ri.WarehouseId == warehouseId)
+            .SumAsync(ri => ri.Quantity * (ri.Asset.VolumePerUnit ?? 0m), ct);
         double remainingM3     = Math.Max(0, contractedArea - currentVolumeM3);
         double maxWeightKg     = contractedArea * KgPerM3;
         double usagePercent    = contractedArea > 0

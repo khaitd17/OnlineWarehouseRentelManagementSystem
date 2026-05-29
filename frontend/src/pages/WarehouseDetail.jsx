@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import api from "../services/axiosClient";
 import rentalService from "../services/rentalService";
+import { useToast } from "../context/ToastContext";
 
 const WarehouseDetail = () => {
   const { id } = useParams();
+  const { showToast } = useToast();
 
   const [warehouse, setWarehouse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,7 @@ const WarehouseDetail = () => {
     e.preventDefault();
 
     if (parseFloat(formData.requestedArea) > warehouse?.availableArea) {
-      alert(`Diện tích yêu cầu không được vượt quá diện tích còn trống (${warehouse.availableArea} m²).`);
+      showToast(`Diện tích yêu cầu không được vượt quá diện tích còn trống (${warehouse.availableArea} m²).`, "warning");
       return;
     }
 
@@ -73,7 +75,7 @@ const WarehouseDetail = () => {
         notes: formData.notes
       });
 
-      alert("Đã lưu yêu cầu thuê kho vào danh sách của bạn!");
+      showToast("Đã lưu yêu cầu thuê kho vào danh sách của bạn!", "success");
       setShowModal(false);
       setFormData({
         requestedArea: "",
@@ -99,7 +101,7 @@ const WarehouseDetail = () => {
       } else {
         message = 'Có lỗi xảy ra';
       }
-      alert("Lỗi: " + message);
+      showToast("Lỗi: " + message, "error");
     } finally {
       setSaving(false);
     }

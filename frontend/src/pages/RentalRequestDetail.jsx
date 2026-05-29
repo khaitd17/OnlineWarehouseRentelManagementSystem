@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import rentalService from "../services/rentalService";
+import { useToast } from "../context/ToastContext";
 
 const statusColors = {
   DRAFT: { bg: "#e0f2fe", color: "#0369a1", label: "Nháp" },
@@ -13,6 +14,7 @@ const statusColors = {
 const RentalRequestDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [request, setRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,11 +47,11 @@ const RentalRequestDetail = () => {
     setCancelLoading(true);
     try {
       await rentalService.cancelRentalRequest(id);
-      alert("Đã hủy yêu cầu thuê thành công!");
+      showToast("Đã hủy yêu cầu thuê thành công!", "success");
       fetchDetail();
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Có lỗi khi hủy yêu cầu");
+      showToast(err.response?.data?.message || "Có lỗi khi hủy yêu cầu", "error");
     } finally {
       setCancelLoading(false);
     }

@@ -17,15 +17,12 @@ const btn = (primary) => ({
  * PolygonBoundaryEditor
  *
  * Lưu tọa độ dạng phần trăm [{px, py}] trong khoảng 0-1.
- * Không phụ thuộc normalizeToGrid — đơn giản và đáng tin cậy.
- *
- * @param {number}      totalArea   diện tích kho (m²) — chỉ dùng để hiển thị
- * @param {string|null} initialJson BoundaryPoints JSON hiện có
  * @param {Function}    onSave      (jsonString) => void
  * @param {Function}    [onCancel]  () => void
+ * @param {Function}    [onSkip]    () => void
  * @param {boolean}     inline      render không dùng fixed overlay
  */
-export default function PolygonBoundaryEditor({ hasInventory, totalArea, initialJson, initialGateJson, onSave, onCancel, inline = false }) {
+export default function PolygonBoundaryEditor({ hasInventory, totalArea, initialJson, initialGateJson, onSave, onCancel, onSkip, inline = false }) {
   const [points, setPoints]           = useState([]);
   const [editorMode, setEditorMode]   = useState('draw'); // 'draw' or 'gate'
   const [gatePos, setGatePos]         = useState(null);
@@ -375,10 +372,15 @@ export default function PolygonBoundaryEditor({ hasInventory, totalArea, initial
       )}
 
       {/* Nút hành động */}
-      <div style={{ display: 'flex', justifyContent: onCancel ? 'space-between' : 'flex-end', gap: 8, paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
-        {onCancel && (
-          <button style={btn(false)} onClick={onCancel} disabled={saving}>Hủy</button>
-        )}
+      <div style={{ display: 'flex', justifyContent: (onCancel || onSkip) ? 'space-between' : 'flex-end', gap: 8, paddingTop: '0.75rem', borderTop: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onCancel && (
+            <button style={btn(false)} onClick={onCancel} disabled={saving}>Hủy</button>
+          )}
+          {onSkip && (
+            <button style={btn(false)} onClick={onSkip} disabled={saving}>Bỏ qua bước này</button>
+          )}
+        </div>
         <button
           style={{ ...btn(true), opacity: (points.length < 3 || saving) ? 0.55 : 1 }}
           onClick={handleSave}

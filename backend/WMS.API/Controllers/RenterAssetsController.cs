@@ -156,6 +156,28 @@ public class RenterAssetsController : ControllerBase
             usagePercent = contractedArea > 0 ? Math.Round((double)usedArea / contractedArea * 100, 1) : 0
         });
     }
+
+    /// <summary>
+    /// Xóa bản ghi tồn kho có số lượng = 0
+    /// </summary>
+    [HttpDelete("inventory/{inventoryId}")]
+    public async Task<IActionResult> DeleteInventory(int inventoryId, CancellationToken ct)
+    {
+        var userId = GetUserId();
+        var inv = await _repo.GetInventoryByIdAsync(inventoryId, ct);
+        if (inv == null)
+            return NotFound(new { message = "Không tìm thấy bản ghi tồn kho." });
+
+        var asset = await _repo.GetByIdAsync(inv.AssetId, ct);
+        if (asset == null || asset.RenterId != userId)
+            return Forbid();
+
+        if (inv.Quantity > 0)
+            return BadRequest(new { message = "Chỉ có thể xóa hàng hóa khỏi danh sách tồn kho khi số lượng bằng 0 (hết hàng)." });
+
+        await _repo.DeleteInventoryAsync(inv, ct);
+        return Ok(new { message = "Đã xóa hàng hóa khỏi danh sách tồn kho thành công." });
+    }
 }
 
 public record CreateAssetInput

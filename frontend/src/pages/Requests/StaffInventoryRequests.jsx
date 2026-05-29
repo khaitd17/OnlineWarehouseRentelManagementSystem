@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import inventoryService from '../../services/inventoryService';
 import axiosClient from '../../services/axiosClient';
 import RenterSpaceUsageWarning from '../../components/warehouse/RenterSpaceUsageWarning';
+import { useToast } from '../../context/ToastContext';
 
 const INBOUND_COLOR  = '#0ea5e9';
 const OUTBOUND_COLOR = '#f59e0b';
@@ -28,6 +29,7 @@ const StatusBadge = ({ status }) => {
 
 /* ── Assign Modal ───────────────────────────────────────────── */
 const AssignModal = ({ req, staffList, onClose, onAssign, loading }) => {
+  const { showToast } = useToast();
   const [selectedStaffId, setSelectedStaffId] = useState('');
   const [note, setNote]                       = useState('');
   if (!req) return null;
@@ -85,7 +87,7 @@ const AssignModal = ({ req, staffList, onClose, onAssign, loading }) => {
         <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
           <button onClick={onClose} disabled={loading} style={{ padding:'10px 22px', borderRadius:10, border:'1.5px solid #e2e8f0', background:'#fff', cursor:'pointer', fontWeight:600, fontSize:'0.875rem', color:'#64748b' }}>Hủy</button>
           <button
-            onClick={() => { if(!selectedStaffId){ alert('Vui lòng chọn nhân viên!'); return; } onAssign(req.invReqId, Number(selectedStaffId), note); }}
+            onClick={() => { if(!selectedStaffId){ showToast('Vui lòng chọn nhân viên!', 'warning'); return; } onAssign(req.invReqId, Number(selectedStaffId), note); }}
             disabled={loading || !selectedStaffId}
             style={{ padding:'10px 24px', borderRadius:10, border:'none', background: loading || !selectedStaffId ? '#e2e8f0' : 'linear-gradient(135deg,#8b5cf6,#6d28d9)', color: loading || !selectedStaffId ? '#94a3b8' : '#fff', cursor: loading || !selectedStaffId ? 'not-allowed' : 'pointer', fontWeight:700, fontSize:'0.875rem', display:'flex', alignItems:'center', gap:8, boxShadow: loading || !selectedStaffId ? 'none' : '0 4px 14px rgba(139,92,246,0.4)' }}>
             {loading && <span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.4)', borderTop:'2px solid #fff', borderRadius:'50%', animation:'spin 0.7s linear infinite', display:'inline-block' }}/>}

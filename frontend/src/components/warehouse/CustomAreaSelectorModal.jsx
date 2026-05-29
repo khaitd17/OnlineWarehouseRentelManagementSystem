@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CustomAreaSelectorModal
  *
  * Hiển thị bản đồ khu vực kho và cho phép người thuê:
@@ -14,6 +14,7 @@
  *  onConfirm      {fn({ posX, posY, width, length, baseAreaId })}
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useToast } from '../../context/ToastContext';
 
 /* ─── constants ─────────────────────────────────────────────────────────── */
 const SCALE_PX_PER_M = 24;   // 1 metre = 24 px trong canvas
@@ -47,6 +48,7 @@ export default function CustomAreaSelectorModal({
   isOwnerMode = false,
   initialZone = null,
 }) {
+  const { showToast } = useToast();
   /* warehouse dimensions */
   const whW = parseFloat(warehouseData?.width  ?? warehouseData?.Width  ?? 0) || 20;
   const whL = parseFloat(warehouseData?.length ?? warehouseData?.Length ?? 0) || 30;
@@ -481,7 +483,7 @@ export default function CustomAreaSelectorModal({
     }
 
     if (pickedAreaIds.length === 0 && carvedZones.length === 0) {
-      alert('Không tìm thấy không gian trống phù hợp trong kho.');
+      showToast('Không tìm thấy không gian trống phù hợp trong kho.', 'warning');
       return;
     }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
 import rentalService from "../services/rentalService";
 import paymentService from "../services/paymentService";
 import api from "../services/axiosClient";
@@ -136,6 +137,7 @@ const CollapsibleSection = ({ title, isOpen, onToggle, children, accent = "#6474
 const ContractDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const location = useLocation();
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -235,7 +237,7 @@ const ContractDetail = () => {
         : null;
 
       if (useModalFee && fee !== null && (Number.isNaN(fee) || fee < 0)) {
-        alert("Phí kết thúc sớm không hợp lệ");
+        showToast("Phí kết thúc sớm không hợp lệ", "warning");
         return;
       }
 
@@ -248,7 +250,7 @@ const ContractDetail = () => {
       const requiresPayment = result?.requiresPayment ?? result?.RequiresPayment;
 
       if (!success) {
-        alert(message || "Có lỗi xảy ra khi xác nhận");
+        showToast(message || "Có lỗi xảy ra khi xác nhận", "error");
         return;
       }
 
@@ -257,18 +259,18 @@ const ContractDetail = () => {
         setShowApprovalModal(false);
 
         if (contract?.isCurrentUserRenter) {
-          alert(message || "Vui lòng thanh toán phí kết thúc sớm để hoàn tất.");
+          showToast(message || "Vui lòng thanh toán phí kết thúc sớm để hoàn tất.", "info");
           navigate(`/contracts/${contract.contractId}/payment?purpose=termination`);
           return;
         }
 
-        alert(message || "Đã xác nhận thành công. Đang chờ người thuê thanh toán.");
+        showToast(message || "Đã xác nhận thành công. Đang chờ người thuê thanh toán.", "success");
         reloadContract();
         return;
       }
 
       if (isFullyApproved) {
-        alert(message || "Hợp đồng đã kết thúc thành công!");
+        showToast(message || "Hợp đồng đã kết thúc thành công!", "success");
         setTerminationFee('');
         setShowApprovalModal(false);
         reloadContract();
@@ -279,16 +281,16 @@ const ContractDetail = () => {
         const feeText = Number(earlyTerminationFee) > 0
           ? `mức phí ${formatCurrency(earlyTerminationFee)}`
           : "mức phí 0đ";
-        alert(message || `Đã duyệt yêu cầu và gửi ${feeText} cho người thuê.`);
+        showToast(message || `Đã duyệt yêu cầu và gửi ${feeText} cho người thuê.`, "success");
       } else {
-        alert(message || "Đã xác nhận thành công! Đang chờ bên còn lại xác nhận.");
+        showToast(message || "Đã xác nhận thành công! Đang chờ bên còn lại xác nhận.", "success");
       }
 
       setTerminationFee('');
       setShowApprovalModal(false);
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi xác nhận");
+      showToast(err.response?.data?.message || "Có lỗi xảy ra khi xác nhận", "error");
     } finally {
       setProcessingApproval(false);
     }
@@ -300,10 +302,10 @@ const ContractDetail = () => {
     setProcessingApproval(true);
     try {
       await rentalService.rejectTermination(contract.contractId, reason || "");
-      alert("Đã từ chối yêu cầu!");
+      showToast("Đã từ chối yêu cầu!", "success");
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi từ chối");
+      showToast(err.response?.data?.message || "Có lỗi xảy ra khi từ chối", "error");
     } finally {
       setProcessingApproval(false);
     }
@@ -315,10 +317,10 @@ const ContractDetail = () => {
     setProcessingApproval(true);
     try {
       await rentalService.requestClose(contract.contractId);
-      alert("Yêu cầu kết thúc đã được gửi. Đang chờ bên còn lại xác nhận.");
+      showToast("Yêu cầu kết thúc đã được gửi. Đang chờ bên còn lại xác nhận.", "success");
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || "Có lỗi xảy ra khi gửi yêu cầu");
+      showToast(err.response?.data?.message || "Có lỗi xảy ra khi gửi yêu cầu", "error");
     } finally {
       setProcessingApproval(false);
     }
@@ -448,7 +450,7 @@ const ContractDetail = () => {
       window.URL.revokeObjectURL(url);
       a.remove();
     } catch (err) {
-      alert("Không thể tải PDF hợp đồng. Vui lòng thử lại.");
+      showToast("Không thể tải PDF hợp đồng. Vui lòng thử lại.", "error");
     } finally {
       setDownloadingPdf(false);
     }
@@ -488,19 +490,19 @@ const ContractDetail = () => {
 
   const handleDeclineContract = async () => {
     if (!declineReason.trim()) {
-      alert('Vui lòng nhập lý do từ chối');
+      showToast('Vui lòng nhập lý do từ chối', 'warning');
       return;
     }
 
     setIsSubmittingDecline(true);
     try {
       await rentalService.declineContract(contract.contractId, declineReason);
-      alert('Đã từ chối hợp đồng thành công');
+      showToast('Đã từ chối hợp đồng thành công', 'success');
       setShowDeclineModal(false);
       setDeclineReason('');
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi từ chối hợp đồng');
+      showToast(err.response?.data?.message || 'Có lỗi xảy ra khi từ chối hợp đồng', 'error');
     } finally {
       setIsSubmittingDecline(false);
     }
@@ -508,7 +510,7 @@ const ContractDetail = () => {
 
   const handleRequestRevision = async () => {
     if (!revisionMessage.trim()) {
-      alert("Vui lòng nhập nội dung yêu cầu chỉnh sửa");
+      showToast("Vui lòng nhập nội dung yêu cầu chỉnh sửa", "warning");
       return;
     }
     try {
@@ -516,10 +518,11 @@ const ContractDetail = () => {
         section: revisionSection,
         message: revisionMessage.trim()
       });
+      showToast("Đã gửi yêu cầu chỉnh sửa!", "success");
       setRevisionMessage("");
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || "Không thể gửi yêu cầu chỉnh sửa");
+      showToast(err.response?.data?.message || "Không thể gửi yêu cầu chỉnh sửa", "error");
     }
   };
 
@@ -527,9 +530,10 @@ const ContractDetail = () => {
     try {
       setSendingDraft(true);
       await rentalService.sendContractDraft(contract.contractId);
+      showToast("Gửi bản nháp hợp đồng thành công!", "success");
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || "Không thể gửi bản nháp");
+      showToast(err.response?.data?.message || "Không thể gửi bản nháp", "error");
     } finally {
       setSendingDraft(false);
     }
@@ -538,47 +542,50 @@ const ContractDetail = () => {
   const handleReplyRevision = async (threadId) => {
     const message = (replyDrafts[threadId] || "").trim();
     if (!message) {
-      alert("Vui lòng nhập nội dung phản hồi");
+      showToast("Vui lòng nhập nội dung phản hồi", "warning");
       return;
     }
     try {
       await rentalService.replyContractRevision(threadId, message);
+      showToast("Gửi phản hồi thành công!", "success");
       setReplyDrafts(prev => ({ ...prev, [threadId]: "" }));
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || "Không thể gửi phản hồi");
+      showToast(err.response?.data?.message || "Không thể gửi phản hồi", "error");
     }
   };
 
   const handleAcceptRevision = async (threadId) => {
     try {
       await rentalService.acceptContractRevision(threadId);
+      showToast("Chấp nhận yêu cầu chỉnh sửa thành công!", "success");
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || "Không thể chấp nhận yêu cầu");
+      showToast(err.response?.data?.message || "Không thể chấp nhận yêu cầu", "error");
     }
   };
 
   const handleRejectRevision = async (threadId) => {
     try {
       await rentalService.rejectContractRevision(threadId);
+      showToast("Từ chối yêu cầu chỉnh sửa thành công!", "success");
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || "Không thể từ chối yêu cầu");
+      showToast(err.response?.data?.message || "Không thể từ chối yêu cầu", "error");
     }
   };
 
   const handleApplyChanges = async () => {
     if (!changeForm.monthlyPayment || Number(changeForm.monthlyPayment) <= 0) {
-      alert("Vui lòng nhập giá thuê hợp lệ");
+      showToast("Vui lòng nhập giá thuê hợp lệ", "warning");
       return;
     }
     if (!changeForm.startDate) {
-      alert("Vui lòng chọn ngày bắt đầu hợp đồng");
+      showToast("Vui lòng chọn ngày bắt đầu hợp đồng", "warning");
       return;
     }
     if (!changeForm.durationMonths || Number(changeForm.durationMonths) < 1) {
-      alert("Vui lòng nhập thời hạn hợp đồng hợp lệ");
+      showToast("Vui lòng nhập thời hạn hợp đồng hợp lệ", "warning");
       return;
     }
 
@@ -598,9 +605,10 @@ const ContractDetail = () => {
         allowedOverdueDays: Number(changeForm.allowedOverdueDays),
         resolveThreadIds
       });
+      showToast("Áp dụng thay đổi hợp đồng thành công!", "success");
       reloadContract();
     } catch (err) {
-      alert(err.response?.data?.message || "Không thể áp dụng chỉnh sửa");
+      showToast(err.response?.data?.message || "Không thể áp dụng chỉnh sửa", "error");
     } finally {
       setApplyingChanges(false);
     }
@@ -1530,7 +1538,7 @@ const ContractDetail = () => {
               <ExpiryCountdown
                 expiryDate={contract.renterSignatureExpiry}
                 onExpired={() => {
-                  alert('Thời gian ký hợp đồng đã hết. Hợp đồng sẽ bị hủy.');
+                  showToast('Thời gian ký hợp đồng đã hết. Hợp đồng sẽ bị hủy.', 'error');
                   reloadContract();
                 }}
                 warningThresholdMinutes={720}

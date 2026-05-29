@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using WMS.Application.Features.InventoryRequests.Shared;
 using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
 using WMS.Infrastructure.Repositories;
@@ -28,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<IRentalAreaRepository, RentalAreaRepository>();
         services.AddScoped<ISepayService, SepayService>();
         services.AddScoped<ISubscriptionService, SubscriptionService>();
+        services.AddScoped<IInventoryRequestStaffNotifier, InventoryRequestStaffNotifier>();
         services.AddScoped<IWarehouseGridLocationRepository, WarehouseGridLocationRepository>();
 
         // ── AI Analysis Feature ─────────────────────────────────────

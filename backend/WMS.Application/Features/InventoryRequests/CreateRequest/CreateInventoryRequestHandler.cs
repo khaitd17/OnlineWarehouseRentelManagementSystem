@@ -45,6 +45,7 @@ public class CreateInventoryRequestHandler
     private readonly ITaskRepository _taskRepo;
     private readonly IRentalContractRepository _contractRepo;
     private readonly IEmailService _emailService;
+    private readonly IInventoryRequestStaffNotifier _staffNotifier;
 
     public CreateInventoryRequestHandler(
         IInventoryRequestRepository repo,
@@ -53,7 +54,8 @@ public class CreateInventoryRequestHandler
         IRenterAssetRepository assetRepo,
         ITaskRepository taskRepo,
         IRentalContractRepository contractRepo,
-        IEmailService emailService)
+        IEmailService emailService,
+        IInventoryRequestStaffNotifier staffNotifier)
     {
         _repo          = repo;
         _invRepo       = invRepo;
@@ -62,6 +64,7 @@ public class CreateInventoryRequestHandler
         _taskRepo      = taskRepo;
         _contractRepo  = contractRepo;
         _emailService  = emailService;
+        _staffNotifier = staffNotifier;
     }
 
     public async Task<InventoryRequestDto> Handle(
@@ -261,6 +264,7 @@ public class CreateInventoryRequestHandler
 
             // Gửi email xác nhận Auto-Approve cho người thuê
             try { await SendAutoApproveEmail(full!, warehouse); } catch { /* Không chặn luồng chính */ }
+            await _staffNotifier.NotifyReadyForProcessingAsync(full!, cancellationToken);
         }
         else
         {

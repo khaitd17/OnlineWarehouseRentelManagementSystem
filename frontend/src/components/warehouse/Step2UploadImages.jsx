@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { uploadWarehouseImage } from "../../services/warehouseService";
+import { useToast } from "../../context/ToastContext";
 
 /* ── shared tokens ── */
 const card = {
@@ -24,6 +25,7 @@ const btnBack = {
 
 /* ─────────────────────────────────────── */
 const Step2UploadImages = ({ onImagesSelected, onBack, warehouseId, existingImages = [] }) => {
+  const { showToast } = useToast();
   const [files,   setFiles]   = useState([]);
   const [preview, setPreview] = useState(existingImages.map(img => img.url || img.mediaUrl));
   const [loading, setLoading] = useState(false);
@@ -32,9 +34,9 @@ const Step2UploadImages = ({ onImagesSelected, onBack, warehouseId, existingImag
 
   const addFiles = (newFiles) => {
     const valid = newFiles.filter(f => f.type.startsWith("image/"));
-    if (valid.length < newFiles.length) alert("Một số tệp không phải hình ảnh và đã bị bỏ qua.");
+    if (valid.length < newFiles.length) showToast("Một số tệp không phải hình ảnh và đã bị bỏ qua.", "warning");
     const total = files.length + existingImages.length + valid.length;
-    if (total > 10) { alert("Tối đa 10 ảnh."); return; }
+    if (total > 10) { showToast("Tối đa 10 ảnh.", "warning"); return; }
     setFiles(prev => [...prev, ...valid]);
     setPreview(prev => [...prev, ...valid.map(f => URL.createObjectURL(f))]);
   };
@@ -47,17 +49,18 @@ const Step2UploadImages = ({ onImagesSelected, onBack, warehouseId, existingImag
 
   const handleContinue = async () => {
     if (files.length === 0 && existingImages.length === 0) {
-      alert("Vui lòng chọn ít nhất một hình ảnh của kho"); return;
+      showToast("Vui lòng chọn ít nhất một hình ảnh của kho", "warning"); return;
     }
     try {
       setLoading(true);
       for (let i = 0; i < files.length; i++) {
         await uploadWarehouseImage(warehouseId, files[i], i === 0 && existingImages.length === 0);
       }
+      showToast("Tải ảnh lên thành công!", "success");
       onImagesSelected(files);
     } catch (err) {
       console.error(err);
-      alert("Tải lên hình ảnh không thành công. Vui lòng thử lại.");
+      showToast("Tải lên hình ảnh không thành công. Vui lòng thử lại.", "error");
     } finally { setLoading(false); }
   };
 
