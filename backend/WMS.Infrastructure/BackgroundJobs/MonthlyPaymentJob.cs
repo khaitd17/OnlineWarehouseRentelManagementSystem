@@ -43,134 +43,157 @@ public class MonthlyPaymentJob
         var targetDate = now.AddDays(advanceNoticeDays);
         var createdCount = 0;
 
-        var activeContracts = await _context.RentalContracts
-            .Include(c => c.Renter)
-            .Include(c => c.Warehouse)
-            .Include(c => c.PaymentTerm)
-            .Where(c => c.Status == RentalContractStatus.Active)
-            .ToListAsync();
+        int batchSize = 100;
+        int skip = 0;
+        bool hasMore = true;
 
-        foreach (var contract in activeContracts)
+        while (hasMore)
         {
-            try
+            var activeContracts = await _context.RentalContracts
+                .Include(c => c.Renter)
+                .Include(c => c.Warehouse)
+                .Include(c => c.PaymentTerm)
+                .Where(c => c.Status == RentalContractStatus.Active)
+                .OrderBy(c => c.ContractId)
+                .Skip(skip)
+                .Take(batchSize)
+                .ToListAsync();
+
+            if (!activeContracts.Any())
             {
-                var startDate = contract.StartDate;
-                if (startDate > targetDate) continue;
+                hasMore = false;
+                break;
+            }
 
-                int monthsPerTerm = contract.PaymentTerm?.MonthsPerTerm ?? 1;
-                var overdueDays = contract.PaymentTerm?.AllowedOverdueDays ?? 7;
-
-                // Load all existing term start dates for this contract
-                // We use Date component to avoid time-of-day mismatch
-                var existingTermDates = await _context.RentalPayments
-                    .Where(p => p.ContractId == contract.ContractId && p.TermStartDate != null)
-                    .Select(p => p.TermStartDate!.Value.Date)
-                    .ToListAsync();
-
-                int termIndex = 0;
-                while (true)
+            foreach (var contract in activeContracts)
+            {
+                try
                 {
-                    var termStartDate = startDate.AddMonths(termIndex * monthsPerTerm);
-                    
-                    // Stop if this term hasn't reached the generation window yet
-                    if (termStartDate >= contract.EndDate || termStartDate > targetDate) 
-                    {
-                        break;
-                    }
+                    var startDate = contract.StartDate;
+                    if (startDate > targetDate) continue;
 
-                    var termEndDate = termStartDate.AddMonths(monthsPerTerm);
-                    if (termEndDate > contract.EndDate) 
-                    {
-                        termEndDate = contract.EndDate;
-                    }
+                    int monthsPerTerm = contract.PaymentTerm?.MonthsPerTerm ?? 1;
+                    var overdueDays = contract.PaymentTerm?.AllowedOverdueDays ?? 7;
 
-                    // Break if term length is 0 or negative
-                    if (termStartDate >= termEndDate) 
-                    {
-                        break;
-                    }
+                    // Load all existing term start dates for this contract
+                    // We use Date component to avoid time-of-day mismatch
+                    var existingTermDates = await _context.RentalPayments
+                        .Where(p => p.ContractId == contract.ContractId && p.TermStartDate != null)
+                        .Select(p => p.TermStartDate!.Value.Date)
+                        .ToListAsync();
 
-                    // Check if this specific billing period already has a payment generated
-                    if (existingTermDates.Contains(termStartDate.Date))
+                    int termIndex = 0;
+                    while (true)
                     {
+                        var termStartDate = startDate.AddMonths(termIndex * monthsPerTerm);
+                        
+                        // Stop if this term hasn't reached the generation window yet
+                        if (termStartDate >= contract.EndDate || termStartDate > targetDate) 
+                        {
+                            break;
+                        }
+
+                        var termEndDate = termStartDate.AddMonths(monthsPerTerm);
+                        if (termEndDate > contract.EndDate) 
+                        {
+                            termEndDate = contract.EndDate;
+                        }
+
+                        // Break if term length is 0 or negative
+                        if (termStartDate >= termEndDate) 
+                        {
+                            break;
+                        }
+
+                        // Check if this specific billing period already has a payment generated
+                        if (existingTermDates.Contains(termStartDate.Date))
+                        {
+                            termIndex++;
+                            continue;
+                        }
+
+                        // Create bill for this missing/upcoming term
+                        var termDays = (termEndDate - termStartDate).Days;
+                        decimal calculatedAmount;
+
+                        // Exact full term logic vs prorated
+                        if (termEndDate == startDate.AddMonths((termIndex + 1) * monthsPerTerm))
+                        {
+                            calculatedAmount = contract.MonthlyPayment * monthsPerTerm;
+                        }
+                        else
+                        {
+                            calculatedAmount = Math.Round((contract.MonthlyPayment / 30m) * termDays, 2);
+                        }
+                        
+                        // If this is the very first term and deposit is required, mark as DEPOSIT
+                        var paymentType = (termIndex == 0 && contract.DepositAmount > 0) ? "DEPOSIT" : "MONTHLY";
+                        // For Term 0, SignContractHandler should have added DepositAmount, but if it was missed, we add it here
+                        var totalAmount = (termIndex == 0) ? calculatedAmount + (contract.DepositAmount ?? 0) : calculatedAmount;
+
+                        var payment = RentalPayment.Create(
+                            contractId: contract.ContractId,
+                            amount: totalAmount,
+                            paymentType: paymentType,
+                            expiryHours: overdueDays * 24,
+                            termStartDate: termStartDate,
+                            termEndDate: termEndDate
+                        );
+
+                        _context.RentalPayments.Add(payment);
+
+                        // Save to DB first to generate PaymentId
+                        await _context.SaveChangesAsync();
+
+                        // Set proper PaymentCode (e.g. WMS000123) and save again
+                        payment.SetPaymentCode();
+                        await _context.SaveChangesAsync();
+
+                        // Notify renter
+                        var notification = Notification.Create(
+                            receiverUserId: contract.RenterId,
+                            title: "Kỳ thanh toán mới",
+                            message: $"Thanh toán {totalAmount:N0} VNĐ cho hợp đồng {contract.ContractNumber} đến hạn vào {termStartDate:dd/MM/yyyy}",
+                            notificationType: "IN_APP",
+                            referenceId: contract.ContractId,
+                            referenceType: "RentalContract"
+                        );
+                        await _notificationRepository.AddAsync(notification);
+                        await _context.SaveChangesAsync();
+
+                        // Send email reminder safely after DB commits
+                        if (contract.Renter != null)
+                        {
+                            try
+                            {
+                                await _emailService.SendPaymentReminderAsync(
+                                    contract.Renter.Email,
+                                    contract.Renter.FullName,
+                                    contract.Warehouse?.Name ?? "Không xác định",
+                                    contract.ContractNumber,
+                                    totalAmount,
+                                    termStartDate
+                                );
+                            }
+                            catch (Exception emailEx)
+                            {
+                                _logger.LogWarning(emailEx, "Failed to send payment reminder email for contract {ContractId}", contract.ContractId);
+                            }
+                        }
+
+                        createdCount++;
+                        _logger.LogInformation("Created payment for contract {ContractId}, Term {TermIndex}, StartDate {StartDate}, PaymentCode {PaymentCode}", contract.ContractId, termIndex, termStartDate, payment.PaymentCode);
+
                         termIndex++;
-                        continue;
                     }
-
-                    // Create bill for this missing/upcoming term
-                    var termDays = (termEndDate - termStartDate).Days;
-                    decimal calculatedAmount;
-
-                    // Exact full term logic vs prorated
-                    if (termEndDate == startDate.AddMonths((termIndex + 1) * monthsPerTerm))
-                    {
-                        calculatedAmount = contract.MonthlyPayment * monthsPerTerm;
-                    }
-                    else
-                    {
-                        calculatedAmount = Math.Round((contract.MonthlyPayment / 30m) * termDays, 2);
-                    }
-                    
-                    // If this is the very first term and deposit is required, mark as DEPOSIT
-                    var paymentType = (termIndex == 0 && contract.DepositAmount > 0) ? "DEPOSIT" : "MONTHLY";
-                    // For Term 0, SignContractHandler should have added DepositAmount, but if it was missed, we add it here
-                    var totalAmount = (termIndex == 0) ? calculatedAmount + (contract.DepositAmount ?? 0) : calculatedAmount;
-
-                    var payment = RentalPayment.Create(
-                        contractId: contract.ContractId,
-                        amount: totalAmount,
-                        paymentType: paymentType,
-                        expiryHours: overdueDays * 24,
-                        termStartDate: termStartDate,
-                        termEndDate: termEndDate
-                    );
-
-                    _context.RentalPayments.Add(payment);
-
-                    // Notify renter
-                    var notification = Notification.Create(
-                        receiverUserId: contract.RenterId,
-                        title: "Kỳ thanh toán mới",
-                        message: $"Thanh toán {totalAmount:N0} VNĐ cho hợp đồng {contract.ContractNumber} đến hạn vào {termStartDate:dd/MM/yyyy}",
-                        notificationType: "IN_APP",
-                        referenceId: contract.ContractId,
-                        referenceType: "RentalContract"
-                    );
-                    await _notificationRepository.AddAsync(notification);
-
-                    // Send email reminder
-                    if (contract.Renter != null)
-                    {
-                        try
-                        {
-                            await _emailService.SendPaymentReminderAsync(
-                                contract.Renter.Email,
-                                contract.Renter.FullName,
-                                contract.Warehouse?.Name ?? "Không xác định",
-                                contract.ContractNumber,
-                                totalAmount,
-                                termStartDate
-                            );
-                        }
-                        catch (Exception emailEx)
-                        {
-                            _logger.LogWarning(emailEx, "Failed to send payment reminder email for contract {ContractId}", contract.ContractId);
-                        }
-                    }
-
-                    createdCount++;
-                    _logger.LogInformation("Created payment for contract {ContractId}, Term {TermIndex}, StartDate {StartDate}", contract.ContractId, termIndex, termStartDate);
-
-                    termIndex++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing monthly payments for contract {ContractId}", contract.ContractId);
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing monthly payments for contract {ContractId}", contract.ContractId);
-            }
+            skip += batchSize;
         }
-
-        await _context.SaveChangesAsync();
 
         _logger.LogInformation("MonthlyPaymentJob completed. Created {Count} payments.", createdCount);
     }

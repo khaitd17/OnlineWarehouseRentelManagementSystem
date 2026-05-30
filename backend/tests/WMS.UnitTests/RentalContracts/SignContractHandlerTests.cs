@@ -82,6 +82,7 @@ public class SignContractHandlerTests
         _userRepoMock.Setup(u => u.GetByIdAsync(wh.OwnerId, It.IsAny<CancellationToken>())).ReturnsAsync(BuildUserRecord(wh.OwnerId, "Chủ kho B"));
     }
 
+    // UTCID01 – (A) Contract không tồn tại → InvalidOperationException
     [Fact]
     public async Task Handle_ContractNotFound_ThrowsInvalidOperationException()
     {
@@ -93,6 +94,7 @@ public class SignContractHandlerTests
         Assert.Equal("Contract not found", ex.Message);
     }
 
+    // UTCID02 – (B) Người dùng không phải là Renter (UserId ≠ RenterId) → UnauthorizedAccessException
     [Fact]
     public async Task Handle_UserIsNotRenter_ThrowsUnauthorizedAccessException()
     {
@@ -105,6 +107,7 @@ public class SignContractHandlerTests
         Assert.Equal("Only the renter can sign the contract", ex.Message);
     }
 
+    // UTCID03 – (B) Contract Status không hợp lệ (≠ NEGOTIATING, DRAFT, APPROVED_FOR_SIGNING) → InvalidOperationException
     [Fact]
     public async Task Handle_WrongStatus_ThrowsInvalidOperationException()
     {
@@ -119,6 +122,7 @@ public class SignContractHandlerTests
         Assert.Contains(wrongStatus, ex.Message);
     }
 
+    // UTCID04 – (N) Happy path: Ký thành công, ghi log CONTRACT_SIGNED_BY_RENTER và gửi thông báo
     [Fact]
     public async Task Handle_ValidSign_ReturnsResult_AndLogsAndNotifiesBothParties()
     {
