@@ -37,11 +37,14 @@ public class SmartSearchHandler : IRequestHandler<SmartSearchCommand, SmartSearc
         SmartSearchCommand request,
         CancellationToken cancellationToken)
     {
-        // ── 1. Kiểm tra quota ──────────────────────────────────────
-        var todayCount = await _sessionRepo.CountTodayAsync(request.UserId, cancellationToken);
-        if (todayCount >= DailyQuota)
-            throw new InvalidOperationException(
-                $"Bạn đã sử dụng hết {DailyQuota} lượt AI trong hôm nay. Vui lòng thử lại vào ngày mai.");
+        // ── 1. Kiểm tra quota (bỏ qua cho guest) ──────────────────────────────
+        if (request.UserId > 0)
+        {
+            var todayCount = await _sessionRepo.CountTodayAsync(request.UserId, cancellationToken);
+            if (todayCount >= DailyQuota)
+                throw new InvalidOperationException(
+                    $"Bạn đã sử dụng hết {DailyQuota} lượt AI trong hôm nay. Vui lòng thử lại vào ngày mai.");
+        }
 
         // ── 2. Load tất cả kho đã approved ─────────────────────────
         var allWarehouses = await _warehouseRepo.GetApprovedWarehousesAsync(int.MaxValue, cancellationToken);
@@ -89,17 +92,22 @@ public class SmartSearchHandler : IRequestHandler<SmartSearchCommand, SmartSearc
         var geminiResult = await _geminiService.SmartSearchAsync(
             request.Prompt, searchData, cancellationToken);
 
-        // ── 6. Lưu session ─────────────────────────────────────────
-        var session = await _sessionRepo.AddAsync(new AiAnalysisSession
+        // ── 6. Lưu session (bỏ qua cho guest) ───────────────────────────────
+        var sessionId = 0;
+        if (request.UserId > 0)
         {
-            UserId = request.UserId,
-            SessionType = "SMART_SEARCH",
-            UserPrompt = request.Prompt,
-            ResultJson = JsonSerializer.Serialize(geminiResult),
-            Confidence = geminiResult.RankedWarehouses.Any()
-                ? geminiResult.RankedWarehouses.Average(r => r.MatchScore)
-                : 0,
-        }, cancellationToken);
+            var session = await _sessionRepo.AddAsync(new AiAnalysisSession
+            {
+                UserId = request.UserId,
+                SessionType = "SMART_SEARCH",
+                UserPrompt = request.Prompt,
+                ResultJson = JsonSerializer.Serialize(geminiResult),
+                Confidence = geminiResult.RankedWarehouses.Any()
+                    ? geminiResult.RankedWarehouses.Average(r => r.MatchScore)
+                    : 0,
+            }, cancellationToken);
+            sessionId = session.SessionId;
+        }
 
         // ── 7. Map AI results → full warehouse DTOs ────────────────
         var warehouseLookup = allWarehouses.ToDictionary(w => w.WarehouseId);
@@ -138,7 +146,7 @@ public class SmartSearchHandler : IRequestHandler<SmartSearchCommand, SmartSearc
             .ToList();
 
         return new SmartSearchResult(
-            SessionId: session.SessionId,
+            SessionId: sessionId,
             AiSummary: geminiResult.AiSummary,
             Warehouses: resultWarehouses,
             FollowUpSuggestions: geminiResult.FollowUpSuggestions

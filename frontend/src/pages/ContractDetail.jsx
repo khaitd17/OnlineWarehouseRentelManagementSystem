@@ -30,7 +30,7 @@ const statusConfig = {
   EXPIRED: { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },
   CANCELLED: { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
-  CANCELLED_BY_USER: { bg: "#fee2e2", color: "#dc2626", label: "Người dùng hủy" },
+  CANCELLED_BY_USER: { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
   CANCELLED_BY_OWNER: { bg: "#fee2e2", color: "#dc2626", label: "Chủ kho hủy" },
   CANCELLED_NO_PAYMENT: { bg: "#fee2e2", color: "#dc2626", label: "Hủy - Không thanh toán" },
   OVERDUE: { bg: "#fee2e2", color: "#dc2626", label: "Quá hạn" },

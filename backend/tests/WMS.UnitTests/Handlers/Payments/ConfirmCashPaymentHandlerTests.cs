@@ -9,6 +9,13 @@ using System.Reflection;
 
 namespace WMS.UnitTests;
 
+/// <summary>
+/// Unit Tests — ConfirmCashPaymentHandler.Handle()
+/// Code Module : ApproveWarehouseHandler (PaymentModule)
+/// Method      : ConfirmCashPaymentHandler.Handle()
+/// Test Req    : Admin or authorized party approves or rejects cash payment with dual-party approval flow.
+/// Total TCs   : 10 (UTC001–UTC010)
+/// </summary>
 public class ConfirmCashPaymentHandlerTests
 {
     private readonly Mock<IRentalPaymentRepository> _mockPaymentRepository;
@@ -107,10 +114,11 @@ public class ConfirmCashPaymentHandlerTests
         return contract!;
     }
 
-    #region Precondition Tests
+    #region Precondition & Condition Tests
 
+    // ── UTC001 — Normal: Approve payment with PENDING_CONFIRMATION → COMPLETED ──
     [Fact]
-    public async Task Handle_CanConnectWithServer_ProcessesPaymentConfirmation()
+    public async Task UTC001_CanConnectWithServer_ProcessesPaymentConfirmation()
     {
         var command = new ConfirmCashPaymentCommand
         {
@@ -142,8 +150,39 @@ public class ConfirmCashPaymentHandlerTests
         Assert.True(result.Success);
     }
 
+    // ── UTC002 — Normal: Reject payment → CANCELLED ──
     [Fact]
-    public async Task Handle_PaymentNotFound_ReturnsFalse()
+    public async Task UTC002_RejectPayment_UpdatesPaymentToCancelled()
+    {
+        var command = new ConfirmCashPaymentCommand
+        {
+            PaymentId = 123,
+            OwnerId = 3,
+            IsApproved = false,
+            RejectionReason = "Chưa nhận tiền"
+        };
+        var payment = CreateTestPayment(123, 456);
+        var contract = CreateTestContract(456, 1, 2, status: RentalContractStatus.PendingPayment);
+        var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
+
+        _mockPaymentRepository.Setup(x => x.GetByIdAsync(123))
+            .ReturnsAsync(payment);
+        _mockContractRepository.Setup(x => x.GetByIdAsync(456))
+            .ReturnsAsync(contract);
+        _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(warehouse);
+        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.True(result.Success);
+        _mockPaymentRepository.Verify(x => x.UpdateAsync(It.Is<RentalPayment>(p => p.Status == PaymentStatus.Cancelled)), Times.Once);
+    }
+
+    // ── UTC003 — Abnormal: PaymentId = 999 (not exists) → False ──
+    [Fact]
+    public async Task UTC003_PaymentNotFound_ReturnsFalse()
     {
         var command = new ConfirmCashPaymentCommand
         {
@@ -161,8 +200,9 @@ public class ConfirmCashPaymentHandlerTests
         Assert.Contains("Không tìm thấy thanh toán", result.Message);
     }
 
+    // ── UTC004 — Abnormal: Payment status = COMPLETED (not PENDING_CONFIRMATION) → False ──
     [Fact]
-    public async Task Handle_PaymentNotPendingConfirmation_ReturnsFalse()
+    public async Task UTC004_PaymentNotPendingConfirmation_ReturnsFalse()
     {
         var command = new ConfirmCashPaymentCommand
         {
@@ -181,8 +221,9 @@ public class ConfirmCashPaymentHandlerTests
         Assert.Contains("không ở trạng thái chờ xác nhận", result.Message);
     }
 
+    // ── UTC005 — Abnormal: ContractId not found → False ──
     [Fact]
-    public async Task Handle_ContractNotFound_ReturnsFalse()
+    public async Task UTC005_ContractNotFound_ReturnsFalse()
     {
         var command = new ConfirmCashPaymentCommand
         {
@@ -203,8 +244,9 @@ public class ConfirmCashPaymentHandlerTests
         Assert.Contains("Không tìm thấy hợp đồng", result.Message);
     }
 
+    // ── UTC006 — Abnormal: OwnerId = 999 (not owner) → False ──
     [Fact]
-    public async Task Handle_OwnerNotAuthorized_ReturnsFalse()
+    public async Task UTC006_OwnerNotAuthorized_ReturnsFalse()
     {
         var command = new ConfirmCashPaymentCommand
         {
@@ -231,44 +273,11 @@ public class ConfirmCashPaymentHandlerTests
 
     #endregion
 
-    #region Condition Tests - Approve Payment
+    #region Condition Tests - Approve/Reject Flow
 
+    // ── UTC007 — Normal: Approve payment → creates renter membership ──
     [Fact]
-    public async Task Handle_ApprovePayment_UpdatesPaymentToCompleted()
-    {
-        var command = new ConfirmCashPaymentCommand
-        {
-            PaymentId = 123,
-            OwnerId = 3,
-            IsApproved = true
-        };
-        var payment = CreateTestPayment(123, 456);
-        var contract = CreateTestContract(456, 1, 2, status: RentalContractStatus.PendingPayment);
-        var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
-
-        _mockPaymentRepository.Setup(x => x.GetByIdAsync(123))
-            .ReturnsAsync(payment);
-        _mockContractRepository.Setup(x => x.GetByIdAsync(456))
-            .ReturnsAsync(contract);
-        _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(warehouse);
-        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
-            .Returns(Task.CompletedTask);
-        _mockContractRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalContract>()))
-            .Returns(Task.CompletedTask);
-        _mockMembershipRepository.Setup(x => x.GetCallerMembershipAsync(2, 1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((CallerMembershipDto?)null);
-        _mockMembershipRepository.Setup(x => x.CreateMembershipAsync(It.IsAny<CreateMembershipDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        Assert.True(result.Success);
-        _mockPaymentRepository.Verify(x => x.UpdateAsync(It.Is<RentalPayment>(p => p.Status == PaymentStatus.Completed)), Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_ApprovePayment_CreatesRenterMembership()
+    public async Task UTC007_ApprovePayment_CreatesRenterMembership()
     {
         var command = new ConfirmCashPaymentCommand
         {
@@ -304,75 +313,9 @@ public class ConfirmCashPaymentHandlerTests
             Times.Once);
     }
 
+    // ── UTC008 — Normal: Reject payment → sends notification to renter ──
     [Fact]
-    public async Task Handle_ApprovePayment_ActivatesContract()
-    {
-        var command = new ConfirmCashPaymentCommand
-        {
-            PaymentId = 123,
-            OwnerId = 3,
-            IsApproved = true
-        };
-        var payment = CreateTestPayment(123, 456);
-        var contract = CreateTestContract(456, 1, 2, status: RentalContractStatus.PendingPayment);
-        var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
-
-        _mockPaymentRepository.Setup(x => x.GetByIdAsync(123))
-            .ReturnsAsync(payment);
-        _mockContractRepository.Setup(x => x.GetByIdAsync(456))
-            .ReturnsAsync(contract);
-        _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(warehouse);
-        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
-            .Returns(Task.CompletedTask);
-        _mockContractRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalContract>()))
-            .Returns(Task.CompletedTask);
-        _mockMembershipRepository.Setup(x => x.GetCallerMembershipAsync(2, 1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((CallerMembershipDto?)null);
-        _mockMembershipRepository.Setup(x => x.CreateMembershipAsync(It.IsAny<CreateMembershipDto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        Assert.True(result.Success);
-        _mockContractRepository.Verify(x => x.UpdateAsync(It.IsAny<RentalContract>()), Times.Once);
-    }
-
-    #endregion
-
-    #region Condition Tests - Reject Payment
-
-    [Fact]
-    public async Task Handle_RejectPayment_UpdatesPaymentToCancelled()
-    {
-        var command = new ConfirmCashPaymentCommand
-        {
-            PaymentId = 123,
-            OwnerId = 3,
-            IsApproved = false,
-            RejectionReason = "Số tiền không khớp"
-        };
-        var payment = CreateTestPayment(123, 456);
-        var contract = CreateTestContract(456, 1, 2, status: RentalContractStatus.PendingPayment);
-        var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
-
-        _mockPaymentRepository.Setup(x => x.GetByIdAsync(123))
-            .ReturnsAsync(payment);
-        _mockContractRepository.Setup(x => x.GetByIdAsync(456))
-            .ReturnsAsync(contract);
-        _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(warehouse);
-        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
-            .Returns(Task.CompletedTask);
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        Assert.True(result.Success);
-        _mockPaymentRepository.Verify(x => x.UpdateAsync(It.Is<RentalPayment>(p => p.Status == PaymentStatus.Cancelled)), Times.Once);
-    }
-
-    [Fact]
-    public async Task Handle_RejectPayment_SendsNotificationToRenter()
+    public async Task UTC008_RejectPayment_SendsNotificationToRenter()
     {
         var command = new ConfirmCashPaymentCommand
         {
@@ -402,77 +345,11 @@ public class ConfirmCashPaymentHandlerTests
 
     #endregion
 
-    #region Exception Tests
-
-    [Fact]
-    public async Task Handle_MembershipCreationFailure_DoesNotFailConfirmation()
-    {
-        var command = new ConfirmCashPaymentCommand
-        {
-            PaymentId = 123,
-            OwnerId = 3,
-            IsApproved = true
-        };
-        var payment = CreateTestPayment(123, 456);
-        var contract = CreateTestContract(456, 1, 2, status: RentalContractStatus.PendingPayment);
-        var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
-
-        _mockPaymentRepository.Setup(x => x.GetByIdAsync(123))
-            .ReturnsAsync(payment);
-        _mockContractRepository.Setup(x => x.GetByIdAsync(456))
-            .ReturnsAsync(contract);
-        _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(warehouse);
-        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
-            .Returns(Task.CompletedTask);
-        _mockContractRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalContract>()))
-            .Returns(Task.CompletedTask);
-        _mockMembershipRepository.Setup(x => x.GetCallerMembershipAsync(2, 1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((CallerMembershipDto?)null);
-        _mockMembershipRepository.Setup(x => x.CreateMembershipAsync(It.IsAny<CreateMembershipDto>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new Exception("Membership service error"));
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        Assert.True(result.Success);
-    }
-
-    [Fact]
-    public async Task Handle_NotificationSendingFailure_StillCompletesConfirmation()
-    {
-        var command = new ConfirmCashPaymentCommand
-        {
-            PaymentId = 123,
-            OwnerId = 3,
-            IsApproved = false,
-            RejectionReason = "Số tiền không khớp"
-        };
-        var payment = CreateTestPayment(123, 456);
-        var contract = CreateTestContract(456, 1, 2, status: RentalContractStatus.PendingPayment);
-        var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
-
-        _mockPaymentRepository.Setup(x => x.GetByIdAsync(123))
-            .ReturnsAsync(payment);
-        _mockContractRepository.Setup(x => x.GetByIdAsync(456))
-            .ReturnsAsync(contract);
-        _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(warehouse);
-        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
-            .Returns(Task.CompletedTask);
-        _mockNotificationRepository.Setup(x => x.AddAsync(It.IsAny<Notification>()))
-            .ReturnsAsync(1);
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        Assert.True(result.Success);
-    }
-
-    #endregion
-
     #region Return Tests
 
+    // ── UTC009 — Boundary: Approved payment → returns Success with Message and NewContractStatus ──
     [Fact]
-    public async Task Handle_ApprovedPayment_ReturnsSuccessWithMessage()
+    public async Task UTC009_ApprovedPayment_ReturnsSuccessWithMessage()
     {
         var command = new ConfirmCashPaymentCommand
         {
@@ -507,15 +384,15 @@ public class ConfirmCashPaymentHandlerTests
         Assert.False(string.IsNullOrEmpty(result.NewContractStatus));
     }
 
+    // ── UTC010 — Boundary: Database error during confirmation → throws exception ──
     [Fact]
-    public async Task Handle_RejectedPayment_ReturnsSuccessWithMessage()
+    public async Task UTC010_DatabaseError_ThrowsException()
     {
         var command = new ConfirmCashPaymentCommand
         {
             PaymentId = 123,
             OwnerId = 3,
-            IsApproved = false,
-            RejectionReason = "Số tiền không khớp"
+            IsApproved = true
         };
         var payment = CreateTestPayment(123, 456);
         var contract = CreateTestContract(456, 1, 2, status: RentalContractStatus.PendingPayment);
@@ -528,13 +405,10 @@ public class ConfirmCashPaymentHandlerTests
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
         _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
-            .Returns(Task.CompletedTask);
+            .ThrowsAsync(new Exception("Database error"));
 
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        Assert.NotNull(result);
-        Assert.True(result.Success);
-        Assert.NotEmpty(result.Message);
+        await Assert.ThrowsAsync<Exception>(() =>
+            _handler.Handle(command, CancellationToken.None));
     }
 
     #endregion

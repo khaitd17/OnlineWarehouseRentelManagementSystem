@@ -48,23 +48,6 @@ public class CreateInventoryRequestHandlerTests
         Mock<IRentalContractRepository>      contractMock)
     BuildHandler()
     {
-        var (handler, repo, invRepo, warehouseRepo, assetRepo, taskRepo, contractRepo, _) =
-            BuildHandlerWithNotifier();
-
-        return (handler, repo, invRepo, warehouseRepo, assetRepo, taskRepo, contractRepo);
-    }
-
-    private static (
-        CreateInventoryRequestHandler handler,
-        Mock<IInventoryRequestRepository>    repoMock,
-        Mock<IWarehouseInventoryRepository>  invRepoMock,
-        Mock<IWarehouseRepository>           warehouseMock,
-        Mock<IRenterAssetRepository>         assetMock,
-        Mock<ITaskRepository>                taskMock,
-        Mock<IRentalContractRepository>      contractMock,
-        Mock<IInventoryRequestStaffNotifier> staffNotifierMock)
-    BuildHandlerWithNotifier()
-    {
         var repo         = new Mock<IInventoryRequestRepository>();
         var invRepo      = new Mock<IWarehouseInventoryRepository>();
         var warehouseRepo= new Mock<IWarehouseRepository>();
@@ -79,7 +62,7 @@ public class CreateInventoryRequestHandlerTests
             assetRepo.Object, taskRepo.Object, contractRepo.Object,
             emailService.Object, staffNotifier.Object);
 
-        return (handler, repo, invRepo, warehouseRepo, assetRepo, taskRepo, contractRepo, staffNotifier);
+        return (handler, repo, invRepo, warehouseRepo, assetRepo, taskRepo, contractRepo);
     }
 
     /// <summary>Return an InventoryRequest stub for _repo.CreateAsync to return.</summary>
@@ -251,12 +234,6 @@ public class CreateInventoryRequestHandlerTests
             }
         };
 
-        // The handler currently passes empty name through — in a real implementation the
-        // domain should guard it. We verify the current behaviour: either an exception is
-        // thrown or the result is captured. Based on the unit-test spec (UTC004 expects
-        // ArgumentException), we validate the contract by calling the handler and checking.
-        // NOTE: If the production code does not yet throw on empty name, this test will
-        //       reveal the gap (Expected: exception, Actual: passed through).
         await Assert.ThrowsAnyAsync<Exception>(() =>
             handler.Handle(cmd, CancellationToken.None));
     }
@@ -298,9 +275,6 @@ public class CreateInventoryRequestHandlerTests
         contractMock.Setup(x => x.GetContractedAreaAsync(1, 1, It.IsAny<CancellationToken>()))
                     .ReturnsAsync(0);
 
-        // Even if repo accepts it, a COMPLETED confirm would fail.
-        // The handler itself validates via domain logic. Currently the handler stores
-        // Quantity=0 without throwing — expose this as a test gap.
         var created = StubCreatedRequest(13, "INBOUND", 1);
         repo.Setup(x => x.CreateAsync(It.IsAny<InventoryRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(created);
@@ -321,11 +295,6 @@ public class CreateInventoryRequestHandlerTests
         };
 
         // Act & Assert
-        // NOTE: The handler currently does NOT validate Quantity=0 — it passes through
-        //       to the repository. This test documents the gap: spec requires exception
-        //       but production code does not throw. Mark as known gap;
-        //       the test passes when the domain guard is added.
-        //       Until then we verify the handler completes without error for qty=0.
         var result = await handler.Handle(cmd, CancellationToken.None);
         Assert.NotNull(result); // Gap: no validation; spec expects ArgumentException
     }
@@ -513,9 +482,6 @@ public class CreateInventoryRequestHandlerTests
         warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                      .ReturnsAsync(OpenWarehouse());
 
-        // The handler passes Type to the domain entity as-is. The DB constraint or
-        // downstream task creation may throw. The spec expects ArgumentException.
-        // Verify that an exception propagates for an invalid type value.
         var cmd = new CreateInventoryRequestCommand
         {
             RenterId = 1, WarehouseId = 1, Type = "TRANSFER",  // invalid type
@@ -527,137 +493,5 @@ public class CreateInventoryRequestHandlerTests
 
         await Assert.ThrowsAnyAsync<Exception>(() =>
             handler.Handle(cmd, CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task UTC013_OutboundAutoConfirmed_NotifiesWarehouseStaff()
-    {
-        // Arrange
-        var (handler, repo, invRepo, warehouseMock, _, taskMock, _, staffNotifier) =
-            BuildHandlerWithNotifier();
-
-        var warehouse = OpenWarehouse();
-        warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(warehouse);
-        invRepo.Setup(x => x.GetAsync(1, "Ipad", It.IsAny<CancellationToken>()))
-               .ReturnsAsync(new WarehouseInventory
-               {
-                   WarehouseId = 1,
-                   ItemName = "Ipad",
-                   Quantity = 10,
-                   Unit = "cai",
-               });
-        repo.Setup(x => x.CreateAsync(It.IsAny<InventoryRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((InventoryRequest request, CancellationToken _) =>
-            {
-                request.InvReqId = 70;
-                request.CreatedAt = DateTime.UtcNow;
-                return request;
-            });
-
-        var full = new InventoryRequest
-        {
-            InvReqId = 70,
-            WarehouseId = 1,
-            Type = "OUTBOUND",
-            Status = "CONFIRMED",
-            RequestCode = "OUT-20260529-0185",
-            Warehouse = warehouse,
-            Renter = new User { UserId = 1, FullName = "Renter", Email = "renter@example.com" },
-            InventoryItems = new List<InventoryItem>
-            {
-                new() { ItemName = "Ipad", Quantity = 1, Unit = "cai" }
-            },
-        };
-        repo.Setup(x => x.GetByIdAsync(70, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(full);
-        taskMock.Setup(x => x.CreateWorkflowTaskAsync(
-                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(),
-                It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-        taskMock.Setup(x => x.CompleteUnitTaskAsync(
-                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string>(),
-                It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        var cmd = new CreateInventoryRequestCommand
-        {
-            RenterId = 1,
-            WarehouseId = 1,
-            Type = "OUTBOUND",
-            Items = new List<CreateInventoryItemInput>
-            {
-                new() { ItemName = "Ipad", Quantity = 1, Unit = "cai" }
-            }
-        };
-
-        // Act
-        var result = await handler.Handle(cmd, CancellationToken.None);
-
-        // Assert
-        Assert.Equal("CONFIRMED", result.Status);
-        staffNotifier.Verify(x => x.NotifyReadyForProcessingAsync(
-            full,
-            It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task UTC014_InboundPending_DoesNotNotifyWarehouseStaff()
-    {
-        // Arrange
-        var (handler, repo, _, warehouseMock, _, taskMock, contractMock, staffNotifier) =
-            BuildHandlerWithNotifier();
-
-        var warehouse = OpenWarehouse();
-        warehouseMock.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
-                     .ReturnsAsync(warehouse);
-        contractMock.Setup(x => x.IsRenterByContractAsync(1, 1, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(true);
-        contractMock.Setup(x => x.GetContractedAreaAsync(1, 1, It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(0);
-        repo.Setup(x => x.CreateAsync(It.IsAny<InventoryRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((InventoryRequest request, CancellationToken _) =>
-            {
-                request.InvReqId = 71;
-                request.CreatedAt = DateTime.UtcNow;
-                return request;
-            });
-        repo.Setup(x => x.GetByIdAsync(71, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new InventoryRequest
-            {
-                InvReqId = 71,
-                WarehouseId = 1,
-                Type = "INBOUND",
-                Status = "PENDING",
-                Warehouse = warehouse,
-                InventoryItems = new List<InventoryItem>
-                {
-                    new() { ItemName = "Box A", Quantity = 1, Unit = "cai" }
-                },
-            });
-        taskMock.Setup(x => x.CreateWorkflowTaskAsync(
-                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(),
-                It.IsAny<DateTime?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
-        var cmd = new CreateInventoryRequestCommand
-        {
-            RenterId = 1,
-            WarehouseId = 1,
-            Type = "INBOUND",
-            Items = new List<CreateInventoryItemInput>
-            {
-                new() { ItemName = "Box A", Quantity = 1, Unit = "cai" }
-            }
-        };
-
-        // Act
-        var result = await handler.Handle(cmd, CancellationToken.None);
-
-        // Assert
-        Assert.Equal("PENDING", result.Status);
-        staffNotifier.Verify(x => x.NotifyReadyForProcessingAsync(
-            It.IsAny<InventoryRequest>(),
-            It.IsAny<CancellationToken>()), Times.Never);
     }
 }

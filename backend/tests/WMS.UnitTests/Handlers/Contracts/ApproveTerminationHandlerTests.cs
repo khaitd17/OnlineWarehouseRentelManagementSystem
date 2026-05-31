@@ -127,13 +127,11 @@ public class ApproveTerminationHandlerTests
         Assert.Equal("You are not authorized to approve termination for this contract", result.Message);
     }
 
-    [Theory]
-    [InlineData(RentalContractStatus.Active)]
-
-    public async Task Handle_InvalidContractStatus_ReturnsFalse(string status)
+    [Fact]
+    public async Task Handle_InvalidContractStatus_ReturnsFalse()
     {
         var command = new ApproveTerminationCommand { ContractId = 123, UserId = 2 };
-        var contract = CreateTestContract(123, 1, 2, status);
+        var contract = CreateTestContract(123, 1, 2, RentalContractStatus.Active);
         var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
 
         _mockContractRepository.Setup(x => x.GetByIdAsync(123))
@@ -280,10 +278,12 @@ public class ApproveTerminationHandlerTests
         _mockNotificationRepository.Verify(x => x.AddAsync(It.IsAny<Notification>()), Times.Once);
     }
 
+
     [Fact]
-    public async Task Handle_ApproveAfter30Days_StillReceivesNotification()
+    public async Task Handle_ApproveNearContractEndDate_StillProcessesSuccessfully()
     {
-        var command = new ApproveTerminationCommand { ContractId = 123, UserId = 2 };
+        // Boundary: approve termination when contract is near its end date
+        var command = new ApproveTerminationCommand { ContractId = 123, UserId = 3 };
         var contract = CreateTestContract(123, 1, 2, RentalContractStatus.PendingTermination);
         var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
         var updatedContract = CreateTestContract(123, 1, 2, RentalContractStatus.Terminated);
@@ -292,7 +292,7 @@ public class ApproveTerminationHandlerTests
             .ReturnsAsync(contract);
         _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(warehouse);
-        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "RENTER", It.IsAny<decimal?>()))
+        _mockContractRepository.Setup(x => x.ApproveTerminationAsync(123, "OWNER", It.IsAny<decimal?>()))
             .Returns(Task.CompletedTask);
         _mockContractRepository.SetupSequence(x => x.GetByIdAsync(123))
             .ReturnsAsync(contract)
@@ -301,6 +301,7 @@ public class ApproveTerminationHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.Success);
+        Assert.True(result.IsFullyApproved);
         _mockNotificationRepository.Verify(x => x.AddAsync(It.IsAny<Notification>()), Times.Once);
     }
 

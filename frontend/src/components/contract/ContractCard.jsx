@@ -25,7 +25,7 @@ const ContractCard = ({
     'CLOSED': { bg: '#f1f5f9', color: '#64748b', text: 'Đã đóng', accent: '#94a3b8' },
     'TERMINATED': { bg: '#fee2e2', color: '#dc2626', text: 'Đã chấm dứt', accent: '#ef4444' },
     'CANCELLED': { bg: '#fee2e2', color: '#dc2626', text: 'Đã hủy', accent: '#ef4444' },
-    'CANCELLED_BY_USER': { bg: '#fee2e2', color: '#dc2626', text: 'Người dùng hủy', accent: '#ef4444' },
+    'CANCELLED_BY_USER': { bg: '#fee2e2', color: '#dc2626', text: 'Đã hủy', accent: '#ef4444' },
     'EXPIRED': { bg: '#fef3c7', color: '#d97706', text: 'Hết hạn', accent: '#f59e0b' },
     'OVERDUE': { bg: '#fee2e2', color: '#dc2626', text: 'Quá hạn', accent: '#ef4444' },
   };

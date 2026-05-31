@@ -11,11 +11,28 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString("vi-VN") : "—";
 const fmtMoney = (n) => n != null ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(n) : "—";
 
 const CONTRACT_STATUS = {
-  ACTIVE:    { label: "Đang hiệu lực", bg: "#dcfce7", color: "#15803d" },
-  PENDING:   { label: "Chờ ký",        bg: "#fef9c3", color: "#92400e" },
-  COMPLETED: { label: "Hoàn tất",      bg: "#e0e7ff", color: "#3730a3" },
-  CANCELLED: { label: "Đã huỷ",        bg: "#fee2e2", color: "#991b1b" },
-  SIGNED:    { label: "Đã ký",         bg: "#d1fae5", color: "#065f46" },
+  ACTIVE:                { label: "Đang hiệu lực",      bg: "#dcfce7", color: "#15803d" },
+  PENDING:               { label: "Chờ ký",             bg: "#fef9c3", color: "#92400e" },
+  COMPLETED:             { label: "Hoàn tất",           bg: "#e0e7ff", color: "#3730a3" },
+  CANCELLED:             { label: "Đã hủy",             bg: "#fee2e2", color: "#991b1b" },
+  SIGNED:                { label: "Đã ký",              bg: "#d1fae5", color: "#065f46" },
+  NEGOTIATING:           { label: "Đang đàm phán",      bg: "#dbeafe", color: "#2563eb" },
+  CANCELLED_BY_USER:     { label: "Đã hủy",             bg: "#fee2e2", color: "#dc2626" },
+  CANCELLED_BY_OWNER:    { label: "Chủ kho hủy",        bg: "#fee2e2", color: "#dc2626" },
+  CANCELLED_NO_PAYMENT:  { label: "Hủy - Không TT",     bg: "#f1f5f9", color: "#64748b" },
+  TERMINATED:            { label: "Đã chấm dứt",        bg: "#fee2e2", color: "#dc2626" },
+  CLOSED:                { label: "Đã đóng",            bg: "#f1f5f9", color: "#64748b" },
+  DRAFT:                 { label: "Bản nháp",           bg: "#f1f5f9", color: "#64748b" },
+  REVISION_REQUESTED:    { label: "Yêu cầu chỉnh sửa",  bg: "#fef3c7", color: "#d97706" },
+  APPROVED_FOR_SIGNING:  { label: "Sẵn sàng ký",        bg: "#dcfce7", color: "#16a34a" },
+  PENDING_PAYMENT:       { label: "Chờ thanh toán",     bg: "#fef3c7", color: "#d97706" },
+  PENDING_OWNER_SIGNATURE:{ label: "Chờ chủ kho ký",     bg: "#dbeafe", color: "#1e40af" },
+  PENDING_RENTER_SIGNATURE:{ label: "Chờ người thuê ký",  bg: "#fef3c7", color: "#d97706" },
+  PENDING_SIGNATURE:     { label: "Chờ xác thực ký",    bg: "#fef3c7", color: "#d97706" },
+  PENDING_TERMINATION:   { label: "Chờ chấm dứt",       bg: "#fef3c7", color: "#f59e0b" },
+  PENDING_CLOSE:         { label: "Chờ đóng",           bg: "#fef3c7", color: "#f59e0b" },
+  OVERDUE:               { label: "Quá hạn",            bg: "#fee2e2", color: "#dc2626" },
+  EXPIRED:               { label: "Đã hết hạn",         bg: "#fef3c7", color: "#d97706" },
 };
 
 const ROLE_LABEL = {
@@ -659,11 +676,16 @@ const ProfilePage = () => {
               ) : isOwner ? (
                 /* ── OWNER: tenant table ── */
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-                        {["Mã HĐ", "Khách thuê", "Email", "Kho bãi", "Bắt đầu", "Kết thúc", "Thanh toán/tháng", "Trạng thái"].map(h => (
-                          <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".05em", whiteSpace: "nowrap" }}>{h}</th>
+                        {["Mã HĐ", "Khách thuê", "Email", "Kho bãi", "Bắt đầu", "Kết thúc", "Giá thuê/tháng", "Trạng thái"].map((h, idx, arr) => (
+                          <th key={h} style={{
+                            padding: "12px 8px",
+                            paddingLeft: idx === 0 ? "16px" : "8px",
+                            paddingRight: idx === arr.length - 1 ? "16px" : "8px",
+                            textAlign: "left", fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".05em", whiteSpace: "nowrap"
+                          }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -672,24 +694,24 @@ const ProfilePage = () => {
                         <tr key={c.contractId || i} style={{ borderBottom: "1px solid #f8fafc" }}
                           onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
                           onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                          <td style={{ padding: "13px 16px", fontWeight: 700, color: "#0095c7", fontFamily: "monospace", whiteSpace: "nowrap" }}>#{c.contractNumber || c.contractId}</td>
-                          <td style={{ padding: "13px 16px" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#0095c7,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: "0.85rem", flexShrink: 0 }}>
+                          <td style={{ padding: "12px 8px 12px 16px", fontWeight: 700, color: "#0095c7", fontFamily: "monospace", fontSize: "0.78rem", whiteSpace: "nowrap" }}>#{c.contractNumber || c.contractId}</td>
+                          <td style={{ padding: "12px 8px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <div style={{ width: 30, height: 30, borderRadius: "50%", background: "linear-gradient(135deg,#0095c7,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: "0.8rem", flexShrink: 0 }}>
                                 {(c.renterName || "?").charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <div style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.88rem" }}>{c.renterName || "—"}</div>
-                                {c.renterPhone && <div style={{ fontSize: "0.74rem", color: "#94a3b8" }}>{c.renterPhone}</div>}
+                                <div style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.82rem" }}>{c.renterName || "—"}</div>
+                                {c.renterPhone && <div style={{ fontSize: "0.7rem", color: "#94a3b8" }}>{c.renterPhone}</div>}
                               </div>
                             </div>
                           </td>
-                          <td style={{ padding: "13px 16px", color: "#64748b", fontSize: "0.82rem" }}>{c.renterEmail || "—"}</td>
-                          <td style={{ padding: "13px 16px", fontWeight: 600, color: "#1e293b", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.warehouseName || "—"}</td>
-                          <td style={{ padding: "13px 16px", color: "#475569", whiteSpace: "nowrap" }}>{fmtDate(c.startDate)}</td>
-                          <td style={{ padding: "13px 16px", color: "#475569", whiteSpace: "nowrap" }}>{fmtDate(c.endDate)}</td>
-                          <td style={{ padding: "13px 16px", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap" }}>{fmtMoney(c.monthlyPayment)}</td>
-                          <td style={{ padding: "13px 16px" }}><Badge status={c.status} /></td>
+                          <td style={{ padding: "12px 8px", color: "#64748b", fontSize: "0.78rem", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.renterEmail || "—"}</td>
+                          <td style={{ padding: "12px 8px", fontWeight: 600, color: "#1e293b", maxWidth: 130, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.warehouseName || "—"}</td>
+                          <td style={{ padding: "12px 8px", color: "#475569", whiteSpace: "nowrap" }}>{fmtDate(c.startDate)}</td>
+                          <td style={{ padding: "12px 8px", color: "#475569", whiteSpace: "nowrap" }}>{fmtDate(c.endDate)}</td>
+                          <td style={{ padding: "12px 8px", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap" }}>{fmtMoney(c.monthlyPayment)}</td>
+                          <td style={{ padding: "12px 16px 12px 8px" }}><Badge status={c.status} /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -698,11 +720,16 @@ const ProfilePage = () => {
               ) : (
                 /* ── RENTER: warehouse table ── */
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #f1f5f9" }}>
-                        {["Mã HĐ", "Kho bãi", "Địa chỉ", "Bắt đầu", "Kết thúc", "Thanh toán/tháng", "Trạng thái"].map(h => (
-                          <th key={h} style={{ padding: "12px 16px", textAlign: "left", fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".05em", whiteSpace: "nowrap" }}>{h}</th>
+                        {["Mã HĐ", "Kho bãi", "Địa chỉ", "Bắt đầu", "Kết thúc", "Giá thuê/tháng", "Trạng thái"].map((h, idx, arr) => (
+                          <th key={h} style={{
+                            padding: "12px 8px",
+                            paddingLeft: idx === 0 ? "16px" : "8px",
+                            paddingRight: idx === arr.length - 1 ? "16px" : "8px",
+                            textAlign: "left", fontSize: "0.7rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".05em", whiteSpace: "nowrap"
+                          }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -711,13 +738,13 @@ const ProfilePage = () => {
                         <tr key={c.contractId || i} style={{ borderBottom: "1px solid #f8fafc" }}
                           onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
                           onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                          <td style={{ padding: "13px 16px", fontWeight: 700, color: "#0095c7", fontFamily: "monospace", whiteSpace: "nowrap" }}>#{c.contractNumber || c.contractId}</td>
-                          <td style={{ padding: "13px 16px", fontWeight: 600, color: "#1e293b" }}>{c.warehouseName || "—"}</td>
-                          <td style={{ padding: "13px 16px", color: "#64748b", maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.warehouseAddress || "—"}</td>
-                          <td style={{ padding: "13px 16px", color: "#475569", whiteSpace: "nowrap" }}>{fmtDate(c.startDate)}</td>
-                          <td style={{ padding: "13px 16px", color: "#475569", whiteSpace: "nowrap" }}>{fmtDate(c.endDate)}</td>
-                          <td style={{ padding: "13px 16px", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap" }}>{fmtMoney(c.monthlyPayment)}</td>
-                          <td style={{ padding: "13px 16px" }}><Badge status={c.status} /></td>
+                          <td style={{ padding: "12px 8px 12px 16px", fontWeight: 700, color: "#0095c7", fontFamily: "monospace", fontSize: "0.78rem", whiteSpace: "nowrap" }}>#{c.contractNumber || c.contractId}</td>
+                          <td style={{ padding: "12px 8px", fontWeight: 600, color: "#1e293b", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.warehouseName || "—"}</td>
+                          <td style={{ padding: "12px 8px", color: "#64748b", maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.warehouseAddress || "—"}</td>
+                          <td style={{ padding: "12px 8px", color: "#475569", whiteSpace: "nowrap" }}>{fmtDate(c.startDate)}</td>
+                          <td style={{ padding: "12px 8px", color: "#475569", whiteSpace: "nowrap" }}>{fmtDate(c.endDate)}</td>
+                          <td style={{ padding: "12px 8px", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap" }}>{fmtMoney(c.monthlyPayment)}</td>
+                          <td style={{ padding: "12px 16px 12px 8px" }}><Badge status={c.status} /></td>
                         </tr>
                       ))}
                     </tbody>
