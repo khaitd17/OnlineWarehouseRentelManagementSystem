@@ -25,7 +25,7 @@ const statusConfig = {
   PENDING_CLOSE:     { bg: "#fef3c7", color: "#92400e", accent: "#f59e0b", label: "Chờ đóng" },
   PENDING_TERMINATION: { bg: "#fef3c7", color: "#92400e", accent: "#f59e0b", label: "Chờ kết thúc" },
   EXPIRED:           { bg: "#fee2e2", color: "#991b1b", accent: "#ef4444", label: "Đã hết hạn" },
-  CANCELLED_BY_USER: { bg: "#f1f5f9", color: "#475569", accent: "#94a3b8", label: "Người dùng hủy" },
+  CANCELLED_BY_USER: { bg: "#f1f5f9", color: "#475569", accent: "#94a3b8", label: "Đã hủy" },
   CANCELLED_BY_OWNER:{ bg: "#f1f5f9", color: "#475569", accent: "#94a3b8", label: "Chủ kho hủy" },
   CANCELLED_NO_PAYMENT: { bg: "#f1f5f9", color: "#475569", accent: "#94a3b8", label: "Hủy - Không thanh toán" },
 };

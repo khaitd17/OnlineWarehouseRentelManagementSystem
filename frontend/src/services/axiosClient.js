@@ -23,6 +23,12 @@ axiosClient.interceptors.response.use(
             const originalUrl = error.config?.url || '';
             if (!originalUrl.includes('/auth/login')) {
                 const hadToken = !!localStorage.getItem("token");
+                // Don't clear token or redirect for AI endpoints (they support anonymous access)
+                const isAiEndpoint = originalUrl.includes('/ai/');
+                if (isAiEndpoint) {
+                    // AI endpoints support anonymous access, don't redirect
+                    return Promise.reject(error);
+                }
                 // Token expired or invalid
                 localStorage.removeItem("token");
                 localStorage.removeItem("user");

@@ -32,7 +32,7 @@ const CONTRACT_STATUS = {
   PENDING: { bg: "#fef9c3", color: "#854d0e", label: "Chờ ký" },
   EXPIRED: { bg: "#fef3c7", color: "#d97706", label: "Đã hết hạn" },
   CANCELLED: { bg: "#fee2e2", color: "#991b1b", label: "Đã hủy" },
-  CANCELLED_BY_USER: { bg: "#fee2e2", color: "#dc2626", label: "Người dùng hủy" },
+  CANCELLED_BY_USER: { bg: "#fee2e2", color: "#dc2626", label: "Đã hủy" },
   CANCELLED_BY_OWNER: { bg: "#fee2e2", color: "#dc2626", label: "Chủ kho hủy" },
   CANCELLED_NO_PAYMENT: { bg: "#f1f5f9", color: "#64748b", label: "Hủy - Không TT" },
   TERMINATED: { bg: "#fee2e2", color: "#dc2626", label: "Đã chấm dứt" },

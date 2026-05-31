@@ -187,7 +187,9 @@ public class CreatePaymentHandlerTests
             ContractId = 123, 
             PaymentType = PaymentType.Monthly,
             PaymentMethod = "CASH",
-            Status = "PENDING_CONFIRMATION"
+            Status = "PENDING_CONFIRMATION",
+            ProofUrl = "https://example.com/proof.jpg",
+            TransactionCode = "TXN001"
         };
         var contract = CreateTestContract(123, 1, 2, 500000, 1000000);
         var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
@@ -290,7 +292,9 @@ public class CreatePaymentHandlerTests
             ContractId = 123, 
             PaymentType = PaymentType.Monthly,
             PaymentMethod = "CASH",
-            Status = "PENDING_CONFIRMATION"
+            Status = "PENDING_CONFIRMATION",
+            ProofUrl = "https://example.com/proof.jpg",
+            TransactionCode = "TXN001"
         };
         var contract = CreateTestContract(123, 1, 2, 500000, 1000000);
         var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
@@ -357,6 +361,132 @@ public class CreatePaymentHandlerTests
         Assert.Equal(500000m, result.Amount);
         Assert.NotEmpty(result.Status);
         Assert.NotNull(result.ExpiredAt);
+    }
+
+    #endregion
+
+    #region Boundary Tests - Amount
+
+    // ── UTC011 — Boundary: AmountOverride = 0 → uses contract default ──
+    [Fact]
+    public async Task Handle_AmountOverrideZero_UsesContractDefault()
+    {
+        var command = new CreatePaymentCommand 
+        { 
+            ContractId = 123, 
+            PaymentType = PaymentType.Monthly,
+            AmountOverride = 0   // zero → fallback to contract monthly
+        };
+        var contract = CreateTestContract(123, 1, 2, 500000, 1000000);
+
+        _mockContractRepository.Setup(x => x.GetByIdAsync(123))
+            .ReturnsAsync(contract);
+        _mockPaymentRepository.Setup(x => x.GetPendingPaymentByContractAsync(123, PaymentType.Monthly))
+            .ReturnsAsync((RentalPayment?)null);
+        _mockPaymentRepository.Setup(x => x.AddAsync(It.IsAny<RentalPayment>()))
+            .ReturnsAsync(123);
+        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.Equal(1000000m, result.Amount);  // falls back to contract monthly
+    }
+
+    // ── UTC012 — Boundary: Negative AmountOverride → uses contract default ──
+    [Fact]
+    public async Task Handle_NegativeAmountOverride_UsesContractDefault()
+    {
+        var command = new CreatePaymentCommand 
+        { 
+            ContractId = 123, 
+            PaymentType = PaymentType.Monthly,
+            AmountOverride = -1000000   // negative → fallback to contract monthly
+        };
+        var contract = CreateTestContract(123, 1, 2, 500000, 1000000);
+
+        _mockContractRepository.Setup(x => x.GetByIdAsync(123))
+            .ReturnsAsync(contract);
+        _mockPaymentRepository.Setup(x => x.GetPendingPaymentByContractAsync(123, PaymentType.Monthly))
+            .ReturnsAsync((RentalPayment?)null);
+        _mockPaymentRepository.Setup(x => x.AddAsync(It.IsAny<RentalPayment>()))
+            .ReturnsAsync(123);
+        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.Equal(1000000m, result.Amount);  // negative treated as invalid, falls back
+    }
+
+    // ── UTC013 — Boundary: Very large AmountOverride (10 billion) → accepts ──
+    [Fact]
+    public async Task Handle_VeryLargeAmountOverride_UsesOverrideValue()
+    {
+        var command = new CreatePaymentCommand 
+        { 
+            ContractId = 123, 
+            PaymentType = PaymentType.Monthly,
+            AmountOverride = 10000000000m   // 10 billion — large boundary
+        };
+        var contract = CreateTestContract(123, 1, 2, 500000, 1000000);
+
+        _mockContractRepository.Setup(x => x.GetByIdAsync(123))
+            .ReturnsAsync(contract);
+        _mockPaymentRepository.Setup(x => x.GetPendingPaymentByContractAsync(123, PaymentType.Monthly))
+            .ReturnsAsync((RentalPayment?)null);
+        _mockPaymentRepository.Setup(x => x.AddAsync(It.IsAny<RentalPayment>()))
+            .ReturnsAsync(123);
+        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.Equal(10000000000m, result.Amount);
+    }
+
+    // ── UTC014 — Abnormal: PENDING_CONFIRMATION status with CASH payment → sends notification ──
+    [Fact]
+    public async Task Handle_PendingConfirmationStatus_SendsNotification()
+    {
+        var command = new CreatePaymentCommand 
+        { 
+            ContractId = 123, 
+            PaymentType = PaymentType.Deposit,
+            PaymentMethod = "BANK_TRANSFER",
+            Status = "PENDING_CONFIRMATION",
+            TransactionCode = "TXN001",
+            ProofUrl = "https://example.com/proof.jpg"
+        };
+        var contract = CreateTestContract(123, 1, 2, 500000, 1000000);
+        var warehouse = new Warehouse { WarehouseId = 1, OwnerId = 3 };
+
+        _mockContractRepository.Setup(x => x.GetByIdAsync(123))
+            .ReturnsAsync(contract);
+        _mockPaymentRepository.Setup(x => x.GetPendingPaymentByContractAsync(123, PaymentType.Deposit))
+            .ReturnsAsync((RentalPayment?)null);
+        _mockPaymentRepository.Setup(x => x.GetByContractIdAsync(123))
+            .ReturnsAsync(new List<RentalPayment>());
+        _mockPaymentRepository.Setup(x => x.AddAsync(It.IsAny<RentalPayment>()))
+            .Callback<RentalPayment>(p =>
+            {
+                typeof(RentalPayment).GetField("<PaymentId>k__BackingField", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                    ?.SetValue(p, 123);
+            })
+            .ReturnsAsync(123);
+        _mockPaymentRepository.Setup(x => x.UpdateAsync(It.IsAny<RentalPayment>()))
+            .Returns(Task.CompletedTask);
+        _mockPaymentRepository.Setup(x => x.UpdatePaymentCodeAsync(It.IsAny<int>(), It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
+        _mockWarehouseRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(warehouse);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        Assert.NotNull(result);
+        _mockNotificationRepository.Verify(x => x.AddAsync(It.IsAny<Notification>()), Times.Once);
+        _mockNotificationSender.Verify(x => x.SendToUserAsync(3, It.IsAny<Notification>()), Times.Once);
     }
 
     #endregion

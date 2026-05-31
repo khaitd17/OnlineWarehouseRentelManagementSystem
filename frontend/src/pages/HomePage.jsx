@@ -120,9 +120,9 @@ const HOME_STYLES = `
   }
 
   .hero-title {
-    font-size: clamp(2.4rem, 5vw, 4rem);
+    font-size: clamp(1.4rem, 5.5vw, 4rem);
     font-weight: 900;
-    line-height: 1.15;
+    line-height: 1.25;
     margin-bottom: 1.5rem;
     color: #fff;
     letter-spacing: -0.02em;
@@ -831,8 +831,10 @@ const HomePage = () => {
           </div>
 
           <h1 className="hero-title">
-            Tìm không gian lưu trữ<br />
-            <span className="hero-title-accent">hoàn hảo cho doanh nghiệp</span>
+            <span style={{ whiteSpace: 'nowrap' }}>Tìm không gian lưu trữ hoàn hảo</span><br />
+            <span className="hero-title-accent">
+              <span style={{ whiteSpace: 'nowrap' }}>nhanh chóng</span> và <span style={{ whiteSpace: 'nowrap' }}>dễ dàng</span>
+            </span>
           </h1>
 
           <p className="hero-subtitle">

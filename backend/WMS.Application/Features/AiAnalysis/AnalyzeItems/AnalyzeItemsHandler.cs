@@ -37,11 +37,14 @@ public class AnalyzeItemsHandler : IRequestHandler<AnalyzeItemsCommand, AnalyzeI
         AnalyzeItemsCommand request,
         CancellationToken cancellationToken)
     {
-        // ── 1. Kiểm tra quota hàng ngày ──────────────────────────────
-        var todayCount = await _sessionRepo.CountTodayAsync(request.UserId, cancellationToken);
-        if (todayCount >= DailyQuota)
-            throw new InvalidOperationException(
-                $"Bạn đã sử dụng hết {DailyQuota} lượt phân tích AI trong hôm nay. Vui lòng thử lại vào ngày mai.");
+        // ── 1. Kiểm tra quota hàng ngày (bỏ qua cho guest) ──────────────────────────────
+        if (request.UserId > 0)
+        {
+            var todayCount = await _sessionRepo.CountTodayAsync(request.UserId, cancellationToken);
+            if (todayCount >= DailyQuota)
+                throw new InvalidOperationException(
+                    $"Bạn đã sử dụng hết {DailyQuota} lượt phân tích AI trong hôm nay. Vui lòng thử lại vào ngày mai.");
+        }
 
         // ── 2. Đọc bytes của từng ảnh ────────────────────────────────
         var imageBytes = new List<byte[]>();
@@ -55,17 +58,22 @@ public class AnalyzeItemsHandler : IRequestHandler<AnalyzeItemsCommand, AnalyzeI
         // ── 3. Gọi Gemini Vision API ─────────────────────────────────
         var geminiResult = await _geminiService.AnalyzeItemsAsync(imageBytes, cancellationToken);
 
-        // ── 4. Lưu lịch sử phân tích vào DB ─────────────────────────
+        // ── 4. Lưu lịch sử phân tích vào DB (bỏ qua cho guest) ─────────────────────────
         var resultJson = JsonSerializer.Serialize(geminiResult);
-        var session = await _sessionRepo.AddAsync(new AiAnalysisSession
+        var sessionId = 0;
+        if (request.UserId > 0)
         {
-            UserId = request.UserId,
-            ResultJson = resultJson,
-            EstimatedVolumeM3 = geminiResult.TotalVolumeM3,
-            SuggestedType = geminiResult.SuggestedWarehouseType,
-            SpecialNotes = geminiResult.SpecialNotes,
-            Confidence = geminiResult.Confidence
-        }, cancellationToken);
+            var session = await _sessionRepo.AddAsync(new AiAnalysisSession
+            {
+                UserId = request.UserId,
+                ResultJson = resultJson,
+                EstimatedVolumeM3 = geminiResult.TotalVolumeM3,
+                SuggestedType = geminiResult.SuggestedWarehouseType,
+                SpecialNotes = geminiResult.SpecialNotes,
+                Confidence = geminiResult.Confidence
+            }, cancellationToken);
+            sessionId = session.SessionId;
+        }
 
         // ── 5. Query kho phù hợp ─────────────────────────────────────
         var allWarehouses = await _warehouseRepo.GetApprovedWarehousesAsync(int.MaxValue, cancellationToken);
@@ -167,9 +175,8 @@ public class AnalyzeItemsHandler : IRequestHandler<AnalyzeItemsCommand, AnalyzeI
             })
             .ToList();
 
-        // ── 6. Build kết quả trả về ──────────────────────────────────
         return new AnalyzeItemsResult(
-            SessionId: session.SessionId,
+            SessionId: sessionId,
             Items: geminiResult.Items.Select(i =>
                 new DetectedItemDto(i.Name, i.Quantity, i.EstimatedVolumeM3, i.WidthM, i.LengthM, i.HeightM)).ToList(),
             TotalVolumeM3: geminiResult.TotalVolumeM3,

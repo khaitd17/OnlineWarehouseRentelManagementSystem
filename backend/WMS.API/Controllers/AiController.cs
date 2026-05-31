@@ -13,7 +13,7 @@ namespace WMS.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/ai")]
-[Authorize]
+
 public class AiController : ControllerBase
 {
     private readonly IMediator _mediator;
@@ -31,6 +31,7 @@ public class AiController : ControllerBase
     /// Giới hạn: 10 lần/ngày/user. Tối đa 5 ảnh, mỗi ảnh tối đa 10MB.
     /// </summary>
     [HttpPost("analyze-items")]
+    [AllowAnonymous]
     [RequestSizeLimit(52_428_800)] // 50MB tổng
     public async Task<IActionResult> AnalyzeItems(
         [FromForm] List<IFormFile> images,
@@ -39,14 +40,12 @@ public class AiController : ControllerBase
         [FromForm] double? lat = null,
         [FromForm] double? lng = null)
     {
-        // Lấy userId từ JWT
+        // Lấy userId từ JWT (nếu có), cho phép guest dùng userId = 0
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                         ?? User.FindFirst("sub")?.Value;
-        if (string.IsNullOrEmpty(userIdStr))
-            return Unauthorized(new { message = "Vui lòng đăng nhập để sử dụng tính năng này." });
-
-        if (!int.TryParse(userIdStr, out var userId))
-            return Unauthorized(new { message = "Token không hợp lệ." });
+        var userId = 0;
+        if (!string.IsNullOrEmpty(userIdStr))
+            int.TryParse(userIdStr, out userId);
 
         // Validate ảnh
         if (images == null || images.Count == 0)
@@ -115,6 +114,7 @@ public class AiController : ControllerBase
     /// Lấy lịch sử các lần phân tích AI của user hiện tại (tối đa 20 bản ghi).
     /// </summary>
     [HttpGet("my-sessions")]
+    [Authorize]
     public async Task<IActionResult> GetMySessions(CancellationToken cancellationToken)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
@@ -146,12 +146,14 @@ public class AiController : ControllerBase
     /// Kiểm tra còn bao nhiêu lượt AI hôm nay.
     /// </summary>
     [HttpGet("quota")]
+    [AllowAnonymous]
     public async Task<IActionResult> GetQuota(CancellationToken cancellationToken)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                         ?? User.FindFirst("sub")?.Value;
+        // Guest: trả quota không giới hạn
         if (string.IsNullOrEmpty(userIdStr) || !int.TryParse(userIdStr, out var userId))
-            return Unauthorized();
+            return Ok(new { usedToday = 0, dailyLimit = 10, remaining = 10 });
 
         var usedToday = await _sessionRepo.CountTodayAsync(userId, cancellationToken);
         const int dailyLimit = 10;
@@ -170,15 +172,15 @@ public class AiController : ControllerBase
     /// Giới hạn: dùng chung 10 lần/ngày/user với analyze-items.
     /// </summary>
     [HttpPost("smart-search")]
+    [AllowAnonymous]
     public async Task<IActionResult> SmartSearch([FromBody] SmartSearchRequest req)
     {
+        // Cho phép guest dùng userId = 0
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                         ?? User.FindFirst("sub")?.Value;
-        if (string.IsNullOrEmpty(userIdStr))
-            return Unauthorized(new { message = "Vui lòng đăng nhập để sử dụng tính năng này." });
-
-        if (!int.TryParse(userIdStr, out var userId))
-            return Unauthorized(new { message = "Token không hợp lệ." });
+        var userId = 0;
+        if (!string.IsNullOrEmpty(userIdStr))
+            int.TryParse(userIdStr, out userId);
 
         if (string.IsNullOrWhiteSpace(req.Prompt))
             return BadRequest(new { message = "Vui lòng nhập yêu cầu tìm kiếm." });
