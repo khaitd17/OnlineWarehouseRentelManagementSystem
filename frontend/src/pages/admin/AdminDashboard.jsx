@@ -70,7 +70,7 @@ export default function AdminDashboard() {
           label="Tổng doanh thu"
           color="green"
         />
-        <StatCard icon={<Target size={20} />} value={report.totalNewSubscriptionsThisMonth} label="Lượt đăng ký mới (Tháng này)" color="blue" />
+        <StatCard icon={<Target size={20} />} value={report.totalNewSubscriptionsThisMonth} label="Lượt đăng ký" color="blue" />
         <StatCard icon={<Clock size={20} />} value={report.expiringSubscriptions} label="Chủ kho sắp hết hạn gói cước" color="orange" />
       </div>
 

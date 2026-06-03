@@ -96,8 +96,11 @@ export default function StaffAuditSessionsPage() {
                     }
                   </td>
                   <td className="px-4 py-3 text-slate-600">{row.totalResults} mục</td>
-                  <td className="px-4 py-3 text-slate-500">{row.createdAt ? new Date(row.createdAt).toLocaleDateString('vi-VN') : '—'}</td>
-                  <td className="px-4 py-3">
+<td className="px-4 py-3 text-slate-500">
+  {row.createdAt
+    ? new Date(row.createdAt).toISOString().split("T")[0]
+    : "—"}
+</td>                  <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => navigate(`/staff-audit-sessions/${row.auditId}`)}

@@ -79,14 +79,35 @@ export default function RenterAuditSessionDetailPage() {
             <div className="text-xs font-bold uppercase text-slate-400 mb-1">NV kiểm kê</div>
             <div className="text-sm font-semibold text-slate-800">{session.assignedToName || "Chưa giao"}</div>
           </div>
-          <div>
-            <div className="text-xs font-bold uppercase text-slate-400 mb-1">Ngày tạo</div>
-            <div className="text-sm text-slate-600">{session.createdAt ? new Date(session.createdAt).toLocaleString("vi-VN") : "—"}</div>
-          </div>
-          <div>
-            <div className="text-xs font-bold uppercase text-slate-400 mb-1">Hoàn thành</div>
-            <div className="text-sm text-slate-600">{session.completedAt ? new Date(session.completedAt).toLocaleString("vi-VN") : "—"}</div>
-          </div>
+      <div>
+  <div className="text-xs font-bold uppercase text-slate-400 mb-1">
+    Ngày tạo
+  </div>
+  <div className="text-sm text-slate-600">
+    {session.createdAt
+      ? new Date(session.createdAt).toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : "—"}
+  </div>
+</div>
+
+<div>
+  <div className="text-xs font-bold uppercase text-slate-400 mb-1">
+    Hoàn thành
+  </div>
+  <div className="text-sm text-slate-600">
+    {session.completedAt
+      ? new Date(session.completedAt).toLocaleDateString("vi-VN", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        })
+      : "—"}
+  </div>
+</div>
           {session.notes && (
             <div className="col-span-2 md:col-span-4">
               <div className="text-xs font-bold uppercase text-slate-400 mb-1">Ghi chú</div>
@@ -153,8 +174,15 @@ export default function RenterAuditSessionDetailPage() {
                       : <span className="text-red-500 font-bold">{r.discrepancy > 0 ? `+${r.discrepancy}` : r.discrepancy}</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-500">{r.discrepancyReason || "—"}</td>
-                  <td className="px-4 py-3 text-slate-500">{r.createdAt ? new Date(r.createdAt).toLocaleDateString("vi-VN") : "—"}</td>
-                </tr>
+<td className="px-4 py-3 text-slate-500">
+  {r.createdAt
+    ? new Date(r.createdAt).toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "—"}
+</td>                </tr>
               ))}
             </tbody>
           </table>

@@ -161,8 +161,11 @@ export default function OwnerAuditSessionsPage() {
                   </td>
                   <td className="px-4 py-3 text-slate-600">{row.assignedToName || "—"}</td>
                   <td className="px-4 py-3 text-slate-600">{row.totalResults} mục</td>
-                  <td className="px-4 py-3 text-slate-500">{row.createdAt ? new Date(row.createdAt).toLocaleDateString("vi-VN") : "—"}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-slate-500">
+                    {row.createdAt
+                      ? new Date(row.createdAt).toISOString().split("T")[0]
+                      : "—"}
+                  </td>                  <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button onClick={() => navigate(`/owner-audit-sessions/${row.auditId}`)} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all" style={{ backgroundColor: accentColor + "15", color: accentColor }}>Chi tiết</button>
                       {row.status === "PENDING_APPROVAL" && (
