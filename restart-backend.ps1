@@ -1,6 +1,7 @@
-# Dừng process dotnet API cũ (nếu có) rồi restart
-$procs = Get-Process -Name "dotnet" -ErrorAction SilentlyContinue | Where-Object {
-    $_.MainWindowTitle -eq "" -and $_.CommandLine -match "WMS.API" 2>$null
+# Dừng process dotnet API hoặc WMS.API cũ (nếu có) rồi restart
+Get-Process -Name "WMS.API" -ErrorAction SilentlyContinue | ForEach-Object {
+    Write-Host "Đang dừng process WMS.API (PID: $($_.Id))..."
+    Stop-Process -Id $_.Id -Force
 }
 
 # Fallback: kill all dotnet processes that may be hosting the API

@@ -52,10 +52,24 @@ public class UpdateContractRevisionStatusHandler : IRequestHandler<UpdateContrac
         var notificationType = normalizedStatus == ContractRevisionStatus.Accepted
             ? "CONTRACT_REVISION_ACCEPTED"
             : "CONTRACT_REVISION_REJECTED";
+
+        var statusVietnamese = normalizedStatus == ContractRevisionStatus.Accepted ? "chấp nhận" : "từ chối";
+        var sectionVietnamese = (thread.Section?.ToLowerInvariant()?.Trim()) switch
+        {
+            "rental price" => "Giá thuê",
+            "deposit" => "Tiền đặt cọc",
+            "payment terms" => "Điều khoản thanh toán",
+            "contract terms" => "Điều khoản hợp đồng",
+            "violation terms" => "Điều khoản hợp đồng",
+            "termination terms" => "Điều khoản hợp đồng",
+            "other" => "Khác",
+            _ => thread.Section
+        };
+
         var notification = WMS.Domain.Entities.Notification.Create(
             receiverUserId: contract.RenterId,
             title: "Cập nhật yêu cầu chỉnh sửa",
-            message: $"Chủ kho đã {normalizedStatus.ToLower()} yêu cầu chỉnh sửa mục {thread.Section} cho hợp đồng {contract.ContractNumber}.",
+            message: $"Chủ kho đã {statusVietnamese} yêu cầu chỉnh sửa mục {sectionVietnamese} cho hợp đồng {contract.ContractNumber}.",
             notificationType: notificationType,
             referenceId: contract.ContractId,
             referenceType: "CONTRACT");

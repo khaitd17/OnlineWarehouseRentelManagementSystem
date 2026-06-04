@@ -10,6 +10,12 @@ public class CheckOutHandler : IRequestHandler<CheckOutCommand, CheckOutResult>
     // Buffer 2 tieng sau khi ket thuc ca (ke ca tang ca) de cho phep check-out muon
     private const int LateCheckOutBufferHours = 2;
 
+    // Timezone Viet Nam (UTC+7)
+    private static readonly TimeZoneInfo VnTz =
+        TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+
+    private static DateTime VnNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VnTz);
+
     public CheckOutHandler(IStaffShiftRepository shiftRepo)
     {
         _shiftRepo = shiftRepo;
@@ -28,16 +34,16 @@ public class CheckOutHandler : IRequestHandler<CheckOutCommand, CheckOutResult>
 
         // Kiem tra deadline check-out: shiftEnd + overtime + 2h buffer
         var deadline = ComputeCheckOutDeadline(shift);
-        if (DateTime.Now > deadline)
+        if (VnNow > deadline)
             throw new InvalidOperationException(
                 $"Da qua thoi gian check-out. Ca nay ket thuc luc {deadline:HH:mm dd/MM}.");
 
         // Re-checkout phai co gio moi lon hon gio cu
-        if (shift.CheckOutAt.HasValue && DateTime.Now <= shift.CheckOutAt.Value)
+        if (shift.CheckOutAt.HasValue && VnNow <= shift.CheckOutAt.Value)
             throw new InvalidOperationException(
                 $"Gio check-out moi phai sau lan truoc ({shift.CheckOutAt.Value:HH:mm}).");
 
-        var now = DateTime.Now;
+        var now = VnNow;
         await _shiftRepo.RecordCheckOutAsync(shift.Id, now, request.PhotoUrl, ct);
 
         // Tinh ve som: so sanh voi gio tan ca goc (khong tinh OT, khong tinh buffer)

@@ -128,36 +128,49 @@ const PaymentHistory = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  {['Mã TT', 'Hợp đồng', 'Kho', 'Người thuê', 'Số tiền', 'Kỳ', 'Ngày TT', 'Hạn chót', 'PT', 'Mã GD', 'Trạng thái', 'Hành động'].map(h => (
+                  {['Mã TT', 'Hợp đồng', 'Kho', 'Người thuê', 'Số tiền', 'Loại', 'Kỳ thanh toán', 'Ngày TT', 'Hạn chót', 'Phương thức', 'Mã GD', 'Trạng thái', 'Hành động'].map(h => (
                     <th key={h} className="px-4 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
-                  <tr><td colSpan={11} className="py-12 text-center text-slate-400 text-sm">
+                  <tr><td colSpan={13} className="py-12 text-center text-slate-400 text-sm">
                     <span className="material-symbols-outlined animate-spin block text-2xl mb-1">progress_activity</span>Đang tải...
                   </td></tr>
                 ) : payments.length === 0 ? (
-                  <tr><td colSpan={12} className="py-12 text-center text-slate-400 text-sm">
+                  <tr><td colSpan={13} className="py-12 text-center text-slate-400 text-sm">
                     <span className="material-symbols-outlined block text-3xl mb-1 text-slate-300">receipt_long</span>
                     Không có khoản thanh toán nào.
                   </td></tr>
-                ) : payments.map(row => (
+                ) : payments.map(row => {
+                  const TYPE_LABEL = { MONTHLY: 'Thuê hàng tháng', DEPOSIT: 'Đặt cọc + Tháng đầu', EXTENSION: 'Gia hạn hợp đồng', RENTAL: 'Tiền thuê', PENALTY: 'Phạt', EARLY_TERMINATION: 'Kết thúc sớm', REFUND: 'Hoàn tiền' };
+                  // Xác định loại: ưu tiên paymentType, fallback paymentPeriod (API cũ trả type vào period)
+                  const rawType = row.paymentType || (TYPE_LABEL[row.paymentPeriod] ? row.paymentPeriod : null);
+                  const typeLabel = TYPE_LABEL[rawType] ?? rawType ?? '—';
+                  const isDeposit = rawType === 'DEPOSIT';
+                  // Kỳ thanh toán: chỉ hiển thị nếu là chuỗi tháng thực sự (không phải MONTHLY/DEPOSIT...)
+                  const periodText = (row.paymentPeriod && !TYPE_LABEL[row.paymentPeriod]) ? row.paymentPeriod : '—';
+                  return (
                   <tr key={row.paymentId} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-4 font-mono text-xs text-[#00b2d6] font-semibold">#{row.paymentId}</td>
                     <td className="px-4 py-4 text-sm text-slate-600">{row.contractNumber ?? `#${row.contractId}`}</td>
                     <td className="px-4 py-4 text-sm text-slate-700 font-medium">{row.warehouseName}</td>
                     <td className="px-4 py-4 text-sm text-slate-600">{row.renterName}</td>
                     <td className="px-4 py-4 text-sm font-bold text-slate-900">{fmtCurrency(row.amount)}</td>
-                     <td className="px-4 py-4 text-sm text-slate-500">{row.paymentPeriod ?? '—'}</td>
+                     <td className="px-4 py-4 text-xs">
+                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-semibold ${isDeposit ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'}`}>
+                         {typeLabel}
+                       </span>
+                     </td>
+                     <td className="px-4 py-4 text-sm text-slate-700 font-semibold">{periodText}</td>
                      <td className="px-4 py-4 text-sm text-slate-500">{fmtDate(row.paymentDate)}</td>
-                     <td className="px-4 py-4 text-sm text-slate-500">{row.dueDate ?? '—'}</td>
+                     <td className="px-4 py-4 text-sm text-slate-500">{fmtDate(row.dueDate)}</td>
                      <td className="px-4 py-4 text-sm text-slate-500">
                        {row.paymentMethod === 'BANK_TRANSFER'
-                         ? 'Online'
+                         ? 'Chuyển khoản'
                          : row.paymentMethod === 'CASH'
-                           ? 'Trực tiếp'
+                           ? 'Tiền mặt'
                            : (row.paymentMethod ?? '—')}
                      </td>
                     <td className="px-4 py-4 font-mono text-xs text-slate-400">{row.transactionReference ?? '—'}</td>
@@ -173,7 +186,8 @@ const PaymentHistory = () => {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

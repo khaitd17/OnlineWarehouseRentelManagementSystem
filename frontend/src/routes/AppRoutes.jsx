@@ -44,9 +44,7 @@ import ConfirmMovement from "../pages/Requests/ConfirmMovement";
 import InboundRequestsManagement from "../pages/Requests/InboundRequestsManagement";
 import StaffDashboard from "../pages/Requests/StaffDashboard";
 import RenterDashboard from "../pages/Requests/RenterDashboard";
-import CreateInboundRequest from "../pages/Requests/CreateInboundRequest";
 import TransactionHistory from "../pages/Requests/TransactionHistory";
-import RenterInboundList from "../pages/Requests/RenterInboundList";
 import RenterOutboundList from "../pages/Requests/RenterOutboundList";
 import RenterInventoryHistory from "../pages/Requests/RenterInventoryHistory";
 import OwnerInventoryRequests from "../pages/Requests/OwnerInventoryRequests";
@@ -257,7 +255,6 @@ function AppRoutes() {
             {/* Merged history page (2 tabs) */}
             <Route path="/renter-inventory-history" element={<RenterInventoryHistory />} />
             {/* Keep old routes for backward compatibility */}
-            <Route path="/renter-inbound-requests" element={<RenterInboundList />} />
             <Route path="/renter-outbound-requests" element={<RenterOutboundList />} />
             <Route path="/renter-audit-sessions" element={<RenterAuditSessionsPage />} />
             <Route path="/renter-audit-sessions/:id" element={<RenterAuditSessionDetailPage />} />
@@ -274,7 +271,6 @@ function AppRoutes() {
             {/* Merged create page (2 tabs) */}
             <Route path="/create-inventory" element={<CreateInventoryRequest />} />
             {/* Keep old routes for backward compatibility */}
-            <Route path="/create-inbound" element={<CreateInboundRequest />} />
             <Route path="/payment-history" element={<PaymentHistory />} />
           </Route>
         </Route>

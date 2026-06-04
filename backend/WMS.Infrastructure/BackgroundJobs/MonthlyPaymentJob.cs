@@ -31,6 +31,12 @@ public class MonthlyPaymentJob
         _logger = logger;
     }
 
+    // Timezone Viet Nam (UTC+7) — contract dates are stored in VN local time
+    private static readonly TimeZoneInfo VnTz =
+        TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+
+    private static DateTime VnNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VnTz);
+
     /// <summary>
     /// Creates payment records for active contracts that need monthly payments
     /// </summary>
@@ -38,7 +44,7 @@ public class MonthlyPaymentJob
     {
         _logger.LogInformation("Starting MonthlyPaymentJob...");
 
-        var now = DateTime.UtcNow;
+        var now = VnNow;
         var advanceNoticeDays = 5; 
         var targetDate = now.AddDays(advanceNoticeDays);
         var createdCount = 0;
@@ -205,7 +211,7 @@ public class MonthlyPaymentJob
     {
         _logger.LogInformation("Checking for overdue payments...");
 
-        var now = DateTime.UtcNow;
+        var now = VnNow;
 
         var overduePayments = await _context.RentalPayments
             .Include(p => p.Contract)

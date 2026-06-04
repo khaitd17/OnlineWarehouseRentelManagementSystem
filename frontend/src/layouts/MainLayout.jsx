@@ -10,8 +10,8 @@ const DASHBOARD_PATHS = [
   '/occupancy-dashboard', '/equipment-management', '/task-scheduling',
   '/owner-audit-sessions', '/staff-audit-sessions', '/renter-audit-sessions',
   '/staff-dashboard', '/inbound-requests', '/outbound-requests',
-  '/confirm-movement', '/create-inbound', '/create-outbound',
-  '/renter-dashboard', '/my-rental-requests', '/my-ratings', '/my-favorites', '/renter-inbound-requests', '/renter-outbound-requests',
+  '/confirm-movement', '/create-outbound',
+  '/renter-dashboard', '/my-rental-requests', '/my-ratings', '/my-favorites', '/renter-outbound-requests',
   '/transaction-history', '/payment-history', '/profile',
 ];
 

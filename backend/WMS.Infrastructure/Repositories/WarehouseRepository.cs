@@ -309,4 +309,43 @@ public async Task<Warehouse?> GetByIdAsync(
             .Where(v => _context.Warehouses.Any(w => w.WarehouseId == v.WarehouseId && w.OwnerId == ownerId))
             .ToListAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Tính tổng diện tích đang được thuê cho một kho cụ thể.
+    /// Dựa trên RequestedArea từ RentalRequest liên kết với Contract có status chiếm diện tích.
+    /// </summary>
+    public async Task<double> GetRentedAreaAsync(int warehouseId, CancellationToken cancellationToken)
+    {
+        var occupyingStatuses = new[] { "ACTIVE", "PENDING_PAYMENT", "PENDING_TERMINATION", "PENDING_CLOSE" };
+
+        var rentedArea = await _context.Contracts
+            .Where(c => c.WarehouseId == warehouseId && occupyingStatuses.Contains(c.Status))
+            .Join(_context.Set<WMS.Domain.Entities.RentalRequest>(),
+                c => c.RequestId,
+                r => r.RequestId,
+                (c, r) => r.RequestedArea)
+            .SumAsync(cancellationToken);
+
+        return rentedArea;
+    }
+
+    /// <summary>
+    /// Tính tổng diện tích đang được thuê cho TẤT CẢ kho (batch).
+    /// </summary>
+    public async Task<Dictionary<int, double>> GetAllRentedAreasAsync(CancellationToken cancellationToken)
+    {
+        var occupyingStatuses = new[] { "ACTIVE", "PENDING_PAYMENT", "PENDING_TERMINATION", "PENDING_CLOSE" };
+
+        var result = await _context.Contracts
+            .Where(c => occupyingStatuses.Contains(c.Status))
+            .Join(_context.Set<WMS.Domain.Entities.RentalRequest>(),
+                c => c.RequestId,
+                r => r.RequestId,
+                (c, r) => new { c.WarehouseId, r.RequestedArea })
+            .GroupBy(x => x.WarehouseId)
+            .Select(g => new { WarehouseId = g.Key, RentedArea = g.Sum(x => x.RequestedArea) })
+            .ToDictionaryAsync(x => x.WarehouseId, x => x.RentedArea, cancellationToken);
+
+        return result;
+    }
 }

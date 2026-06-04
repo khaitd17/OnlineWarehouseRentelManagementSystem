@@ -321,18 +321,42 @@ public class PaymentsController : ControllerBase
                 warehouseName = p.Contract != null && p.Contract.Warehouse != null ? p.Contract.Warehouse.Name : "",
                 renterName = p.Contract != null && p.Contract.Renter != null ? p.Contract.Renter.FullName : "",
                 amount = p.Amount,
-                paymentPeriod = p.PaymentType,
+                paymentType = p.PaymentType,
+                termStart = p.TermStartDate,
+                termEnd = p.TermEndDate,
                 paymentDate = p.PaidAt ?? p.CreatedAt,
-                dueDate = (DateTime?)null,
+                dueDate = p.ExpiredAt,
                 paymentMethod = p.PaymentMethod,
                 transactionReference = p.SepayReferenceCode,
                 status = p.Status
             })
             .ToListAsync();
 
+        // Format kỳ thanh toán sau khi đã lấy dữ liệu (tránh lỗi EF translation)
+        var result = items.Select(p => new
+        {
+            p.paymentId,
+            p.contractId,
+            p.contractNumber,
+            p.warehouseName,
+            p.renterName,
+            p.amount,
+            p.paymentType,
+            paymentPeriod = p.termStart != null && p.termEnd != null
+                ? $"Tháng {p.termStart.Value.Month}/{p.termStart.Value.Year} – Tháng {p.termEnd.Value.Month}/{p.termEnd.Value.Year}"
+                : p.termStart != null
+                    ? $"Tháng {p.termStart.Value.Month}/{p.termStart.Value.Year}"
+                    : (string?)null,
+            p.paymentDate,
+            p.dueDate,
+            p.paymentMethod,
+            p.transactionReference,
+            p.status
+        }).ToList();
+
         return Ok(new
         {
-            items,
+            items = result,
             totalCount,
             page,
             pageSize,

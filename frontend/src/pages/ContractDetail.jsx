@@ -51,12 +51,28 @@ const formatCurrency = (amount) => {
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
 };
 
+const sectionIcons = {
+  "rental price": "payments",
+  "deposit": "currency_exchange",
+  "payment terms": "credit_card",
+  "contract terms": "description",
+  "violation terms": "description",
+  "termination terms": "description",
+  "other": "more_horiz"
+};
+
+const getInitials = (name) => {
+  if (!name) return "U";
+  const parts = name.trim().split(" ");
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0].substring(0, 1) + parts[parts.length - 1].substring(0, 1)).toUpperCase();
+};
+
 const revisionSectionOptions = [
   { value: "rental price", label: "Giá thuê" },
   { value: "deposit", label: "Tiền đặt cọc" },
   { value: "payment terms", label: "Điều khoản thanh toán" },
-  { value: "violation terms", label: "Điều khoản vi phạm" },
-  { value: "termination terms", label: "Điều khoản chấm dứt" },
+  { value: "contract terms", label: "Điều khoản hợp đồng" },
   { value: "other", label: "Khác" }
 ];
 
@@ -153,7 +169,10 @@ const ContractDetail = () => {
   const [applyingChanges, setApplyingChanges] = useState(false);
   const [sendingDraft, setSendingDraft] = useState(false);
   const [versionHistory, setVersionHistory] = useState([]);
+  const termsRef = React.useRef(null);
+
   const [loadingVersions, setLoadingVersions] = useState(false);
+
   const [changeForm, setChangeForm] = useState({
     monthlyPayment: "",
     depositAmount: "",
@@ -163,11 +182,21 @@ const ContractDetail = () => {
     monthsPerTerm: 1,
     allowedOverdueDays: 7
   });
+  useEffect(() => {
+    if (termsRef.current) {
+      termsRef.current.style.height = "auto";
+      termsRef.current.style.height = termsRef.current.scrollHeight + "px";
+    }
+  }, [changeForm.terms]);
   const [resolveAcceptedThreads, setResolveAcceptedThreads] = useState(true);
-  const revisionSectionLabels = revisionSectionOptions.reduce((acc, item) => {
-    acc[item.value] = item.label;
-    return acc;
-  }, {});
+  const revisionSectionLabels = {
+    ...revisionSectionOptions.reduce((acc, item) => {
+      acc[item.value] = item.label;
+      return acc;
+    }, {}),
+    "violation terms": "Điều khoản hợp đồng",
+    "termination terms": "Điều khoản hợp đồng"
+  };
 
   // New states for additional features
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -1050,6 +1079,13 @@ const ContractDetail = () => {
       )}
 
       <div id="contract-tab-negotiation" style={{ scrollMarginTop: 120 }}>
+        <style dangerouslySetInnerHTML={{__html: `
+          .reply-composer-input:focus {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+        `}} />
         <div style={{
           backgroundColor: "#fff",
           borderRadius: "18px",
@@ -1234,88 +1270,296 @@ const ContractDetail = () => {
           )}
 
           {loadingRevisions ? (
-            <div style={{ color: "#94a3b8", fontSize: "0.85rem" }}>Đang tải trao đổi...</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#94a3b8", fontSize: "0.9rem", padding: "20px 0" }}>
+              <div className="spinner-border text-primary" style={{ width: "1.2rem", height: "1.2rem", borderWidth: "2px" }} role="status"></div>
+              <span>Đang tải trao đổi thảo luận...</span>
+            </div>
           ) : revisionThreads.length === 0 ? (
             <div style={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              padding: "32px 16px",
-              background: "#f8fafc",
-              borderRadius: "16px",
-              border: "1px dashed #cbd5e1",
-              textAlign: "center"
+              padding: "48px 24px",
+              background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+              borderRadius: "20px",
+              border: "1.5px dashed #cbd5e1",
+              textAlign: "center",
+              boxShadow: "inset 0 2px 4px rgba(0,0,0,0.02)"
             }}>
-              <span className="material-symbols-outlined" style={{ fontSize: "40px", color: "#94a3b8", marginBottom: "10px" }}>
-                chat_bubble_outline
+              <span className="material-symbols-outlined" style={{ fontSize: "48px", color: "#94a3b8", marginBottom: "12px" }}>
+                forum
               </span>
-              <div style={{ color: "#475569", fontSize: "0.9rem", fontWeight: 700 }}>Chưa có yêu cầu chỉnh sửa nào</div>
-              <div style={{ color: "#94a3b8", fontSize: "0.78rem", marginTop: "4px" }}>Các ý kiến thảo luận về điều khoản sẽ xuất hiện tại đây.</div>
+              <div style={{ color: "#334155", fontSize: "0.95rem", fontWeight: 800 }}>Chưa có yêu cầu chỉnh sửa nào</div>
+              <div style={{ color: "#64748b", fontSize: "0.82rem", marginTop: "4px", maxWidth: "320px" }}>Các ý kiến thảo luận và đề xuất về điều khoản hợp đồng sẽ xuất hiện tại đây.</div>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {revisionThreads.map(thread => {
                 const statusMeta = revisionStatusDisplay[thread.status] || { label: thread.status, color: "#64748b", bg: "#f1f5f9" };
                 return (
-                  <div key={thread.threadId} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "12px 14px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>
-                        {revisionSectionLabels[thread.section] || thread.section}
+                  <div key={thread.threadId} style={{
+                    background: "#fff",
+                    border: "1px solid #f1f5f9",
+                    borderRadius: "20px",
+                    padding: "20px 24px",
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.02), 0 8px 10px -6px rgba(0, 0, 0, 0.02)",
+                    transition: "all 0.3s ease",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12
+                  }}>
+                    {/* Thread Header */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 12, borderBottom: "1px solid #f8fafc" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: "10px",
+                          background: "#f0f9ff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: "#0284c7"
+                        }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
+                            {sectionIcons[thread.section] || "description"}
+                          </span>
+                        </div>
+                        <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>
+                          {revisionSectionLabels[thread.section] || thread.section}
+                        </div>
                       </div>
                       <span style={{
-                        padding: "4px 10px",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "6px 14px",
                         borderRadius: 999,
                         background: statusMeta.bg,
                         color: statusMeta.color,
                         fontSize: "0.72rem",
-                        fontWeight: 700
+                        fontWeight: 800,
+                        border: `1px solid ${statusMeta.color}22`
                       }}>
+                        <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: statusMeta.color }} />
                         {statusMeta.label}
                       </span>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
-                      {thread.comments?.map(comment => (
-                        <div key={comment.commentId} style={{ padding: "8px 10px", borderRadius: 10, background: "#f8fafc" }}>
-                          <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0f172a" }}>{comment.userName}</div>
-                          <div style={{ fontSize: "0.85rem", color: "#334155", marginTop: 2 }}>{comment.message}</div>
-                          <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: 4 }}>
-                            {new Date(comment.createdAt).toLocaleString("vi-VN")}
+
+                    {/* Comments Stream */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14, margin: "8px 0" }}>
+                      {thread.comments?.map(comment => {
+                        const isCommentRenter = comment.userId === contract?.renterId;
+                        const initials = getInitials(comment.userName);
+                        return (
+                          <div key={comment.commentId} style={{
+                            display: "flex",
+                            gap: 12,
+                            alignItems: "flex-start",
+                            maxWidth: "85%",
+                            alignSelf: isCommentRenter ? "flex-start" : "flex-end",
+                            flexDirection: isCommentRenter ? "row" : "row-reverse"
+                          }}>
+                            {/* User Avatar */}
+                            <div style={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: "50%",
+                              background: isCommentRenter 
+                                ? "linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)" 
+                                : "linear-gradient(135deg, #34d399 0%, #059669 100%)",
+                              color: "#fff",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "0.75rem",
+                              fontWeight: 800,
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                              flexShrink: 0
+                            }}>
+                              {initials}
+                            </div>
+                            
+                            {/* Speech Bubble */}
+                            <div style={{
+                              padding: "12px 16px",
+                              borderRadius: isCommentRenter ? "0px 16px 16px 16px" : "16px 0px 16px 16px",
+                              background: isCommentRenter ? "#f1f5f9" : "#eff6ff",
+                              border: "1px solid",
+                              borderColor: isCommentRenter ? "#e2e8f0" : "#dbeafe",
+                              boxShadow: "0 2px 6px rgba(0,0,0,0.01)"
+                            }}>
+                              <div style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                marginBottom: 4,
+                                flexWrap: "wrap",
+                                flexDirection: isCommentRenter ? "row" : "row-reverse"
+                              }}>
+                                <span style={{ fontSize: "0.8rem", fontWeight: 800, color: "#1e293b" }}>
+                                  {comment.userName}
+                                </span>
+                                <span style={{
+                                  fontSize: "0.62rem",
+                                  padding: "2px 6px",
+                                  borderRadius: 4,
+                                  background: isCommentRenter ? "#e2e8f0" : "#dbeafe",
+                                  color: isCommentRenter ? "#475569" : "#0284c7",
+                                  fontWeight: 800,
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.04em"
+                                }}>
+                                  {isCommentRenter ? "Người thuê" : "Chủ kho"}
+                                </span>
+                                <span style={{ fontSize: "0.68rem", color: "#94a3b8" }}>
+                                  {new Date(comment.createdAt).toLocaleString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}
+                                </span>
+                              </div>
+                              <div style={{
+                                fontSize: "0.88rem",
+                                color: "#334155",
+                                lineHeight: 1.5,
+                                whiteSpace: "pre-wrap",
+                                textAlign: "left"
+                              }}>
+                                {comment.message}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
+                    {/* Accept/Reject Action buttons (For Owner) */}
                     {canOwnerRespondRevision && thread.status === "OPEN" && (
-                      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                      <div style={{ display: "flex", gap: 10, marginTop: 4, paddingBottom: 10, borderBottom: "1px solid #f8fafc" }}>
                         <button
                           onClick={() => handleAcceptRevision(thread.threadId)}
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: "#16a34a", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                          style={{
+                            padding: "8px 18px",
+                            borderRadius: "10px",
+                            border: "none",
+                            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                            color: "#fff",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                            cursor: "pointer",
+                            boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)",
+                            transition: "all 0.2s ease",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px"
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                            e.currentTarget.style.boxShadow = "0 6px 16px rgba(16, 185, 129, 0.3)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = "none";
+                            e.currentTarget.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.2)";
+                          }}
                         >
-                          Accept & Update
+                          <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>check_circle</span>
+                          Đồng ý & Cập nhật
                         </button>
                         <button
                           onClick={() => handleRejectRevision(thread.threadId)}
-                          style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #fecaca", background: "#fff", color: "#dc2626", fontWeight: 700, cursor: "pointer" }}
+                          style={{
+                            padding: "8px 18px",
+                            borderRadius: "10px",
+                            border: "1.5px solid #ef4444",
+                            background: "transparent",
+                            color: "#ef4444",
+                            fontWeight: 700,
+                            fontSize: "0.85rem",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px"
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "#fef2f2";
+                            e.currentTarget.style.transform = "translateY(-1px)";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "transparent";
+                            e.currentTarget.style.transform = "none";
+                          }}
                         >
-                          Reject
+                          <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>cancel</span>
+                          Từ chối
                         </button>
                       </div>
                     )}
 
+                    {/* Reply Composer (Chat Style) */}
                     {isNegotiating && (
-                      <div style={{ display: "flex", gap: 8 }}>
+                      <div style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        background: "#f8fafc",
+                        border: "1.5px solid #e2e8f0",
+                        borderRadius: "24px",
+                        padding: "4px 6px 4px 14px",
+                        transition: "all 0.2s ease",
+                        width: "100%",
+                        boxSizing: "border-box"
+                      }}
+                      onFocusCapture={(e) => {
+                        e.currentTarget.style.borderColor = "#0ea5e9";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(14, 165, 233, 0.12)";
+                      }}
+                      onBlurCapture={(e) => {
+                        e.currentTarget.style.borderColor = "#e2e8f0";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                      >
                         <input
+                          className="reply-composer-input"
                           value={replyDrafts[thread.threadId] || ""}
                           onChange={(e) => setReplyDrafts(prev => ({ ...prev, [thread.threadId]: e.target.value }))}
-                          placeholder="Phản hồi..."
-                          style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
+                          placeholder="Nhập nội dung phản hồi thảo luận..."
+                          style={{
+                            flex: 1,
+                            border: "none",
+                            background: "transparent",
+                            outline: "none",
+                            fontSize: "0.85rem",
+                            color: "#334155",
+                            padding: "6px 0"
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              if ((replyDrafts[thread.threadId] || "").trim()) {
+                                handleReplyRevision(thread.threadId);
+                              }
+                            }
+                          }}
                         />
                         <button
                           onClick={() => handleReplyRevision(thread.threadId)}
-                          style={{ padding: "8px 12px", borderRadius: 8, border: "none", background: "#0ea5e9", color: "#fff", fontWeight: 700, cursor: "pointer" }}
+                          disabled={!(replyDrafts[thread.threadId] || "").trim()}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: "50%",
+                            border: "none",
+                            background: (replyDrafts[thread.threadId] || "").trim() ? "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" : "#cbd5e1",
+                            color: "#fff",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            cursor: (replyDrafts[thread.threadId] || "").trim() ? "pointer" : "not-allowed",
+                            transition: "all 0.2s ease",
+                            flexShrink: 0
+                          }}
                         >
-                          Reply
+                          <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>send</span>
                         </button>
                       </div>
                     )}
@@ -1325,90 +1569,306 @@ const ContractDetail = () => {
             </div>
           )}
 
+          {/* Apply Changes Form (For Owner) */}
           {canOwnerRespondRevision && (
-            <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid #f1f5f9" }}>
-              <div style={{ fontWeight: 800, color: "#0f172a", marginBottom: 10 }}>Áp dụng thay đổi</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-                <input
-                  type="number"
-                  value={changeForm.monthlyPayment}
-                  onChange={(e) => setChangeForm(prev => ({ ...prev, monthlyPayment: e.target.value }))}
-                  placeholder="Giá thuê / tháng"
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
-                />
-                <input
-                  type="number"
-                  value={changeForm.depositAmount}
-                  onChange={(e) => setChangeForm(prev => ({ ...prev, depositAmount: e.target.value }))}
-                  placeholder="Tiền đặt cọc"
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
-                />
-                <input
-                  type="date"
-                  value={changeForm.startDate}
-                  onChange={(e) => setChangeForm(prev => ({ ...prev, startDate: e.target.value }))}
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
-                />
-                <input
-                  type="number"
-                  value={changeForm.durationMonths}
-                  onChange={(e) => setChangeForm(prev => ({ ...prev, durationMonths: e.target.value }))}
-                  placeholder="Thời hạn (tháng)"
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
-                />
-                <select
-                  value={changeForm.monthsPerTerm}
-                  onChange={(e) => setChangeForm(prev => ({ ...prev, monthsPerTerm: e.target.value }))}
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
-                >
-                  <option value="1">1 tháng / kỳ</option>
-                  <option value="3">3 tháng / kỳ</option>
-                  <option value="6">6 tháng / kỳ</option>
-                  <option value="12">1 năm / kỳ</option>
-                </select>
-                <select
-                  value={changeForm.allowedOverdueDays}
-                  onChange={(e) => setChangeForm(prev => ({ ...prev, allowedOverdueDays: e.target.value }))}
-                  style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
-                >
-                  <option value="0">Không trễ hạn</option>
-                  <option value="3">Trễ 3 ngày</option>
-                  <option value="5">Trễ 5 ngày</option>
-                  <option value="7">Trễ 7 ngày</option>
-                </select>
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1.5px solid #f1f5f9" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                fontWeight: 800,
+                fontSize: "1rem",
+                color: "#0f172a",
+                marginBottom: 16
+              }}>
+                <span className="material-symbols-outlined" style={{ color: "#2563eb", fontSize: "22px" }}>assignment_turned_in</span>
+                Áp dụng thay đổi vào hợp đồng
               </div>
-              <textarea
-                value={changeForm.terms}
-                onChange={(e) => setChangeForm(prev => ({ ...prev, terms: e.target.value }))}
-                rows={3}
-                placeholder="Điều khoản hợp đồng"
-                style={{ marginTop: 10, width: "100%", padding: "8px 10px", borderRadius: 8, border: "1px solid #e2e8f0" }}
-              />
-              <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: "0.85rem", color: "#475569" }}>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: 16,
+                background: "#f8fafc",
+                padding: "20px",
+                borderRadius: "20px",
+                border: "1px solid #e2e8f0"
+              }}>
+                {/* Giá thuê */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569" }}>Giá thuê / tháng (VNĐ)</label>
+                  <input
+                    type="number"
+                    value={changeForm.monthlyPayment}
+                    onChange={(e) => setChangeForm(prev => ({ ...prev, monthlyPayment: e.target.value }))}
+                    placeholder="Nhập giá thuê..."
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "0.88rem",
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "all 0.2s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+
+                {/* Tiền đặt cọc */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569" }}>Tiền đặt cọc (VNĐ)</label>
+                  <input
+                    type="number"
+                    value={changeForm.depositAmount}
+                    onChange={(e) => setChangeForm(prev => ({ ...prev, depositAmount: e.target.value }))}
+                    placeholder="Nhập tiền đặt cọc..."
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "0.88rem",
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "all 0.2s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+
+                {/* Ngày bắt đầu */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569" }}>Ngày bắt đầu hiệu lực</label>
+                  <input
+                    type="date"
+                    value={changeForm.startDate}
+                    onChange={(e) => setChangeForm(prev => ({ ...prev, startDate: e.target.value }))}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "0.88rem",
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "all 0.2s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+
+                {/* Thời hạn hợp đồng */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569" }}>Thời hạn (tháng)</label>
+                  <input
+                    type="number"
+                    value={changeForm.durationMonths}
+                    onChange={(e) => setChangeForm(prev => ({ ...prev, durationMonths: e.target.value }))}
+                    placeholder="Nhập số tháng..."
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "0.88rem",
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "all 0.2s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+
+                {/* Kỳ hạn thanh toán */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569" }}>Kỳ hạn thanh toán</label>
+                  <select
+                    value={changeForm.monthsPerTerm}
+                    onChange={(e) => setChangeForm(prev => ({ ...prev, monthsPerTerm: e.target.value }))}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "0.88rem",
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "all 0.2s",
+                      backgroundColor: "#fff",
+                      cursor: "pointer"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  >
+                    <option value="1">1 tháng / kỳ</option>
+                    <option value="3">3 tháng / kỳ</option>
+                    <option value="6">6 tháng / kỳ</option>
+                    <option value="12">1 năm / kỳ</option>
+                  </select>
+                </div>
+
+                {/* Trễ hạn thanh toán */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569" }}>Trễ hạn cho phép</label>
+                  <select
+                    value={changeForm.allowedOverdueDays}
+                    onChange={(e) => setChangeForm(prev => ({ ...prev, allowedOverdueDays: e.target.value }))}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "0.88rem",
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "all 0.2s",
+                      backgroundColor: "#fff",
+                      cursor: "pointer"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  >
+                    <option value="0">Không trễ hạn</option>
+                    <option value="3">Trễ 3 ngày</option>
+                    <option value="5">Trễ 5 ngày</option>
+                    <option value="7">Trễ 7 ngày</option>
+                  </select>
+                </div>
+
+                {/* Điều khoản hợp đồng */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, gridColumn: "1 / -1" }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569" }}>Nội dung chi tiết điều khoản hợp đồng</label>
+                  <textarea
+                    ref={termsRef}
+                    value={changeForm.terms}
+                    onChange={(e) => setChangeForm(prev => ({ ...prev, terms: e.target.value }))}
+                    rows={4}
+                    placeholder="Nhập toàn bộ nội dung điều khoản chính thức của hợp đồng..."
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: "10px",
+                      border: "1.5px solid #cbd5e1",
+                      fontSize: "0.88rem",
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "all 0.2s",
+                      resize: "none",
+                      overflowY: "hidden"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#3b82f6";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Checkbox */}
+              <label style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                marginTop: 16,
+                fontSize: "0.88rem",
+                color: "#334155",
+                fontWeight: 600,
+                cursor: "pointer",
+                padding: "6px 12px",
+                borderRadius: "8px",
+                transition: "background 0.2s"
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "#f1f5f9"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+              >
                 <input
                   type="checkbox"
                   checked={resolveAcceptedThreads}
                   onChange={(e) => setResolveAcceptedThreads(e.target.checked)}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    accentColor: "#2563eb",
+                    cursor: "pointer"
+                  }}
                 />
-                Đánh dấu các yêu cầu đã đồng ý là đã áp dụng
+                Tự động đánh dấu các thảo luận đã "Đồng ý" thành "Đã áp dụng"
               </label>
-              <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+
+              {/* Submit button */}
+              <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
                 <button
                   onClick={handleApplyChanges}
                   disabled={applyingChanges}
                   style={{
-                    padding: "8px 16px",
-                    borderRadius: 8,
+                    padding: "10px 24px",
+                    borderRadius: "12px",
                     border: "none",
-                    background: applyingChanges ? "#94a3b8" : "#2563eb",
+                    background: applyingChanges ? "#cbd5e1" : "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
                     color: "#fff",
                     fontWeight: 700,
-                    cursor: applyingChanges ? "not-allowed" : "pointer"
+                    fontSize: "0.92rem",
+                    cursor: applyingChanges ? "not-allowed" : "pointer",
+                    boxShadow: applyingChanges ? "none" : "0 4px 14px rgba(37, 99, 235, 0.3)",
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!applyingChanges) {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = "0 6px 20px rgba(37, 99, 235, 0.4)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!applyingChanges) {
+                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.boxShadow = "0 4px 14px rgba(37, 99, 235, 0.3)";
+                    }
                   }}
                 >
-                  {applyingChanges ? "Đang áp dụng..." : "Apply Changes"}
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>save</span>
+                  {applyingChanges ? "Đang áp dụng..." : "Áp dụng thay đổi"}
                 </button>
-
               </div>
             </div>
           )}
@@ -1443,7 +1903,7 @@ const ContractDetail = () => {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                       <div style={{ fontWeight: 700, color: "#0f172a" }}>Version {version.versionNumber}</div>
                       <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                        {new Date(version.createdAt).toLocaleString("vi-VN")} · {version.createdByName}
+                        {new Date(version.createdAt).toLocaleString("vi-VN", { timeZone: 'Asia/Ho_Chi_Minh' })} · {version.createdByName}
                       </div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>

@@ -328,7 +328,8 @@ public class RentalContractsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "An error occurred", error = ex.Message });
+            var innerMsg = ex.InnerException?.Message ?? ex.Message;
+            return StatusCode(500, new { message = "An error occurred", error = ex.Message, detail = innerMsg, stack = ex.InnerException?.StackTrace });
         }
     }
 

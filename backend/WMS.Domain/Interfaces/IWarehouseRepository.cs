@@ -16,4 +16,14 @@ public interface IWarehouseRepository
     Task DeleteAsync(int warehouseId, CancellationToken cancellationToken);
     Task RestoreAsync(int warehouseId, CancellationToken cancellationToken);
     Task<List<VWarehouseOccupancy>> GetOccupancyStatsByOwnerAsync(int ownerId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Tính tổng diện tích đang được thuê cho một kho (từ hợp đồng ACTIVE, PENDING_PAYMENT, PENDING_TERMINATION, PENDING_CLOSE).
+    /// </summary>
+    Task<double> GetRentedAreaAsync(int warehouseId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Tính tổng diện tích đang được thuê cho TẤT CẢ kho (batch). Trả về Dictionary warehouseId -> rentedArea.
+    /// </summary>
+    Task<Dictionary<int, double>> GetAllRentedAreasAsync(CancellationToken cancellationToken);
 }

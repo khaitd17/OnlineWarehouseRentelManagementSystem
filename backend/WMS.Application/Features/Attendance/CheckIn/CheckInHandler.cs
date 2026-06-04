@@ -10,6 +10,12 @@ public class CheckInHandler : IRequestHandler<CheckInCommand, CheckInResult>
     // Cho phep check-in som toi da 2 tieng truoc gio vao ca
     private const int EarlyCheckinAllowedHours = 2;
 
+    // Timezone Viet Nam (UTC+7)
+    private static readonly TimeZoneInfo VnTz =
+        TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+
+    private static DateTime VnNow => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, VnTz);
+
     public CheckInHandler(IStaffShiftRepository shiftRepo)
     {
         _shiftRepo = shiftRepo;
@@ -33,7 +39,7 @@ public class CheckInHandler : IRequestHandler<CheckInCommand, CheckInResult>
         {
             var inTime    = TimeOnly.Parse(shift.TimeIn1);
             var allowFrom = shift.ShiftDate.ToDateTime(inTime).AddHours(-EarlyCheckinAllowedHours);
-            if (DateTime.Now < allowFrom)
+            if (VnNow < allowFrom)
                 throw new InvalidOperationException(
                     $"Chưa đến giờ điểm danh. Được phép check-in từ {allowFrom:HH:mm}.");
         }
@@ -43,7 +49,7 @@ public class CheckInHandler : IRequestHandler<CheckInCommand, CheckInResult>
             throw new InvalidOperationException(
                 $"Bạn đã điểm danh vào ca lúc {shift.CheckInAt.Value:HH:mm}. Không thể check-in lại.");
 
-        var now = DateTime.Now;
+        var now = VnNow;
         await _shiftRepo.RecordCheckInAsync(shift.Id, now, request.PhotoUrl, ct);
 
         return new CheckInResult { CheckInAt = now, CheckInPhoto = request.PhotoUrl };
