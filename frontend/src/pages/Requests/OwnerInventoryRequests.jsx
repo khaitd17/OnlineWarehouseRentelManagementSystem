@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import inventoryService from '../../services/inventoryService';
 import { getMyWarehouses } from '../../services/warehouseService';
 import axiosClient from '../../services/axiosClient';
@@ -340,18 +340,12 @@ const DetailModal = ({ req, onClose }) => {
                     )}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#00b2d6' }}>
-                      {item.quantity.toLocaleString()} {item.unit}
+                    <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: item.verifiedQuantity != null && item.verifiedQuantity !== item.quantity ? '#4f46e5' : '#00b2d6' }}>
+                      {(item.verifiedQuantity != null ? item.verifiedQuantity : item.quantity).toLocaleString()} {item.unit}
                     </p>
-                    {item.estimatedVolume && (
-                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#6366f1', fontWeight:600 }}>
-                        Tổng diện tích: {item.estimatedVolume} m²
-                      </p>
-                    )}
-                    {item.weight && <p style={{ margin: 0, fontSize: '0.72rem', color: '#9ca3af' }}>{item.weight} kg</p>}
-                    {item.verifiedQuantity !== null && item.verifiedQuantity !== undefined && item.verifiedQuantity !== item.quantity && (
-                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#dc2626', fontWeight:700 }}>
-                        Thực nhận: {item.verifiedQuantity}
+                    {item.verifiedQuantity != null && item.verifiedQuantity !== item.quantity && (
+                      <p style={{ margin: 0, fontSize: '0.72rem', color: '#94a3b8', textDecoration: 'line-through' }}>
+                        Yêu cầu: {item.quantity}
                       </p>
                     )}
                   </div>

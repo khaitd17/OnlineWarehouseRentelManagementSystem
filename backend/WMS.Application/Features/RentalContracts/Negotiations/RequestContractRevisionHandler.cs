@@ -103,7 +103,12 @@ public class RequestContractRevisionHandler : IRequestHandler<RequestContractRev
                 referenceId: contract.ContractId,
                 referenceType: "CONTRACT");
             await _notificationRepo.AddAsync(notification);
-            await _notificationSender.SendToUserAsync(warehouse.OwnerId, notification);
+            // Fire-and-forget: SignalR push không block response
+            _ = Task.Run(async () =>
+            {
+                try { await _notificationSender.SendToUserAsync(warehouse.OwnerId, notification); }
+                catch { /* non-critical */ }
+            });
 
             var owner = await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken);
             if (owner != null && !string.IsNullOrWhiteSpace(owner.Email))
@@ -126,7 +131,18 @@ public class RequestContractRevisionHandler : IRequestHandler<RequestContractRev
     <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
 </div>";
 
-                await _emailService.SendInfo(owner.Email, owner.FullName, subject, htmlContent);
+                // Gửi email chạy nền (fire-and-forget) để tránh làm tắc nghẽn HTTP request chính, giúp phản hồi UI cực nhanh
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _emailService.SendInfo(owner.Email, owner.FullName, subject, htmlContent);
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error sending contract revision request email in background: {ex.Message}");
+                    }
+                });
             }
         }
 

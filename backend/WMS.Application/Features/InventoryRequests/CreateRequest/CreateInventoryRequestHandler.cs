@@ -262,14 +262,24 @@ public class CreateInventoryRequestHandler
             try { await _taskRepo.CompleteUnitTaskAsync(cmd.Type.ToUpper(), created.InvReqId, approveCode, 0, cancellationToken); }
             catch { /* Task không tìm thấy — không chặn nghiệp vụ */ }
 
-            // Gửi email xác nhận Auto-Approve cho người thuê
-            try { await SendAutoApproveEmail(full!, warehouse); } catch { /* Không chặn luồng chính */ }
-            await _staffNotifier.NotifyReadyForProcessingAsync(full!, cancellationToken);
+            // Fire-and-forget: gửi email không chặn response để trả kết quả nhanh cho user
+            var fullCopy = full;
+            var whCopy = warehouse;
+            _ = Task.Run(async () =>
+            {
+                try { await SendAutoApproveEmail(fullCopy!, whCopy); } catch { }
+                try { await _staffNotifier.NotifyReadyForProcessingAsync(fullCopy!, default); } catch { }
+            });
         }
         else
         {
-            // Gửi email thông báo Pending
-            try { await SendPendingEmail(full!, warehouse); } catch { /* Không chặn luồng chính */ }
+            // Fire-and-forget: gửi email pending
+            var fullCopy = full;
+            var whCopy = warehouse;
+            _ = Task.Run(async () =>
+            {
+                try { await SendPendingEmail(fullCopy!, whCopy); } catch { }
+            });
         }
 
         return InventoryRequestMapper.ToDto(full!);
@@ -361,4 +371,3 @@ public class CreateInventoryRequestHandler
         await _emailService.SendInfo(req.Renter.Email, req.Renter.FullName, subject, htmlContent);
     }
 }
-

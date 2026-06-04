@@ -113,11 +113,6 @@ function buildMenu(systemRole, warehouses) {
       path: "/owner-dashboard",
     });
     items.push({
-      icon: "donut_large",
-      label: "Biểu đồ công suất",
-      path: "/occupancy-dashboard",
-    });
-    items.push({
       icon: "warehouse",
       label: "Kho của tôi",
       path: "/my-warehouses",

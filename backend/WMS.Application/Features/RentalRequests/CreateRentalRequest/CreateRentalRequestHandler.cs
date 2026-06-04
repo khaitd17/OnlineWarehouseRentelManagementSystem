@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using WMS.Domain.Exceptions;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
@@ -128,7 +128,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         var renter = await _userRepository.GetByIdAsync(request.RenterId, cancellationToken);
         var renterName = renter?.FullName ?? "Người thuê";
 
-        // Send notification to warehouse owner
+        // Send notification to warehouse owner (DB insert is fast, keep synchronous)
         var notification = new Notification
         {
             UserId = warehouse.OwnerId,
@@ -139,14 +139,29 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
             ReferenceType = "RENTAL_REQUEST"
         };
         await _notificationRepository.AddAsync(notification);
-        await _notificationSender.SendToUserAsync(warehouse.OwnerId, notification);
 
-        var owner = await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken);
-        if (owner != null && !string.IsNullOrWhiteSpace(owner.Email))
+        // Fire-and-forget: SignalR push + Email — không block response trả về cho người dùng
+        var ownerId = warehouse.OwnerId;
+        var warehouseName = warehouse.Name;
+        var requestedArea = request.RequestedArea;
+        var durationMonths = request.DurationMonths;
+        var startDate = request.StartDate;
+        var notes = request.Notes;
+
+        _ = Task.Run(async () =>
         {
-            var subject = $"Yêu cầu thuê kho mới - {warehouse.Name}";
-            var requestLink = $"http://localhost:3000/rental-request/{requestId}";
-            var htmlContent = $@"
+            try
+            {
+                // Push real-time notification via SignalR
+                await _notificationSender.SendToUserAsync(ownerId, notification);
+
+                // Send email to owner
+                var owner = await _userRepository.GetByIdAsync(ownerId, CancellationToken.None);
+                if (owner != null && !string.IsNullOrWhiteSpace(owner.Email))
+                {
+                    var subject = $"Yêu cầu thuê kho mới - {warehouseName}";
+                    var requestLink = $"http://localhost:3000/rental-request/{requestId}";
+                    var htmlContent = $@"
 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
     <h2 style='color: #2563eb; text-align: center;'>Yêu cầu thuê kho mới</h2>
     <p>Xin chào <strong>{owner.FullName}</strong>,</p>
@@ -155,11 +170,11 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         <h3 style='margin-top: 0; color: #374151;'>Thông tin yêu cầu:</h3>
         <ul style='color: #4b5563; line-height: 1.6;'>
             <li><strong>Mã yêu cầu:</strong> #{requestId}</li>
-            <li><strong>Kho:</strong> {warehouse.Name}</li>
-            <li><strong>Diện tích:</strong> {request.RequestedArea} m²</li>
-            <li><strong>Thời hạn:</strong> {request.DurationMonths} tháng</li>
-            <li><strong>Ngày bắt đầu:</strong> {request.StartDate:dd/MM/yyyy}</li>
-            {(string.IsNullOrWhiteSpace(request.Notes) ? "" : $"<li><strong>Ghi chú:</strong> {request.Notes}</li>")}
+            <li><strong>Kho:</strong> {warehouseName}</li>
+            <li><strong>Diện tích:</strong> {requestedArea} m²</li>
+            <li><strong>Thời hạn:</strong> {durationMonths} tháng</li>
+            <li><strong>Ngày bắt đầu:</strong> {startDate:dd/MM/yyyy}</li>
+            {(string.IsNullOrWhiteSpace(notes) ? "" : $"<li><strong>Ghi chú:</strong> {notes}</li>")}
         </ul>
     </div>
     <div style='margin-top: 24px; text-align: center;'>
@@ -169,8 +184,15 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
     <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
 </div>";
 
-            await _emailService.SendInfo(owner.Email, owner.FullName, subject, htmlContent);
-        }
+                    await _emailService.SendInfo(owner.Email, owner.FullName, subject, htmlContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log nhưng không ảnh hưởng đến response — email/push không critical
+                System.Diagnostics.Debug.WriteLine($"[CreateRentalRequest] Background notification/email failed: {ex.Message}");
+            }
+        });
 
         return requestId;
     }

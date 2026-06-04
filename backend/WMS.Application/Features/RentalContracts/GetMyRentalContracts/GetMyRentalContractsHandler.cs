@@ -10,15 +10,18 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
     private readonly IRentalContractRepository _contractRepo;
     private readonly IUserRepository _userRepo;
     private readonly IWarehouseRepository _warehouseRepo;
+    private readonly IRentalRequestRepository _requestRepo;
 
     public GetMyRentalContractsHandler(
         IRentalContractRepository contractRepo,
         IUserRepository userRepo,
-        IWarehouseRepository warehouseRepo)
+        IWarehouseRepository warehouseRepo,
+        IRentalRequestRepository requestRepo)
     {
         _contractRepo = contractRepo;
         _userRepo = userRepo;
         _warehouseRepo = warehouseRepo;
+        _requestRepo = requestRepo;
     }
 
     public async Task<IEnumerable<RentalContractDto>> Handle(
@@ -44,9 +47,13 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
             var renter    = await _userRepo.GetByIdAsync(contract.RenterId, cancellationToken);
             var owner     = warehouse != null ? await _userRepo.GetByIdAsync(warehouse.OwnerId, cancellationToken) : null;
 
-            // Lấy diện tích ĐÃ THUÊ của renter (từ RentalRequest), không phải diện tích kho
-            var contractedArea = await _contractRepo.GetContractedAreaAsync(
-                contract.RenterId, contract.WarehouseId, cancellationToken);
+            // Lấy diện tích riêng của hợp đồng này từ RentalRequest (không cộng dồn)
+            double contractedArea = 0;
+            var rentalRequest = await _requestRepo.GetByIdAsync(contract.RentalRequestId);
+            if (rentalRequest != null)
+            {
+                contractedArea = rentalRequest.RequestedArea;
+            }
 
             result.Add(new RentalContractDto
             {
@@ -73,7 +80,7 @@ public class GetMyRentalContractsHandler : IRequestHandler<GetMyRentalContractsQ
                 SignedFileUrl = contract.SignedFileUrl,
                 SignedAt = contract.SignedAt,
                 CreatedAt = contract.CreatedAt,
-                RequestedArea = contractedArea, // ← diện tích thực renter đã thuê (100 m²)
+                RequestedArea = contractedArea, // ← diện tích riêng của hợp đồng này
             });
         }
 

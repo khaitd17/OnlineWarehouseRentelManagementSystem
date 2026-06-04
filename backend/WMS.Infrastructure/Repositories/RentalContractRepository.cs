@@ -454,16 +454,15 @@ public class RentalContractRepository : IRentalContractRepository
 
     public async Task<double> GetContractedAreaAsync(int renterId, int warehouseId, CancellationToken ct = default)
     {
-        // Tìm hợp đồng ACTIVE của renter với kho này, rồi lấy RequestedArea từ RentalRequest
-        var contract = await _context.Contracts
+        // Cộng dồn RequestedArea từ TẤT CẢ hợp đồng ACTIVE/EXPIRED của renter với kho này
+        var totalArea = await _context.Contracts
             .Include(c => c.Request)   // Contract.Request → RentalRequest
             .Where(c => c.RenterId == renterId &&
                         c.WarehouseId == warehouseId &&
                         (c.Status == "ACTIVE" || c.Status == "EXPIRED"))
-            .OrderByDescending(c => c.CreatedAt)
-            .FirstOrDefaultAsync(ct);
+            .SumAsync(c => c.Request != null ? c.Request.RequestedArea : 0, ct);
 
-        return contract?.Request?.RequestedArea ?? 0;
+        return totalArea;
     }
 
     private DomainRentalContract MapToDomain(DbContract dbContract)

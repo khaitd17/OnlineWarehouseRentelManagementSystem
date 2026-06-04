@@ -185,8 +185,8 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
           receivedQuantity: Number(it.receivedQuantity) || 0,
           expectedQuantity: Number(it.expectedQuantity) || 0,
           verifiedVolume: it.verifiedVolume ? Number(it.verifiedVolume) : null,
-          measuredLength: it.length ? Number(it.length) : null,
-          measuredWidth: it.width ? Number(it.width) : null,
+          measuredLength: null,
+          measuredWidth: null,
           verifiedWeight: it.verifiedWeight ? Number(it.verifiedWeight) : null,
           note: it.note || null,
         })),
@@ -348,7 +348,7 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
                     </div>
                   </div>
 
-                  <div style={{ display:'grid', gridTemplateColumns:'80px 90px 140px 1fr 2fr', gap:10, alignItems:'end' }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'80px 90px 1fr 2fr', gap:10, alignItems:'end' }}>
                     <div>
                       <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:'#94a3b8', marginBottom:4 }}>Dự kiến</label>
                       <input type="number" value={it.expectedQuantity} readOnly
@@ -359,28 +359,8 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
                       <input type="number" min="0" value={it.receivedQuantity}
                         onChange={e => {
                           const v = e.target.value; updateItem(idx, 'receivedQuantity', v);
-                          if (it.length && it.width) updateItem(idx, 'verifiedVolume', parseFloat((Number(it.length) * Number(it.width) * (Number(v) || 0)).toFixed(3)));
                         }}
                         style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:8, border:`1.5px solid ${disc !== 0 ? discColor : '#e2e8f0'}`, fontSize:'0.9rem', fontWeight:700, outline:'none', fontFamily:'Inter,sans-serif' }} />
-                    </div>
-                    
-                    <div style={{ display:'flex', flexDirection:'column' }}>
-                      <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:'#475569', marginBottom:4, whiteSpace:'nowrap' }}>Dài x Rộng (m)</label>
-                      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
-                        <input type="number" min="0" step="0.01" value={it.length} placeholder="D"
-                          onChange={e => {
-                            const v = e.target.value; updateItem(idx, 'length', v);
-                            if (v && it.width) updateItem(idx, 'verifiedVolume', parseFloat((Number(v) * Number(it.width) * (Number(it.receivedQuantity) || 0)).toFixed(3)));
-                          }}
-                          style={{ width:'100%', padding:'7px 5px', borderRadius:6, border:'1px solid #e2e8f0', fontSize:'0.85rem', outline:'none', textAlign:'center', fontFamily:'Inter,sans-serif' }} />
-                        <span style={{ fontSize:'0.8rem', color:'#94a3b8' }}>x</span>
-                        <input type="number" min="0" step="0.01" value={it.width} placeholder="R"
-                          onChange={e => {
-                            const v = e.target.value; updateItem(idx, 'width', v);
-                            if (it.length && v) updateItem(idx, 'verifiedVolume', parseFloat((Number(it.length) * Number(v) * (Number(it.receivedQuantity) || 0)).toFixed(3)));
-                          }}
-                          style={{ width:'100%', padding:'7px 5px', borderRadius:6, border:'1px solid #e2e8f0', fontSize:'0.85rem', outline:'none', textAlign:'center', fontFamily:'Inter,sans-serif' }} />
-                      </div>
                     </div>
 
                     <div>

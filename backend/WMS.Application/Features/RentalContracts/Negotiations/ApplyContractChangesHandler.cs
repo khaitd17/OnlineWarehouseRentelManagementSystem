@@ -43,8 +43,42 @@ public class ApplyContractChangesHandler : IRequestHandler<ApplyContractChangesC
         if (warehouse.OwnerId != request.UserId)
             throw new UnauthorizedAccessException("Only owner can apply changes");
 
-        if (request.DurationMonths < 1)
-            throw new ArgumentException("Duration must be at least 1 month");
+        if (contract.Status != "DRAFT" && contract.Status != "NEGOTIATING" && contract.Status != "REVISION_REQUESTED")
+            throw new InvalidOperationException("Chỉ có thể chỉnh sửa hợp đồng đang ở trạng thái nháp hoặc đàm phán.");
+
+        if (request.MonthlyPayment < 1000)
+            throw new ArgumentException("Giá thuê hàng tháng phải từ 1,000 VNĐ trở lên.");
+        if (request.MonthlyPayment > 100_000_000_000m)
+            throw new ArgumentException("Giá thuê hàng tháng không được vượt quá 100 tỷ VNĐ.");
+
+        if (request.DepositAmount.HasValue && request.DepositAmount.Value < 0)
+            throw new ArgumentException("Tiền đặt cọc không được là số âm.");
+        if (request.DepositAmount.HasValue && request.DepositAmount.Value > 100_000_000_000m)
+            throw new ArgumentException("Tiền đặt cọc không được vượt quá 100 tỷ VNĐ.");
+
+        var today = DateTime.Today;
+        if (request.StartDate.Date < today)
+            throw new ArgumentException("Ngày bắt đầu không được là ngày trong quá khứ.");
+        if (request.StartDate.Date > today.AddYears(2))
+            throw new ArgumentException("Ngày bắt đầu không được vượt quá 2 năm kể từ hôm nay.");
+
+        if (request.DurationMonths < 1 || request.DurationMonths > 120)
+            throw new ArgumentException("Thời hạn hợp đồng phải từ 1 đến 120 tháng.");
+
+        var validTerms = new[] { 1, 3, 6, 12 };
+        if (!validTerms.Contains(request.MonthsPerTerm))
+            throw new ArgumentException("Kỳ hạn thanh toán không hợp lệ.");
+        if (request.MonthsPerTerm > request.DurationMonths)
+            throw new ArgumentException("Kỳ hạn thanh toán không được lớn hơn thời hạn hợp đồng.");
+
+        var validOverdue = new[] { 0, 3, 5, 7 };
+        if (!validOverdue.Contains(request.AllowedOverdueDays))
+            throw new ArgumentException("Số ngày trễ hạn cho phép không hợp lệ.");
+
+        if (string.IsNullOrWhiteSpace(request.Terms))
+            throw new ArgumentException("Nội dung điều khoản hợp đồng không được để trống.");
+        if (request.Terms.Length > 10000)
+            throw new ArgumentException("Nội dung điều khoản không được vượt quá 10,000 ký tự.");
 
         contract.UpdateNegotiatedTerms(
             request.MonthlyPayment,

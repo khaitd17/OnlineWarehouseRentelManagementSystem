@@ -840,11 +840,18 @@ export default function CreateInventoryRequest() {
     axiosClient.get('/rental-contracts/my-contracts')
       .then(res=>{
         const contracts = Array.isArray(res.data)?res.data:[];
-        const seen=new Set();
-        const whs = contracts.filter(c=>c.status==='ACTIVE'||c.status==='EXPIRED').reduce((acc,c)=>{
-          if(c.warehouseId&&!seen.has(c.warehouseId)){
-            seen.add(c.warehouseId);
-            acc.push({
+        const whMap = new Map();
+        contracts.filter(c=>c.status==='ACTIVE'||c.status==='EXPIRED').forEach(c=>{
+          if(!c.warehouseId) return;
+          if(whMap.has(c.warehouseId)){
+            const existing = whMap.get(c.warehouseId);
+            existing.requestedArea += (c.requestedArea || 0);
+            // Ưu tiên trạng thái ACTIVE nếu có ít nhất 1 hợp đồng ACTIVE
+            if(c.status==='ACTIVE') existing.status = 'ACTIVE';
+            // Nối số hợp đồng
+            existing.contractNumber += `, ${c.contractNumber}`;
+          } else {
+            whMap.set(c.warehouseId, {
               warehouseId: c.warehouseId,
               name: c.warehouseName||`Kho #${c.warehouseId}`,
               status: c.status,
@@ -852,8 +859,8 @@ export default function CreateInventoryRequest() {
               requestedArea: c.requestedArea || 0,
             });
           }
-          return acc;
-        },[]);
+        });
+        const whs = Array.from(whMap.values());
         setWarehouses(whs);
         if(whs.length===1){ setWarehouseId(whs[0].warehouseId); }
       })
@@ -976,15 +983,16 @@ export default function CreateInventoryRequest() {
     try {
       let docUrls=uploadedUrls;
       if(docFiles.length&&!uploadedUrls.length) docUrls=await uploadDocuments();
-      const processed=[];
-      for(const it of valid){
-        let assetId=it.assetId;
-        if(it.isNew&&it.itemName.trim()){
-          const r=await renterAssetService.createAsset({assetName:it.itemName.trim(),unit:it.unit,weightPerUnit:null});
-          assetId=r.data.assetId;
+      // Tạo tất cả asset mới song song (thay vì tuần tự) để tăng tốc
+      const resolvedItems = await Promise.all(valid.map(async (it) => {
+        let assetId = it.assetId;
+        if (it.isNew && it.itemName.trim()) {
+          const r = await renterAssetService.createAsset({ assetName: it.itemName.trim(), unit: it.unit, weightPerUnit: null });
+          assetId = r.data.assetId;
         }
-        processed.push({ assetId, itemName:it.itemName.trim(), quantity:Number(it.qty), unit:it.unit, description:it.note||null, estimatedVolume: it.estimatedVolume ? Number(it.estimatedVolume) * Number(it.qty) : null });
-      }
+        return { assetId, itemName: it.itemName.trim(), quantity: Number(it.qty), unit: it.unit, description: it.note || null, estimatedVolume: it.estimatedVolume ? Number(it.estimatedVolume) * Number(it.qty) : null };
+      }));
+      const processed = resolvedItems;
       await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'INBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed, renterSignatureBase64: null });
       clearDraft();
       navigate('/renter-inventory-history?tab=inbound',{state:{created:true,type:'INBOUND'}});
@@ -1308,7 +1316,7 @@ export default function CreateInventoryRequest() {
                     {type==='INBOUND'?'Ngày dự kiến nhập kho':'Ngày dự kiến xuất kho'} <span style={{ textTransform:'none', fontWeight:400, color:'#94a3b8' }}>(tuỳ chọn)</span>
                   </p>
                   <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-                    <input type="date" value={scheduledDate} min={new Date().toISOString().split('T')[0]}
+                    <input type="date" value={scheduledDate} min={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()}
                       onChange={e=>setScheduledDate(e.target.value)}
                       style={{ ...inp(), width:180, cursor:'pointer', colorScheme:'light', borderColor: scheduledDate ? accent : '#e2e8f0', background: scheduledDate ? `${accent}08` : '#fff', fontWeight: scheduledDate ? 700 : 500 }}
                       onFocus={e=>e.target.style.borderColor=accent}
@@ -1316,7 +1324,7 @@ export default function CreateInventoryRequest() {
                     
                     {scheduledDate ? (
                       <span style={{ fontSize:'0.85rem', fontWeight:700, color:accent, background:`${accent}15`, padding:'6px 14px', borderRadius:8 }}>
-                        {new Date(scheduledDate).toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' })}
+                        {new Date(scheduledDate + 'T00:00:00').toLocaleDateString('vi-VN', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' })}
                       </span>
                     ) : (
                       <span style={{ fontSize:'0.82rem', color:'#94a3b8', fontStyle:'italic' }}>Để trống nếu chưa xác định</span>

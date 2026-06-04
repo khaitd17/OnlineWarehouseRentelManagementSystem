@@ -57,17 +57,25 @@ public class ApproveRentalRequestHandler : IRequestHandler<ApproveRentalRequestC
                 throw new UnauthorizedException("Only warehouse owner can approve requests");
 
             // ── Module 2: Approve Request Business Validation ────────────────
-            if (request.MonthlyPayment <= 0)
-                throw new ArgumentException("Tiền thuê hàng tháng phải lớn hơn 0.");
+            if (request.MonthlyPayment < 1000)
+                throw new ArgumentException("Giá thuê hàng tháng phải từ 1,000 VNĐ trở lên.");
+            if (request.MonthlyPayment > 100_000_000_000m)
+                throw new ArgumentException("Giá thuê hàng tháng không được vượt quá 100 tỷ VNĐ.");
             if (request.DepositAmount < 0)
-                throw new ArgumentException("Tiền đặt cọc không được âm.");
+                throw new ArgumentException("Tiền đặt cọc không được là số âm.");
+            if (request.DepositAmount > 100_000_000_000m)
+                throw new ArgumentException("Tiền đặt cọc không được vượt quá 100 tỷ VNĐ.");
             if (request.DurationMonths < 1 || request.DurationMonths > 120)
                 throw new ArgumentException("Thời hạn hợp đồng phải từ 1 đến 120 tháng.");
-            var approveToday = DateTime.UtcNow.Date;
+            var approveToday = DateTime.Today;
             if (request.StartDate.HasValue && request.StartDate.Value.Date < approveToday)
                 throw new ArgumentException("Ngày bắt đầu hợp đồng không được là ngày trong quá khứ.");
-            if (!string.IsNullOrEmpty(request.Terms) && request.Terms.Length > 5000)
-                throw new ArgumentException("Nội dung điều khoản không được vượt quá 5000 ký tự.");
+            if (request.StartDate.HasValue && request.StartDate.Value.Date > approveToday.AddYears(2))
+                throw new ArgumentException("Ngày bắt đầu hợp đồng không được vượt quá 2 năm kể từ hôm nay.");
+            if (string.IsNullOrWhiteSpace(request.Terms))
+                throw new ArgumentException("Nội dung điều khoản hợp đồng không được để trống.");
+            if (request.Terms.Length > 10000)
+                throw new ArgumentException("Nội dung điều khoản không được vượt quá 10,000 ký tự.");
             // ───────────────────────────────────────────────────────────────────
 
             // Check if already approved or rejected

@@ -360,7 +360,7 @@ const ManagerInventoryRequests = () => {
   const [data, setData]             = useState({ items:[], totalCount:0, totalPages:0 });
   const [loading, setLoading]       = useState(false);
   const [page, setPage]             = useState(1);
-  const [statusFilter, setStatusFilter] = useState('CONFIRMED');
+  const [statusFilter, setStatusFilter] = useState('');
   const [warehouseId, setWarehouseId] = useState(null);
   const [warehouses, setWarehouses] = useState([]);
   const [detailReq, setDetailReq]   = useState(null);
@@ -564,6 +564,18 @@ const ManagerInventoryRequests = () => {
                     </td>
                     <td style={{ padding:'13px 14px' }}>
                       <div style={{ fontWeight:600, color:'#1e293b', fontSize:'0.85rem' }}>{firstItem?.itemName||'—'}</div>
+                      {firstItem && (() => {
+                        const displayQty = firstItem.verifiedQuantity != null ? firstItem.verifiedQuantity : firstItem.quantity;
+                        const hasChanged = firstItem.verifiedQuantity != null && firstItem.verifiedQuantity !== firstItem.quantity;
+                        return (
+                          <div style={{ fontSize:'0.72rem', color:'#64748b', marginTop:2, display:'flex', alignItems:'center', gap:4 }}>
+                            SL: <strong style={{ color: hasChanged ? '#4f46e5' : '#475569' }}>{Number(displayQty || 0).toLocaleString('vi-VN')}</strong> {firstItem.unit || ''}
+                            {hasChanged && (
+                              <span style={{ fontSize:'0.65rem', color:'#94a3b8', textDecoration:'line-through' }}>({firstItem.quantity})</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                       {(req.items||[]).length > 1 && <div style={{ fontSize:'0.72rem', color:typeAccent, fontWeight:600, marginTop:2 }}>+{req.items.length-1} mặt hàng khác</div>}
                     </td>
                     <td style={{ padding:'13px 14px', fontSize:'0.82rem', color:'#475569' }}>{req.warehouseName||'—'}</td>

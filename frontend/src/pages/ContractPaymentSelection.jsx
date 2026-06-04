@@ -290,123 +290,280 @@ const ContractPaymentSelection = () => {
       {showProofModal && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 9999,
-          backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)",
+          backgroundColor: "rgba(15, 23, 42, 0.45)",
+          backdropFilter: "blur(6px)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          animation: "fadeUp 0.2s ease",
+          animation: "fadeUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) both",
         }}>
           <div style={{
-            background: "#fff", borderRadius: 20, padding: "2rem 2rem 1.6rem",
-            maxWidth: 520, width: "92%",
-            boxShadow: "0 24px 60px rgba(0,0,0,0.2)",
+            background: "#fff", borderRadius: 24, padding: "24px",
+            maxWidth: 500, width: "92%",
+            boxShadow: "0 24px 70px -10px rgba(15, 23, 42, 0.18), 0 16px 40px -15px rgba(15, 23, 42, 0.12)",
+            border: "1px solid #f1f5f9",
           }}>
-            <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#0f172a", margin: "0 0 0.3rem" }}>
-              Gửi xác nhận thanh toán
-            </h3>
-            <p style={{ color: "#64748b", fontSize: "0.9rem", lineHeight: 1.6, margin: "0 0 1.4rem" }}>
-              Vui lòng nhập thông tin và tải lên chứng từ để chủ kho xác minh.
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#2563eb",
+                flexShrink: 0
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "24px" }}>upload_file</span>
+              </div>
+              <div>
+                <h3 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#0f172a", margin: 0 }}>
+                  Gửi xác nhận thanh toán
+                </h3>
+                <p style={{ color: "#64748b", fontSize: "0.82rem", margin: "2px 0 0" }}>
+                  Cung cấp chứng từ giao dịch cho chủ kho xác minh.
+                </p>
+              </div>
+            </div>
 
             {manualPayment?.status === "REUPLOAD_REQUESTED" && (
               <div style={{
                 background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 12,
                 padding: "10px 12px", fontSize: "0.85rem", color: "#92400e",
-                marginBottom: 14,
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8
               }}>
-                Chủ kho yêu cầu tải lại chứng từ. Vui lòng cập nhật thông tin và gửi lại.
+                <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#d97706", flexShrink: 0 }}>warning</span>
+                <span>Chủ kho yêu cầu tải lại chứng từ. Vui lòng cập nhật thông tin và gửi lại.</span>
               </div>
             )}
 
-            <div style={{ display: "grid", gap: 12 }}>
-              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Phương thức thanh toán
-                <select
-                  value={proofMethod}
-                  onChange={(e) => setProofMethod(e.target.value)}
+            <div style={{ display: "grid", gap: 14 }}>
+              {/* Phương thức thanh toán */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>Phương thức thanh toán</span>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <span className="material-symbols-outlined" style={{ position: "absolute", left: 12, color: "#64748b", fontSize: "20px" }}>payments</span>
+                  <select
+                    value={proofMethod}
+                    onChange={(e) => setProofMethod(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "11px 12px 11px 40px",
+                      borderRadius: 12,
+                      border: "1.5px solid #cbd5e1",
+                      background: "#fff",
+                      fontSize: "0.9rem",
+                      fontWeight: 600,
+                      color: "#1e293b",
+                      outline: "none",
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#2563eb";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  >
+                    <option value="BANK_TRANSFER">Chuyển khoản ngân hàng</option>
+                    <option value="CASH">Tiền mặt</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Số tiền */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>Số tiền thanh toán (VNĐ) <span style={{ color: "#ef4444" }}>*</span></span>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <span className="material-symbols-outlined" style={{ position: "absolute", left: 12, color: "#64748b", fontSize: "20px" }}>attach_money</span>
+                  <input
+                    type="text"
+                    value={formatAmountInput(proofAmount)}
+                    onChange={(e) => setProofAmount(e.target.value)}
+                    placeholder="Nhập số tiền..."
+                    style={{
+                      width: "100%",
+                      padding: "11px 12px 11px 40px",
+                      borderRadius: 12,
+                      border: "1.5px solid #cbd5e1",
+                      background: "#fff",
+                      fontSize: "0.9rem",
+                      fontWeight: 600,
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "all 0.2s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#2563eb";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Mã giao dịch */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>Mã giao dịch <span style={{ color: "#ef4444" }}>*</span></span>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <span className="material-symbols-outlined" style={{ position: "absolute", left: 12, color: "#64748b", fontSize: "20px" }}>receipt_long</span>
+                  <input
+                    type="text"
+                    value={proofTransactionCode}
+                    onChange={(e) => setProofTransactionCode(e.target.value)}
+                    placeholder="Nhập mã giao dịch..."
+                    style={{
+                      width: "100%",
+                      padding: "11px 12px 11px 40px",
+                      borderRadius: 12,
+                      border: "1.5px solid #cbd5e1",
+                      background: "#fff",
+                      fontSize: "0.9rem",
+                      fontWeight: 600,
+                      color: "#1e293b",
+                      outline: "none",
+                      transition: "all 0.2s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#2563eb";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Tải lên chứng từ */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tải lên chứng từ <span style={{ color: "#ef4444" }}>*</span></span>
+                <div 
+                  onClick={() => document.getElementById("proof-file-input").click()}
                   style={{
-                    marginTop: 6, width: "100%", padding: "10px 12px",
-                    borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff",
-                    fontSize: "0.9rem", outline: "none",
+                    border: "2px dashed #cbd5e1",
+                    borderRadius: "14px",
+                    padding: "20px 16px",
+                    textAlign: "center",
+                    cursor: "pointer",
+                    backgroundColor: "#f8fafc",
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = "#2563eb";
+                    e.currentTarget.style.backgroundColor = "#f0f9ff";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = proofFile ? "#10b981" : "#cbd5e1";
+                    e.currentTarget.style.backgroundColor = "#f8fafc";
                   }}
                 >
-                  <option value="BANK_TRANSFER">Chuyển khoản ngân hàng</option>
-                  <option value="CASH">Tiền mặt</option>
-                </select>
-              </label>
+                  <input
+                    id="proof-file-input"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.pdf"
+                    onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                    style={{ display: "none" }}
+                  />
+                  {proofFile ? (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: "32px", color: "#10b981" }}>task</span>
+                      <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#1e293b", wordBreak: "break-all" }}>
+                        {proofFile.name}
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                        {(proofFile.size / 1024 / 1024).toFixed(2)} MB - Nhấp để thay đổi
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: "32px", color: "#64748b" }}>cloud_upload</span>
+                      <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#334155" }}>
+                        Chọn file đính kèm hoặc kéo thả vào đây
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "#94a3b8" }}>
+                        Hỗ trợ định dạng: JPG, PNG, PDF (Tối đa 10MB)
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
 
-              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Số tiền
-                <input
-                  type="text"
-                  value={formatAmountInput(proofAmount)}
-                  onChange={(e) => setProofAmount(e.target.value)}
-                  placeholder="250.000"
-                  style={{
-                    marginTop: 6, width: "100%", padding: "10px 12px",
-                    borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff",
-                    fontSize: "0.9rem", outline: "none",
-                  }}
-                />
-              </label>
-
-              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Mã giao dịch
-                <input
-                  type="text"
-                  value={proofTransactionCode}
-                  onChange={(e) => setProofTransactionCode(e.target.value)}
-                  placeholder="ABC123"
-                  style={{
-                    marginTop: 6, width: "100%", padding: "10px 12px",
-                    borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff",
-                    fontSize: "0.9rem", outline: "none",
-                  }}
-                />
-              </label>
-
-              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Tải lên chứng từ
-                <input
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={(e) => setProofFile(e.target.files?.[0] || null)}
-                  style={{ marginTop: 6, width: "100%" }}
-                />
-              </label>
-
-              <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>
-                Ghi chú
-                <textarea
-                  value={proofNote}
-                  onChange={(e) => setProofNote(e.target.value)}
-                  placeholder="Tôi đã chuyển khoản lúc 8h sáng"
-                  style={{
-                    marginTop: 6, width: "100%", padding: "10px 12px",
-                    borderRadius: 10, border: "1.5px solid #e2e8f0", background: "#fff",
-                    fontSize: "0.9rem", outline: "none", minHeight: 90, resize: "vertical",
-                  }}
-                />
-              </label>
+              {/* Ghi chú */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.05em" }}>Ghi chú</span>
+                <div style={{ position: "relative", display: "flex", alignItems: "flex-start" }}>
+                  <span className="material-symbols-outlined" style={{ position: "absolute", left: 12, top: 12, color: "#64748b", fontSize: "20px" }}>notes</span>
+                  <textarea
+                    value={proofNote}
+                    onChange={(e) => setProofNote(e.target.value)}
+                    placeholder="Ví dụ: Tôi đã chuyển khoản lúc 8h sáng..."
+                    style={{
+                      width: "100%",
+                      padding: "11px 12px 11px 40px",
+                      borderRadius: 12,
+                      border: "1.5px solid #cbd5e1",
+                      background: "#fff",
+                      fontSize: "0.9rem",
+                      fontWeight: 500,
+                      color: "#1e293b",
+                      outline: "none",
+                      minHeight: 80,
+                      resize: "vertical",
+                      transition: "all 0.2s"
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.borderColor = "#2563eb";
+                      e.target.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.borderColor = "#cbd5e1";
+                      e.target.style.boxShadow = "none";
+                    }}
+                  />
+                </div>
+              </div>
             </div>
 
             {proofError && (
               <div style={{
-                marginTop: 12, padding: "10px 12px",
+                marginTop: 14, padding: "10px 12px",
                 background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10,
                 color: "#991b1b", fontSize: "0.85rem",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
               }}>
-                {proofError}
+                <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#ef4444", flexShrink: 0 }}>error</span>
+                <span>{proofError}</span>
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 12, marginTop: 16 }}>
+            <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
               <button
                 onClick={() => setShowProofModal(false)}
                 style={{
-                  flex: 1, padding: "11px 20px", borderRadius: 12,
-                  border: "1.5px solid #e2e8f0", background: "#fff",
-                  color: "#475569", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer",
+                  flex: 1, padding: "12px 20px", borderRadius: 12,
+                  border: "1.5px solid #cbd5e1", background: "#fff",
+                  color: "#475569", fontWeight: 700, fontSize: "0.92rem", cursor: "pointer",
                   transition: "all 0.15s",
                 }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#f8fafc"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#fff"; }}
               >
                 Hủy
               </button>
@@ -414,15 +571,29 @@ const ContractPaymentSelection = () => {
                 onClick={handleSubmitPaymentProof}
                 disabled={submittingProof}
                 style={{
-                  flex: 1, padding: "11px 20px", borderRadius: 12, border: "none",
+                  flex: 1, padding: "12px 20px", borderRadius: 12, border: "none",
                   background: submittingProof ? "#94a3b8" : "linear-gradient(135deg, #0ea5e9, #2563eb)",
-                  color: "#fff", fontWeight: 700, fontSize: "0.9rem",
+                  color: "#fff", fontWeight: 700, fontSize: "0.92rem",
                   cursor: submittingProof ? "not-allowed" : "pointer",
-                  boxShadow: "0 4px 16px rgba(37,99,235,0.28)",
+                  boxShadow: submittingProof ? "none" : "0 4px 14px rgba(37,99,235,0.25)",
                   transition: "all 0.15s",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8
                 }}
               >
-                {submittingProof ? "Đang gửi..." : "Gửi xác nhận thanh toán"}
+                {submittingProof ? (
+                  <>
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px", animation: "spin 1s linear infinite" }}>sync</span>
+                    Đang gửi...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>send</span>
+                    Gửi xác nhận
+                  </>
+                )}
               </button>
             </div>
           </div>

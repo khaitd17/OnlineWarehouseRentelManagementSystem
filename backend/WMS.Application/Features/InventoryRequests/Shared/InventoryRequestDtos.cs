@@ -1,4 +1,4 @@
-﻿using WMS.Domain.Entities;
+using WMS.Domain.Entities;
 
 namespace WMS.Application.Features.InventoryRequests.Shared;
 
@@ -21,7 +21,7 @@ public record InventoryItemDto
     public decimal? LengthPerUnit { get; init; }
     public decimal? WidthPerUnit { get; init; }
     public decimal? VolumePerUnit { get; init; }
-    /// <summary>Số lượng thực tế Staff kiểm đếm. NULL = chưa xác minh.</summary>
+    /// <summary>Số lượng thực tế (tổng hợp từ phiếu COMPLETED hoặc Staff kiểm đếm). NULL = chưa xác minh.</summary>
     public int? VerifiedQuantity { get; init; }
     /// <summary>Ghi chú xác minh của Staff.</summary>
     public string? VerifyNote { get; init; }
@@ -113,24 +113,33 @@ public static class InventoryRequestMapper
         TotalItems      = r.InventoryItems.Count,
         VolumeWarning   = r.VolumeWarning,
         ReceiptNoteCount = r.ReceiptNotes.Count,
-        Items           = r.InventoryItems.Select(i => new InventoryItemDto
-        {
-            ItemId          = i.ItemId,
-            ItemName        = i.ItemName,
-            Quantity        = i.Quantity,
-            Unit            = i.Unit,
-            Weight          = i.Weight,
-            Description     = i.Description,
-            AssetId         = i.AssetId,
-            AssetName       = i.Asset?.AssetName,
-            LengthPerUnit   = i.Asset?.LengthPerUnit,
-            WidthPerUnit    = i.Asset?.WidthPerUnit,
-            VolumePerUnit   = i.Asset?.VolumePerUnit,
-            VerifiedQuantity = i.VerifiedQuantity,
-            VerifyNote      = i.VerifyNote,
-            EstimatedVolume = i.EstimatedVolume,
-            VerifiedVolume  = i.VerifiedVolume,
-            VerifiedWeight  = i.VerifiedWeight,
+        Items           = r.InventoryItems.Select(i => {
+            // Tính số lượng thực nhận từ tất cả phiếu COMPLETED
+            var receivedFromNotes = r.ReceiptNotes
+                .Where(n => n.Status == "COMPLETED")
+                .SelectMany(n => n.ReceiptItems)
+                .Where(ri => ri.InventoryItemId == i.ItemId)
+                .Sum(ri => ri.ReceivedQuantity);
+
+            return new InventoryItemDto
+            {
+                ItemId          = i.ItemId,
+                ItemName        = i.ItemName,
+                Quantity        = i.Quantity,
+                Unit            = i.Unit,
+                Weight          = i.Weight,
+                Description     = i.Description,
+                AssetId         = i.AssetId,
+                AssetName       = i.Asset?.AssetName,
+                LengthPerUnit   = i.Asset?.LengthPerUnit,
+                WidthPerUnit    = i.Asset?.WidthPerUnit,
+                VolumePerUnit   = i.Asset?.VolumePerUnit,
+                VerifiedQuantity = receivedFromNotes > 0 ? receivedFromNotes : i.VerifiedQuantity,
+                VerifyNote      = i.VerifyNote,
+                EstimatedVolume = i.EstimatedVolume,
+                VerifiedVolume  = i.VerifiedVolume,
+                VerifiedWeight  = i.VerifiedWeight,
+            };
         }).ToList(),
         TotalEstimatedVolume = r.InventoryItems.Sum(i => i.EstimatedVolume ?? 0) is decimal tv && tv > 0 ? tv : null,
         TotalVerifiedVolume  = r.InventoryItems.Any(i => i.VerifiedVolume.HasValue)
@@ -138,4 +147,3 @@ public static class InventoryRequestMapper
             : null,
     };
 }
-

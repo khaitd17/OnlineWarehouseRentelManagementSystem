@@ -127,25 +127,36 @@ public class SendContractDraftHandler : IRequestHandler<SendContractDraftCommand
             // Non-critical: don't block the draft from being sent
         }
 
-        // ═══ NON-CRITICAL: Send email ═══
-        try
+        // ═══ NON-CRITICAL: Send email (fire-and-forget) ═══
+        var renterId = contract.RenterId;
+        var contractNumber = contract.ContractNumber;
+        var monthlyPayment = contract.MonthlyPayment;
+        var depositAmount = contract.DepositAmount;
+        var contractStartDate = contract.StartDate;
+        var contractEndDate = contract.EndDate;
+        var contractId = contract.ContractId;
+        var warehouseName = warehouse.Name;
+
+        _ = Task.Run(async () =>
         {
-            var renter = await _userRepository.GetByIdAsync(contract.RenterId, cancellationToken);
-            if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
+            try
             {
-                var subject = $"Bản nháp hợp đồng đã được gửi - {warehouse.Name}";
-                var contractLink = $"http://localhost:3000/contracts/{contract.ContractId}?tab=negotiation";
-                var htmlContent = $@"
+                var renter = await _userRepository.GetByIdAsync(renterId, CancellationToken.None);
+                if (renter != null && !string.IsNullOrWhiteSpace(renter.Email))
+                {
+                    var subject = $"Bản nháp hợp đồng đã được gửi - {warehouseName}";
+                    var contractLink = $"http://localhost:3000/contracts/{contractId}?tab=negotiation";
+                    var htmlContent = $@"
 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
     <h2 style='color: #2563eb; text-align: center;'>Bản nháp hợp đồng đã được gửi</h2>
     <p>Xin chào <strong>{renter.FullName}</strong>,</p>
-    <p>Chủ kho đã gửi bản nháp hợp đồng <strong>{contract.ContractNumber}</strong> cho kho <strong>{warehouse.Name}</strong>.</p>
+    <p>Chủ kho đã gửi bản nháp hợp đồng <strong>{contractNumber}</strong> cho kho <strong>{warehouseName}</strong>.</p>
     <div style='background-color: #f3f4f6; padding: 15px; border-radius: 6px; margin: 16px 0;'>
         <ul style='color: #4b5563; line-height: 1.6;'>
-            <li><strong>Giá thuê/tháng:</strong> {contract.MonthlyPayment:N0} VNĐ</li>
-            <li><strong>Tiền đặt cọc:</strong> {contract.DepositAmount:N0} VNĐ</li>
-            <li><strong>Thời gian bắt đầu:</strong> {contract.StartDate:dd/MM/yyyy}</li>
-            <li><strong>Thời gian kết thúc:</strong> {contract.EndDate:dd/MM/yyyy}</li>
+            <li><strong>Giá thuê/tháng:</strong> {monthlyPayment:N0} VNĐ</li>
+            <li><strong>Tiền đặt cọc:</strong> {depositAmount:N0} VNĐ</li>
+            <li><strong>Thời gian bắt đầu:</strong> {contractStartDate:dd/MM/yyyy}</li>
+            <li><strong>Thời gian kết thúc:</strong> {contractEndDate:dd/MM/yyyy}</li>
         </ul>
     </div>
     <div style='margin-top: 24px; text-align: center;'>
@@ -155,15 +166,15 @@ public class SendContractDraftHandler : IRequestHandler<SendContractDraftCommand
     <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
 </div>";
 
-                await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
-                Console.WriteLine($"[SendContractDraft] Email sent to {renter.Email}");
+                    await _emailService.SendInfo(renter.Email, renter.FullName, subject, htmlContent);
+                    Console.WriteLine($"[SendContractDraft] Email sent to {renter.Email}");
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[SendContractDraft] WARNING: Failed to send email - {ex.Message}");
-            // Non-critical: don't block the draft from being sent
-        }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SendContractDraft] WARNING: Failed to send email - {ex.Message}");
+            }
+        });
 
         Console.WriteLine($"[SendContractDraft] Completed successfully");
         return new SendContractDraftResult
