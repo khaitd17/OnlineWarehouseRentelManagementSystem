@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using WMS.Application.Interfaces;
 using WMS.Domain.Interfaces;
 
@@ -9,11 +10,13 @@ public class GetWarehouseDetailHandler
 {
     private readonly IWarehouseRepository _repository;
     private readonly IUserRepository _userRepository;
+    private readonly ILogger<GetWarehouseDetailHandler> _logger;
 
-    public GetWarehouseDetailHandler(IWarehouseRepository repository, IUserRepository userRepository)
+    public GetWarehouseDetailHandler(IWarehouseRepository repository, IUserRepository userRepository, ILogger<GetWarehouseDetailHandler> logger)
     {
         _repository = repository;
         _userRepository = userRepository;
+        _logger = logger;
     }
 
     public async Task<WarehouseDetailDto?> Handle(
@@ -26,6 +29,19 @@ public class GetWarehouseDetailHandler
             return null;
 
         var owner = await _userRepository.GetByIdAsync(warehouse.OwnerId, cancellationToken);
+
+        // ── Compute AvailableArea dynamically from active contracts (self-healing) ──
+        var rentedArea = await _repository.GetRentedAreaAsync(warehouse.WarehouseId, cancellationToken);
+        var computedAvailable = Math.Max(0, warehouse.TotalArea - rentedArea);
+        if (Math.Abs(computedAvailable - warehouse.AvailableArea) > 0.01)
+        {
+            _logger.LogWarning(
+                "AvailableArea mismatch for warehouse {WarehouseId}: DB={DbValue}, Computed={ComputedValue}. Self-healing.",
+                warehouse.WarehouseId, warehouse.AvailableArea, computedAvailable);
+            warehouse.AvailableArea = computedAvailable;
+            try { await _repository.UpdateAsync(warehouse, cancellationToken); }
+            catch (Exception ex) { _logger.LogWarning(ex, "Failed to self-heal AvailableArea for warehouse {WarehouseId}", warehouse.WarehouseId); }
+        }
 
         // Determine overall document status
         string docStatus = "MISSING";

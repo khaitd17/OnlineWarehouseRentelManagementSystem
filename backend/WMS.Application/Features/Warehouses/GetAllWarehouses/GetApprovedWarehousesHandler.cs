@@ -20,6 +20,9 @@ public class GetApprovedWarehousesHandler
         var warehouses = await _repository.GetApprovedWarehousesAsync(
             request.Limit, cancellationToken);
 
+        // ── Compute AvailableArea dynamically from active contracts ──
+        var rentedAreas = await _repository.GetAllRentedAreasAsync(cancellationToken);
+
         return warehouses.Select(w => new ApprovedWarehouseDto
         {
             WarehouseId = w.WarehouseId,
@@ -27,7 +30,7 @@ public class GetApprovedWarehousesHandler
             Address = w.Address,
             Description = w.Description,
             TotalArea = w.TotalArea,
-            AvailableArea = w.AvailableArea,
+            AvailableArea = Math.Max(0, w.TotalArea - (rentedAreas.TryGetValue(w.WarehouseId, out var rented) ? rented : 0)),
             ImageUrl = w.Images.FirstOrDefault()?.MediaUrl,
             CreatedAt = w.CreatedAt ?? DateTime.UtcNow,
             WarehouseType = w.WarehouseType,

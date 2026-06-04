@@ -688,10 +688,14 @@
 }
 
 .admin-badge-locked,
-.admin-badge-rejected,
-.admin-badge-overdue {
+.admin-badge-rejected {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.admin-badge-overdue {
+  background: #ffedd5;
+  color: #b45309;
 }
 
 .admin-badge-pending {

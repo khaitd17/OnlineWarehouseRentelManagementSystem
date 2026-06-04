@@ -435,7 +435,7 @@ const OwnerContracts = () => {
                           <div style={{ fontSize: "0.85rem", color: "#64748b" }}>Đến: {formatDate(contract.endDate)}</div>
                         </td>
                         <td style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0" }}>
-                          <span style={{ backgroundColor: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: "12px", fontSize: "0.8rem", fontWeight: 700, display: "inline-block" }}>
+                          <span style={{ backgroundColor: "#dcfce7", color: "#166534", padding: "4px 10px", borderRadius: "12px", fontSize: "0.8rem", fontWeight: 700, display: "inline-block", whiteSpace: "nowrap" }}>
                             {contract.requestedArea || 0} m²
                           </span>
                         </td>

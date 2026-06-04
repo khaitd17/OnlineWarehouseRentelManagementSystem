@@ -83,10 +83,22 @@ public class RequestContractRevisionHandler : IRequestHandler<RequestContractRev
 
         if (warehouse != null)
         {
+            var sectionVietnamese = (request.Section?.ToLowerInvariant()?.Trim()) switch
+            {
+                "rental price" => "Giá thuê",
+                "deposit" => "Tiền đặt cọc",
+                "payment terms" => "Điều khoản thanh toán",
+                "contract terms" => "Điều khoản hợp đồng",
+                "violation terms" => "Điều khoản hợp đồng",
+                "termination terms" => "Điều khoản hợp đồng",
+                "other" => "Khác",
+                _ => request.Section
+            };
+
             var notification = Notification.Create(
                 receiverUserId: warehouse.OwnerId,
                 title: "Yêu cầu chỉnh sửa hợp đồng",
-                message: $"Người thuê yêu cầu chỉnh sửa mục {request.Section} trong hợp đồng {contract.ContractNumber}.",
+                message: $"Người thuê yêu cầu chỉnh sửa mục {sectionVietnamese} trong hợp đồng {contract.ContractNumber}.",
                 notificationType: "CONTRACT_REVISION_REQUESTED",
                 referenceId: contract.ContractId,
                 referenceType: "CONTRACT");
@@ -104,7 +116,7 @@ public class RequestContractRevisionHandler : IRequestHandler<RequestContractRev
     <p>Xin chào <strong>{owner.FullName}</strong>,</p>
     <p>Người thuê đã yêu cầu chỉnh sửa hợp đồng <strong>{contract.ContractNumber}</strong>.</p>
     <div style='background-color: #fffbeb; padding: 15px; border-radius: 6px; margin: 16px 0; border-left: 4px solid #f59e0b;'>
-        <p style='margin: 0; color: #92400e;'><strong>Mục chỉnh sửa:</strong> {request.Section}</p>
+        <p style='margin: 0; color: #92400e;'><strong>Mục chỉnh sửa:</strong> {sectionVietnamese}</p>
         <p style='margin: 8px 0 0 0; color: #92400e;'><strong>Nội dung:</strong> {request.Message}</p>
     </div>
     <div style='margin-top: 24px; text-align: center;'>

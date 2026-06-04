@@ -67,7 +67,7 @@ public class GetContractRevisionThreadsHandler : IRequestHandler<GetContractRevi
                     UserId = comment.UserId,
                     UserName = commenter?.FullName ?? "Unknown",
                     Message = comment.Message,
-                    CreatedAt = comment.CreatedAt
+                    CreatedAt = DateTime.SpecifyKind(comment.CreatedAt, DateTimeKind.Utc)
                 });
             }
 
@@ -79,11 +79,11 @@ public class GetContractRevisionThreadsHandler : IRequestHandler<GetContractRevi
                 Status = thread.Status,
                 CreatedBy = thread.CreatedBy,
                 CreatedByName = createdBy?.FullName ?? "Unknown",
-                CreatedAt = thread.CreatedAt,
-                UpdatedAt = thread.UpdatedAt,
+                CreatedAt = DateTime.SpecifyKind(thread.CreatedAt, DateTimeKind.Utc),
+                UpdatedAt = thread.UpdatedAt.HasValue ? DateTime.SpecifyKind(thread.UpdatedAt.Value, DateTimeKind.Utc) : null,
                 ResolvedBy = thread.ResolvedBy,
                 ResolvedByName = resolvedBy?.FullName,
-                ResolvedAt = thread.ResolvedAt,
+                ResolvedAt = thread.ResolvedAt.HasValue ? DateTime.SpecifyKind(thread.ResolvedAt.Value, DateTimeKind.Utc) : null,
                 Comments = commentDtos
             });
         }

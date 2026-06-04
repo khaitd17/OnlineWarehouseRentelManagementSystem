@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using WMS.Domain.Interfaces;
 
 namespace WMS.Application.Features.Warehouses.GetAllWarehouses;
@@ -8,13 +9,16 @@ public class SearchWarehousesHandler
 {
     private readonly IWarehouseRepository _repository;
     private readonly IRatingRepository    _ratingRepository;
+    private readonly ILogger<SearchWarehousesHandler> _logger;
 
     public SearchWarehousesHandler(
         IWarehouseRepository repository,
-        IRatingRepository ratingRepository)
+        IRatingRepository ratingRepository,
+        ILogger<SearchWarehousesHandler> logger)
     {
         _repository        = repository;
         _ratingRepository  = ratingRepository;
+        _logger            = logger;
     }
 
     public async Task<SearchWarehouseResult> Handle(
@@ -23,6 +27,9 @@ public class SearchWarehousesHandler
     {
         // ── 1. Lấy toàn bộ kho APPROVED ───────────────────────────
         var all = await _repository.GetApprovedWarehousesAsync(int.MaxValue, cancellationToken);
+
+        // ── Compute AvailableArea dynamically from active contracts ──
+        var rentedAreas = await _repository.GetAllRentedAreasAsync(cancellationToken);
 
         var query = all.AsEnumerable();
 
@@ -51,7 +58,7 @@ public class SearchWarehousesHandler
         // ── 5. Lọc theo Diện tích (fix: dùng AvailableArea thay TotalArea) ──
         // Chỉ lọc MinArea (>= minArea), không cần MaxArea constraint
         if (request.MinArea.HasValue)
-            query = query.Where(w => w.AvailableArea >= request.MinArea.Value);
+            query = query.Where(w => (w.TotalArea - (rentedAreas.TryGetValue(w.WarehouseId, out var ra) ? ra : 0)) >= request.MinArea.Value);
 
         // ── 6. Lọc theo Khoảng giá ────────────────────────────────
         if (request.MinPrice.HasValue)
@@ -120,7 +127,7 @@ public class SearchWarehousesHandler
                     Address         = w.Address,
                     Description     = w.Description,
                     TotalArea       = w.TotalArea,
-                    AvailableArea   = w.AvailableArea,
+                    AvailableArea   = Math.Max(0, w.TotalArea - (rentedAreas.TryGetValue(w.WarehouseId, out var rented) ? rented : 0)),
                     ImageUrl        = w.Images.FirstOrDefault()?.MediaUrl,
                     CreatedAt       = w.CreatedAt ?? DateTime.UtcNow,
                     PricePerM2      = w.PricePerM2,

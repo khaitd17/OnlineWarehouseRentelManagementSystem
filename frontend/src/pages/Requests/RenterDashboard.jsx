@@ -232,7 +232,7 @@ const RenterDashboard = () => {
           </div>
           <div className="rd-header-actions">
             <button className="rd-btn rd-btn-ghost" onClick={loadAll}>Làm mới</button>
-            <Link to="/renter-inbound" className="rd-btn rd-btn-primary" style={{ textDecoration: 'none' }}>Tạo yêu cầu nhập</Link>
+            <Link to="/create-inventory" className="rd-btn rd-btn-primary" style={{ textDecoration: 'none' }}>Tạo yêu cầu nhập</Link>
           </div>
         </header>
 
@@ -440,7 +440,7 @@ const RenterDashboard = () => {
               )}
             </div>
             <div className="rd-recent-footer">
-              <Link to="/renter-inbound-list" className="rd-link">Xem tất cả yêu cầu</Link>
+              <Link to="/renter-inventory-history?tab=inbound" className="rd-link">Xem tất cả yêu cầu</Link>
             </div>
           </div>
         </div>

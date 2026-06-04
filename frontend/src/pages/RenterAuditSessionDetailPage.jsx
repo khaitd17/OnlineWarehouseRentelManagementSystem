@@ -117,12 +117,15 @@ export default function RenterAuditSessionDetailPage() {
         <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-900">Kết quả kiểm kê</h3>
           <div className="flex gap-2">
-            <select className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none" value={resFilters.filterStatus === "all" ? "" : resFilters.filterStatus} onChange={e => setResFilters(p => ({ ...p, filterStatus: e.target.value || "all", page: 1 }))}>
-              <option value="">Tất cả trạng thái</option>
-              <option value="matched">Khớp</option>
-              <option value="discrepancy">Chênh lệch</option>
-            </select>
-            <input className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm outline-none" placeholder="Tìm theo tên hàng..." value={resFilters.search} onChange={e => setResFilters(p => ({ ...p, search: e.target.value, page: 1 }))} style={{ maxWidth: 250 }} />
+            <div className="relative">
+              <select className="pl-3 pr-10 py-1.5 rounded-lg border border-slate-200 bg-white text-sm appearance-none outline-none focus:ring-2 focus:ring-[#00b2d6]/20 focus:border-[#00b2d6] cursor-pointer transition-all" value={resFilters.filterStatus === "all" ? "" : resFilters.filterStatus} onChange={e => setResFilters(p => ({ ...p, filterStatus: e.target.value || "all", page: 1 }))}>
+                <option value="">Tất cả trạng thái</option>
+                <option value="matched">Khớp</option>
+                <option value="discrepancy">Chênh lệch</option>
+              </select>
+              <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+            </div>
+            <input className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm focus:ring-2 focus:ring-[#00b2d6]/20 focus:border-[#00b2d6] outline-none transition-all" placeholder="Tìm theo tên hàng..." value={resFilters.search} onChange={e => setResFilters(p => ({ ...p, search: e.target.value, page: 1 }))} style={{ maxWidth: 250 }} />
           </div>
         </div>
         <div className="overflow-x-auto">

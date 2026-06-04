@@ -94,16 +94,19 @@ export default function RenterAuditSessionsPage() {
       </div>
 
       <div className="flex flex-wrap gap-3 mb-4">
-        <input className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm outline-none" placeholder="Tìm kiếm..." value={filters.search} onChange={e => setFilters(p => ({ ...p, search: e.target.value, page: 1 }))} style={{ minWidth: 200 }} />
-        <select className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm outline-none" value={filters.status} onChange={e => setFilters(p => ({ ...p, status: e.target.value, page: 1 }))}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="PENDING_APPROVAL">Chờ duyệt</option>
-          <option value="APPROVED">Đã duyệt</option>
-          <option value="IN_PROGRESS">Đang kiểm kê</option>
-          <option value="COMPLETED">Hoàn thành</option>
-          <option value="CANCELLED">Đã hủy</option>
-          <option value="REJECTED">Từ chối</option>
-        </select>
+        <input className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-[#00b2d6]/20 focus:border-[#00b2d6] outline-none transition-all" placeholder="Tìm kiếm..." value={filters.search} onChange={e => setFilters(p => ({ ...p, search: e.target.value, page: 1 }))} style={{ minWidth: 200 }} />
+        <div className="relative">
+          <select className="pl-3 pr-10 py-2 rounded-lg border border-slate-200 bg-white text-sm appearance-none outline-none focus:ring-2 focus:ring-[#00b2d6]/20 focus:border-[#00b2d6] cursor-pointer transition-all" value={filters.status} onChange={e => setFilters(p => ({ ...p, status: e.target.value, page: 1 }))}>
+            <option value="">Tất cả trạng thái</option>
+            <option value="PENDING_APPROVAL">Chờ duyệt</option>
+            <option value="APPROVED">Đã duyệt</option>
+            <option value="IN_PROGRESS">Đang kiểm kê</option>
+            <option value="COMPLETED">Hoàn thành</option>
+            <option value="CANCELLED">Đã hủy</option>
+            <option value="REJECTED">Từ chối</option>
+          </select>
+          <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -168,10 +171,13 @@ export default function RenterAuditSessionsPage() {
             </div>
             <div className="mb-4">
               <label className="block text-sm font-semibold text-slate-700 mb-1">Kho *</label>
-              <select className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-blue-400" value={createModal.warehouseId} onChange={e => setCreateModal(p => ({ ...p, warehouseId: e.target.value, errors: {} }))}>
-                <option value="">-- Chọn kho đang thuê --</option>
-                {rentedWarehouses.map(w => <option key={w.warehouseId || w.warehouse_id} value={w.warehouseId || w.warehouse_id}>{w.name || w.warehouseName}</option>)}
-              </select>
+              <div className="relative">
+                <select className="w-full pl-3 pr-10 py-2 rounded-lg border border-slate-200 text-sm appearance-none outline-none focus:ring-2 focus:ring-[#00b2d6]/20 focus:border-[#00b2d6] cursor-pointer transition-all" value={createModal.warehouseId} onChange={e => setCreateModal(p => ({ ...p, warehouseId: e.target.value, errors: {} }))}>
+                  <option value="">-- Chọn kho đang thuê --</option>
+                  {rentedWarehouses.map(w => <option key={w.warehouseId || w.warehouse_id} value={w.warehouseId || w.warehouse_id}>{w.name || w.warehouseName}</option>)}
+                </select>
+                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[18px]">expand_more</span>
+              </div>
               {createModal.errors.warehouseId && <p className="text-xs text-red-500 mt-1">{createModal.errors.warehouseId}</p>}
             </div>
             <div className="mb-4">
