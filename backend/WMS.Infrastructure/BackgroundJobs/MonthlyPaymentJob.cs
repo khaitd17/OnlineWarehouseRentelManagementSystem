@@ -55,11 +55,11 @@ public class MonthlyPaymentJob
 
         while (hasMore)
         {
-            var activeContracts = await _context.RentalContracts
+            var activeContracts = await _context.Contracts
                 .Include(c => c.Renter)
                 .Include(c => c.Warehouse)
                 .Include(c => c.PaymentTerm)
-                .Where(c => c.Status == RentalContractStatus.Active)
+                .Where(c => c.Status == "ACTIVE")
                 .OrderBy(c => c.ContractId)
                 .Skip(skip)
                 .Take(batchSize)
@@ -75,7 +75,7 @@ public class MonthlyPaymentJob
             {
                 try
                 {
-                    var startDate = contract.StartDate;
+                    var startDate = contract.StartDate.ToDateTime(TimeOnly.MinValue);
                     if (startDate > targetDate) continue;
 
                     int monthsPerTerm = contract.PaymentTerm?.MonthsPerTerm ?? 1;
@@ -92,17 +92,18 @@ public class MonthlyPaymentJob
                     while (true)
                     {
                         var termStartDate = startDate.AddMonths(termIndex * monthsPerTerm);
+                        var contractEndDate = contract.EndDate.ToDateTime(TimeOnly.MinValue);
                         
                         // Stop if this term hasn't reached the generation window yet
-                        if (termStartDate >= contract.EndDate || termStartDate > targetDate) 
+                        if (termStartDate >= contractEndDate || termStartDate > targetDate) 
                         {
                             break;
                         }
 
                         var termEndDate = termStartDate.AddMonths(monthsPerTerm);
-                        if (termEndDate > contract.EndDate) 
+                        if (termEndDate > contractEndDate) 
                         {
-                            termEndDate = contract.EndDate;
+                            termEndDate = contractEndDate;
                         }
 
                         // Break if term length is 0 or negative
@@ -161,8 +162,8 @@ public class MonthlyPaymentJob
                             title: "Kỳ thanh toán mới",
                             message: $"Thanh toán {totalAmount:N0} VNĐ cho hợp đồng {contract.ContractNumber} đến hạn vào {termStartDate:dd/MM/yyyy}",
                             notificationType: "IN_APP",
-                            referenceId: contract.ContractId,
-                            referenceType: "RentalContract"
+                            referenceId: payment.PaymentId,
+                            referenceType: "RentalPayment"
                         );
                         await _notificationRepository.AddAsync(notification);
                         await _context.SaveChangesAsync();
