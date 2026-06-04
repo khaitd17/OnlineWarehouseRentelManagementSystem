@@ -46,9 +46,22 @@ const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString("vi-VN");
 };
 
+const parseUtcDate = (dateStr) => {
+  if (!dateStr) return new Date();
+  const utcStr = dateStr.endsWith("Z") ? dateStr : (dateStr + "Z");
+  return new Date(utcStr);
+};
+
 const formatCurrency = (amount) => {
   if (amount == null) return "—";
   return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
+};
+
+const formatNumberWithDots = (val) => {
+  if (val === undefined || val === null || val === "") return "";
+  const cleanVal = val.toString().replace(/\D/g, "");
+  if (!cleanVal) return "";
+  return cleanVal.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 };
 
 const sectionIcons = {
@@ -168,6 +181,7 @@ const ContractDetail = () => {
   const [replyDrafts, setReplyDrafts] = useState({});
   const [applyingChanges, setApplyingChanges] = useState(false);
   const [sendingDraft, setSendingDraft] = useState(false);
+  const [submittingRevision, setSubmittingRevision] = useState(false);
   const [versionHistory, setVersionHistory] = useState([]);
   const termsRef = React.useRef(null);
 
@@ -187,7 +201,7 @@ const ContractDetail = () => {
       termsRef.current.style.height = "auto";
       termsRef.current.style.height = termsRef.current.scrollHeight + "px";
     }
-  }, [changeForm.terms]);
+  }, [changeForm.terms, loading]);
   const [resolveAcceptedThreads, setResolveAcceptedThreads] = useState(true);
   const revisionSectionLabels = {
     ...revisionSectionOptions.reduce((acc, item) => {
@@ -357,7 +371,9 @@ const ContractDetail = () => {
 
   // Fetch contract
   useEffect(() => {
-    setLoading(true);
+    if (!contract || String(contract.contractId) !== String(id)) {
+      setLoading(true);
+    }
     rentalService.getContractById(id)
       .then(data => {
         setContract(data);
@@ -543,6 +559,7 @@ const ContractDetail = () => {
       return;
     }
     try {
+      setSubmittingRevision(true);
       await rentalService.requestContractRevision(contract.contractId, {
         section: revisionSection,
         message: revisionMessage.trim()
@@ -552,6 +569,8 @@ const ContractDetail = () => {
       reloadContract();
     } catch (err) {
       showToast(err.response?.data?.message || "Không thể gửi yêu cầu chỉnh sửa", "error");
+    } finally {
+      setSubmittingRevision(false);
     }
   };
 
@@ -605,16 +624,75 @@ const ContractDetail = () => {
   };
 
   const handleApplyChanges = async () => {
-    if (!changeForm.monthlyPayment || Number(changeForm.monthlyPayment) <= 0) {
-      showToast("Vui lòng nhập giá thuê hợp lệ", "warning");
+    // 1. Validate monthlyPayment
+    const monthlyPaymentRaw = changeForm.monthlyPayment ? changeForm.monthlyPayment.toString().replace(/\D/g, "") : "";
+    const monthlyPayment = Number(monthlyPaymentRaw);
+    if (!monthlyPaymentRaw || isNaN(monthlyPayment) || monthlyPayment < 1000) {
+      showToast("Giá thuê hàng tháng phải từ 1.000 VNĐ trở lên", "warning");
       return;
     }
+    if (monthlyPayment > 100000000000) {
+      showToast("Giá thuê hàng tháng không được vượt quá 100 tỷ VNĐ", "warning");
+      return;
+    }
+
+    // 2. Validate depositAmount (optional, but must be >= 0 if entered)
+    let depositAmount = null;
+    if (changeForm.depositAmount !== undefined && changeForm.depositAmount !== null && changeForm.depositAmount !== "") {
+      const depositRaw = changeForm.depositAmount.toString().replace(/\D/g, "");
+      depositAmount = Number(depositRaw);
+      if (isNaN(depositAmount) || depositAmount < 0) {
+        showToast("Tiền đặt cọc không được là số âm", "warning");
+        return;
+      }
+      if (depositAmount > 100000000000) {
+        showToast("Tiền đặt cọc không được vượt quá 100 tỷ VNĐ", "warning");
+        return;
+      }
+    }
+
+    // 3. Validate startDate: Ngày bắt đầu quá khứ không được phép, không quá 2 năm
     if (!changeForm.startDate) {
       showToast("Vui lòng chọn ngày bắt đầu hợp đồng", "warning");
       return;
     }
-    if (!changeForm.durationMonths || Number(changeForm.durationMonths) < 1) {
-      showToast("Vui lòng nhập thời hạn hợp đồng hợp lệ", "warning");
+    const selectedDate = new Date(changeForm.startDate);
+    selectedDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selectedDate < today) {
+      showToast("Ngày bắt đầu không được là ngày trong quá khứ", "warning");
+      return;
+    }
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() + 2);
+    maxDate.setHours(0, 0, 0, 0);
+    if (selectedDate > maxDate) {
+      showToast("Ngày bắt đầu không được quá 2 năm kể từ hôm nay", "warning");
+      return;
+    }
+
+    // 4. Validate durationMonths: 1-120
+    const duration = Number(changeForm.durationMonths);
+    if (!changeForm.durationMonths || !Number.isInteger(duration) || duration < 1 || duration > 120) {
+      showToast("Thời hạn hợp đồng phải là số nguyên từ 1 đến 120 tháng", "warning");
+      return;
+    }
+
+    // 5. Validate monthsPerTerm (kỳ hạn thanh toán): <= duration
+    const monthsPerTerm = Number(changeForm.monthsPerTerm);
+    if (monthsPerTerm > duration) {
+      showToast("Kỳ hạn thanh toán không được lớn hơn thời hạn hợp đồng", "warning");
+      return;
+    }
+
+    // 6. Validate terms: Bắt buộc nhập, tối đa 10000 ký tự
+    if (!changeForm.terms || !changeForm.terms.trim()) {
+      showToast("Nội dung điều khoản hợp đồng không được để trống", "warning");
+      return;
+    }
+    if (changeForm.terms.length > 10000) {
+      showToast("Nội dung điều khoản không được vượt quá 10.000 ký tự", "warning");
       return;
     }
 
@@ -625,10 +703,10 @@ const ContractDetail = () => {
     try {
       setApplyingChanges(true);
       await rentalService.applyContractChanges(contract.contractId, {
-        monthlyPayment: Number(changeForm.monthlyPayment),
-        depositAmount: changeForm.depositAmount === "" ? null : Number(changeForm.depositAmount),
+        monthlyPayment,
+        depositAmount,
         startDate: changeForm.startDate,
-        durationMonths: Number(changeForm.durationMonths),
+        durationMonths: duration,
         terms: changeForm.terms,
         monthsPerTerm: Number(changeForm.monthsPerTerm),
         allowedOverdueDays: Number(changeForm.allowedOverdueDays),
@@ -687,6 +765,7 @@ const ContractDetail = () => {
     <div style={{ padding: "0 2rem 3rem", maxWidth: 940, margin: "0 auto", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
       <style>{`
         @keyframes cardFadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .cd-btn { transition: all 0.18s ease; }
         .cd-btn:hover { transform: translateY(-1px); filter: brightness(1.06); }
       `}</style>
@@ -1173,6 +1252,7 @@ const ContractDetail = () => {
                   <select
                     value={revisionSection}
                     onChange={(e) => setRevisionSection(e.target.value)}
+                    disabled={submittingRevision}
                     style={{
                       padding: "10px 14px",
                       borderRadius: "12px",
@@ -1205,6 +1285,7 @@ const ContractDetail = () => {
                   <textarea
                     value={revisionMessage}
                     onChange={(e) => setRevisionMessage(e.target.value)}
+                    disabled={submittingRevision}
                     rows={2}
                     placeholder="Nhập rõ ràng nội dung điều khoản bạn muốn đề xuất thay đổi..."
                     style={{
@@ -1233,37 +1314,46 @@ const ContractDetail = () => {
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
                 <button
                   onClick={handleRequestRevision}
-                  disabled={!revisionMessage.trim()}
+                  disabled={!revisionMessage.trim() || submittingRevision}
                   style={{
                     padding: "10px 22px",
                     borderRadius: "12px",
                     border: "none",
-                    background: revisionMessage.trim() ? "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" : "#cbd5e1",
+                    background: (revisionMessage.trim() && !submittingRevision) ? "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" : "#cbd5e1",
                     color: "#fff",
                     fontWeight: 700,
                     fontSize: "0.88rem",
-                    boxShadow: revisionMessage.trim() ? "0 4px 12px rgba(14, 165, 233, 0.25)" : "none",
-                    cursor: revisionMessage.trim() ? "pointer" : "not-allowed",
+                    boxShadow: (revisionMessage.trim() && !submittingRevision) ? "0 4px 12px rgba(14, 165, 233, 0.25)" : "none",
+                    cursor: (revisionMessage.trim() && !submittingRevision) ? "pointer" : "not-allowed",
                     transition: "all 0.18s ease",
                     display: "flex",
                     alignItems: "center",
                     gap: "6px"
                   }}
                   onMouseEnter={(e) => {
-                    if (revisionMessage.trim()) {
+                    if (revisionMessage.trim() && !submittingRevision) {
                       e.target.style.transform = "translateY(-1px)";
                       e.target.style.boxShadow = "0 6px 16px rgba(14, 165, 233, 0.35)";
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (revisionMessage.trim()) {
+                    if (revisionMessage.trim() && !submittingRevision) {
                       e.target.style.transform = "none";
                       e.target.style.boxShadow = "0 4px 12px rgba(14, 165, 233, 0.25)";
                     }
                   }}
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>send</span>
-                  Gửi yêu cầu
+                  {submittingRevision ? (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: "16px", animation: "spin 1s linear infinite" }}>sync</span>
+                      Đang gửi...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>send</span>
+                      Gửi yêu cầu
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -1414,7 +1504,7 @@ const ContractDetail = () => {
                                   {isCommentRenter ? "Người thuê" : "Chủ kho"}
                                 </span>
                                 <span style={{ fontSize: "0.68rem", color: "#94a3b8" }}>
-                                  {new Date(comment.createdAt).toLocaleString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}
+                                  {parseUtcDate(comment.createdAt).toLocaleString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' })}
                                 </span>
                               </div>
                               <div style={{
@@ -1597,9 +1687,14 @@ const ContractDetail = () => {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569" }}>Giá thuê / tháng (VNĐ)</label>
                   <input
-                    type="number"
-                    value={changeForm.monthlyPayment}
-                    onChange={(e) => setChangeForm(prev => ({ ...prev, monthlyPayment: e.target.value }))}
+                    type="text"
+                    value={formatNumberWithDots(changeForm.monthlyPayment)}
+                    onChange={(e) => {
+                      const rawVal = e.target.value.replace(/\./g, "");
+                      if (/^\d*$/.test(rawVal)) {
+                        setChangeForm(prev => ({ ...prev, monthlyPayment: rawVal }));
+                      }
+                    }}
                     placeholder="Nhập giá thuê..."
                     style={{
                       padding: "10px 14px",
@@ -1625,9 +1720,14 @@ const ContractDetail = () => {
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <label style={{ fontSize: "0.78rem", fontWeight: 800, color: "#475569" }}>Tiền đặt cọc (VNĐ)</label>
                   <input
-                    type="number"
-                    value={changeForm.depositAmount}
-                    onChange={(e) => setChangeForm(prev => ({ ...prev, depositAmount: e.target.value }))}
+                    type="text"
+                    value={formatNumberWithDots(changeForm.depositAmount)}
+                    onChange={(e) => {
+                      const rawVal = e.target.value.replace(/\./g, "");
+                      if (/^\d*$/.test(rawVal)) {
+                        setChangeForm(prev => ({ ...prev, depositAmount: rawVal }));
+                      }
+                    }}
                     placeholder="Nhập tiền đặt cọc..."
                     style={{
                       padding: "10px 14px",
@@ -1787,8 +1887,9 @@ const ContractDetail = () => {
                       color: "#1e293b",
                       outline: "none",
                       transition: "all 0.2s",
-                      resize: "none",
-                      overflowY: "hidden"
+                      resize: "vertical",
+                      overflowY: "auto",
+                      minHeight: "160px"
                     }}
                     onFocus={(e) => {
                       e.target.style.borderColor = "#3b82f6";
@@ -1901,9 +2002,9 @@ const ContractDetail = () => {
                 return (
                   <div key={version.versionId} style={{ border: "1px solid #e2e8f0", borderRadius: 12, padding: "12px 14px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ fontWeight: 700, color: "#0f172a" }}>Version {version.versionNumber}</div>
+                      <div style={{ fontWeight: 700, color: "#0f172a" }}>Phiên bản {version.versionNumber}</div>
                       <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
-                        {new Date(version.createdAt).toLocaleString("vi-VN", { timeZone: 'Asia/Ho_Chi_Minh' })} · {version.createdByName}
+                        {parseUtcDate(version.createdAt).toLocaleString("vi-VN", { timeZone: 'Asia/Ho_Chi_Minh' })} · {version.createdByName}
                       </div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>

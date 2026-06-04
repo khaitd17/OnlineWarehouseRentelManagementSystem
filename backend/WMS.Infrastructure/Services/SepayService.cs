@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
@@ -236,7 +236,7 @@ public class SepayService : ISepayService
                         OwnerId = subscription.UserId,
                         TotalArea = 0,
                         AvailableArea = 0,
-                        Status = "APPROVED",
+                        Status = "DRAFT",
                         CreatedAt = DateTime.UtcNow,
                         UpdatedAt = DateTime.UtcNow
                     };

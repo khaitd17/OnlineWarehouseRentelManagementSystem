@@ -323,8 +323,12 @@ const PendingRentalRequests = () => {
       return;
     }
 
-    if (!contractForm.monthlyPayment || parseFloat(contractForm.monthlyPayment) <= 0) {
-      showToast("Vui lòng nhập giá thuê hàng tháng hợp lệ", "warning");
+    if (!contractForm.monthlyPayment || parseFloat(contractForm.monthlyPayment) < 1000) {
+      showToast("Giá thuê hàng tháng phải từ 1.000 VNĐ trở lên", "warning");
+      return;
+    }
+    if (parseFloat(contractForm.monthlyPayment) > 100000000000) {
+      showToast("Giá thuê hàng tháng không được vượt quá 100 tỷ VNĐ", "warning");
       return;
     }
     if (!contractForm.startDate) {
@@ -336,6 +340,16 @@ const PendingRentalRequests = () => {
       showToast("Ngày bắt đầu hợp đồng không được là ngày trong quá khứ", "warning");
       return;
     }
+    
+    // Check if start date is more than 2 years from today
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() + 2);
+    const maxDateString = maxDate.toISOString().split('T')[0];
+    if (contractForm.startDate > maxDateString) {
+      showToast("Ngày bắt đầu hợp đồng không được quá 2 năm kể từ hôm nay", "warning");
+      return;
+    }
+
     if (!contractForm.durationMonths || parseInt(contractForm.durationMonths) < 1 || parseInt(contractForm.durationMonths) > 120) {
       showToast("Vui lòng nhập thời hạn hợp đồng từ 1-120 tháng", "warning");
       return;
@@ -345,11 +359,25 @@ const PendingRentalRequests = () => {
     const deposit = parseFloat(contractForm.depositAmount);
     const totalContractValue = calculateTotalValue(contractForm.monthlyPayment, contractForm.durationMonths);
     if (contractForm.depositAmount !== "" && (isNaN(deposit) || deposit < 0)) {
-      showToast("Tiền đặt cọc không được nhỏ hơn 0.", "warning");
+      showToast("Tiền đặt cọc không được là số âm.", "warning");
+      return;
+    }
+    if (deposit > 100000000000) {
+      showToast("Tiền đặt cọc không được vượt quá 100 tỷ VNĐ.", "warning");
       return;
     }
     if (deposit > totalContractValue) {
       showToast("Tiền đặt cọc không được vượt quá tổng giá trị hợp đồng.", "warning");
+      return;
+    }
+
+    // Validate Điều khoản
+    if (!contractForm.terms || !contractForm.terms.trim()) {
+      showToast("Nội dung điều khoản hợp đồng không được để trống", "warning");
+      return;
+    }
+    if (contractForm.terms.length > 10000) {
+      showToast("Nội dung điều khoản không được vượt quá 10.000 ký tự", "warning");
       return;
     }
 
@@ -464,42 +492,176 @@ const PendingRentalRequests = () => {
     // If showing signature step
     if (showSignatureStep) {
       return (
-        <>
-          <div style={{ marginBottom: "1.2rem" }}>
-            <h2 style={{ fontSize: "1.3rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.3rem" }}>
+        <div style={{ fontFamily: "'Inter', sans-serif" }}>
+          {/* Header block with animation and graphic */}
+          <div style={{ textAlign: "center", marginBottom: "1.8rem", marginTop: "0.5rem" }}>
+            <div style={{
+              width: "64px",
+              height: "64px",
+              borderRadius: "50%",
+              background: "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)",
+              color: "#0284c7",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1rem",
+              boxShadow: "0 10px 25px rgba(2, 132, 199, 0.15)",
+              position: "relative"
+            }}>
+              <style>{`
+                .pulsing-ring {
+                  position: absolute;
+                  inset: -6px;
+                  border: 2px solid #bae6fd;
+                  border-radius: 50%;
+                  animation: ringGlow 2s infinite ease-out;
+                  pointer-events: none;
+                }
+                @keyframes ringGlow {
+                  0% { transform: scale(0.9); opacity: 1; }
+                  100% { transform: scale(1.15); opacity: 0; }
+                }
+              `}</style>
+              <div className="pulsing-ring" />
+              <span className="material-symbols-outlined" style={{ fontSize: "32px" }}>send_and_archive</span>
+            </div>
+            
+            <h2 style={{ fontSize: "1.4rem", fontWeight: 800, color: "#0f172a", marginBottom: "0.4rem", letterSpacing: "-0.01em" }}>
               Gửi bản nháp hợp đồng
             </h2>
-            <p style={{ color: "#64748b", fontSize: "0.85rem", margin: 0 }}>
-              Xác nhận gửi bản nháp hợp đồng đến người thuê để bắt đầu đàm phán
+            <p style={{ color: "#64748b", fontSize: "0.88rem", margin: 0, padding: "0 1rem", lineHeight: 1.5 }}>
+              Vui lòng xác nhận gửi bản nháp hợp đồng đến người thuê để bắt đầu giai đoạn đàm phán và thương lượng điều khoản.
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: "0.8rem", justifyContent: "flex-end", marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid #f1f5f9" }}>
+          {/* Lease Details Summary Card */}
+          <div style={{
+            background: "#ffffff",
+            border: "1px solid #e2e8f0",
+            borderRadius: "16px",
+            padding: "1.2rem",
+            marginBottom: "1.6rem",
+            boxShadow: "0 4px 12px rgba(15,23,42,0.02)"
+          }}>
+            <div style={{
+              fontSize: "0.75rem",
+              color: "#94a3b8",
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: "10px",
+              borderBottom: "1px solid #f1f5f9",
+              paddingBottom: "6px"
+            }}>
+              Tóm tắt thông tin thuê kho
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.88rem" }}>
+                <span style={{ color: "#64748b", fontWeight: 500 }}>Kho thuê:</span>
+                <strong style={{ color: "#0f172a" }}>{req.warehouseName}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.88rem" }}>
+                <span style={{ color: "#64748b", fontWeight: 500 }}>Người thuê:</span>
+                <span style={{ color: "#0f172a", fontWeight: 600 }}>{req.renterName}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.88rem" }}>
+                <span style={{ color: "#64748b", fontWeight: 500 }}>Diện tích thuê:</span>
+                <strong style={{ color: "#0f172a" }}>{req.requestedArea} m²</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.88rem" }}>
+                <span style={{ color: "#64748b", fontWeight: 500 }}>Thời hạn thuê:</span>
+                <strong style={{ color: "#0f172a" }}>{contractForm.durationMonths} tháng</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.88rem" }}>
+                <span style={{ color: "#64748b", fontWeight: 500 }}>Tiền thuê/tháng:</span>
+                <strong style={{ color: "#16a34a", fontSize: "0.95rem" }}>{formatCurrency(contractForm.monthlyPayment)}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Info callout */}
+          <div style={{
+            background: "#fffbeb",
+            border: "1px solid #fef3c7",
+            borderRadius: "12px",
+            padding: "10px 14px",
+            display: "flex",
+            gap: "8px",
+            alignItems: "center",
+            marginBottom: "1.8rem"
+          }}>
+            <span className="material-symbols-outlined" style={{ color: "#d97706", fontSize: "20px" }}>info</span>
+            <p style={{ color: "#b45309", margin: 0, fontSize: "0.8rem", lineHeight: 1.4, fontWeight: 500 }}>
+              Người thuê sẽ nhận được email và thông báo tức thì trên hệ thống để bắt đầu xem xét, phản hồi các điều khoản.
+            </p>
+          </div>
+
+          {/* Redesigned Button Actions */}
+          <div style={{
+            display: "flex",
+            gap: "0.75rem",
+            justifyContent: "flex-end",
+            marginTop: "1.5rem",
+            paddingTop: "1rem",
+            borderTop: "1px solid #f1f5f9"
+          }}>
             <button
               onClick={() => setShowSignatureStep(false)}
               disabled={actionLoading}
+              className="ow-btn"
               style={{
-                padding: "0.7rem 1.5rem", borderRadius: "10px",
-                border: "1px solid #e2e8f0", backgroundColor: "#fff",
-                color: "#64748b", fontWeight: 600, cursor: "pointer", fontSize: "0.9rem",
+                padding: "0.65rem 1.4rem",
+                borderRadius: "10px",
+                border: "1.5px solid #e2e8f0",
+                backgroundColor: "#fff",
+                color: "#64748b",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: "0.88rem",
+                transition: "all 0.15s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px"
               }}
             >
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>arrow_back</span>
               Quay lại
             </button>
             <button
               onClick={handleSendDraft}
               disabled={actionLoading}
+              className="ow-btn"
               style={{
-                padding: "0.7rem 1.5rem", borderRadius: "10px", border: "none",
-                backgroundColor: actionLoading ? "#94a3b8" : "#2563eb",
-                color: "#fff", fontWeight: 600,
-                cursor: actionLoading ? "not-allowed" : "pointer", fontSize: "0.9rem",
+                padding: "0.65rem 1.6rem",
+                borderRadius: "10px",
+                border: "none",
+                background: actionLoading ? "#cbd5e1" : "linear-gradient(135deg, #2563eb, #1d4ed8)",
+                color: "#fff",
+                fontWeight: 700,
+                cursor: actionLoading ? "not-allowed" : "pointer",
+                fontSize: "0.88rem",
+                boxShadow: actionLoading ? "none" : "0 4px 14px rgba(37, 99, 235, 0.25)",
+                transition: "all 0.15s ease",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px"
               }}
             >
-              {actionLoading ? "Đang gửi..." : "Gửi bản nháp"}
+              {actionLoading ? (
+                <>
+                  <span className="material-symbols-outlined" style={{ animation: "spin 1s linear infinite", fontSize: "18px" }}>sync</span>
+                  Đang gửi...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>done</span>
+                  Xác nhận
+                </>
+              )}
             </button>
           </div>
-        </>
+        </div>
       );
     }
 
@@ -1207,11 +1369,12 @@ const PendingRentalRequests = () => {
               borderRadius: "20px",
               padding: "2rem",
               width: "100%",
-              maxWidth: actionModal.type === "approve" ? "820px" : "480px",
+              maxWidth: actionModal.type === "approve" ? (showSignatureStep ? "520px" : "820px") : "480px",
               maxHeight: "90vh",
               overflowY: "auto",
               boxShadow: "0 32px 80px rgba(15,23,42,0.3), 0 0 0 1px rgba(255,255,255,0.08)",
               animation: "modalSlideIn 0.22s cubic-bezier(0.34,1.56,0.64,1)",
+              transition: "max-width 0.22s ease-in-out",
             }}
             onClick={(e) => e.stopPropagation()}
           >

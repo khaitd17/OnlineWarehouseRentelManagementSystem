@@ -7,7 +7,7 @@ const DASHBOARD_PATHS = [
   '/dashboard', '/my-warehouses', '/post-warehouse', '/create-warehouse',
   '/warehouse-edit', '/warehouse-new', '/owner-warehouse', '/create-staff', '/list-staff',
   '/pending-rental-requests', '/rental-request', '/owner-inventory-requests',
-  '/occupancy-dashboard', '/equipment-management', '/task-scheduling',
+  '/equipment-management', '/task-scheduling',
   '/owner-audit-sessions', '/staff-audit-sessions', '/renter-audit-sessions',
   '/staff-dashboard', '/inbound-requests', '/outbound-requests',
   '/confirm-movement', '/create-outbound',

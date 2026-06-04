@@ -25,7 +25,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Include(r => r.ConfirmedByNavigation)   // Manager đã duyệt
             .Include(r => r.AssignedStaff)            // Staff được giao việc
-            .Include(r => r.ReceiptNotes)
+            .Include(r => r.ReceiptNotes).ThenInclude(n => n.ReceiptItems)
             .Where(r => r.Warehouse.OwnerId == ownerId && r.Type == type);
 
         if (!string.IsNullOrEmpty(status))
@@ -52,7 +52,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Include(r => r.ConfirmedByNavigation)
             .Include(r => r.AssignedStaff)
-            .Include(r => r.ReceiptNotes)
+            .Include(r => r.ReceiptNotes).ThenInclude(n => n.ReceiptItems)
             .Where(r => r.RenterId == renterId && r.Type == type);
 
         if (!string.IsNullOrEmpty(status))
@@ -81,7 +81,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Include(r => r.ConfirmedByNavigation)
             .Include(r => r.AssignedStaff)
-            .Include(r => r.ReceiptNotes)
+            .Include(r => r.ReceiptNotes).ThenInclude(n => n.ReceiptItems)
             .Where(r => r.Type == type && r.WarehouseId == warehouseId.Value);
 
         if (excludePending)
@@ -108,7 +108,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Include(r => r.ConfirmedByNavigation)
             .Include(r => r.AssignedStaff)
-            .Include(r => r.ReceiptNotes)
+            .Include(r => r.ReceiptNotes).ThenInclude(n => n.ReceiptItems)
             .FirstOrDefaultAsync(r => r.InvReqId == id, cancellationToken);
 
     public async Task<InventoryRequest?> GetByRequestCodeAsync(string requestCode, CancellationToken cancellationToken)
@@ -118,7 +118,7 @@ public class InventoryRequestRepository : IInventoryRequestRepository
             .Include(r => r.InventoryItems).ThenInclude(i => i.Asset)
             .Include(r => r.ConfirmedByNavigation)
             .Include(r => r.AssignedStaff)
-            .Include(r => r.ReceiptNotes)
+            .Include(r => r.ReceiptNotes).ThenInclude(n => n.ReceiptItems)
             .FirstOrDefaultAsync(r => r.RequestCode == requestCode, cancellationToken);
 
 

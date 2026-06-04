@@ -35,7 +35,6 @@ import ContractPayment from "../pages/ContractPayment";
 import PaymentResult from "../pages/PaymentResult";
 import PendingCashPayments from "../pages/PendingCashPayments";
 import WarehouseContracts from "../pages/WarehouseContracts";
-import OccupancyDashboard from "../pages/OccupancyDashboard";
 import RoleBasedRoute from "./RoleBasedRoute";
 
 // Import New Pages for Requests
@@ -166,7 +165,6 @@ function AppRoutes() {
         <Route element={<RoleBasedRoute allowedRoles={['OWNER', 'OPERATOR']} />}>
           <Route element={<DashboardLayout />}>
             <Route path="/owner-dashboard" element={<Dashboard />} />
-            <Route path="/occupancy-dashboard" element={<OccupancyDashboard />} />
             <Route path="/my-warehouses" element={<OwnerWarehouseList />} />
             <Route path="/owner-warehouse/:id" element={<OwnerWarehouseDetailPage />} />
             <Route path="/warehouse-edit/:id" element={<EditWarehouse />} />

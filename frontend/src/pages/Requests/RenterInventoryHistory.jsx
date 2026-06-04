@@ -216,7 +216,9 @@ function TabPanel({ type }) {
             <tbody>
               {filtered.map(row => {
                 const firstItem = row.items?.[0];
-                const totalQty = row.items?.reduce((s, i) => s + i.quantity, 0) || 0;
+                const totalQty = row.items?.reduce((s, i) => s + (i.verifiedQuantity != null ? i.verifiedQuantity : i.quantity), 0) || 0;
+                const originalTotalQty = row.items?.reduce((s, i) => s + i.quantity, 0) || 0;
+                const qtyChanged = totalQty !== originalTotalQty;
                 const unit = firstItem?.unit || "";
                 const hasMultiItems = (row.items?.length || 0) > 1;
                 const isExp = expanded === row.invReqId;
@@ -248,8 +250,9 @@ function TabPanel({ type }) {
                       </td>
                       {/* Qty */}
                       <td style={{ padding: "13px 14px", textAlign: "right" }}>
-                        <span style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.9rem" }}>{totalQty.toLocaleString()}</span>
+                        <span style={{ fontWeight: 700, color: qtyChanged ? '#4f46e5' : "#1e293b", fontSize: "0.9rem" }}>{totalQty.toLocaleString()}</span>
                         {unit && <span style={{ color: "#94a3b8", fontWeight: 400, fontSize: "0.78rem", marginLeft: 3 }}>{unit}</span>}
+                        {qtyChanged && <div style={{ fontSize:'0.65rem', color:'#94a3b8', textDecoration:'line-through' }}>({originalTotalQty})</div>}
                       </td>
                       {/* Status */}
                       <td style={{ padding: "13px 14px" }}><Badge s={row.status} /></td>
@@ -313,7 +316,7 @@ function TabPanel({ type }) {
                               <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px", borderRadius: 8, background: "#f8fafc", fontSize: "0.83rem" }}>
                                 <span style={{ color: "#94a3b8", fontWeight: 700, minWidth: 20 }}>{i + 1}.</span>
                                 <span style={{ fontWeight: 600, color: "#1e293b", flex: 1 }}>{it.itemName}</span>
-                                <span style={{ color: "#64748b" }}>{it.quantity.toLocaleString()} {it.unit}</span>
+                                <span style={{ color: it.verifiedQuantity != null && it.verifiedQuantity !== it.quantity ? '#4f46e5' : "#64748b", fontWeight: it.verifiedQuantity != null && it.verifiedQuantity !== it.quantity ? 700 : 400 }}>{(it.verifiedQuantity != null ? it.verifiedQuantity : it.quantity).toLocaleString()} {it.unit}{it.verifiedQuantity != null && it.verifiedQuantity !== it.quantity && <span style={{ textDecoration:'line-through', color:'#94a3b8', fontWeight:400, marginLeft:4 }}>({it.quantity})</span>}</span>
                                 {it.description && <span style={{ color: "#94a3b8", fontSize: "0.78rem" }}>• {it.description}</span>}
                               </div>
                             ))}

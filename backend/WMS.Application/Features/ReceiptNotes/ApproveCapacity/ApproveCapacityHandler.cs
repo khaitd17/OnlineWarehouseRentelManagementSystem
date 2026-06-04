@@ -52,105 +52,13 @@ public class ApproveCapacityHandler : IRequestHandler<ApproveCapacityCommand, Re
 
         if (cmd.Approve)
         {
-            // ── DUYỆT — Cập nhật trạng thái và tồn kho ──
+            // ── DUYỆT — Chỉ chuyển trạng thái, KHÔNG cập nhật tồn kho ──
+            // Tồn kho sẽ được cập nhật khi Người thuê ký xác nhận phiếu
+            // (VERIFIED → COMPLETED) trong ConfirmReceiptNoteHandler.
             note.Status = "VERIFIED";
             note.Notes = (note.Notes ?? "") + $"\n[Manager duyệt] ID={cmd.ManagerId}";
             note.UpdatedAt = DateTime.Now;
             await _receiptRepo.UpdateAsync(note, ct);
-
-            // Cập nhật tồn kho — logic giống CreateReceiptNoteHandler
-            foreach (var item in note.ReceiptItems)
-            {
-                if (item.ReceivedQuantity <= 0) continue;
-
-                int delta = req.Type == "OUTBOUND" ? -item.ReceivedQuantity : item.ReceivedQuantity;
-
-                // Warehouse inventory
-                await _invRepo.AdjustQuantityAsync(
-                    req.WarehouseId, item.ItemName, item.Unit, delta, ct);
-
-                // Resolve AssetId
-                int resolvedAssetId;
-                if (item.AssetId.HasValue && item.AssetId.Value > 0)
-                {
-                    resolvedAssetId = item.AssetId.Value;
-                }
-                else
-                {
-                    var existing = await _assetRepo.FindByNameAndRenterAsync(
-                        req.RenterId, item.ItemName, ct);
-                    if (existing != null)
-                    {
-                        resolvedAssetId = existing.AssetId;
-                    }
-                    else
-                    {
-                        var newAsset = await _assetRepo.CreateAsync(new RenterAsset
-                        {
-                            RenterId  = req.RenterId,
-                            AssetName = item.ItemName,
-                            Unit      = item.Unit,
-                        }, ct);
-                        resolvedAssetId = newAsset.AssetId;
-                    }
-                    item.AssetId = resolvedAssetId;
-                }
-
-                // Renter inventory
-                await _assetRepo.AdjustRenterInventoryAsync(
-                    resolvedAssetId, req.WarehouseId, delta, ct);
-
-                // Update cached measurement data of Asset if provided.
-                if (item.ReceivedQuantity > 0 &&
-                    (item.VerifiedVolume.HasValue || item.MeasuredLength.HasValue || item.MeasuredWidth.HasValue))
-                {
-                    var asset = await _assetRepo.GetByIdAsync(resolvedAssetId, ct);
-                    if (asset != null)
-                    {
-                        var changed = false;
-                        if (item.VerifiedVolume.HasValue)
-                        {
-                            decimal calcVolumePerUnit = item.VerifiedVolume.Value / item.ReceivedQuantity;
-                            if (asset.VolumePerUnit == null || asset.VolumePerUnit != calcVolumePerUnit)
-                            {
-                                asset.VolumePerUnit = calcVolumePerUnit;
-                                changed = true;
-                            }
-                        }
-
-                        if (item.MeasuredLength.HasValue && item.MeasuredLength.Value > 0 &&
-                            (asset.LengthPerUnit == null || asset.LengthPerUnit != item.MeasuredLength.Value))
-                        {
-                            asset.LengthPerUnit = item.MeasuredLength.Value;
-                            changed = true;
-                        }
-
-                        if (item.MeasuredWidth.HasValue && item.MeasuredWidth.Value > 0 &&
-                            (asset.WidthPerUnit == null || asset.WidthPerUnit != item.MeasuredWidth.Value))
-                        {
-                            asset.WidthPerUnit = item.MeasuredWidth.Value;
-                            changed = true;
-                        }
-
-                        if (changed)
-                            await _assetRepo.UpdateAsync(asset, ct);
-                    }
-                }
-
-                // Transaction record
-                await _txRepo.CreateAsync(new InventoryTransaction
-                {
-                    InvReqId      = req.InvReqId,
-                    Type          = req.Type,
-                    WarehouseId   = req.WarehouseId,
-                    ItemName      = item.ItemName,
-                    Quantity      = item.ReceivedQuantity,
-                    Unit          = item.Unit,
-                    PerformedBy   = cmd.ManagerId,
-                    ReceiptNoteId = note.ReceiptNoteId,
-                    Notes         = $"[Capacity approved] {item.Note}",
-                }, ct);
-            }
 
             // Cập nhật request status
             if (req.Status != "RECEIVING")
