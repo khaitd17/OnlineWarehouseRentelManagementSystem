@@ -154,6 +154,14 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
       return;
     }
 
+    if (isOutbound) {
+      const excessItem = items.find(it => Number(it.receivedQuantity) > Number(it.expectedQuantity));
+      if (excessItem) {
+        setError(`Số lượng thực xuất của "${excessItem.itemName}" không được vượt quá số lượng dự kiến (${excessItem.expectedQuantity}).`);
+        return;
+      }
+    }
+
     if (!sigRef.current || sigRef.current.isEmpty()) {
       setError('Vui lòng ký xác nhận.');
       return;
@@ -356,9 +364,13 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
                     </div>
                     <div>
                       <label style={{ display:'block', fontSize:'0.69rem', fontWeight:700, color:accent, marginBottom:4 }}>{actualQtyLabel}</label>
-                      <input type="number" min="0" value={it.receivedQuantity}
+                      <input type="number" min="0" max={isOutbound ? it.expectedQuantity : undefined} value={it.receivedQuantity}
                         onChange={e => {
-                          const v = e.target.value; updateItem(idx, 'receivedQuantity', v);
+                          let v = e.target.value;
+                          if (isOutbound && Number(v) > Number(it.expectedQuantity)) {
+                            v = it.expectedQuantity.toString();
+                          }
+                          updateItem(idx, 'receivedQuantity', v);
                         }}
                         style={{ width:'100%', boxSizing:'border-box', padding:'7px 10px', borderRadius:8, border:`1.5px solid ${disc !== 0 ? discColor : '#e2e8f0'}`, fontSize:'0.9rem', fontWeight:700, outline:'none', fontFamily:'Inter,sans-serif' }} />
                     </div>
@@ -384,7 +396,7 @@ const CreateReceiptNoteModal = ({ request, onClose, onCreated }) => {
             })}
           </div>
 
-          {!isFullyFulfilled && (
+          {!isFullyFulfilled && !isOutbound && (
             <button onClick={addExtraItem} style={{ width:'100%', padding:'10px', borderRadius:10, border:'1.5px dashed #cbd5e1', background:'#f8fafc', cursor:'pointer', fontSize:'0.83rem', fontWeight:600, color:'#64748b', marginBottom:16 }}
               onMouseEnter={e => e.currentTarget.style.borderColor = accent}
               onMouseLeave={e => e.currentTarget.style.borderColor = '#cbd5e1'}>

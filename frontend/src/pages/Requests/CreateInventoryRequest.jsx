@@ -498,8 +498,8 @@ function ItemRow({ item, idx, type, list, loading, accent, onUpdate, onRemove, o
         <UnitCombobox value={item.unit} onChange={v=>onUpdate({ unit:v })} accent={accent}/>
       </td>
       <td style={{ padding:'6px 8px', width:110 }}>
-        <input type="number" min={1}
-          value={item.qty} onChange={e=>onUpdate({ qty:e.target.value })}
+        <input type="text" inputMode="numeric" pattern="[0-9]*"
+          value={item.qty} onChange={e=>onUpdate({ qty: e.target.value.replace(/[^\d]/g, '') })}
           onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); onEnter(); }}}
           style={{ ...inp(),
             borderColor: isOver ? '#fca5a5' : isOverWeight ? '#fca5a5' : '#e2e8f0',
@@ -632,10 +632,10 @@ function OutboundInventoryTable({ inventory, loading, selectedItems, setSelected
                   </td>
                   {/* Qty input */}
                   <td style={{ padding:'8px 10px', width:120 }} onClick={e=>e.stopPropagation()}>
-                    <input type="number" min={1} max={asset.quantity}
+                    <input type="text" inputMode="numeric" pattern="[0-9]*"
                       value={state.qty}
                       disabled={!isChecked}
-                      onChange={e=>handleQtyChange(asset.assetId, e.target.value)}
+                      onChange={e=>handleQtyChange(asset.assetId, e.target.value.replace(/[^\d]/g, ''))}
                       style={{ ...inp(), width:90, fontWeight:700,
                         borderColor: !isChecked ? '#f1f5f9' : isOver ? '#fca5a5' : accent,
                         color: !isChecked ? '#cbd5e1' : isOver ? '#dc2626' : '#1e293b',
@@ -704,6 +704,48 @@ function DocUpload({ docFiles, setDocFiles, uploadedUrls, accent }) {
     </div>
   );
 }
+
+const parseValidationErrors = (err, defaultMsg = 'Tạo yêu cầu thất bại.') => {
+  if (err?.response?.data?.errors) {
+    const errorsObj = err.response.data.errors;
+    const messages = [];
+    Object.entries(errorsObj).forEach(([field, msgs]) => {
+      if (Array.isArray(msgs)) {
+        msgs.forEach(msg => {
+          let friendlyMsg = msg;
+          if (msg.includes("could not be converted to System.Int32") || msg.includes("is not a valid integer")) {
+            friendlyMsg = "Số lượng nhập vào không hợp lệ (phải là số nguyên).";
+          } else if (msg.includes("must be greater than") || msg.includes("greater than")) {
+            friendlyMsg = "Số lượng nhập vào phải lớn hơn 0.";
+          } else if (msg.includes("The cmd field is required")) {
+            return;
+          }
+          
+          if (field.includes("items[") || field.includes("Items[")) {
+            const indexMatch = field.match(/items\[(\d+)\]/i);
+            if (indexMatch) {
+              const idx = parseInt(indexMatch[1]) + 1;
+              if (field.toLowerCase().includes("quantity")) {
+                friendlyMsg = `Dòng thứ ${idx}: Số lượng nhập vào không hợp lệ (phải là số nguyên).`;
+              } else if (field.toLowerCase().includes("itemname")) {
+                friendlyMsg = `Dòng thứ ${idx}: Tên hàng hóa không được để trống.`;
+              } else {
+                friendlyMsg = `Dòng thứ ${idx}: ${friendlyMsg}`;
+              }
+            }
+          }
+          messages.push(friendlyMsg);
+        });
+      } else if (typeof msgs === 'string') {
+        messages.push(msgs);
+      }
+    });
+    if (messages.length > 0) {
+      return messages.join('\n');
+    }
+  }
+  return err?.response?.data?.message || err?.message || defaultMsg;
+};
 
 /* ── Main page ──────────────────────────────────────────── */
 export default function CreateInventoryRequest() {
@@ -934,13 +976,50 @@ export default function CreateInventoryRequest() {
   const handleSubmit = async () => {
     setError('');
 
+    // 1. Validate Scheduled Date
+    if (scheduledDate) {
+      const selected = new Date(scheduledDate);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      if (selected < today) {
+        setError(type === 'INBOUND' ? 'Ngày dự kiến nhập kho không được ở quá khứ.' : 'Ngày dự kiến xuất kho không được ở quá khứ.');
+        return;
+      }
+      const maxFutureYear = today.getFullYear() + 5;
+      if (selected.getFullYear() > maxFutureYear) {
+        setError('Ngày dự kiến không hợp lệ (không vượt quá 5 năm trong tương lai).');
+        return;
+      }
+    }
+
+    // 2. Validate general notes length
+    if (notes && notes.length > 500) {
+      setError('Ghi chú yêu cầu quá dài (tối đa 500 ký tự).');
+      return;
+    }
+
     if(type === 'OUTBOUND') {
       const chosen = inventory.filter(a => selectedItems[a.assetId]?.checked);
       if(!chosen.length){ setError('Vui lòng chọn ít nhất 1 mặt hàng.'); return; }
       for(const asset of chosen){
         const s = selectedItems[asset.assetId];
-        if(!s.qty || Number(s.qty) < 1){ setError(`"${asset.assetName}": Số lượng phải >= 1.`); return; }
-        if(Number(s.qty) > asset.quantity){ setError(`"${asset.assetName}": Số lượng vượt tồn kho (${asset.quantity}).`); return; }
+        const qtyNum = Number(s.qty);
+        if(!s.qty || isNaN(qtyNum) || qtyNum < 1 || !Number.isInteger(qtyNum)){ 
+          setError(`"${asset.assetName}": Số lượng phải là số nguyên >= 1.`); 
+          return; 
+        }
+        if(qtyNum > asset.quantity){ 
+          setError(`"${asset.assetName}": Số lượng vượt tồn kho (${asset.quantity}).`); 
+          return; 
+        }
+        if(qtyNum > 99999999) {
+          setError(`"${asset.assetName}": Số lượng không được vượt quá 99,999,999.`);
+          return;
+        }
+        if(s.note && s.note.length > 200) {
+          setError(`"${asset.assetName}": Ghi chú không được vượt quá 200 ký tự.`);
+          return;
+        }
       }
       submitToServer();
       return;
@@ -949,8 +1028,23 @@ export default function CreateInventoryRequest() {
     const valid=items.filter(i=>i.itemName.trim()||i.assetId);
     if(!valid.length){setError('Vui lòng thêm ít nhất 1 mặt hàng.');return;}
     for(const it of valid){
-      if(!it.itemName.trim()){setError('Vui lòng nhập tên hàng hóa.');return;}
-      if(!it.qty||Number(it.qty)<1){setError('Số lượng phải >= 1.');return;}
+      const name = (it.itemName || '').trim();
+      if(!name && !it.assetId){setError('Vui lòng nhập tên hàng hóa.');return;}
+      if(name.length > 100){setError(`Tên hàng hóa "${name.substring(0, 15)}..." quá dài (tối đa 100 ký tự).`);return;}
+      
+      const qtyNum = Number(it.qty);
+      if(!it.qty || isNaN(qtyNum) || qtyNum < 1 || !Number.isInteger(qtyNum)){
+        setError(`Hàng hóa "${name || 'không tên'}": Số lượng phải là số nguyên >= 1.`);
+        return;
+      }
+      if(qtyNum > 99999999) {
+        setError(`Hàng hóa "${name || 'không tên'}": Số lượng không được vượt quá 99,999,999.`);
+        return;
+      }
+      if(it.note && it.note.length > 200) {
+        setError(`Hàng hóa "${name || 'không tên'}": Ghi chú không được vượt quá 200 ký tự.`);
+        return;
+      }
     }
     submitToServer();
   };
@@ -973,7 +1067,7 @@ export default function CreateInventoryRequest() {
         await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'OUTBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processedItems, renterSignatureBase64: null });
         clearDraft();
         navigate('/renter-inventory-history?tab=outbound',{state:{created:true,type:'OUTBOUND'}});
-      } catch(err){ setError(err?.response?.data?.message || err?.message || 'Tạo yêu cầu thất bại.'); }
+      } catch(err){ setError(parseValidationErrors(err)); }
       finally{ setSubmitting(false); }
       return;
     }
@@ -996,7 +1090,7 @@ export default function CreateInventoryRequest() {
       await inventoryService.createInventoryRequest({ warehouseId:Number(warehouseId), type:'INBOUND', notes:notes||null, scheduledDate:scheduledDate||null, documentUrls:docUrls.length?docUrls:null, items:processed, renterSignatureBase64: null });
       clearDraft();
       navigate('/renter-inventory-history?tab=inbound',{state:{created:true,type:'INBOUND'}});
-    } catch(err){ setError(err?.response?.data?.message || err?.message || 'Tạo yêu cầu thất bại.'); }
+    } catch(err){ setError(parseValidationErrors(err)); }
     finally{ setSubmitting(false); }
   };
 
@@ -1044,7 +1138,7 @@ export default function CreateInventoryRequest() {
         </div>
       </div>
 
-      {error&&<div style={{ padding:'11px 16px', borderRadius:10, marginBottom:18, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.87rem', fontWeight:600 }}>{error}</div>}
+      {error&&<div style={{ padding:'11px 16px', borderRadius:10, marginBottom:18, background:'#fef2f2', border:'1px solid #fecaca', color:'#dc2626', fontSize:'0.87rem', fontWeight:600, whiteSpace:'pre-line' }}>{error}</div>}
 
       {step===1&&(
         <div style={{ ...card, padding:32 }}>

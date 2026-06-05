@@ -20,6 +20,7 @@ const ContractPayment = () => {
   const location = useLocation();
   const purpose = new URLSearchParams(location.search).get("purpose");
   const extensionId = new URLSearchParams(location.search).get("extensionId");
+  const paymentId = new URLSearchParams(location.search).get("paymentId");
   const isTerminationPayment = purpose === "termination";
   const isExtensionPayment = purpose === "extension";
   const [contract, setContract] = useState(null);
@@ -80,24 +81,33 @@ const ContractPayment = () => {
         setExtensionInfo(extensionData);
       }
 
-      const determinedPaymentType = isTerminationPayment
-        ? "PENALTY"
-        : isExtensionPayment
-          ? "EXTENSION"
-          : (contractData.depositAmount && contractData.depositAmount > 0)
-            ? "DEPOSIT"
-            : "MONTHLY";
-
       const existingPayments = await paymentService.getPaymentsByContract(id);
       console.log('[initPayment] existingPayments:', existingPayments);
+
+      let target = null;
+      if (paymentId) {
+        target = existingPayments.find(p => p.paymentId === Number(paymentId));
+      }
+
+      const determinedPaymentType = target
+        ? target.paymentType
+        : isTerminationPayment
+          ? "PENALTY"
+          : isExtensionPayment
+            ? "EXTENSION"
+            : (contractData.depositAmount && contractData.depositAmount > 0)
+              ? "DEPOSIT"
+              : "MONTHLY";
 
       const relevantPayments = Array.isArray(existingPayments)
         ? existingPayments.filter((p) => p.paymentType === determinedPaymentType)
         : [];
 
-      const latestPaymentAmount = relevantPayments.length > 0
-        ? relevantPayments.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0]?.amount
-        : null;
+      const latestPaymentAmount = target
+        ? target.amount
+        : (relevantPayments.length > 0
+            ? relevantPayments.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0]?.amount
+            : null);
 
       const amountOverride = isTerminationPayment
         ? contractData.earlyTerminationFee
@@ -120,9 +130,11 @@ const ContractPayment = () => {
       let currentPayment;
 
       // 1. Completed payment
-      const completedPayment = relevantPayments
-        .filter(p => p.status === 'COMPLETED')
-        .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+      const completedPayment = target
+        ? (target.status === 'COMPLETED' ? target : null)
+        : relevantPayments
+            .filter(p => p.status === 'COMPLETED')
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
 
       if (!isTerminationPayment && !isExtensionPayment && contractData.status === 'ACTIVE' && completedPayment) {
         navigate(`/contracts/${id}`);
@@ -133,7 +145,9 @@ const ContractPayment = () => {
         currentPayment = completedPayment;
       } else {
         // 2. Still-valid PENDING payment
-        const validPending = relevantPayments.find(p => isStillValid(p) && Number(p.amount) > 0);
+        const validPending = target && isStillValid(target)
+          ? target
+          : relevantPayments.find(p => isStillValid(p) && Number(p.amount) > 0);
         if (validPending) {
           currentPayment = validPending;
           console.log('[initPayment] Reusing valid pending:', currentPayment);
