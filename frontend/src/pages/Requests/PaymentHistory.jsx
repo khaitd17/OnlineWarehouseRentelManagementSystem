@@ -128,18 +128,18 @@ const PaymentHistory = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  {['Mã TT', 'Hợp đồng', 'Kho', 'Người thuê', 'Số tiền', 'Loại', 'Kỳ thanh toán', 'Ngày TT', 'Hạn chót', 'Phương thức', 'Trạng thái', 'Hành động'].map(h => (
+                  {['Mã TT', 'Hợp đồng', 'Kho', 'Người thuê', 'Số tiền', 'Chiều GD', 'Loại', 'Kỳ thanh toán', 'Ngày TT', 'Hạn chót', 'Phương thức', 'Trạng thái', 'Hành động'].map(h => (
                     <th key={h} className="px-4 py-3.5 text-[11px] font-bold text-[#00b2d6] uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
-                  <tr><td colSpan={12} className="py-12 text-center text-slate-400 text-sm">
+                  <tr><td colSpan={13} className="py-12 text-center text-slate-400 text-sm">
                     <span className="material-symbols-outlined animate-spin block text-2xl mb-1">progress_activity</span>Đang tải...
                   </td></tr>
                 ) : payments.length === 0 ? (
-                  <tr><td colSpan={12} className="py-12 text-center text-slate-400 text-sm">
+                  <tr><td colSpan={13} className="py-12 text-center text-slate-400 text-sm">
                     <span className="material-symbols-outlined block text-3xl mb-1 text-slate-300">receipt_long</span>
                     Không có khoản thanh toán nào.
                   </td></tr>
@@ -159,6 +159,12 @@ const PaymentHistory = () => {
                     <td className="px-4 py-4 text-sm text-slate-600">{row.renterName}</td>
                     <td className="px-4 py-4 text-sm font-bold text-slate-900">{fmtCurrency(row.amount)}</td>
                      <td className="px-4 py-4 text-xs">
+                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold ${row.direction === 'INCOMING' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                         <span className="material-symbols-outlined text-[14px]">{row.direction === 'INCOMING' ? 'south_west' : 'north_east'}</span>
+                         {row.direction === 'INCOMING' ? 'Nhận tiền' : 'Chuyển đi'}
+                       </span>
+                     </td>
+                     <td className="px-4 py-4 text-xs">
                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-semibold ${isDeposit ? 'bg-violet-100 text-violet-700' : 'bg-sky-100 text-sky-700'}`}>
                          {typeLabel}
                        </span>
@@ -175,7 +181,7 @@ const PaymentHistory = () => {
                      </td>
                     <td className="px-4 py-4"><StatusBadge status={row.status} /></td>
                     <td className="px-4 py-4 text-sm font-medium">
-                      {['PENDING', 'REUPLOAD_REQUESTED', 'FAILED'].includes(row.status) && (
+                      {['PENDING', 'REUPLOAD_REQUESTED', 'FAILED'].includes(row.status) && row.direction !== 'INCOMING' && (
                         <button
                           onClick={() => navigate(`/contracts/${row.contractId}/payment?paymentId=${row.paymentId}`)}
                           className="px-3 py-1.5 bg-[#00b2d6] text-white rounded-lg text-xs font-bold hover:bg-[#0092b3] transition-colors"
