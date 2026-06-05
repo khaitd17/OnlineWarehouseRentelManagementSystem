@@ -110,8 +110,24 @@ public class CreateReceiptNoteHandler
             if (input.ReceivedQuantity < 0)
                 throw new ArgumentException($"Số lượng thực nhận không được âm: '{input.ItemName}'.");
 
+            if (req.Type == "OUTBOUND")
+            {
+                if (!input.InventoryItemId.HasValue)
+                {
+                    throw new ArgumentException(
+                        $"Không được phép thêm hàng phát sinh ngoài danh sách đối với yêu cầu xuất kho.");
+                }
+
+                if (input.ReceivedQuantity > input.ExpectedQuantity)
+                {
+                    throw new ArgumentException(
+                        $"Số lượng thực xuất của '{input.ItemName}' ({input.ReceivedQuantity}) " +
+                        $"không được vượt quá số lượng dự kiến ({input.ExpectedQuantity}).");
+                }
+            }
+
             if (input.ReceivedQuantity > 0 && (!input.VerifiedVolume.HasValue || input.VerifiedVolume.Value <= 0))
-                throw new ArgumentException($"Vui lòng nhập diện tích (m²) > 0 cho mặt hàng thực nhận: '{input.ItemName}'.");
+                throw new ArgumentException($"Vui lòng nhập diện tích (m²) > 0 cho mặt hàng {(req.Type == "OUTBOUND" ? "thực xuất" : "thực nhận")}: '{input.ItemName}'.");
 
             if (input.ReceivedQuantity > 0 && input.VerifiedVolume.HasValue)
             {
