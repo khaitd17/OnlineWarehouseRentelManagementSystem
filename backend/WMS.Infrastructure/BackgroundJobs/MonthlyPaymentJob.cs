@@ -1,3 +1,4 @@
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using WMS.Application.Interfaces;
@@ -40,6 +41,7 @@ public class MonthlyPaymentJob
     /// <summary>
     /// Creates payment records for active contracts that need monthly payments
     /// </summary>
+    [DisableConcurrentExecution(timeoutInSeconds: 300)]
     public async Task CreateUpcomingPayments()
     {
         _logger.LogInformation("Starting MonthlyPaymentJob...");
@@ -81,12 +83,20 @@ public class MonthlyPaymentJob
                     int monthsPerTerm = contract.PaymentTerm?.MonthsPerTerm ?? 1;
                     var overdueDays = contract.PaymentTerm?.AllowedOverdueDays ?? 7;
 
-                    // Load all existing term start dates for this contract
-                    // We use Date component to avoid time-of-day mismatch
-                    var existingTermDates = await _context.RentalPayments
-                        .Where(p => p.ContractId == contract.ContractId && p.TermStartDate != null)
-                        .Select(p => p.TermStartDate!.Value.Date)
+                    // Load all existing payments for this contract (including NULL TermStartDate)
+                    var existingPayments = await _context.RentalPayments
+                        .Where(p => p.ContractId == contract.ContractId
+                                    && p.Status != "CANCELLED" && p.Status != "FAILED")
+                        .Select(p => new { p.TermStartDate, p.PaymentType })
                         .ToListAsync();
+
+                    var existingTermDates = existingPayments
+                        .Where(p => p.TermStartDate != null)
+                        .Select(p => p.TermStartDate!.Value.Date)
+                        .ToHashSet();
+
+                    // Check if DEPOSIT bill already exists (even with NULL TermStartDate)
+                    bool hasDepositBill = existingPayments.Any(p => p.PaymentType == "DEPOSIT");
 
                     int termIndex = 0;
                     while (true)
@@ -114,6 +124,13 @@ public class MonthlyPaymentJob
 
                         // Check if this specific billing period already has a payment generated
                         if (existingTermDates.Contains(termStartDate.Date))
+                        {
+                            termIndex++;
+                            continue;
+                        }
+
+                        // If first term and DEPOSIT bill already exists (even with NULL TermStartDate), skip
+                        if (termIndex == 0 && hasDepositBill)
                         {
                             termIndex++;
                             continue;
@@ -152,9 +169,8 @@ public class MonthlyPaymentJob
                         // Save to DB first to generate PaymentId
                         await _context.SaveChangesAsync();
 
-                        // Set proper PaymentCode (e.g. WMS000123) and save again
+                        // Set proper PaymentCode (e.g. WMS000123)
                         payment.SetPaymentCode();
-                        await _context.SaveChangesAsync();
 
                         // Notify renter
                         var notification = Notification.Create(
@@ -166,26 +182,36 @@ public class MonthlyPaymentJob
                             referenceType: "RentalPayment"
                         );
                         await _notificationRepository.AddAsync(notification);
+
+                        // Save PaymentCode + notification in one batch
                         await _context.SaveChangesAsync();
 
-                        // Send email reminder safely after DB commits
+                        // Update local cache to prevent duplicate within same run
+                        existingTermDates.Add(termStartDate.Date);
+
+                        // Send email reminder (fire-and-forget to avoid blocking bill creation)
                         if (contract.Renter != null)
                         {
-                            try
+                            var renterEmail = contract.Renter.Email;
+                            var renterName = contract.Renter.FullName;
+                            var warehouseName = contract.Warehouse?.Name ?? "Không xác định";
+                            var contractNumber = contract.ContractNumber;
+                            var emailAmount = totalAmount;
+                            var emailDate = termStartDate;
+                            var emailContractId = contract.ContractId;
+                            _ = Task.Run(async () =>
                             {
-                                await _emailService.SendPaymentReminderAsync(
-                                    contract.Renter.Email,
-                                    contract.Renter.FullName,
-                                    contract.Warehouse?.Name ?? "Không xác định",
-                                    contract.ContractNumber,
-                                    totalAmount,
-                                    termStartDate
-                                );
-                            }
-                            catch (Exception emailEx)
-                            {
-                                _logger.LogWarning(emailEx, "Failed to send payment reminder email for contract {ContractId}", contract.ContractId);
-                            }
+                                try
+                                {
+                                    await _emailService.SendPaymentReminderAsync(
+                                        renterEmail, renterName, warehouseName,
+                                        contractNumber, emailAmount, emailDate);
+                                }
+                                catch (Exception emailEx)
+                                {
+                                    _logger.LogWarning(emailEx, "Failed to send payment reminder email for contract {ContractId}", emailContractId);
+                                }
+                            });
                         }
 
                         createdCount++;
