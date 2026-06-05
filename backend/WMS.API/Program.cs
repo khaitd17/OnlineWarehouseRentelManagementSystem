@@ -313,7 +313,7 @@ RecurringJob.AddOrUpdate<ContractNotificationJob>(
 RecurringJob.AddOrUpdate<MonthlyPaymentJob>(
     "create-monthly-payments",
     job => job.CreateUpcomingPayments(),
-    "* * * * *",  // Run every 1 minute for testing (Hangfire does not support < 1 min natively)
+    "* * * * *",  // TEMP: every minute for testing — change back to "0 2 * * *" for production
     new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
 // Subscription expiry check — chạy hàng ngày lúc 0:00 UTC

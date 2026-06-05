@@ -58,6 +58,7 @@ public class RentalPaymentRepository : IRentalPaymentRepository
     public async Task<RentalPayment?> GetPendingPaymentByContractAsync(int contractId, string paymentType)
     {
         return await _db.RentalPayments
+            .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync(p => p.ContractId == contractId
                                       && p.PaymentType == paymentType
                                       && p.Status == "PENDING"

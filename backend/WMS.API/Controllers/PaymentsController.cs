@@ -320,6 +320,7 @@ public class PaymentsController : ControllerBase
                 contractNumber = p.Contract != null ? p.Contract.ContractNumber : null,
                 warehouseName = p.Contract != null && p.Contract.Warehouse != null ? p.Contract.Warehouse.Name : "",
                 renterName = p.Contract != null && p.Contract.Renter != null ? p.Contract.Renter.FullName : "",
+                renterId = p.Contract != null ? p.Contract.RenterId : 0,
                 amount = p.Amount,
                 paymentType = p.PaymentType,
                 termStart = p.TermStartDate,
@@ -351,7 +352,12 @@ public class PaymentsController : ControllerBase
             p.dueDate,
             p.paymentMethod,
             p.transactionReference,
-            p.status
+            p.status,
+            // Chiều giao dịch: OUTGOING = người thuê trả tiền, INCOMING = chủ kho nhận tiền
+            // REFUND ngược lại: chủ kho trả, người thuê nhận
+            direction = p.renterId == userId
+                ? (p.paymentType == "REFUND" ? "INCOMING" : "OUTGOING")
+                : (p.paymentType == "REFUND" ? "OUTGOING" : "INCOMING")
         }).ToList();
 
         return Ok(new
