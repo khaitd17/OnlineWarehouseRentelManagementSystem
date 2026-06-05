@@ -46,6 +46,11 @@ const formatDate = (dateStr) => {
   return new Date(dateStr).toLocaleDateString("vi-VN");
 };
 
+const getLocalDateInputValue = (date = new Date()) => {
+  const timezoneOffsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - timezoneOffsetMs).toISOString().slice(0, 10);
+};
+
 const parseUtcDate = (dateStr) => {
   if (!dateStr) return new Date();
   const utcStr = dateStr.endsWith("Z") ? dateStr : (dateStr + "Z");
@@ -190,7 +195,7 @@ const ContractDetail = () => {
   const [changeForm, setChangeForm] = useState({
     monthlyPayment: "",
     depositAmount: "",
-    startDate: "",
+    startDate: getLocalDateInputValue(),
     durationMonths: "",
     terms: "",
     monthsPerTerm: 1,
@@ -380,7 +385,7 @@ const ContractDetail = () => {
         setChangeForm({
           monthlyPayment: data?.monthlyPayment ?? "",
           depositAmount: data?.depositAmount ?? "",
-          startDate: data?.startDate ? new Date(data.startDate).toISOString().slice(0, 10) : "",
+          startDate: getLocalDateInputValue(),
           durationMonths: data?.startDate && data?.endDate
             ? Math.max(1, Math.round((new Date(data.endDate) - new Date(data.startDate)) / (1000 * 60 * 60 * 24 * 30)))
             : "",
@@ -1755,6 +1760,7 @@ const ContractDetail = () => {
                   <input
                     type="date"
                     value={changeForm.startDate}
+                    min={getLocalDateInputValue()}
                     onChange={(e) => setChangeForm(prev => ({ ...prev, startDate: e.target.value }))}
                     style={{
                       padding: "10px 14px",

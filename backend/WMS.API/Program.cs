@@ -122,6 +122,8 @@ builder.Services.AddScoped<WMS.Domain.Interfaces.IWarehouseGridLocationRepositor
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddSingleton<IEmailQueue, EmailQueue>();
+builder.Services.AddHostedService<EmailQueueBackgroundService>();
 builder.Services.AddScoped<IInventoryRequestStaffNotifier, InventoryRequestStaffNotifier>();
 builder.Services.AddScoped<IPasswordGenerator, PasswordGenerator>();
 builder.Services.AddScoped<IPdfService, PdfService>();
