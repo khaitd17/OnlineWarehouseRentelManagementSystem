@@ -14,7 +14,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
     private readonly INotificationRepository _notificationRepository;
     private readonly INotificationSender _notificationSender;
     private readonly IEquipmentRepository _equipmentRepository;
-    private readonly IEmailService _emailService;
+    private readonly IEmailQueue _emailQueue;
 
     public CreateRentalRequestHandler(
         IRentalRequestRepository rentalRequestRepository,
@@ -23,7 +23,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         INotificationRepository notificationRepository,
         INotificationSender notificationSender,
         IEquipmentRepository equipmentRepository,
-        IEmailService emailService)
+        IEmailQueue emailQueue)
     {
         _rentalRequestRepository = rentalRequestRepository;
         _warehouseRepository = warehouseRepository;
@@ -31,7 +31,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         _notificationRepository = notificationRepository;
         _notificationSender = notificationSender;
         _equipmentRepository = equipmentRepository;
-        _emailService = emailService;
+        _emailQueue = emailQueue;
     }
 
     public async Task<int> Handle(CreateRentalRequestCommand request, CancellationToken cancellationToken)
@@ -140,7 +140,7 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         };
         await _notificationRepository.AddAsync(notification);
 
-        // Fire-and-forget: SignalR push + Email — không block response trả về cho người dùng
+        // Send SignalR and email while the request scope is still active.
         var ownerId = warehouse.OwnerId;
         var warehouseName = warehouse.Name;
         var requestedArea = request.RequestedArea;
@@ -148,20 +148,25 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
         var startDate = request.StartDate;
         var notes = request.Notes;
 
-        _ = Task.Run(async () =>
+        try
         {
-            try
-            {
-                // Push real-time notification via SignalR
-                await _notificationSender.SendToUserAsync(ownerId, notification);
+            // Push real-time notification via SignalR
+            await _notificationSender.SendToUserAsync(ownerId, notification);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CreateRentalRequest] SignalR notification failed for request {requestId}: {ex}");
+        }
 
-                // Send email to owner
-                var owner = await _userRepository.GetByIdAsync(ownerId, CancellationToken.None);
-                if (owner != null && !string.IsNullOrWhiteSpace(owner.Email))
-                {
-                    var subject = $"Yêu cầu thuê kho mới - {warehouseName}";
-                    var requestLink = $"http://localhost:3000/rental-request/{requestId}";
-                    var htmlContent = $@"
+        try
+        {
+            // Queue email to owner so the HTTP response does not wait for SMTP.
+            var owner = await _userRepository.GetByIdAsync(ownerId, cancellationToken);
+            if (owner != null && !string.IsNullOrWhiteSpace(owner.Email))
+            {
+                var subject = $"Yêu cầu thuê kho mới - {warehouseName}";
+                var requestLink = $"http://localhost:3000/rental-request/{requestId}";
+                var htmlContent = $@"
 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 8px;'>
     <h2 style='color: #2563eb; text-align: center;'>Yêu cầu thuê kho mới</h2>
     <p>Xin chào <strong>{owner.FullName}</strong>,</p>
@@ -184,15 +189,16 @@ public class CreateRentalRequestHandler : IRequestHandler<CreateRentalRequestCom
     <p style='font-size: 12px; color: #9ca3af; text-align: center;'>Đây là email tự động từ hệ thống OWRMS. Vui lòng không trả lời email này.</p>
 </div>";
 
-                    await _emailService.SendInfo(owner.Email, owner.FullName, subject, htmlContent);
-                }
+                await _emailQueue.QueueAsync(
+                    new EmailQueueMessage(owner.Email, owner.FullName, subject, htmlContent),
+                    cancellationToken);
             }
-            catch (Exception ex)
-            {
-                // Log nhưng không ảnh hưởng đến response — email/push không critical
-                System.Diagnostics.Debug.WriteLine($"[CreateRentalRequest] Background notification/email failed: {ex.Message}");
-            }
-        });
+        }
+        catch (Exception ex)
+        {
+            // Log nhưng không ảnh hưởng đến response — email/push không critical
+            Console.WriteLine($"[CreateRentalRequest] Owner email queue failed for request {requestId}: {ex}");
+        }
 
         return requestId;
     }
