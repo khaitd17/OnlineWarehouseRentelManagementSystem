@@ -15,6 +15,7 @@ const ContractPaymentSelection = () => {
   const location = useLocation();
   const purpose = new URLSearchParams(location.search).get("purpose");
   const extensionId = new URLSearchParams(location.search).get("extensionId");
+  const paymentId = new URLSearchParams(location.search).get("paymentId");
   const isTerminationPayment = purpose === "termination";
   const isExtensionPayment = purpose === "extension";
 
@@ -34,6 +35,7 @@ const ContractPaymentSelection = () => {
   const [proofNote, setProofNote] = useState("");
   const [proofFile, setProofFile] = useState(null);
   const [proofError, setProofError] = useState(null);
+  const [targetPayment, setTargetPayment] = useState(null);
 
   const resolvePaymentType = useCallback((contractData) => {
     if (isTerminationPayment) return "PENALTY";
@@ -85,25 +87,41 @@ const ContractPaymentSelection = () => {
           setExtensionInfo(ext);
         }
 
-        const paymentType = resolvePaymentType(contractData);
         const payments = await paymentService.getPaymentsByContract(Number(id));
-        const completedPayment = payments.find((p) =>
-          p.paymentType === paymentType && p.status === "COMPLETED"
-        );
+        let target = null;
+        if (paymentId) {
+          target = payments.find(p => p.paymentId === Number(paymentId));
+          setTargetPayment(target || null);
+        }
+
+        const paymentType = target ? target.paymentType : resolvePaymentType(contractData);
+
+        const completedPayment = target
+          ? (target.status === "COMPLETED" ? target : null)
+          : payments.find((p) =>
+              p.paymentType === paymentType && p.status === "COMPLETED"
+            );
+
         if (!isTerminationPayment && !isExtensionPayment && contractData.status === "ACTIVE" && completedPayment) {
           navigate(`/contracts/${id}`);
           return;
         }
 
-        const existingPending = payments.find(p => p.paymentType === paymentType && (p.status === "PENDING" || p.status === "RETRY_PENDING"));
+        const existingPending = target
+          ? ((target.status === "PENDING" || target.status === "RETRY_PENDING") ? target : null)
+          : payments.find(p => p.paymentType === paymentType && (p.status === "PENDING" || p.status === "RETRY_PENDING"));
+
         if (existingPending) {
           setPendingPaymentAmount(existingPending.amount);
         }
-        const existingManual = payments.find((p) =>
-          p.paymentType === paymentType
-          && (p.paymentMethod === "CASH" || p.paymentMethod === "BANK_TRANSFER")
-          && (p.status === "PENDING_CONFIRMATION" || p.status === "REUPLOAD_REQUESTED")
-        );
+
+        const existingManual = target
+          ? (((target.paymentMethod === "CASH" || target.paymentMethod === "BANK_TRANSFER") && (target.status === "PENDING_CONFIRMATION" || target.status === "REUPLOAD_REQUESTED")) ? target : null)
+          : payments.find((p) =>
+              p.paymentType === paymentType
+              && (p.paymentMethod === "CASH" || p.paymentMethod === "BANK_TRANSFER")
+              && (p.status === "PENDING_CONFIRMATION" || p.status === "REUPLOAD_REQUESTED")
+            );
         setManualPayment(existingManual || null);
 
         setLoading(false);
@@ -115,14 +133,17 @@ const ContractPaymentSelection = () => {
     };
 
     loadContract();
-  }, [id, navigate, isTerminationPayment, isExtensionPayment, extensionId, resolvePaymentType]);
+  }, [id, navigate, isTerminationPayment, isExtensionPayment, extensionId, resolvePaymentType, paymentId]);
 
   const handleOnlinePayment = () => {
-    const query = isTerminationPayment
+    let query = isTerminationPayment
       ? "?purpose=termination"
       : isExtensionPayment
         ? `?purpose=extension&extensionId=${extensionId}`
         : "";
+    if (paymentId) {
+      query = query ? `${query}&paymentId=${paymentId}` : `?paymentId=${paymentId}`;
+    }
     navigate(`/contracts/${id}/payment/online${query}`);
   };
 
@@ -220,17 +241,24 @@ const ContractPaymentSelection = () => {
     );
   }
 
-  const paymentAmount = isTerminationPayment
-    ? (contract?.earlyTerminationFee || 0)
-    : isExtensionPayment
-      ? ((extensionInfo?.proposedMonthlyPayment || 0) * (extensionInfo?.durationMonths || 0))
-      : (pendingPaymentAmount || contract?.depositAmount || contract?.monthlyPayment || 0);
+  const paymentAmount = targetPayment
+    ? targetPayment.amount
+    : isTerminationPayment
+      ? (contract?.earlyTerminationFee || 0)
+      : isExtensionPayment
+        ? ((extensionInfo?.proposedMonthlyPayment || 0) * (extensionInfo?.durationMonths || 0))
+        : (pendingPaymentAmount || contract?.depositAmount || contract?.monthlyPayment || 0);
 
-  const paymentLabel = isTerminationPayment
-    ? "Phí kết thúc sớm"
-    : isExtensionPayment
-      ? `Phí gia hạn ${extensionInfo?.durationMonths || 0} tháng`
-      : (contract?.depositAmount ? "Tiền đặt cọc" : "Thanh toán tháng đầu");
+  const paymentLabel = targetPayment
+    ? (targetPayment.paymentType === "DEPOSIT" ? "Tiền đặt cọc"
+       : targetPayment.paymentType === "PENALTY" ? "Phí kết thúc sớm"
+       : targetPayment.paymentType === "EXTENSION" ? "Phí gia hạn"
+       : "Thanh toán hoá đơn")
+    : isTerminationPayment
+      ? "Phí kết thúc sớm"
+      : isExtensionPayment
+        ? `Phí gia hạn ${extensionInfo?.durationMonths || 0} tháng`
+        : (contract?.depositAmount ? "Tiền đặt cọc" : "Thanh toán tháng đầu");
 
   return (
     <div style={{
