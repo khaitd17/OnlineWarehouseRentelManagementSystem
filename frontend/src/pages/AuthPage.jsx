@@ -551,7 +551,7 @@ const AuthPage = () => {
       }
     } catch (err) { 
       if (err.response?.status === 401) {
-        setError('Sai email hoặc mật khẩu.');
+        setError(err.response?.data?.message || 'Sai email hoặc mật khẩu.');
       } else {
         setError(err.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.'); 
       }
