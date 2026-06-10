@@ -77,7 +77,7 @@ public class ApproveRentalRequestHandlerTests
         _mockWarehouseRepo.Setup(x => x.GetByIdAsync(5, It.IsAny<CancellationToken>())).ReturnsAsync(warehouse);
         _mockContractRepo.Setup(x => x.AddAsync(It.IsAny<RentalContract>())).ReturnsAsync(200);
 
-        var cmd = new ApproveRentalRequestCommand { RequestId = 1, ReviewerId = 99, MonthlyPayment = 1000, StartDate = DateTime.Today, DurationMonths = 12 };
+        var cmd = new ApproveRentalRequestCommand { RequestId = 1, ReviewerId = 99, MonthlyPayment = 1000, StartDate = DateTime.Today, DurationMonths = 12, Terms = "Điều khoản hợp đồng mẫu" };
 
         // Act
         var result = await _approveHandler.Handle(cmd, CancellationToken.None);
@@ -156,7 +156,7 @@ public class ApproveRentalRequestHandlerTests
         _mockRentalRequestRepo.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(rentalRequest);
         _mockWarehouseRepo.Setup(x => x.GetByIdAsync(5, It.IsAny<CancellationToken>())).ReturnsAsync(warehouse);
 
-        var cmd = new ApproveRentalRequestCommand { RequestId = 1, ReviewerId = 99, MonthlyPayment = 1000, DurationMonths = 12 };
+        var cmd = new ApproveRentalRequestCommand { RequestId = 1, ReviewerId = 99, MonthlyPayment = 1000, DurationMonths = 12, Terms = "Điều khoản hợp đồng mẫu" };
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidStateException>(() => _approveHandler.Handle(cmd, CancellationToken.None));
@@ -188,7 +188,7 @@ public class ApproveRentalRequestHandlerTests
         _mockRentalRequestRepo.Setup(x => x.GetByIdAsync(1)).ReturnsAsync(rentalRequest);
         _mockWarehouseRepo.Setup(x => x.GetByIdAsync(5, It.IsAny<CancellationToken>())).ReturnsAsync(warehouse);
 
-        var cmd = new ApproveRentalRequestCommand { RequestId = 1, ReviewerId = 99, MonthlyPayment = 1000, StartDate = DateTime.Today, DurationMonths = 12 };
+        var cmd = new ApproveRentalRequestCommand { RequestId = 1, ReviewerId = 99, MonthlyPayment = 1000, StartDate = DateTime.Today, DurationMonths = 12, Terms = "Điều khoản hợp đồng mẫu" };
 
         // Act & Assert
         await Assert.ThrowsAsync<NotEnoughAreaException>(() => _approveHandler.Handle(cmd, CancellationToken.None));

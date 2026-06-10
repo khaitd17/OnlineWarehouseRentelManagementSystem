@@ -1,4 +1,5 @@
 using MediatR;
+using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using WMS.Application.Interfaces;
 using WMS.Domain.Entities;
@@ -17,6 +18,8 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
     private readonly IRentalRequestRepository _rentalRequestRepo;
     private readonly IEquipmentRepository _equipmentRepo;
     private readonly IRentalPaymentRepository _paymentRepo;
+    private readonly IStaffMembershipRepository _membershipRepo;
+    private readonly ILogger<OwnerSignContractHandler> _logger;
 
     public OwnerSignContractHandler(
         IRentalContractRepository contractRepo,
@@ -27,7 +30,9 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
         INotificationSender notificationSender,
         IRentalRequestRepository rentalRequestRepo,
         IEquipmentRepository equipmentRepo,
-        IRentalPaymentRepository paymentRepo)
+        IRentalPaymentRepository paymentRepo,
+        IStaffMembershipRepository membershipRepo,
+        ILogger<OwnerSignContractHandler> logger)
     {
         _contractRepo = contractRepo;
         _warehouseRepo = warehouseRepo;
@@ -38,6 +43,8 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
         _rentalRequestRepo = rentalRequestRepo;
         _equipmentRepo = equipmentRepo;
         _paymentRepo = paymentRepo;
+        _membershipRepo = membershipRepo;
+        _logger = logger;
     }
 
     public async Task<OwnerSignContractResult> Handle(OwnerSignContractCommand request, CancellationToken cancellationToken)
@@ -83,6 +90,9 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
         // Update contract domain
         contract.OwnerSign(ownerSignedFileUrl, request.SignatureBase64); // Chuyển status thành ACTIVE
         await _contractRepo.UpdateAsync(contract);
+
+        // Grant RENTER membership in the warehouse so the renter can use warehouse features
+        await CreateRenterMembershipAsync(contract.RenterId, contract.WarehouseId, cancellationToken);
 
         // Sinh hóa đơn (Bill)
         var fullContractInfo = await _contractRepo.GetByIdWithDetailsAsync(contract.ContractId);
@@ -196,5 +206,42 @@ public class OwnerSignContractHandler : IRequestHandler<OwnerSignContractCommand
             OwnerSignedFileUrl = ownerSignedFileUrl,
             Status = contract.Status
         };
+    }
+
+    /// <summary>
+    /// Create warehouse membership for renter with RENTER role.
+    /// If membership already exists, skip creation. Non-fatal on error.
+    /// </summary>
+    private async Task CreateRenterMembershipAsync(int renterId, int warehouseId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var existingMembership = await _membershipRepo.GetCallerMembershipAsync(renterId, warehouseId, cancellationToken);
+            if (existingMembership != null)
+            {
+                _logger.LogInformation("Renter {RenterId} already has membership in warehouse {WarehouseId} — skipped",
+                    renterId, warehouseId);
+                return;
+            }
+
+            var membershipDto = new CreateMembershipDto
+            {
+                UserId = renterId,
+                WarehouseId = warehouseId,
+                RoleCode = "RENTER",
+                IsAllSkill = true,
+                SkillIds = new List<int>(),
+                WarehouseShiftId = null
+            };
+
+            var membershipId = await _membershipRepo.CreateMembershipAsync(membershipDto, cancellationToken);
+            _logger.LogInformation("Created RENTER membership {MembershipId} for user {RenterId} in warehouse {WarehouseId} via OwnerSign",
+                membershipId, renterId, warehouseId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create RENTER membership for user {RenterId} in warehouse {WarehouseId} via OwnerSign",
+                renterId, warehouseId);
+        }
     }
 }

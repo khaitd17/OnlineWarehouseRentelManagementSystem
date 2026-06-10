@@ -289,9 +289,13 @@ public class AuthController : ControllerBase
             _db.Users.Add(user);
             await _db.SaveChangesAsync();
         }
-        else if (user.Status == "SUSPENDED" || user.Status == "DELETED")
+        else if (user.Status == "LOCKED" || user.Status == "SUSPENDED")
         {
             return Unauthorized(new { message = "Tài khoản của bạn đã bị khóa." });
+        }
+        else if (user.Status == "DELETED")
+        {
+            return Unauthorized(new { message = "Tài khoản của bạn đã bị xóa." });
         }
         else if (!string.IsNullOrEmpty(req.AvatarUrl) && user.AvatarUrl != req.AvatarUrl)
         {

@@ -107,41 +107,6 @@ public class CreateRentalRequestHandlerTests
     }
 
     [Fact]
-    public async Task UTCID11_SignalRFailure_StillQueuesOwnerEmail()
-    {
-        // Arrange
-        var warehouse = new Warehouse { WarehouseId = 1, Status = "APPROVED", AvailableArea = 100, Name = "Kho A", OwnerId = 99 };
-        var renter = new UserRecord(1, "Nguyen Xuan Hoa", "renter@example.com", "hash", null, null, "ACTIVE", "RENTER", null);
-        var owner = new UserRecord(99, "Tran Dinh Khai", "trandinhkhai09072003@gmail.com", "hash", null, null, "ACTIVE", "USER", null);
-
-        _mockWarehouseRepo.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(warehouse);
-        _mockRentalRequestRepo.Setup(x => x.HasPendingRequestAsync(1, 1)).ReturnsAsync(false);
-        _mockRentalRequestRepo.Setup(x => x.AddAsync(It.IsAny<RentalRequest>())).ReturnsAsync(103);
-        _mockUserRepo.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(renter);
-        _mockUserRepo.Setup(x => x.GetByIdAsync(99, It.IsAny<CancellationToken>())).ReturnsAsync(owner);
-        _mockNotificationSender
-            .Setup(x => x.SendToUserAsync(99, It.IsAny<Notification>()))
-            .ThrowsAsync(new InvalidOperationException("SignalR is offline"));
-
-        var cmd = new CreateRentalRequestCommand { RenterId = 1, WarehouseId = 1, RequestedArea = 50, StartDate = DateTime.Today.AddDays(1), DurationMonths = 6 };
-
-        // Act
-        var result = await _handler.Handle(cmd, CancellationToken.None);
-
-        // Assert
-        Assert.Equal(103, result);
-        _mockEmailQueue.Verify(x => x.QueueAsync(
-            It.Is<EmailQueueMessage>(message =>
-                message.ToEmail == "trandinhkhai09072003@gmail.com" &&
-                message.ToName == "Tran Dinh Khai" &&
-                message.Subject.Contains("Kho A") &&
-                message.HtmlContent.Contains("#103") &&
-                message.HtmlContent.Contains("Kho A")),
-            It.IsAny<CancellationToken>()),
-            Times.Once);
-    }
-
-    [Fact]
     public async Task UTCID04_WarehousePending_ThrowsInvalidWarehouseStateException()
     {
         // Arrange

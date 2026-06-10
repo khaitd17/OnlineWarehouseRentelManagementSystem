@@ -132,7 +132,7 @@ public class LoginHandlerTests
         // Act & Assert
         var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             handler.Handle(cmd, CancellationToken.None));
-        Assert.Contains("Tài khoản của bạn đã bị khóa hoặc xóa", ex.Message);
+        Assert.Contains("Tài khoản của bạn đã bị khóa", ex.Message);
     }
 
     // ── UTC005 — Abnormal: Account is DELETED → UnauthorizedAccessException ──
@@ -151,7 +151,7 @@ public class LoginHandlerTests
         // Act & Assert
         var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
             handler.Handle(cmd, CancellationToken.None));
-        Assert.Contains("Tài khoản của bạn đã bị khóa hoặc xóa", ex.Message);
+        Assert.Contains("Tài khoản của bạn đã bị xóa", ex.Message);
     }
 
     // ── UTC006 — Abnormal: Correct email, wrong password → UnauthorizedAccessException ─

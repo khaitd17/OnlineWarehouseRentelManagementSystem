@@ -1,4 +1,4 @@
-﻿using MediatR;
+using MediatR;
 using Microsoft.Extensions.Logging;
 using WMS.Application.Interfaces;
 using WMS.Domain.Enums;
@@ -15,6 +15,7 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
     private readonly IContractExtensionRepository _extensionRepo;
     private readonly IWarehouseRepository _warehouseRepo;
     private readonly IRentalRequestRepository _rentalRequestRepo;
+    private readonly IStaffMembershipRepository _membershipRepo;
 
     public GetPaymentStatusHandler(
         IRentalPaymentRepository paymentRepo,
@@ -23,7 +24,8 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
         ILogger<GetPaymentStatusHandler> logger,
         IContractExtensionRepository extensionRepo,
         IWarehouseRepository warehouseRepo,
-        IRentalRequestRepository rentalRequestRepo)
+        IRentalRequestRepository rentalRequestRepo,
+        IStaffMembershipRepository membershipRepo)
     {
         _paymentRepo = paymentRepo;
         _contractRepo = contractRepo;
@@ -32,6 +34,7 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
         _extensionRepo = extensionRepo;
         _warehouseRepo = warehouseRepo;
         _rentalRequestRepo = rentalRequestRepo;
+        _membershipRepo = membershipRepo;
     }
 
     public async Task<PaymentStatusResult> Handle(GetPaymentStatusQuery request, CancellationToken cancellationToken)
@@ -235,6 +238,9 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
             // Deduct area from warehouse now that contract is truly ACTIVE
             await DeductWarehouseAreaAsync(contract);
 
+            // Grant RENTER membership in the warehouse so the renter can use warehouse features
+            await CreateRenterMembershipAsync(contract.RenterId, contract.WarehouseId);
+
             _logger.LogInformation("Activated pending contract {ContractId} from payment status reconciliation", payment.ContractId);
             return;
         }
@@ -287,6 +293,43 @@ public class GetPaymentStatusHandler : IRequestHandler<GetPaymentStatusQuery, Pa
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to deduct warehouse area for contract {ContractId}", contract.ContractId);
+        }
+    }
+
+    /// <summary>
+    /// Create warehouse membership for renter with RENTER role.
+    /// If membership already exists, skip creation. Non-fatal on error.
+    /// </summary>
+    private async Task CreateRenterMembershipAsync(int renterId, int warehouseId)
+    {
+        try
+        {
+            var existingMembership = await _membershipRepo.GetCallerMembershipAsync(renterId, warehouseId);
+            if (existingMembership != null)
+            {
+                _logger.LogInformation("Renter {RenterId} already has membership in warehouse {WarehouseId} — skipped (reconciliation)",
+                    renterId, warehouseId);
+                return;
+            }
+
+            var membershipDto = new CreateMembershipDto
+            {
+                UserId = renterId,
+                WarehouseId = warehouseId,
+                RoleCode = "RENTER",
+                IsAllSkill = true,
+                SkillIds = new List<int>(),
+                WarehouseShiftId = null
+            };
+
+            var membershipId = await _membershipRepo.CreateMembershipAsync(membershipDto);
+            _logger.LogInformation("Created RENTER membership {MembershipId} for user {RenterId} in warehouse {WarehouseId} via payment reconciliation",
+                membershipId, renterId, warehouseId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to create RENTER membership for user {RenterId} in warehouse {WarehouseId} via payment reconciliation",
+                renterId, warehouseId);
         }
     }
 }

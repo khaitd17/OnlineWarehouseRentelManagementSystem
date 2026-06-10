@@ -1,4 +1,4 @@
-﻿/**
+/**
  * InventoryReceiptPDF.jsx
  *
  * Renders a printable "Phiếu Nhập Kho" (Warehouse Inbound Receipt) using
@@ -346,23 +346,25 @@ export function InventoryReceiptDocument({ data }) {
             <Text style={S.sigNameValue}>{renterName}</Text>
           </View>
 
-          {/* Quản lý kho = Manager */}
-          <View style={S.sigBox}>
-            <Text style={S.sigTitle}>Quản Lý Kho</Text>
-            <Text style={S.sigRole}>Người duyệt</Text>
-            <View style={S.sigSpace}>
-              {data.managerSignatureBase64 ? (
-                <Image 
-                  style={{ width: 80, height: 40 }} 
-                  src={data.managerSignatureBase64.startsWith('data:image') ? data.managerSignatureBase64 : `data:image/png;base64,${data.managerSignatureBase64}`} 
-                />
-              ) : (
-                <View style={S.sigLine} />
-              )}
+          {/* Quản lý kho = Manager — chỉ hiển thị khi có quản lý duyệt */}
+          {managerName ? (
+            <View style={S.sigBox}>
+              <Text style={S.sigTitle}>Quản Lý Kho</Text>
+              <Text style={S.sigRole}>Người duyệt</Text>
+              <View style={S.sigSpace}>
+                {data.managerSignatureBase64 ? (
+                  <Image 
+                    style={{ width: 80, height: 40 }} 
+                    src={data.managerSignatureBase64.startsWith('data:image') ? data.managerSignatureBase64 : `data:image/png;base64,${data.managerSignatureBase64}`} 
+                  />
+                ) : (
+                  <View style={S.sigLine} />
+                )}
+              </View>
+              <Text style={S.sigNameLabel}>Họ và tên:</Text>
+              <Text style={S.sigNameValue}>{managerName}</Text>
             </View>
-            <Text style={S.sigNameLabel}>Họ và tên:</Text>
-            <Text style={S.sigNameValue}>{managerName || '.....................'}</Text>
-          </View>
+          ) : null}
 
           {/* Nhân viên kho = Staff */}
           <View style={S.sigBox}>
